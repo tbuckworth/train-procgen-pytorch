@@ -101,10 +101,11 @@ if __name__=='__main__':
                           start_level=start_level_val if is_valid else args.start_level,
                           distribution_mode=args.distribution_mode,
                           num_threads=args.num_threads,
-                          random_percent=args.random_percent,
-                          step_penalty=args.step_penalty,
-                          key_penalty=args.key_penalty,
-                          rand_region=args.rand_region)
+                          # random_percent=args.random_percent,
+                          # step_penalty=args.step_penalty,
+                          # key_penalty=args.key_penalty,
+                          # rand_region=args.rand_region,
+                          )
         venv = VecExtractDictObs(venv, "rgb")
         normalize_rew = hyperparameters.get('normalize_rew', True)
         if normalize_rew:
