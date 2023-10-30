@@ -101,10 +101,10 @@ if __name__=='__main__':
                           start_level=start_level_val if is_valid else args.start_level,
                           distribution_mode=args.distribution_mode,
                           num_threads=args.num_threads,
-                          # random_percent=args.random_percent,
-                          # step_penalty=args.step_penalty,
-                          # key_penalty=args.key_penalty,
-                          # rand_region=args.rand_region,
+                          random_percent=args.random_percent,
+                          step_penalty=args.step_penalty,
+                          key_penalty=args.key_penalty,
+                          rand_region=args.rand_region,
                           )
         venv = VecExtractDictObs(venv, "rgb")
         normalize_rew = hyperparameters.get('normalize_rew', True)
@@ -155,6 +155,7 @@ if __name__=='__main__':
 
     print(f'Logging to {logdir}')
     if args.use_wandb:
+        wandb.login(key="cfc00eee102a1e9647b244a40066bfc5f1a96610")
         cfg = vars(args)
         cfg.update(hyperparameters)
         wb_resume = "allow" if args.model_file is None else "must"
