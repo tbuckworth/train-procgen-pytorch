@@ -111,8 +111,13 @@ if __name__=='__main__':
         ob_key = "rgb" if args.agent_view else None
         if not args.noview:
             venv = ViewerWrapper(venv, tps=args.tps, info_key=info_key, ob_key=ob_key) # N.B. this line caused issues for me. I just commented it out, but it's uncommented in the pushed version in case it's just me (Lee).
-        if args.vid_dir is not None:
-            venv = VideoRecorderWrapper(venv, directory=args.vid_dir,
+        if args.vid_dir is None:
+            vid_dir = 'procgen/' + env_name + '/' + exp_name + '/' + 'VIDEO_seed' + '_' + \
+                     str(seed) + '_' + time.strftime("%d-%m-%Y_%H-%M-%S")
+            vid_dir = os.path.join('logs', vid_dir)
+        else:
+            vid_dir = args.vid_dir
+        venv = VideoRecorderWrapper(venv, directory=vid_dir,
                                         info_key=info_key, ob_key=ob_key, fps=args.tps)
         venv = ToBaselinesVecEnv(venv)
         venv = VecExtractDictObs(venv, "rgb")
