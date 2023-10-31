@@ -53,7 +53,7 @@ class NatureModel(nn.Module):
             nn.Conv2d(in_channels=32, out_channels=64, kernel_size=4, stride=2), nn.ReLU(),
             nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1), nn.ReLU(),
             Flatten(),
-            nn.Linear(in_features=64*7*7, out_features=512), nn.ReLU()
+            nn.Linear(in_features=64 * 7 * 7, out_features=512), nn.ReLU()
         )
         self.output_dim = 512
         self.apply(orthogonal_init)
@@ -77,6 +77,7 @@ class ResidualBlock(nn.Module):
         out = self.conv2(out)
         return out + x
 
+
 class ImpalaBlock(nn.Module):
     def __init__(self, in_channels, out_channels):
         super(ImpalaBlock, self).__init__()
@@ -91,16 +92,19 @@ class ImpalaBlock(nn.Module):
         x = self.res2(x)
         return x
 
+
 scale = 1
+
+
 class ImpalaModel(nn.Module):
     def __init__(self,
                  in_channels,
                  **kwargs):
         super(ImpalaModel, self).__init__()
-        self.block1 = ImpalaBlock(in_channels=in_channels, out_channels=16*scale)
-        self.block2 = ImpalaBlock(in_channels=16*scale, out_channels=32*scale)
-        self.block3 = ImpalaBlock(in_channels=32*scale, out_channels=32*scale)
-        self.fc = nn.Linear(in_features=32*scale * 8 * 8, out_features=256)
+        self.block1 = ImpalaBlock(in_channels=in_channels, out_channels=16 * scale)
+        self.block2 = ImpalaBlock(in_channels=16 * scale, out_channels=32 * scale)
+        self.block3 = ImpalaBlock(in_channels=32 * scale, out_channels=32 * scale)
+        self.fc = nn.Linear(in_features=32 * scale * 8 * 8, out_features=256)
 
         self.output_dim = 256
         self.apply(xavier_uniform_init)
@@ -147,10 +151,10 @@ class GRU(nn.Module):
             # We will always assume t=0 has a zero in it as that makes the logic cleaner
             # (can be interpreted as a truncated back-propagation through time)
             has_zeros = ((masks[1:] == 0.0) \
-                            .any(dim=-1)
-                            .nonzero()
-                            .squeeze()
-                            .cpu())
+                         .any(dim=-1)
+                         .nonzero()
+                         .squeeze()
+                         .cpu())
 
             # +1 to correct the masks[1:]
             if has_zeros.dim() == 0:
@@ -184,3 +188,28 @@ class GRU(nn.Module):
             hxs = hxs.squeeze(0)
 
         return x, hxs
+
+
+class VQMHAModel(nn.Module):
+    # TODO:
+    #   create VQVAE
+    #   load in trained VQVAE
+    def __init__(self, in_channels, hyperparameters):
+        super(ImpalaModel, self).__init__()
+        self.block1 = ImpalaBlock(in_channels=in_channels, out_channels=16 * scale)
+        self.block2 = ImpalaBlock(in_channels=16 * scale, out_channels=32 * scale)
+        self.block3 = ImpalaBlock(in_channels=32 * scale, out_channels=32 * scale)
+        self.fc = nn.Linear(in_features=32 * scale * 8 * 8, out_features=256)
+
+        self.output_dim = 256
+        self.apply(xavier_uniform_init)
+
+    def forward(self, x):
+        x = self.block1(x)
+        x = self.block2(x)
+        x = self.block3(x)
+        x = nn.ReLU()(x)
+        x = Flatten()(x)
+        x = self.fc(x)
+        x = nn.ReLU()(x)
+        return x

@@ -1,7 +1,7 @@
 from common.env.procgen_wrappers import *
 from common.logger import Logger
 from common.storage import Storage
-from common.model import NatureModel, ImpalaModel
+from common.model import NatureModel, ImpalaModel, VQMHAModel
 from common.policy import CategoricalPolicy
 from common import set_global_seeds, set_global_log_levels
 
@@ -192,6 +192,8 @@ if __name__ == '__main__':
         model = NatureModel(in_channels=in_channels)
     elif architecture == 'impala':
         model = ImpalaModel(in_channels=in_channels)
+    elif architecture == 'vqmha':
+        model = VQMHAModel(in_channels, hyperparameters)
 
     # Discrete action space
     recurrent = hyperparameters.get('recurrent', False)
