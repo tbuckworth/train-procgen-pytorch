@@ -119,23 +119,17 @@ if __name__ == '__main__':
                               key_penalty=args.key_penalty,
                               rand_region=args.rand_region,
                               )
-        print("\tVecExtractDictObs:")
         venv = VecExtractDictObs(venv, "rgb")
 
         normalize_rew = hyperparameters.get('normalize_rew', True)
         if normalize_rew:
-            print("\tVecNormalize:")
             venv = VecNormalize(venv, ob=False)  # normalizing returns, but not
             # the img frames
-        print("\tTransposeFrame:")
         venv = TransposeFrame(venv)
-        print("\tScaledFLoatFrame:")
         venv = ScaledFloatFrame(venv)
         return venv
 
-    print("creating env")
     env = create_venv(args, hyperparameters)
-    print("creating env_valid")
     env_valid = create_venv(args, hyperparameters, is_valid=True)
 
 
@@ -179,7 +173,8 @@ if __name__ == '__main__':
         cfg = vars(args)
         cfg.update(hyperparameters)
         wb_resume = "allow" if args.model_file is None else "must"
-        wandb.init(project="objective-robustness", config=cfg, tags=args.wandb_tags, resume=wb_resume)
+        wandb.init(project="objective-robustness", config=cfg, sync_tensorboard=True,
+                   tags=args.wandb_tags, resume=wb_resume)
     logger = Logger(n_envs, logdir, use_wandb=args.use_wandb)
 
     ###########
