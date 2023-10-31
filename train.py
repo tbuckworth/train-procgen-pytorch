@@ -33,6 +33,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_checkpoints', type=int, default=int(1), help='number of checkpoints to store')
     parser.add_argument('--model_file', type=str)
     parser.add_argument('--use_wandb', action="store_true")
+    parser.add_argument('--real_procgen', action="store_true")
 
     parser.add_argument('--wandb_tags', type=str, nargs='+')
 
@@ -98,17 +99,26 @@ if __name__ == '__main__':
 
     def create_venv(args, hyperparameters, is_valid=False):
         print("\tProcgenEnv:")
-        venv = ProcgenEnv(num_envs=n_envs,
-                          env_name=val_env_name if is_valid else env_name,
-                          num_levels=0 if is_valid else args.num_levels,
-                          start_level=start_level_val if is_valid else args.start_level,
-                          distribution_mode=args.distribution_mode,
-                          num_threads=args.num_threads,
-                          random_percent=args.random_percent,
-                          step_penalty=args.step_penalty,
-                          key_penalty=args.key_penalty,
-                          rand_region=args.rand_region,
-                          )
+        if args.real_procgen:
+            venv = ProcgenEnv(num_envs=n_envs,
+                              env_name=val_env_name if is_valid else env_name,
+                              num_levels=0 if is_valid else args.num_levels,
+                              start_level=start_level_val if is_valid else args.start_level,
+                              distribution_mode=args.distribution_mode,
+                              num_threads=args.num_threads,
+                              )
+        else:
+            venv = ProcgenEnv(num_envs=n_envs,
+                              env_name=val_env_name if is_valid else env_name,
+                              num_levels=0 if is_valid else args.num_levels,
+                              start_level=start_level_val if is_valid else args.start_level,
+                              distribution_mode=args.distribution_mode,
+                              num_threads=args.num_threads,
+                              random_percent=args.random_percent,
+                              step_penalty=args.step_penalty,
+                              key_penalty=args.key_penalty,
+                              rand_region=args.rand_region,
+                              )
         print("\tVecExtractDictObs:")
         venv = VecExtractDictObs(venv, "rgb")
 
