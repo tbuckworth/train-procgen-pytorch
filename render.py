@@ -1,12 +1,9 @@
 from common.env.procgen_wrappers import *
 from common.logger import Logger
 from common.storage import Storage
-from common.model import NatureModel, ImpalaModel
-from common.policy import CategoricalPolicy
 from common import set_global_seeds, set_global_log_levels
 
-import os, time, yaml, argparse
-import gym
+import os, time, argparse
 from procgen import ProcgenGym3Env
 import random
 import torch
@@ -16,8 +13,10 @@ import torchvision as tv
 
 from gym3 import ViewerWrapper, VideoRecorderWrapper, ToBaselinesVecEnv
 
+from helper import get_hyperparams, initialize_model
 
-if __name__=='__main__':
+
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--exp_name',         type=str, default = 'render', help='experiment name')
     parser.add_argument('--env_name',         type=str, default = 'coinrun', help='environment ID')
@@ -74,8 +73,7 @@ if __name__=='__main__':
     ## HYPERPARAMETERS #
     ####################
     print('[LOADING HYPERPARAMETERS...]')
-    with open('hyperparams/procgen/config.yml', 'r') as f:
-        hyperparameters = yaml.safe_load(f)[param_name]
+    hyperparameters = get_hyperparams(param_name)
     for key, value in hyperparameters.items():
         print(key, ':', value)
 
@@ -95,6 +93,7 @@ if __name__=='__main__':
     n_envs = 1
 
     def create_venv_render(args, hyperparameters, is_valid=False):
+
         venv = ProcgenGym3Env(num=n_envs,
                           env_name=args.env_name,
                           num_levels=0 if is_valid else args.num_levels,
@@ -160,26 +159,7 @@ if __name__=='__main__':
     ## MODEL ##
     ###########
     print('INTIALIZING MODEL...')
-    observation_space = env.observation_space
-    observation_shape = observation_space.shape
-    architecture = hyperparameters.get('architecture', 'impala')
-    in_channels = observation_shape[0]
-    action_space = env.action_space
-
-    # Model architecture
-    if architecture == 'nature':
-        model = NatureModel(in_channels=in_channels)
-    elif architecture == 'impala':
-        model = ImpalaModel(in_channels=in_channels)
-
-    # Discrete action space
-    recurrent = hyperparameters.get('recurrent', False)
-    if isinstance(action_space, gym.spaces.Discrete):
-        action_size = action_space.n
-        policy = CategoricalPolicy(model, recurrent, action_size)
-    else:
-        raise NotImplementedError
-    policy.to(device)
+    model, observation_shape, policy = initialize_model(device, env, hyperparameters)
 
     #############
     ## STORAGE ##
@@ -322,3 +302,7 @@ if __name__=='__main__':
 
         agent.storage.compute_estimates(agent.gamma, agent.lmbda, agent.use_gae,
                                        agent.normalize_adv)
+
+
+if __name__=='__main__':
+    main()

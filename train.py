@@ -11,6 +11,8 @@ from procgen import ProcgenEnv
 import random
 import torch
 
+from helper import get_hyperparams, initialize_model
+
 try:
     import wandb
 except ImportError:
@@ -74,8 +76,7 @@ if __name__ == '__main__':
     ## HYPERPARAMETERS #
     ####################
     print('[LOADING HYPERPARAMETERS...]')
-    with open('hyperparams/procgen/config.yml', 'r') as f:
-        hyperparameters = yaml.safe_load(f)[param_name]
+    hyperparameters = get_hyperparams(param_name)
     for key, value in hyperparameters.items():
         print(key, ':', value)
 
@@ -98,7 +99,6 @@ if __name__ == '__main__':
 
 
     def create_venv(args, hyperparameters, is_valid=False):
-        print("\tProcgenEnv:")
         if args.real_procgen:
             venv = ProcgenEnv(num_envs=n_envs,
                               env_name=val_env_name if is_valid else env_name,
@@ -166,6 +166,8 @@ if __name__ == '__main__':
         logdir = os.path.join(logdir, run_name)
     if not (os.path.exists(logdir)):
         os.makedirs(logdir)
+    # write hyperparameters to file
+    np.save(os.path.join(logdir, "hyperparameters.npy"), hyperparameters)
 
     print(f'Logging to {logdir}')
     if args.use_wandb:
@@ -181,28 +183,7 @@ if __name__ == '__main__':
     ## MODEL ##
     ###########
     print('INTIALIZING MODEL...')
-    observation_space = env.observation_space
-    observation_shape = observation_space.shape
-    architecture = hyperparameters.get('architecture', 'impala')
-    in_channels = observation_shape[0]
-    action_space = env.action_space
-
-    # Model architecture
-    if architecture == 'nature':
-        model = NatureModel(in_channels=in_channels)
-    elif architecture == 'impala':
-        model = ImpalaModel(in_channels=in_channels)
-    elif architecture == 'vqmha':
-        model = VQMHAModel(in_channels, hyperparameters)
-
-    # Discrete action space
-    recurrent = hyperparameters.get('recurrent', False)
-    if isinstance(action_space, gym.spaces.Discrete):
-        action_size = action_space.n
-        policy = CategoricalPolicy(model, recurrent, action_size)
-    else:
-        raise NotImplementedError
-    policy.to(device)
+    model, observation_shape, policy = initialize_model(device, env, hyperparameters)
 
     #############
     ## STORAGE ##
