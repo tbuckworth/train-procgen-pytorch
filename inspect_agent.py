@@ -2,14 +2,10 @@ import os
 import re
 
 import numpy as np
-import pandas as pd
 import torch
-from gym3 import ToBaselinesVecEnv, ViewerWrapper
-from procgen import ProcgenGym3Env
 
-from common.env.procgen_wrappers import VecExtractDictObs, VecNormalize, TransposeFrame, ScaledFloatFrame
 from common.storage import Storage
-from helper import get_hyperparams, initialize_model, print_values_actions, get_action_names
+from helper import get_hyperparams, initialize_model, print_values_actions, get_action_names, create_env
 
 
 def predict(policy, obs, hidden_state, done):
@@ -46,7 +42,7 @@ def main(render=True):
                 "paint_vel_info": True,
                 "distribution_mode": "hard"}
     normalize_rew = hyperparameters.get('normalize_rew', True)
-    env = create_env_4render(env_args, render, normalize_rew)
+    env = create_env(env_args, render, normalize_rew)
 
     model, observation_shape, policy = initialize_model(device, env, hyperparameters)
 
@@ -70,21 +66,6 @@ def main(render=True):
         hidden_state = next_hidden_state
         if done[0]:
             print(f"Level seed: {info[0]['level_seed']}")
-
-def create_env_4render(env_args, render, normalize_rew=True):
-    if render:
-        env_args["render_mode"] = "rgb_array"
-    venv = ProcgenGym3Env(**env_args)
-    if render:
-        venv = ViewerWrapper(venv, info_key="rgb")
-    venv = ToBaselinesVecEnv(venv)
-    venv = VecExtractDictObs(venv, "rgb")
-    if normalize_rew:
-        venv = VecNormalize(venv, ob=False)  # normalizing returns, but not
-        # the img frames
-    venv = TransposeFrame(venv)
-    venv = ScaledFloatFrame(venv)
-    return venv
 
 
 if __name__ == "__main__":

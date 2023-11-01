@@ -2,7 +2,10 @@ import gym
 import numpy as np
 import pandas as pd
 import yaml
+from gym3 import ViewerWrapper, ToBaselinesVecEnv
+from procgen import ProcgenGym3Env
 
+from common.env.procgen_wrappers import VecExtractDictObs, VecNormalize, TransposeFrame, ScaledFloatFrame
 from common.model import NatureModel, ImpalaModel, VQMHAModel
 from common.policy import CategoricalPolicy
 
@@ -65,3 +68,32 @@ def initialize_model(device, env, hyperparameters):
         raise NotImplementedError
     policy.to(device)
     return model, observation_shape, policy
+
+
+def create_env(env_args, render, normalize_rew=True):
+    if render:
+        env_args["render_mode"] = "rgb_array"
+    venv = ProcgenGym3Env(**env_args)
+    if render:
+        venv = ViewerWrapper(venv, info_key="rgb")
+    venv = ToBaselinesVecEnv(venv)
+    venv = VecExtractDictObs(venv, "rgb")
+    if normalize_rew:
+        venv = VecNormalize(venv, ob=False)  # normalizing returns, but not
+        # the img frames
+    venv = TransposeFrame(venv)
+    venv = ScaledFloatFrame(venv)
+    return venv
+
+
+def create_name_from_dict(prefix, suffix, specifications, exclusions=[]):
+    if type(specifications) == str:
+        outstr = "_"+specifications
+    else:
+        outstr = ""
+        for key in specifications.keys():
+            if key not in exclusions:
+                outstr += f"_{key}_{specifications[key]}"
+    if suffix == "":
+        return f"{prefix}{outstr}"
+    return f"{prefix}{outstr}.{suffix}"
