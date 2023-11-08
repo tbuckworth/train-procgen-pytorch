@@ -9,7 +9,7 @@ from common.env.procgen_wrappers import VecExtractDictObs, VecNormalize, Transpo
 from common.model import NatureModel, ImpalaModel, VQMHAModel
 from common.policy import CategoricalPolicy
 
-def print_values_actions(action_names, pi, value):
+def print_values_actions(action_names, pi, value, i=""):
     ap = np.squeeze(pi)
     df = pd.DataFrame({"variables": action_names, "values": ap})
     df2 = df.pivot_table(values="values", index="variables", aggfunc="sum")
@@ -19,7 +19,10 @@ def print_values_actions(action_names, pi, value):
     action_probs = np.asarray(np.round(np.squeeze(df2.values) * 100, 0), dtype=np.int32)
     idx = np.argsort(action_probs)[::-1][:5]
     top_actions = '\t'.join([f"{x[0]}: {x[1]}" for x in zip(action_probs[idx], a_names[idx])])
-    print(f"{np.squeeze(value):.2f}\t{top_actions}")
+    if i != "":
+        print(f"{i}:\t{np.squeeze(value):.2f}\t{top_actions}")
+    else:
+        print(f"{np.squeeze(value):.2f}\t{top_actions}")
 
 def match(a, b):
     a = a.tolist()
