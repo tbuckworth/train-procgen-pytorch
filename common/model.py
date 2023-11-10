@@ -192,9 +192,6 @@ class GRU(nn.Module):
 
 
 class ImpalaVQModel(nn.Module):
-    # TODO:
-    #   create VQVAE
-    #   load in trained VQVAE
     def __init__(self, in_channels, **kwargs):
         super(ImpalaVQModel, self).__init__()
         self.block1 = ImpalaBlock(in_channels=in_channels, out_channels=16 * scale)
@@ -217,13 +214,234 @@ class ImpalaVQModel(nn.Module):
         quantized, indices, commit_loss = self.vq(x)
         return quantized
 
+
+class ResidualStack(nn.Module):
+    def __init__(self, num_hiddens, num_residual_layers, num_residual_hiddens):
+        super().__init__()
+        # See Section 4.1 of "Neural Discrete Representation Learning".
+        layers = []
+        for i in range(num_residual_layers):
+            layers.append(
+                nn.Sequential(
+                    nn.ReLU(),
+                    nn.Conv2d(
+                        in_channels=num_hiddens,
+                        out_channels=num_residual_hiddens,
+                        kernel_size=3,
+                        padding=1,
+                    ),
+                    nn.ReLU(),
+                    nn.Conv2d(
+                        in_channels=num_residual_hiddens,
+                        out_channels=num_hiddens,
+                        kernel_size=1,
+                    ),
+                )
+            )
+
+        self.layers = nn.ModuleList(layers)
+
+    def forward(self, x):
+        h = x
+        for layer in self.layers:
+            h = h + layer(h)
+
+        # ResNet V1-style.
+        return torch.relu(h)
+
+
+class Encoder(nn.Module):
+    def __init__(
+            self,
+            in_channels,
+            num_hiddens,
+            num_downsampling_layers,
+            num_residual_layers,
+            num_residual_hiddens,
+    ):
+        super().__init__()
+        # See Section 4.1 of "Neural Discrete Representation Learning".
+        # The last ReLU from the Sonnet example is omitted because ResidualStack starts
+        # off with a ReLU.
+        conv = nn.Sequential()
+        for downsampling_layer in range(num_downsampling_layers):
+            if downsampling_layer == 0:
+                out_channels = num_hiddens // 2
+            elif downsampling_layer == 1:
+                (in_channels, out_channels) = (num_hiddens // 2, num_hiddens)
+
+            else:
+                (in_channels, out_channels) = (num_hiddens, num_hiddens)
+
+            conv.add_module(
+                f"down{downsampling_layer}",
+                nn.Conv2d(
+                    in_channels=in_channels,
+                    out_channels=out_channels,
+                    kernel_size=4,
+                    stride=2,
+                    padding=1,
+                ),
+            )
+            conv.add_module(f"relu{downsampling_layer}", nn.ReLU())
+
+        conv.add_module(
+            "final_conv",
+            nn.Conv2d(
+                in_channels=num_hiddens,
+                out_channels=num_hiddens,
+                kernel_size=3,
+                padding=1,
+            ),
+        )
+        self.conv = conv
+        self.residual_stack = ResidualStack(
+            num_hiddens, num_residual_layers, num_residual_hiddens
+        )
+
+    def forward(self, x):
+        h = self.conv(x)
+        return self.residual_stack(h)
+
+
+class Decoder(nn.Module):
+    def __init__(
+            self,
+            embedding_dim,
+            num_hiddens,
+            num_upsampling_layers,
+            num_residual_layers,
+            num_residual_hiddens,
+    ):
+        super().__init__()
+        # See Section 4.1 of "Neural Discrete Representation Learning".
+        self.conv = nn.Conv2d(
+            in_channels=embedding_dim,
+            out_channels=num_hiddens,
+            kernel_size=3,
+            padding=1,
+        )
+        self.residual_stack = ResidualStack(
+            num_hiddens, num_residual_layers, num_residual_hiddens
+        )
+        upconv = nn.Sequential()
+        for upsampling_layer in range(num_upsampling_layers):
+            if upsampling_layer < num_upsampling_layers - 2:
+                (in_channels, out_channels) = (num_hiddens, num_hiddens)
+
+            elif upsampling_layer == num_upsampling_layers - 2:
+                (in_channels, out_channels) = (num_hiddens, num_hiddens // 2)
+
+            else:
+                (in_channels, out_channels) = (num_hiddens // 2, 3)
+
+            upconv.add_module(
+                f"up{upsampling_layer}",
+                nn.ConvTranspose2d(
+                    in_channels=in_channels,
+                    out_channels=out_channels,
+                    kernel_size=4,
+                    stride=2,
+                    padding=1,
+                ),
+            )
+            if upsampling_layer < num_upsampling_layers - 1:
+                upconv.add_module(f"relu{upsampling_layer}", nn.ReLU())
+
+        self.upconv = upconv
+
+    def forward(self, x):
+        h = self.conv(x)
+        h = self.residual_stack(h)
+        x_recon = self.upconv(h)
+        return x_recon
+
+
+class VQVAE(nn.Module):
+    def __init__(
+            self,
+            in_channels,
+            num_hiddens=128,
+            num_downsampling_layers=4,
+            num_residual_layers=2,
+            num_residual_hiddens=32,
+            embedding_dim=8,
+            num_embeddings=128,
+            use_ema=True,
+            decay=.99,
+            epsilon=1e-5,
+    ):
+        super().__init__()
+        self.encoder = Encoder(
+            in_channels,
+            num_hiddens,
+            num_downsampling_layers,
+            num_residual_layers,
+            num_residual_hiddens,
+        )
+        self.pre_vq_conv = nn.Conv2d(
+            in_channels=num_hiddens, out_channels=embedding_dim, kernel_size=1
+        )
+        self.vq = VectorQuantize(
+            codebook_dim=embedding_dim,
+            codebook_size=num_embeddings,
+            ema_update=use_ema,
+            decay=decay,
+            eps=epsilon
+        )
+        self.decoder = Decoder(
+            embedding_dim,
+            num_hiddens,
+            num_downsampling_layers,
+            num_residual_layers,
+            num_residual_hiddens,
+        )
+
+    def quantize(self, x):
+        z = self.pre_vq_conv(self.encoder(x))
+        (z_quantized, dictionary_loss, commitment_loss, encoding_indices) = self.vq(z)
+        return (z_quantized, dictionary_loss, commitment_loss, encoding_indices)
+
+    def forward(self, x):
+        (z_quantized, dictionary_loss, commitment_loss, _) = self.quantize(x)
+        x_recon = self.decoder(z_quantized)
+        return {
+            "dictionary_loss": dictionary_loss,
+            "commitment_loss": commitment_loss,
+            "x_recon": x_recon,
+        }
+
+    def extract_features(self, inputs):
+        z = self.pre_vq_conv(self._encoder(inputs))
+        vq_output = self.vq(z)
+        return vq_output, z
+
+
+def get_trained_vqvqae(in_channels, hyperparameters):
+    vqvae = VQVAE(in_channels,
+                  num_hiddens=hyperparameters["num_hiddens"],
+                  num_downsampling_layers=hyperparameters["num_downsampling_layers"],
+                  num_residual_layers=hyperparameters["num_residual_layers"],
+                  num_residual_hiddens=hyperparameters["num_residual_hiddens"],
+                  embedding_dim=hyperparameters["embedding_dim"],
+                  num_embeddings=hyperparameters["num_embeddings"],
+                  use_ema=hyperparameters["use_ema"],
+                  decay=hyperparameters["decay"],
+                  epsilon=hyperparameters["epsilon"], )
+    pass
+
+
 class VQMHAModel(nn.Module):
     # TODO:
     #   create VQVAE
     #   load in trained VQVAE
     def __init__(self, in_channels, hyperparameters):
         super(VQMHAModel, self).__init__()
+        self.vqvae = get_trained_vqvqae(in_channels, hyperparameters)
+        self.mha = nn.MultiheadAttention(embed_dim=hyperparameters["embedding_dim"],
+                                         num_heads=hyperparameters["num_heads"])
         pass
 
     def forward(self, x):
+
         pass

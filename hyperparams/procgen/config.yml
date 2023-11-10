@@ -118,6 +118,36 @@ hard-500-impalavq:
     architecture: impalavq
     recurrent: False
 
+hard-500-vqmha:
+    algo: ppo
+    n_envs: 256
+    n_steps: 256
+    epoch: 3
+    mini_batch_per_epoch: 8
+    mini_batch_size: 8192
+    gamma: 0.999
+    lmbda: 0.95
+    learning_rate: 0.0005
+    grad_clip_norm: 0.5
+    eps_clip: 0.2
+    value_coef: 0.5
+    entropy_coef: 0.01
+    normalize_adv: True
+    normalize_rew: True
+    use_gae: True
+    architecture: vqmha
+    recurrent: False
+    num_hiddens: 128
+    num_downsampling_layers: 4
+    num_residual_layers: 2
+    num_residual_hiddens: 32
+    embedding_dim: 8
+    num_embeddings: 128
+    use_ema: True
+    decay: .99
+    epsilon: 1e-5
+    num_heads: 8
+
 hard-500-mem:
     algo: ppo
     n_envs: 256
