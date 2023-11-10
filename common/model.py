@@ -191,7 +191,7 @@ class GRU(nn.Module):
         return x, hxs
 
 
-class VQIMPALA(nn.Module):
+class ImpalaVQModel(nn.Module):
     # TODO:
     #   create VQVAE
     #   load in trained VQVAE
