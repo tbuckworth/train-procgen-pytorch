@@ -6,8 +6,7 @@ import numpy as np
 import torch
 
 from common.storage import Storage
-from helper import get_hyperparams, initialize_model, print_values_actions, get_action_names, create_env
-
+from helper import get_hyperparams, initialize_model, print_values_actions, get_action_names, create_env, save_gif
 
 
 def predict(policy, obs, hidden_state, done):
@@ -22,6 +21,7 @@ def predict(policy, obs, hidden_state, done):
     pi = torch.nn.functional.softmax(dist.logits, dim=1)
 
     return act.cpu().numpy(), log_prob_act.cpu().numpy(), value.cpu().numpy(), hidden_state.cpu().numpy(), pi.cpu().numpy()
+
 
 def main(render=True):
     action_names, done, env, hidden_state, obs, policy = load_policy(render)
@@ -73,18 +73,22 @@ def load_policy(render):
 
 
 def inspect_frames():
+    folder = "logs/train/coinrun/coinrun/2023-10-31__10-49-30__seed_6033/"
     import matplotlib.pyplot as plt
-    frames = np.load("logs/train/coinrun/coinrun/2023-10-31__10-49-30__seed_6033/go_left.npy", allow_pickle='TRUE')
+    frames = np.load(f"{folder}go_left.npy", allow_pickle='TRUE')
     action_names, done, env, hidden_state, obs, policy = load_policy(render=False)
+
+    save_gif(frames[:234, ], f"{folder}normal_play.gif")
+    save_gif(frames[234:, ], f"{folder}broken_play.gif")
 
     # STARTS AT -95 = 234
 
     # i = 263 #LEFT
     # i = 258 #RIGHT
     for i in [258, 263]:
-        obs = frames[i:(i+1), ]
-        plt.imshow(frames[i].transpose(1,2,0))
-        plt.show()
+        obs = frames[i:(i + 1), ]
+        plt.imshow(frames[i].transpose(1, 2, 0))
+        plt.savefig(f"{folder}frame_{i}.png")
         act, log_prob_act, value, next_hidden_state, pi = predict(policy, obs, hidden_state, done)
         print_values_actions(action_names, pi, value)
 
@@ -105,20 +109,26 @@ def inspect_frames():
 
     # Here I cycle through segments of the images, swapping them out and monitoring the agent action probabilities
     n = 4
-    m = n*n
-    k = 64//n
+    m = n * n
+    k = 64 // n
     slices = []
     for i in range(m):
         row = (i % n)
         col = (i // n)
-        np_slice = np.index_exp[0, :, (row*k):((row+1)*k), (col*k):((col+1)*k)]
+        np_slice = np.index_exp[0, :, (row * k):((row + 1) * k), (col * k):((col + 1) * k)]
         slices.append(np_slice)
-        n_frame = swap_indexed_values_and_print(action_names, done, hidden_state, left_frame, slices, policy, right_frame, plt, i)
+        n_frame = swap_indexed_values_and_print(action_names, done, hidden_state, left_frame, slices, policy,
+                                                right_frame, plt, i)
         if i == 9:
             still_right = n_frame
         # I found that the phase shift in action probabilities occurs on the 10th swapping
         if i == 10:
             now_left = n_frame
+
+    plt.imshow(still_right[0].transpose(1, 2, 0))
+    plt.savefig(f"{folder}still_right_frame.png")
+    plt.imshow(now_left[0].transpose(1, 2, 0))
+    plt.savefig(f"{folder}now_left_frame.png")
 
     # Looking at the embeddings, they are somewhat different
     xr = policy.embedder(torch.Tensor(still_right))
@@ -129,11 +139,9 @@ def inspect_frames():
 
     # Here I cycle through each embedding and see if swapping it out significantly shifts the logits
     for i in ind:
-        x[0,i] = xl[0,i]
+        x[0, i] = xl[0, i]
         policy.fc_policy(xr)
         policy.fc_policy(x)
-
-
 
 
 def swap_indexed_values_and_print(action_names, done, hidden_state, left_frame, slices, policy, right_frame, plt, i=""):

@@ -1,6 +1,7 @@
 from .misc_util import orthogonal_init, xavier_uniform_init
 import torch.nn as nn
 import torch
+from vector_quantize_pytorch import VectorQuantize, FSQ
 
 
 class Flatten(nn.Module):
@@ -190,17 +191,18 @@ class GRU(nn.Module):
         return x, hxs
 
 
-class VQMHAModel(nn.Module):
+class VQIMPALA(nn.Module):
     # TODO:
     #   create VQVAE
     #   load in trained VQVAE
-    def __init__(self, in_channels, hyperparameters):
+    def __init__(self, in_channels, **kwargs):
         super(ImpalaModel, self).__init__()
         self.block1 = ImpalaBlock(in_channels=in_channels, out_channels=16 * scale)
         self.block2 = ImpalaBlock(in_channels=16 * scale, out_channels=32 * scale)
         self.block3 = ImpalaBlock(in_channels=32 * scale, out_channels=32 * scale)
         self.fc = nn.Linear(in_features=32 * scale * 8 * 8, out_features=256)
-
+        self.vq = VectorQuantize(dim=256, codebook_size=128, decay=.8, commitment_weight=1.)
+        # decay=.99,cc=.25 is the VQ-VAE values
         self.output_dim = 256
         self.apply(xavier_uniform_init)
 
@@ -212,4 +214,16 @@ class VQMHAModel(nn.Module):
         x = Flatten()(x)
         x = self.fc(x)
         x = nn.ReLU()(x)
-        return x
+        quantized, indices, commit_loss = self.vq(x)
+        return quantized
+
+class VQMHAModel(nn.Module):
+    # TODO:
+    #   create VQVAE
+    #   load in trained VQVAE
+    def __init__(self, in_channels, hyperparameters):
+        super(VQMHAModel, self).__init__()
+        pass
+
+    def forward(self, x):
+        pass
