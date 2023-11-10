@@ -196,7 +196,7 @@ class ImpalaVQModel(nn.Module):
     #   create VQVAE
     #   load in trained VQVAE
     def __init__(self, in_channels, **kwargs):
-        super(ImpalaModel, self).__init__()
+        super(ImpalaVQModel, self).__init__()
         self.block1 = ImpalaBlock(in_channels=in_channels, out_channels=16 * scale)
         self.block2 = ImpalaBlock(in_channels=16 * scale, out_channels=32 * scale)
         self.block3 = ImpalaBlock(in_channels=32 * scale, out_channels=32 * scale)
