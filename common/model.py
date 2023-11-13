@@ -39,7 +39,6 @@ def entities_flatten(input_tensor):
     return torch.reshape(input_tensor, [-1, h * w, channels])
 
 
-
 class Flatten(nn.Module):
     def forward(self, x):
         return torch.flatten(x, start_dim=1)
@@ -250,11 +249,12 @@ class ImpalaVQModel(nn.Module):
         quantized, indices, commit_loss = self.vq(x)
         return quantized
 
+
 class BaseAttention(nn.Module):
     def __init__(self, **kwargs):
-        super().__init__()
+        super(BaseAttention, self).__init__()
         self.mha = nn.MultiheadAttention(**kwargs)
-        self.layernorm = nn.LayerNorm()
+        # self.layernorm = nn.LayerNorm()
         self.add = torch.add()
 
 
@@ -265,7 +265,7 @@ class GlobalSelfAttention(BaseAttention):
             value=x,
             key=x)
         x = self.add([x, attn_output])
-        x = self.layernorm(x)
+        # x = self.layernorm(x)
         return x
 
     def get_attn_weights(self, x):
@@ -534,5 +534,4 @@ class VQMHAModel(nn.Module):
         pass
 
     def forward(self, x):
-
         pass
