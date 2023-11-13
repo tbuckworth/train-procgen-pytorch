@@ -259,7 +259,7 @@ class BaseAttention(nn.Module):
 
 
 class GlobalSelfAttention(BaseAttention):
-    def call(self, x):
+    def forward(self, x):
         attn_output = self.mha(
             query=x,
             value=x,
