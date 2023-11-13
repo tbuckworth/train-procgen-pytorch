@@ -4,6 +4,42 @@ import torch
 from vector_quantize_pytorch import VectorQuantize, FSQ
 
 
+def flatten_features(features):
+    coor = get_coor(features)
+    proc_features = torch.concat([features, coor], axis=3)
+    flattened_features = entities_flatten(proc_features)
+    return flattened_features
+
+
+def get_coor(input_tensor):
+    """
+    The output of cnn is tagged with two extra channels indicating the spatial position(x and y) of each cell
+
+    :param input_tensor: (TensorFlow Tensor)  [B,Height,W,D]
+    :return: (TensorFlow Tensor) [B,Height,W,2]
+    """
+    # batch_size = tf.shape(input_tensor)[0]
+    batch_size, height, width, _ = input_tensor.shape.as_list()
+    coor = [[[h / height, w / width] for w in range(width)] for h in range(height)]
+
+    coor = torch.unsqueeze(torch.Tensor(coor, dtype=input_tensor.dtype), axis=0)
+    # coor = tf.convert_to_tensor(coor)
+    # [1,Height,W,2] --> [B,Height,W,2]
+    coor = torch.tile(coor, [batch_size, 1, 1, 1])
+    return coor
+
+
+def entities_flatten(input_tensor):
+    """
+    flatten axis 1 and axis 2
+    :param input_tensor: (TensorFlow Tensor) The input tensor from NN [B,H,W,D]
+    :return: (TensorFlow Tensor) [B,N,D]
+    """
+    _, h, w, channels = input_tensor.shape.as_list()
+    return torch.reshape(input_tensor, [-1, h * w, channels])
+
+
+
 class Flatten(nn.Module):
     def forward(self, x):
         return torch.flatten(x, start_dim=1)
@@ -213,6 +249,61 @@ class ImpalaVQModel(nn.Module):
         x = nn.ReLU()(x)
         quantized, indices, commit_loss = self.vq(x)
         return quantized
+
+class BaseAttention(nn.Module):
+    def __init__(self, **kwargs):
+        super().__init__()
+        self.mha = nn.MultiheadAttention(**kwargs)
+        self.layernorm = nn.LayerNorm()
+        self.add = torch.add()
+
+
+class GlobalSelfAttention(BaseAttention):
+    def call(self, x):
+        attn_output = self.mha(
+            query=x,
+            value=x,
+            key=x)
+        x = self.add([x, attn_output])
+        x = self.layernorm(x)
+        return x
+
+    def get_attn_weights(self, x):
+        attn_output, attn_weight = self.mha(
+            query=x,
+            value=x,
+            key=x,
+            need_weights=True
+        )
+        return attn_weight
+
+
+class ImpalaVQMHAModel(nn.Module):
+    def __init__(self, in_channels, **kwargs):
+        super(ImpalaVQMHAModel, self).__init__()
+        self.block1 = ImpalaBlock(in_channels=in_channels, out_channels=16 * scale)
+        self.block2 = ImpalaBlock(in_channels=16 * scale, out_channels=32 * scale)
+        self.block3 = ImpalaBlock(in_channels=32 * scale, out_channels=32 * scale)
+        self.fc = nn.Linear(in_features=32 * scale * 8 * 8, out_features=256)
+        # decay=.99,cc=.25 is the VQ-VAE values
+        self.vq = VectorQuantize(dim=256, codebook_size=128, decay=.8, commitment_weight=1.)
+        self.mha = GlobalSelfAttention(num_heads=8, embed_dim=258, dropout=0.1)
+        self.output_dim = 256
+        self.apply(xavier_uniform_init)
+
+    def forward(self, x):
+        x = self.block1(x)
+        x = self.block2(x)
+        x = self.block3(x)
+        x = nn.ReLU()(x)
+        x = Flatten()(x)
+        x = self.fc(x)
+        x = nn.ReLU()(x)
+        quantized, indices, commit_loss = self.vq(x)
+        # x = Flatten()(x)
+        x = flatten_features(quantized)
+        x = self.mha(x)
+        return x
 
 
 class ResidualStack(nn.Module):
