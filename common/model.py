@@ -301,8 +301,8 @@ class ImpalaVQMHAModel(nn.Module):
         x = nn.ReLU()(x)
         quantized, indices, commit_loss = self.vq(x)
         # x = Flatten()(x)
-        x = flatten_features(quantized)
-        x = self.mha(x)
+        # x = flatten_features(quantized)
+        x = self.mha(quantized)
         return x
 
 
