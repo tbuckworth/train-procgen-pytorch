@@ -255,7 +255,7 @@ class BaseAttention(nn.Module):
         super(BaseAttention, self).__init__()
         self.mha = nn.MultiheadAttention(**kwargs)
         # self.layernorm = nn.LayerNorm()
-        self.add = torch.add()
+        # self.add = torch.add
 
 
 class GlobalSelfAttention(BaseAttention):
@@ -264,7 +264,7 @@ class GlobalSelfAttention(BaseAttention):
             query=x,
             value=x,
             key=x)
-        x = self.add(x, attn_output)
+        x = x.add(attn_output)
         # x = self.layernorm(x)
         return x
 
