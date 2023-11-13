@@ -287,7 +287,7 @@ class ImpalaVQMHAModel(nn.Module):
         self.fc = nn.Linear(in_features=32 * scale * 8 * 8, out_features=256)
         # decay=.99,cc=.25 is the VQ-VAE values
         self.vq = VectorQuantize(dim=256, codebook_size=128, decay=.8, commitment_weight=1.)
-        self.mha = GlobalSelfAttention(num_heads=8, embed_dim=258, dropout=0.1)
+        self.mha = GlobalSelfAttention(num_heads=8, embed_dim=256, dropout=0.1)
         self.output_dim = 256
         self.apply(xavier_uniform_init)
 
