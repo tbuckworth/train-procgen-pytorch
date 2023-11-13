@@ -19,10 +19,10 @@ def get_coor(input_tensor):
     :return: (TensorFlow Tensor) [B,Height,W,2]
     """
     # batch_size = tf.shape(input_tensor)[0]
-    batch_size, height, width, _ = input_tensor.shape.as_list()
+    batch_size, height, width, _ = input_tensor.shape
     coor = [[[h / height, w / width] for w in range(width)] for h in range(height)]
 
-    coor = torch.unsqueeze(torch.Tensor(coor, dtype=input_tensor.dtype), axis=0)
+    coor = torch.unsqueeze(torch.Tensor(coor), axis=0)
     # coor = tf.convert_to_tensor(coor)
     # [1,Height,W,2] --> [B,Height,W,2]
     coor = torch.tile(coor, [batch_size, 1, 1, 1])
@@ -35,7 +35,7 @@ def entities_flatten(input_tensor):
     :param input_tensor: (TensorFlow Tensor) The input tensor from NN [B,H,W,D]
     :return: (TensorFlow Tensor) [B,N,D]
     """
-    _, h, w, channels = input_tensor.shape.as_list()
+    _, h, w, channels = input_tensor.shape
     return torch.reshape(input_tensor, [-1, h * w, channels])
 
 
