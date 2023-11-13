@@ -264,7 +264,7 @@ class GlobalSelfAttention(BaseAttention):
             query=x,
             value=x,
             key=x)
-        x = self.add([x, attn_output])
+        x = self.add(x, attn_output)
         # x = self.layernorm(x)
         return x
 
