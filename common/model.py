@@ -251,10 +251,10 @@ class ImpalaVQModel(nn.Module):
 
 
 class BaseAttention(nn.Module):
-    def __init__(self, **kwargs):
+    def __init__(self, shape, **kwargs):
         super(BaseAttention, self).__init__()
         self.mha = nn.MultiheadAttention(**kwargs)
-        # self.layernorm = nn.LayerNorm()
+        self.layernorm = nn.LayerNorm(normalized_shape=shape)
         # self.add = torch.add
 
 
@@ -267,7 +267,7 @@ class GlobalSelfAttention(BaseAttention):
             need_weights=False
         )
         x = x.add(attn_output)
-        # x = self.layernorm(x)
+        x = self.layernorm(x)
         return x
 
     def get_attn_weights(self, x):
@@ -289,7 +289,7 @@ class ImpalaVQMHAModel(nn.Module):
         self.fc = nn.Linear(in_features=32 * scale * 8 * 8, out_features=256)
         # decay=.99,cc=.25 is the VQ-VAE values
         self.vq = VectorQuantize(dim=256, codebook_size=128, decay=.8, commitment_weight=1.)
-        self.mha = GlobalSelfAttention(num_heads=8, embed_dim=256, dropout=0.1)
+        self.mha = GlobalSelfAttention(shape=(256), num_heads=8, embed_dim=256, dropout=0.1)
         self.output_dim = 256
         self.apply(xavier_uniform_init)
 
