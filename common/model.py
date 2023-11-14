@@ -263,7 +263,9 @@ class GlobalSelfAttention(BaseAttention):
         attn_output = self.mha(
             query=x,
             value=x,
-            key=x)
+            key=x,
+            need_weights=False
+        )
         x = x.add(attn_output)
         # x = self.layernorm(x)
         return x
