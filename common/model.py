@@ -260,7 +260,7 @@ class BaseAttention(nn.Module):
 
 class GlobalSelfAttention(BaseAttention):
     def forward(self, x):
-        attn_output = self.mha(
+        attn_output, _ = self.mha(
             query=x,
             value=x,
             key=x,
