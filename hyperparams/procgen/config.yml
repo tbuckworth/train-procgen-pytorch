@@ -137,6 +137,7 @@ hard-500-impalavqmha:
     use_gae: True
     architecture: impalavqmha
     recurrent: False
+    mha_layers: 4
 
 hard-500-vqmha:
     algo: ppo
