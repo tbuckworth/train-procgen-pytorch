@@ -289,7 +289,10 @@ class ImpalaVQMHAModel(nn.Module):
         self.fc = nn.Linear(in_features=32 * scale * 8 * 8, out_features=256)
         # decay=.99,cc=.25 is the VQ-VAE values
         self.vq = VectorQuantize(dim=256, codebook_size=128, decay=.8, commitment_weight=1.)
-        self.mhas = [GlobalSelfAttention(shape=(256), num_heads=8, embed_dim=256, dropout=0.1) for _ in range(mha_layers)]
+        # self.mhas = [GlobalSelfAttention(shape=(256), num_heads=8, embed_dim=256, dropout=0.1) for _ in range(mha_layers)]
+        self.mha1 = GlobalSelfAttention(shape=(256), num_heads=8, embed_dim=256, dropout=0.1)
+        self.mha2 = GlobalSelfAttention(shape=(256), num_heads=8, embed_dim=256, dropout=0.1)
+
         self.output_dim = 256
         self.apply(xavier_uniform_init)
 
@@ -302,10 +305,12 @@ class ImpalaVQMHAModel(nn.Module):
         x = self.fc(x)
         x = nn.ReLU()(x)
         x, indices, commit_loss = self.vq(x)
-        # x = Flatten()(x)
-        # x = flatten_features(quantized)
-        for mha in self.mhas:
-            x = mha(x)
+
+        # for mha in self.mhas:
+        #     x = mha(x)
+
+        x = self.mha1(x)
+        x = self.mha2(x)
         return x
 
 
