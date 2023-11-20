@@ -281,8 +281,9 @@ class GlobalSelfAttention(BaseAttention):
 
 
 class ImpalaVQMHAModel(nn.Module):
-    def __init__(self, in_channels, mha_layers, **kwargs):
+    def __init__(self, in_channels, mha_layers, device, **kwargs):
         super(ImpalaVQMHAModel, self).__init__()
+        self.device = device
         self.block1 = ImpalaBlock(in_channels=in_channels, out_channels=16 * scale)
         self.block2 = ImpalaBlock(in_channels=16 * scale, out_channels=32 * scale)
         self.block3 = ImpalaBlock(in_channels=32 * scale, out_channels=32 * scale)
@@ -308,6 +309,7 @@ class ImpalaVQMHAModel(nn.Module):
 
         coor = get_coor(x)
         flat_coor = entities_flatten(coor)
+        flat_coor.to(device=self.device)
         flattened_features = entities_flatten(x)
         x, indices, commit_loss = self.vq(flattened_features)
         x = torch.concat([x, flat_coor], axis=2)
