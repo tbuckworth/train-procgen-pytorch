@@ -312,6 +312,7 @@ class ImpalaVQMHAModel(nn.Module):
         flat_coor.to(device=self.device)
         flattened_features = entities_flatten(x)
         x, indices, commit_loss = self.vq(flattened_features)
+        print(f"coor:{coor.device},flat_coor:{flat_coor.device},flattened_features:{flattened_features.device},x:{x.device}")
         x = torch.concat([x, flat_coor], axis=2)
 
         # for mha in self.mhas:
