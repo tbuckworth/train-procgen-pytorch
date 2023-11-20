@@ -286,12 +286,13 @@ class ImpalaVQMHAModel(nn.Module):
         self.block1 = ImpalaBlock(in_channels=in_channels, out_channels=16 * scale)
         self.block2 = ImpalaBlock(in_channels=16 * scale, out_channels=32 * scale)
         self.block3 = ImpalaBlock(in_channels=32 * scale, out_channels=32 * scale)
-        self.fc = nn.Linear(in_features=32 * scale * 8 * 8, out_features=256)
+        # self.fc = nn.Linear(in_features=32 * scale * 8 * 8, out_features=256)
         # decay=.99,cc=.25 is the VQ-VAE values
-        self.vq = VectorQuantize(dim=256, codebook_size=128, decay=.8, commitment_weight=1.)
+        self.vq = VectorQuantize(dim=8, codebook_size=128, decay=.8, commitment_weight=1.)
         # self.mhas = [GlobalSelfAttention(shape=(256), num_heads=8, embed_dim=256, dropout=0.1) for _ in range(mha_layers)]
-        self.mha1 = GlobalSelfAttention(shape=(256), num_heads=8, embed_dim=256, dropout=0.1)
-        self.mha2 = GlobalSelfAttention(shape=(256), num_heads=8, embed_dim=256, dropout=0.1)
+        self.mha1 = GlobalSelfAttention(shape=(256, 10), num_heads=5, embed_dim=10, dropout=0.1)
+        self.mha2 = GlobalSelfAttention(shape=(256, 10), num_heads=5, embed_dim=10, dropout=0.1)
+        self.max_pool = nn.MaxPool1d(kernel_size=10, stride=1)
 
         self.output_dim = 256
         self.apply(xavier_uniform_init)
@@ -300,18 +301,24 @@ class ImpalaVQMHAModel(nn.Module):
         x = self.block1(x)
         x = self.block2(x)
         x = self.block3(x)
-        x = nn.ReLU()(x)
-        x = Flatten()(x)
-        x = self.fc(x)
-        x = nn.ReLU()(x)
-        x, indices, commit_loss = self.vq(x)
+        # x = nn.ReLU()(x)
+        # x = Flatten()(x)
+        # x = self.fc(x)
+        # x = nn.ReLU()(x)
+
+        coor = get_coor(x)
+        flat_coor = entities_flatten(coor)
+        flattened_features = entities_flatten(x)
+        x, indices, commit_loss = self.vq(flattened_features)
+        x = torch.concat([x, flat_coor], axis=2)
 
         # for mha in self.mhas:
         #     x = mha(x)
 
         x = self.mha1(x)
         x = self.mha2(x)
-        return x
+        x = self.max_pool(x)
+        return x.squeeze()
 
 
 class ResidualStack(nn.Module):

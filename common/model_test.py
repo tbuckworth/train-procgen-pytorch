@@ -19,7 +19,7 @@ class MyTestCase(unittest.TestCase):
         env = create_env(env_args, render=False, normalize_rew=True)
         in_channels = env.observation_space.shape[0]
         obs = env.reset()
-        model = ImpalaVQMHAModel(in_channels)
+        model = ImpalaVQMHAModel(in_channels, 1)
         obs = torch.FloatTensor(obs)
         model.forward(obs)
         summary(model, obs.shape)
