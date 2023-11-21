@@ -308,8 +308,8 @@ class ImpalaVQMHAModel(nn.Module):
         # x = nn.ReLU()(x)
 
         coor = get_coor(x)
-        flat_coor = entities_flatten(coor)
-        flat_coor.to(device=self.device)
+        flat_coor = entities_flatten(coor).to(device=self.device)
+        # flat_coor = flat_coor.to(device=self.device)
         flattened_features = entities_flatten(x)
         x, indices, commit_loss = self.vq(flattened_features)
         print(f"coor:{coor.device},flat_coor:{flat_coor.device},flattened_features:{flattened_features.device},x:{x.device}")
