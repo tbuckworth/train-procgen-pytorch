@@ -5,7 +5,7 @@ import torch
 from torchinfo import summary
 
 from common.model import ImpalaVQMHAModel
-from helper import create_env
+from helper import create_env, initialize_model
 
 
 class MyTestCase(unittest.TestCase):
@@ -25,6 +25,19 @@ class MyTestCase(unittest.TestCase):
         model.forward(obs)
         summary(model, obs.shape)
         self.assertEqual(True, False)  # add assertion here
+
+    def testImpalaVQMHAPolicy(self):
+        device = torch.device('cpu')
+        env_args = {"num": 2,
+                    "env_name": "coinrun",
+                    "start_level": 325,
+                    "num_levels": 1,
+                    "paint_vel_info": True,
+                    "distribution_mode": "hard"}
+        env = create_env(env_args, render=False, normalize_rew=True)
+        hyperparameters = {"architecture": "impalavqmha",
+                           "mha_layers": 2}
+        model, obs_shape, policy = initialize_model(device, env, hyperparameters)
 
 
 if __name__ == '__main__':

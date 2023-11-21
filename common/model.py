@@ -1,3 +1,5 @@
+import numpy as np
+
 from .misc_util import orthogonal_init, xavier_uniform_init
 import torch.nn as nn
 import torch
@@ -21,9 +23,7 @@ def get_coor(input_tensor):
     # batch_size = tf.shape(input_tensor)[0]
     batch_size, height, width, _ = input_tensor.shape
     coor = [[[h / height, w / width] for w in range(width)] for h in range(height)]
-
     coor = torch.unsqueeze(torch.Tensor(coor), axis=0)
-    # coor = tf.convert_to_tensor(coor)
     # [1,Height,W,2] --> [B,Height,W,2]
     coor = torch.tile(coor, [batch_size, 1, 1, 1])
     return coor
@@ -286,16 +286,16 @@ class ImpalaVQMHAModel(nn.Module):
         self.device = device
         self.block1 = ImpalaBlock(in_channels=in_channels, out_channels=16 * scale)
         self.block2 = ImpalaBlock(in_channels=16 * scale, out_channels=32 * scale)
-        self.block3 = ImpalaBlock(in_channels=32 * scale, out_channels=32 * scale)
+        self.block3 = ImpalaBlock(in_channels=32 * scale, out_channels=30 * scale)
         # self.fc = nn.Linear(in_features=32 * scale * 8 * 8, out_features=256)
         # decay=.99,cc=.25 is the VQ-VAE values
-        self.vq = VectorQuantize(dim=8, codebook_size=128, decay=.8, commitment_weight=1.)
+        self.vq = VectorQuantize(dim=30, codebook_size=128, decay=.8, commitment_weight=1.)
         # self.mhas = [GlobalSelfAttention(shape=(256), num_heads=8, embed_dim=256, dropout=0.1) for _ in range(mha_layers)]
-        self.mha1 = GlobalSelfAttention(shape=(256, 10), num_heads=5, embed_dim=10, dropout=0.1)
-        self.mha2 = GlobalSelfAttention(shape=(256, 10), num_heads=5, embed_dim=10, dropout=0.1)
-        self.max_pool = nn.MaxPool1d(kernel_size=10, stride=1)
+        self.mha1 = GlobalSelfAttention(shape=(64, 32), num_heads=4, embed_dim=32, dropout=0.1)
+        self.mha2 = GlobalSelfAttention(shape=(64, 32), num_heads=4, embed_dim=32, dropout=0.1)
+        self.max_pool = nn.MaxPool1d(kernel_size=32, stride=1)
 
-        self.output_dim = 256
+        self.output_dim = 64
         self.apply(xavier_uniform_init)
 
     def forward(self, x):
@@ -307,12 +307,14 @@ class ImpalaVQMHAModel(nn.Module):
         # x = self.fc(x)
         # x = nn.ReLU()(x)
 
+        # Move channels to end
+        x = x.permute(0, 2, 3, 1)
         coor = get_coor(x)
         flat_coor = entities_flatten(coor).to(device=self.device)
         # flat_coor = flat_coor.to(device=self.device)
         flattened_features = entities_flatten(x)
         x, indices, commit_loss = self.vq(flattened_features)
-        print(f"coor:{coor.device},flat_coor:{flat_coor.device},flattened_features:{flattened_features.device},x:{x.device}")
+        # print(f"coor:{coor.device},flat_coor:{flat_coor.device},flattened_features:{flattened_features.device},x:{x.device}")
         x = torch.concat([x, flat_coor], axis=2)
 
         # for mha in self.mhas:
