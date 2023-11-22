@@ -280,7 +280,7 @@ class ImpalaFSQModel(nn.Module):
         x = nn.ReLU()(x)
         x = self.fc(x)
         x = nn.ReLU()(x)
-        return x
+        return x.squeeze()
 
 class BaseAttention(nn.Module):
     def __init__(self, shape, **kwargs):
