@@ -78,7 +78,9 @@ def initialize_model(device, env, hyperparameters):
     elif architecture == 'impalavq':
         model = ImpalaVQModel(in_channels=in_channels)
     elif architecture == 'impalavqmha':
-        model = ImpalaVQMHAModel(in_channels=in_channels, mha_layers=hyperparameters["mha_layers"],device=device)
+        mha_layers = hyperparameters.get("mha_layers", 1)
+        use_vq = hyperparameters.get("use_vq", True)
+        model = ImpalaVQMHAModel(in_channels=in_channels, mha_layers=mha_layers, device=device, use_vq=use_vq)
     # Discrete action space
     recurrent = hyperparameters.get('recurrent', False)
     if isinstance(action_space, gym.spaces.Discrete):

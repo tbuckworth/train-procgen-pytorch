@@ -281,7 +281,7 @@ class GlobalSelfAttention(BaseAttention):
 
 
 class ImpalaVQMHAModel(nn.Module):
-    def __init__(self, in_channels, mha_layers, device, **kwargs):
+    def __init__(self, in_channels, mha_layers, device, use_vq=True, **kwargs):
         super(ImpalaVQMHAModel, self).__init__()
         hid_channels = 16
         latent_dim = 32
@@ -292,12 +292,14 @@ class ImpalaVQMHAModel(nn.Module):
         n_latents = int(np.prod([x/(2**n_impala_blocks) for x in input_shape[1:]]))
 
         self.device = device
+        self.use_vq = use_vq
         self.block1 = ImpalaBlock(in_channels=in_channels, out_channels=hid_channels)
         self.block2 = ImpalaBlock(in_channels=hid_channels, out_channels=latent_dim)
         self.block3 = ImpalaBlock(in_channels=latent_dim, out_channels=latent_dim-2) #-2 is for coordinates
         # self.fc = nn.Linear(in_features=32 * scale * 8 * 8, out_features=256)
         # decay=.99,cc=.25 is the VQ-VAE values
-        self.vq = VectorQuantize(dim=latent_dim-2, codebook_size=128, decay=.8, commitment_weight=1.)
+        if use_vq:
+            self.vq = VectorQuantize(dim=latent_dim-2, codebook_size=128, decay=.8, commitment_weight=1.)
         # self.mhas = [GlobalSelfAttention(shape=(256), num_heads=8, embed_dim=256, dropout=0.1) for _ in range(mha_layers)]
         self.mha1 = GlobalSelfAttention(shape=(n_latents, latent_dim), num_heads=4, embed_dim=latent_dim, dropout=0.1)
         self.mha2 = GlobalSelfAttention(shape=(n_latents, latent_dim), num_heads=4, embed_dim=latent_dim, dropout=0.1)
@@ -319,8 +321,13 @@ class ImpalaVQMHAModel(nn.Module):
         # Flatten
         flat_coor = entities_flatten(coor).to(device=self.device)
         flattened_features = entities_flatten(x)
+
         # Quantize
-        x, indices, commit_loss = self.vq(flattened_features)
+        if self.use_vq:
+            x, indices, commit_loss = self.vq(flattened_features)
+        else:
+            x = flattened_features
+
         # Add Co-ordinates to quantized latents
         x = torch.concat([x, flat_coor], axis=2)
 
