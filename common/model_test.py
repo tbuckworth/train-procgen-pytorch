@@ -31,6 +31,7 @@ class MyTestCase(unittest.TestCase):
                            "use_vq": False,
                            }
         model, obs_shape, policy = initialize_model(self.device, self.env, hyperparameters)
+        policy.forward(self.obs, None, None)
 
     def test_ImpalaFSQModel(self):
         model = ImpalaFSQModel(self.in_channels)

@@ -1,5 +1,6 @@
 from .misc_util import orthogonal_init
 from .model import GRU
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions import Categorical, Normal
@@ -32,6 +33,11 @@ class CategoricalPolicy(nn.Module):
             hidden, hx = self.gru(hidden, hx, masks)
         logits = self.fc_policy(hidden)
         log_probs = F.log_softmax(logits, dim=1)
+        if log_probs.isnan().any():
+            flt = log_probs.isnan().any(axis=1)
+            print(f"logits:\n{logits[flt]}")
+            print(f"log_probs:\n{log_probs[flt]}")
+            print(f"where_nan:\n{flt.argwhere()}")
         p = Categorical(logits=log_probs)
         v = self.fc_value(hidden).reshape(-1)
         return p, v, hx
