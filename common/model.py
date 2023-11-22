@@ -283,38 +283,45 @@ class GlobalSelfAttention(BaseAttention):
 class ImpalaVQMHAModel(nn.Module):
     def __init__(self, in_channels, mha_layers, device, **kwargs):
         super(ImpalaVQMHAModel, self).__init__()
+        hid_channels = 16
+        latent_dim = 32
+        input_shape = (3, 64, 64)
+        n_impala_blocks = 3
+        # Each impala block halves input height and width.
+        # These are flattened before VQ (hence prod)
+        n_latents = int(np.prod([x/(2**n_impala_blocks) for x in input_shape[1:]]))
+
         self.device = device
-        self.block1 = ImpalaBlock(in_channels=in_channels, out_channels=16 * scale)
-        self.block2 = ImpalaBlock(in_channels=16 * scale, out_channels=32 * scale)
-        self.block3 = ImpalaBlock(in_channels=32 * scale, out_channels=30 * scale)
+        self.block1 = ImpalaBlock(in_channels=in_channels, out_channels=hid_channels)
+        self.block2 = ImpalaBlock(in_channels=hid_channels, out_channels=latent_dim)
+        self.block3 = ImpalaBlock(in_channels=latent_dim, out_channels=latent_dim-2) #-2 is for coordinates
         # self.fc = nn.Linear(in_features=32 * scale * 8 * 8, out_features=256)
         # decay=.99,cc=.25 is the VQ-VAE values
-        self.vq = VectorQuantize(dim=30, codebook_size=128, decay=.8, commitment_weight=1.)
+        self.vq = VectorQuantize(dim=latent_dim-2, codebook_size=128, decay=.8, commitment_weight=1.)
         # self.mhas = [GlobalSelfAttention(shape=(256), num_heads=8, embed_dim=256, dropout=0.1) for _ in range(mha_layers)]
-        self.mha1 = GlobalSelfAttention(shape=(64, 32), num_heads=4, embed_dim=32, dropout=0.1)
-        self.mha2 = GlobalSelfAttention(shape=(64, 32), num_heads=4, embed_dim=32, dropout=0.1)
-        self.max_pool = nn.MaxPool1d(kernel_size=32, stride=1)
+        self.mha1 = GlobalSelfAttention(shape=(n_latents, latent_dim), num_heads=4, embed_dim=latent_dim, dropout=0.1)
+        self.mha2 = GlobalSelfAttention(shape=(n_latents, latent_dim), num_heads=4, embed_dim=latent_dim, dropout=0.1)
+        self.max_pool = nn.MaxPool1d(kernel_size=latent_dim, stride=1)
 
-        self.output_dim = 64
+        self.output_dim = n_latents
         self.apply(xavier_uniform_init)
 
     def forward(self, x):
+        # Impala Blocks
         x = self.block1(x)
         x = self.block2(x)
         x = self.block3(x)
-        # x = nn.ReLU()(x)
-        # x = Flatten()(x)
-        # x = self.fc(x)
-        # x = nn.ReLU()(x)
 
         # Move channels to end
         x = x.permute(0, 2, 3, 1)
+        # Extract coordinates
         coor = get_coor(x)
+        # Flatten
         flat_coor = entities_flatten(coor).to(device=self.device)
-        # flat_coor = flat_coor.to(device=self.device)
         flattened_features = entities_flatten(x)
+        # Quantize
         x, indices, commit_loss = self.vq(flattened_features)
-        # print(f"coor:{coor.device},flat_coor:{flat_coor.device},flattened_features:{flattened_features.device},x:{x.device}")
+        # Add Co-ordinates to quantized latents
         x = torch.concat([x, flat_coor], axis=2)
 
         # for mha in self.mhas:
