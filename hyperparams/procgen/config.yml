@@ -78,7 +78,7 @@ hard:
     architecture: impala
     recurrent: False
 
-hard-500:
+hard-500-impala:
     algo: ppo
     n_envs: 256 
     n_steps: 256
