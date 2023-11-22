@@ -4,43 +4,38 @@ import numpy as np
 import torch
 from torchinfo import summary
 
-from common.model import ImpalaVQMHAModel
+from common.model import ImpalaVQMHAModel, ImpalaFSQModel
 from helper import create_env, initialize_model
 
 
 class MyTestCase(unittest.TestCase):
-    def test_ImpalaVQMHAModel(self):
-        device = torch.device('cpu')
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.device = torch.device('cpu')
         env_args = {"num": 2,
                     "env_name": "coinrun",
                     "start_level": 325,
                     "num_levels": 1,
                     "paint_vel_info": True,
                     "distribution_mode": "hard"}
-        env = create_env(env_args, render=False, normalize_rew=True)
-        in_channels = env.observation_space.shape[0]
-        obs = env.reset()
-        model = ImpalaVQMHAModel(in_channels, 1, device, use_vq=False)
-        obs = torch.FloatTensor(obs)
-        model.forward(obs)
-        summary(model, obs.shape)
-        self.assertEqual(True, True)  # add assertion here
+        cls.env = create_env(env_args, render=False, normalize_rew=True)
+        cls.in_channels = cls.env.observation_space.shape[0]
+        cls.obs = torch.FloatTensor(cls.env.reset())
 
-    def testImpalaVQMHAPolicy(self):
-        device = torch.device('cpu')
-        env_args = {"num": 2,
-                    "env_name": "coinrun",
-                    "start_level": 325,
-                    "num_levels": 1,
-                    "paint_vel_info": True,
-                    "distribution_mode": "hard"}
-        env = create_env(env_args, render=False, normalize_rew=True)
+    def test_ImpalaVQMHAModel(self):
+        model = ImpalaVQMHAModel(self.in_channels, 1, self.device, use_vq=False)
+        model.forward(self.obs)
+        summary(model, self.obs.shape)
         hyperparameters = {"architecture": "impalavqmha",
                            "mha_layers": 2,
                            "use_vq": False,
                            }
-        model, obs_shape, policy = initialize_model(device, env, hyperparameters)
+        model, obs_shape, policy = initialize_model(self.device, self.env, hyperparameters)
 
+    def test_ImpalaFSQModel(self):
+        model = ImpalaFSQModel(self.in_channels)
+        model.forward(self.obs)
+        summary(model, self.obs.shape)
 
 if __name__ == '__main__':
     unittest.main()

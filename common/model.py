@@ -249,6 +249,38 @@ class ImpalaVQModel(nn.Module):
         quantized, indices, commit_loss = self.vq(x)
         return quantized
 
+class ImpalaFSQModel(nn.Module):
+    def __init__(self, in_channels, **kwargs):
+        super(ImpalaFSQModel, self).__init__()
+        self.block1 = ImpalaBlock(in_channels=in_channels, out_channels=16 * scale)
+        self.block2 = ImpalaBlock(in_channels=16 * scale, out_channels=32 * scale)
+        self.block3 = ImpalaBlock(in_channels=32 * scale, out_channels=3 * scale)
+        levels = [8, 6, 5]
+        self.vq = FSQ(levels)
+        self.max_pool = nn.MaxPool1d(kernel_size=3, stride=1)
+        self.fc = nn.Linear(in_features=64, out_features=256)
+
+        # self.vq = VectorQuantize(dim=256, codebook_size=128, decay=.8, commitment_weight=1.)
+        # decay=.99,cc=.25 is the VQ-VAE values
+        self.output_dim = 256
+        self.apply(xavier_uniform_init)
+
+    def forward(self, x):
+        x = self.block1(x)
+        x = self.block2(x)
+        x = self.block3(x)
+        x = nn.ReLU()(x)
+        x = x.permute(0, 2, 3, 1)
+        x = entities_flatten(x)
+        x, indices = self.vq(x)
+        # print(x.shape)
+        x = self.max_pool(x)
+        x = x.permute(0, 2, 1)
+        # print(x.shape)
+        x = nn.ReLU()(x)
+        x = self.fc(x)
+        x = nn.ReLU()(x)
+        return x
 
 class BaseAttention(nn.Module):
     def __init__(self, shape, **kwargs):
