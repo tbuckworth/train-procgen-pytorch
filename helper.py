@@ -6,7 +6,7 @@ from gym3 import ViewerWrapper, ToBaselinesVecEnv
 from procgen import ProcgenGym3Env
 
 from common.env.procgen_wrappers import VecExtractDictObs, VecNormalize, TransposeFrame, ScaledFloatFrame
-from common.model import NatureModel, ImpalaModel, VQMHAModel, ImpalaVQModel, ImpalaVQMHAModel
+from common.model import NatureModel, ImpalaModel, VQMHAModel, ImpalaVQModel, ImpalaVQMHAModel, ImpalaFSQModel
 from common.policy import CategoricalPolicy
 from moviepy.editor import ImageSequenceClip
 
@@ -81,6 +81,8 @@ def initialize_model(device, env, hyperparameters):
         mha_layers = hyperparameters.get("mha_layers", 1)
         use_vq = hyperparameters.get("use_vq", True)
         model = ImpalaVQMHAModel(in_channels=in_channels, mha_layers=mha_layers, device=device, use_vq=use_vq)
+    elif architecture == 'impalafsq':
+        model = ImpalaFSQModel(in_channels=in_channels)
     # Discrete action space
     recurrent = hyperparameters.get('recurrent', False)
     if isinstance(action_space, gym.spaces.Discrete):
