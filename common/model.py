@@ -340,36 +340,54 @@ class ImpalaVQMHAModel(nn.Module):
         self.output_dim = n_latents
         self.apply(xavier_uniform_init)
 
-    def forward(self, x):
+    def forward(self, x, print_nans=False):
         # Impala Blocks
         x = self.block1(x)
+        self.print_if_nan("block1", print_nans, x)
+
         x = self.block2(x)
+        self.print_if_nan("block2", print_nans, x)
+
         x = self.block3(x)
+        self.print_if_nan("block3", print_nans, x)
 
         # Move channels to end
         x = x.permute(0, 2, 3, 1)
+        self.print_if_nan("x.permute", print_nans, x)
         # Extract coordinates
         coor = get_coor(x)
+        self.print_if_nan("coor", print_nans, coor)
         # Flatten
         flat_coor = entities_flatten(coor).to(device=self.device)
         flattened_features = entities_flatten(x)
+        self.print_if_nan("flattened_features", print_nans, flattened_features)
 
         # Quantize
         if self.use_vq:
             x, indices, commit_loss = self.vq(flattened_features)
+            self.print_if_nan("vq", print_nans, x)
         else:
             x = flattened_features
 
         # Add Co-ordinates to quantized latents
         x = torch.concat([x, flat_coor], axis=2)
-
+        self.print_if_nan("concat[x,flat_coor]", print_nans, x)
         # for mha in self.mhas:
         #     x = mha(x)
 
         x = self.mha1(x)
+        self.print_if_nan("mha1", print_nans, x)
+
         x = self.mha2(x)
+        self.print_if_nan("mha2", print_nans, x)
+
         x = self.max_pool(x)
+        self.print_if_nan("max_pool", print_nans, x)
         return x.squeeze()
+
+    def print_if_nan(self, name, print_nans, x):
+        if print_nans:
+            print(f"{name}:{'nans' if x.isnan().any() else ''}\n{x}")
 
 
 class ResidualStack(nn.Module):

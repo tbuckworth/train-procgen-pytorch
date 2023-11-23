@@ -38,6 +38,9 @@ class CategoricalPolicy(nn.Module):
             print(f"logits:\n{logits[flt]}")
             print(f"log_probs:\n{log_probs[flt]}")
             print(f"where_nan:\n{flt.argwhere()}")
+
+            print(f"hidden:\n{hidden}")
+            self.embedder(x, print_nans=True)
         p = Categorical(logits=log_probs)
         v = self.fc_value(hidden).reshape(-1)
         return p, v, hx
