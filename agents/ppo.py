@@ -1,5 +1,5 @@
 from .base_agent import BaseAgent
-from common.misc_util import adjust_lr, get_n_params
+from common.misc_util import adjust_lr, get_n_params, cross_batch_entropy
 import torch
 import torch.optim as optim
 import numpy as np
@@ -19,7 +19,7 @@ class PPO(BaseAgent):
                  n_envs=8,
                  epoch=3,
                  mini_batch_per_epoch=8,
-                 mini_batch_size=32*8,
+                 mini_batch_size=32 * 8,
                  gamma=0.99,
                  lmbda=0.95,
                  learning_rate=2.5e-4,
@@ -27,11 +27,11 @@ class PPO(BaseAgent):
                  eps_clip=0.2,
                  value_coef=0.5,
                  entropy_coef=0.01,
+                 x_entropy_coef=0.,
                  normalize_adv=True,
                  normalize_rew=True,
                  use_gae=True,
                  **kwargs):
-
         super(PPO, self).__init__(env, policy, logger, storage, device,
                                   n_checkpoints, env_valid, storage_valid)
 
@@ -48,6 +48,7 @@ class PPO(BaseAgent):
         self.eps_clip = eps_clip
         self.value_coef = value_coef
         self.entropy_coef = entropy_coef
+        self.x_entropy_coef = x_entropy_coef
         self.normalize_adv = normalize_adv
         self.normalize_rew = normalize_rew
         self.use_gae = use_gae
@@ -56,7 +57,7 @@ class PPO(BaseAgent):
         with torch.no_grad():
             obs = torch.FloatTensor(obs).to(device=self.device)
             hidden_state = torch.FloatTensor(hidden_state).to(device=self.device)
-            mask = torch.FloatTensor(1-done).to(device=self.device)
+            mask = torch.FloatTensor(1 - done).to(device=self.device)
             dist, value, hidden_state = self.policy(obs, hidden_state, mask)
             act = dist.sample()
             log_prob_act = dist.log_prob(act)
@@ -68,7 +69,7 @@ class PPO(BaseAgent):
         obs.requires_grad_()
         obs.retain_grad()
         hidden_state = torch.FloatTensor(hidden_state).to(device=self.device)
-        mask = torch.FloatTensor(1-done).to(device=self.device)
+        mask = torch.FloatTensor(1 - done).to(device=self.device)
         dist, value, hidden_state = self.policy(obs, hidden_state, mask)
         value.backward(retain_graph=True)
         act = dist.sample()
@@ -77,7 +78,7 @@ class PPO(BaseAgent):
         return act.detach().cpu().numpy(), log_prob_act.detach().cpu().numpy(), value.detach().cpu().numpy(), hidden_state.detach().cpu().numpy(), obs.grad.data.detach().cpu().numpy()
 
     def optimize(self):
-        pi_loss_list, value_loss_list, entropy_loss_list = [], [], []
+        pi_loss_list, value_loss_list, entropy_loss_list, x_ent_loss_list = [], [], [], []
         batch_size = self.n_steps * self.n_envs // self.mini_batch_per_epoch
         if batch_size < self.mini_batch_size:
             self.mini_batch_size = batch_size
@@ -92,7 +93,7 @@ class PPO(BaseAgent):
             for sample in generator:
                 obs_batch, hidden_state_batch, act_batch, done_batch, \
                     old_log_prob_act_batch, old_value_batch, return_batch, adv_batch = sample
-                mask_batch = (1-done_batch)
+                mask_batch = (1 - done_batch)
                 dist_batch, value_batch, _ = self.policy(obs_batch, hidden_state_batch, mask_batch)
 
                 # Clipped Surrogate Objective
@@ -103,14 +104,18 @@ class PPO(BaseAgent):
                 pi_loss = -torch.min(surr1, surr2).mean()
 
                 # Clipped Bellman-Error
-                clipped_value_batch = old_value_batch + (value_batch - old_value_batch).clamp(-self.eps_clip, self.eps_clip)
+                clipped_value_batch = old_value_batch + (value_batch - old_value_batch).clamp(-self.eps_clip,
+                                                                                              self.eps_clip)
                 v_surr1 = (value_batch - return_batch).pow(2)
                 v_surr2 = (clipped_value_batch - return_batch).pow(2)
                 value_loss = 0.5 * torch.max(v_surr1, v_surr2).mean()
 
                 # Policy Entropy
-                entropy_loss = dist_batch.entropy().mean()
-                loss = pi_loss + self.value_coef * value_loss - self.entropy_coef * entropy_loss
+                # entropy_loss = dist_batch.entropy().mean()
+                entropy_per_batch, x_batch_entropy = cross_batch_entropy(dist_batch)
+                entropy_loss = entropy_per_batch.mean()
+                x_batch_ent_loss = x_batch_entropy.mean()
+                loss = pi_loss + self.value_coef * value_loss - self.entropy_coef * entropy_loss - self.x_entropy_coef * x_batch_ent_loss
                 loss.backward()
 
                 # Let model to handle the large batch-size with small gpu-memory
@@ -125,7 +130,8 @@ class PPO(BaseAgent):
 
         summary = {'Loss/pi': np.mean(pi_loss_list),
                    'Loss/v': np.mean(value_loss_list),
-                   'Loss/entropy': np.mean(entropy_loss_list)}
+                   'Loss/entropy': np.mean(entropy_loss_list),
+                   'Loss/x_entropy': np.mean(x_ent_loss_list)}
         return summary
 
     def train(self, num_timesteps):
@@ -155,7 +161,7 @@ class PPO(BaseAgent):
             # Compute advantage estimates
             self.storage.compute_estimates(self.gamma, self.lmbda, self.use_gae, self.normalize_adv)
 
-            #valid
+            # valid
             if self.env_valid is not None:
                 for _ in range(self.n_steps):
                     act_v, log_prob_act_v, value_v, next_hidden_state_v = self.predict(obs_v, hidden_state_v, done_v)
@@ -182,11 +188,11 @@ class PPO(BaseAgent):
             self.logger.dump(summary)
             self.optimizer = adjust_lr(self.optimizer, self.learning_rate, self.t, num_timesteps)
             # Save the model
-            if self.t > ((checkpoint_cnt+1) * save_every):
+            if self.t > ((checkpoint_cnt + 1) * save_every):
                 print("Saving model.")
                 torch.save({'model_state_dict': self.policy.state_dict(),
                             'optimizer_state_dict': self.optimizer.state_dict()},
-                             self.logger.logdir + '/model_' + str(self.t) + '.pth')
+                           self.logger.logdir + '/model_' + str(self.t) + '.pth')
                 checkpoint_cnt += 1
         self.env.close()
         if self.env_valid is not None:

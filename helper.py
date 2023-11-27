@@ -18,7 +18,7 @@ def save_gif(frames, filename="test.gif", fps=20):
 
 
 def print_values_actions(action_names, pi, value, i=""):
-    ap = np.squeeze(pi)
+    ap = np.squeeze(pi[0])
     df = pd.DataFrame({"variables": action_names, "values": ap})
     df2 = df.pivot_table(values="values", index="variables", aggfunc="sum")
     a_names = df2.index.to_numpy()
@@ -28,9 +28,9 @@ def print_values_actions(action_names, pi, value, i=""):
     idx = np.argsort(action_probs)[::-1][:5]
     top_actions = '\t'.join([f"{x[0]}: {x[1]}" for x in zip(action_probs[idx], a_names[idx])])
     if i != "":
-        print(f"{i}:\t{np.squeeze(value):.2f}\t{top_actions}")
+        print(f"{i}:\t{np.squeeze(value[0]):.2f}\t{top_actions}")
     else:
-        print(f"{np.squeeze(value):.2f}\t{top_actions}")
+        print(f"{np.squeeze(value[0]):.2f}\t{top_actions}")
 
 
 def match(a, b):

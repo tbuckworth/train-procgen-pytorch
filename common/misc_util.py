@@ -5,6 +5,18 @@ import torch
 import torch.nn as nn
 
 
+def cross_batch_entropy(p):
+    '''
+    The idea here is to emulate torch.distributions.Categorical.entropy(), but instead of computing it per batch
+    item, we also compute it across the batches. This is to encourage the model to learn a diverse policy and avoid
+    it always returning the same logits (effectively ignoring the inputs).
+    '''
+    min_real = torch.finfo(p.logits.dtype).min
+    logits = torch.clamp(p.logits, min=min_real)
+    p_log_p = logits * p.probs
+    return -p_log_p.sum(-1), -p_log_p.sum(0)
+
+
 def set_global_seeds(seed):
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)

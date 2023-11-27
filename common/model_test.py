@@ -24,7 +24,7 @@ class MyTestCase(unittest.TestCase):
 
     def test_ImpalaVQMHAModel(self):
         model = ImpalaVQMHAModel(self.in_channels, 1, self.device, use_vq=False)
-        model.forward(self.obs, print_nans=True)
+        model.forward(self.obs)
         summary(model, self.obs.shape)
         hyperparameters = {"architecture": "impalavqmha",
                            "mha_layers": 2,

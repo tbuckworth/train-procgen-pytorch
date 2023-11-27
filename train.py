@@ -89,6 +89,9 @@ if __name__ == '__main__':
     elif args.device == 'cpu':
         device = torch.device('cpu')
 
+    # For debugging nans:
+    torch.autograd.set_detect_anomaly(True)
+
     #################
     ## ENVIRONMENT ##
     #################

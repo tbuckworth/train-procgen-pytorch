@@ -23,8 +23,8 @@ def predict(policy, obs, hidden_state, done):
     return act.cpu().numpy(), log_prob_act.cpu().numpy(), value.cpu().numpy(), hidden_state.cpu().numpy(), pi.cpu().numpy()
 
 
-def main(render=True):
-    action_names, done, env, hidden_state, obs, policy = load_policy(render)
+def main(logdir, render=True):
+    action_names, done, env, hidden_state, obs, policy = load_policy(render, logdir)
     while True:
         act, log_prob_act, value, next_hidden_state, pi = predict(policy, obs, hidden_state, done)
         print_values_actions(action_names, pi, value)
@@ -37,19 +37,19 @@ def main(render=True):
             print(f"Level seed: {info[0]['level_seed']}")
 
 
-def load_policy(render):
-    logdir = "logs/train/coinrun/coinrun/2023-10-31__10-49-30__seed_6033"
+def load_policy(render, logdir):
+    # logdir = "logs/train/coinrun/coinrun/2023-10-31__10-49-30__seed_6033"
     # df = pd.read_csv(os.path.join(logdir, "log-append.csv"))
     files = os.listdir(logdir)
     pattern = r"model_(\d*)\.pth"
     checkpoints = [int(re.search(pattern, x).group(1)) for x in files if re.search(pattern, x)]
     last_model = os.path.join(logdir, f"model_{max(checkpoints)}.pth")
     device = torch.device('cpu')
-    hyperparameters = get_hyperparams("easy-200")
+    hyperparameters = get_hyperparams("hard-500-impala")
     hp_file = os.path.join(logdir, "hyperparameters.npy")
     if os.path.exists(hp_file):
         hyperparameters = np.load(hp_file, allow_pickle='TRUE').item()
-    n_envs = 1
+    n_envs = 2
     env_args = {"num": n_envs,
                 "env_name": "coinrun",
                 "start_level": 325,
@@ -156,4 +156,4 @@ def swap_indexed_values_and_print(action_names, done, hidden_state, left_frame, 
 
 
 if __name__ == "__main__":
-    inspect_frames()
+    main(logdir="logs/train/coinrun/coinrun/2023-11-23__10-31-05__seed_6033/")
