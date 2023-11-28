@@ -27,7 +27,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_levels', type=int, default=int(0), help='number of training levels for environment')
     parser.add_argument('--distribution_mode', type=str, default='easy', help='distribution mode for environment')
     parser.add_argument('--param_name', type=str, default='easy-200', help='hyper-parameter ID')
-    parser.add_argument('--device', type=str, default='gpu', required=False, help='whether to use gpu')
+    parser.add_argument('--device', type=str, default='cpu', required=False, help='whether to use gpu')
     parser.add_argument('--gpu_device', type=int, default=int(0), required=False, help='visible device in CUDA')
     parser.add_argument('--num_timesteps', type=int, default=int(25000000), help='number of training timesteps')
     parser.add_argument('--seed', type=int, default=random.randint(0, 9999), help='Random generator seed')
@@ -35,7 +35,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_checkpoints', type=int, default=int(1), help='number of checkpoints to store')
     parser.add_argument('--model_file', type=str)
     parser.add_argument('--use_wandb', action="store_true")
-    parser.add_argument('--real_procgen', action="store_true")
+    parser.add_argument('--real_procgen', action="store_true", default=True)
 
     parser.add_argument('--wandb_tags', type=str, nargs='+')
 

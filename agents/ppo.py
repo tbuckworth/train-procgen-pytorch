@@ -131,7 +131,8 @@ class PPO(BaseAgent):
         summary = {'Loss/pi': np.mean(pi_loss_list),
                    'Loss/v': np.mean(value_loss_list),
                    'Loss/entropy': np.mean(entropy_loss_list),
-                   'Loss/x_entropy': np.mean(x_ent_loss_list)}
+                   'Loss/x_entropy': np.mean(x_ent_loss_list),
+                   'Loss/total': np.mean(loss)}
         return summary
 
     def train(self, num_timesteps):
