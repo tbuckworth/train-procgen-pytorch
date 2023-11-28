@@ -178,8 +178,8 @@ if __name__ == '__main__':
         cfg = vars(args)
         cfg.update(hyperparameters)
         wb_resume = "allow" if args.model_file is None else "must"
-        wandb.init(project="objective-robustness", config=cfg, sync_tensorboard=True,
-                   tags=args.wandb_tags, resume=wb_resume)
+        wandb.init(project="Coinrun VQMHA", config=cfg, sync_tensorboard=True,
+                   tags=args.wandb_tags, resume=wb_resume, name=hyperparameters["architecture"])
     logger = Logger(n_envs, logdir, use_wandb=args.use_wandb)
 
     ###########
