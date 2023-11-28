@@ -37,7 +37,7 @@ class Logger(object):
         self.episode_reward_buffer_v = deque(maxlen=40)
 
         time_metrics = ["timesteps", "wall_time", "num_episodes"]  # only collected once
-        loss_metrics = ["loss_pi", "loss_v", "loss_entropy"]
+        loss_metrics = ["loss_pi", "loss_v", "loss_entropy", "loss_x_entropy"]
         episode_metrics = ["max_episode_rewards", "mean_episode_rewards", "min_episode_rewards",
                            "max_episode_len", "mean_episode_len", "min_episode_len",
                            "mean_timeouts"]  # collected for both train and val envs
