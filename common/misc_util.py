@@ -14,7 +14,7 @@ def cross_batch_entropy(p):
     min_real = torch.finfo(p.logits.dtype).min
     logits = torch.clamp(p.logits, min=min_real)
     p_log_p = logits * p.probs
-    return -p_log_p.sum(-1), -p_log_p.sum(0)
+    return -p_log_p.sum(-1), -p_log_p.mean(0)
 
 
 def set_global_seeds(seed):
