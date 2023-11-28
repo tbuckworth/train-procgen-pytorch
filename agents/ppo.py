@@ -78,7 +78,7 @@ class PPO(BaseAgent):
         return act.detach().cpu().numpy(), log_prob_act.detach().cpu().numpy(), value.detach().cpu().numpy(), hidden_state.detach().cpu().numpy(), obs.grad.data.detach().cpu().numpy()
 
     def optimize(self):
-        pi_loss_list, value_loss_list, entropy_loss_list, x_ent_loss_list = [], [], [], []
+        pi_loss_list, value_loss_list, entropy_loss_list, x_ent_loss_list, total_loss_list = [], [], [], [], []
         batch_size = self.n_steps * self.n_envs // self.mini_batch_per_epoch
         if batch_size < self.mini_batch_size:
             self.mini_batch_size = batch_size
@@ -127,12 +127,14 @@ class PPO(BaseAgent):
                 pi_loss_list.append(-pi_loss.item())
                 value_loss_list.append(-value_loss.item())
                 entropy_loss_list.append(entropy_loss.item())
+                x_ent_loss_list.append(x_batch_ent_loss.item())
+                total_loss_list.append(loss.item())
 
         summary = {'Loss/pi': np.mean(pi_loss_list),
                    'Loss/v': np.mean(value_loss_list),
                    'Loss/entropy': np.mean(entropy_loss_list),
                    'Loss/x_entropy': np.mean(x_ent_loss_list),
-                   'Loss/total': np.mean(loss)}
+                   'Loss/total': np.mean(total_loss_list)}
         return summary
 
     def train(self, num_timesteps):

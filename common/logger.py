@@ -40,9 +40,9 @@ class Logger(object):
         loss_metrics = ["loss_pi", "loss_v", "loss_entropy", "loss_x_entropy", "loss_total"]
         episode_metrics = ["max_episode_rewards", "mean_episode_rewards", "min_episode_rewards",
                            "max_episode_len", "mean_episode_len", "min_episode_len",
-                           "mean_timeouts", "ema_rewards"]  # collected for both train and val envs
+                           "mean_timeouts"]  # collected for both train and val envs
         self.log = pd.DataFrame(
-            columns=time_metrics + episode_metrics + ["val_" + m for m in episode_metrics] + loss_metrics)
+            columns=time_metrics + episode_metrics + ["val_" + m for m in episode_metrics] + ["ema_rewards"] + loss_metrics)
 
         self.timesteps = 0
         self.num_episodes = 0
@@ -82,13 +82,14 @@ class Logger(object):
         episode_statistics = self._get_episode_statistics()
         episode_statistics_list = list(episode_statistics.values())
         loss_statistics = list(summary.values())
-        log = [self.timesteps, wall_time, self.num_episodes] + episode_statistics_list + episode_statistics['Rewards/mean_episodes'] + loss_statistics
+        log = [self.timesteps, wall_time, self.num_episodes] + episode_statistics_list + [episode_statistics['Rewards/mean_episodes']] + loss_statistics
         self.log.loc[len(self.log)] = log
 
-        smoothing = .99/(1+len(self.log))
-        prev_ema = self.log["ema_rewards"].loc[len(self.log) - 2]
-        curr_val = self.log["ema_rewards"].loc[len(self.log) - 1]
-        self.log["ema_rewards"].loc[len(self.log) - 1] = curr_val * smoothing + prev_ema * (1-smoothing)
+        if len(self.log) > 1:
+            smoothing = .99/(1+len(self.log))
+            prev_ema = self.log["ema_rewards"].loc[len(self.log) - 2]
+            curr_val = self.log["ema_rewards"].loc[len(self.log) - 1]
+            self.log["ema_rewards"].loc[len(self.log) - 1] = curr_val * smoothing + prev_ema * (1-smoothing)
 
         with open(self.logdir + '/log-append.csv', 'a') as f:
             writer = csv.writer(f)
