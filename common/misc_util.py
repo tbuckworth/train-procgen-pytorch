@@ -11,10 +11,18 @@ def cross_batch_entropy(p):
     item, we also compute it across the batches. This is to encourage the model to learn a diverse policy and avoid
     it always returning the same logits (effectively ignoring the inputs).
     '''
+    # Smallest representable floating point number:
     min_real = torch.finfo(p.logits.dtype).min
+    # let nothing be smaller than this:
     logits = torch.clamp(p.logits, min=min_real)
+    # classic entropy calc:
     p_log_p = logits * p.probs
-    return -p_log_p.sum(-1), -p_log_p.mean(0)
+
+    # Action prob entropy calc (across batch).
+    action_probs = torch.nn.functional.softmax(logits, dim=0)
+    action_p_log_p = logits * action_probs
+
+    return -p_log_p.sum(-1), -action_p_log_p.sum(0)
 
 
 def set_global_seeds(seed):

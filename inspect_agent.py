@@ -52,8 +52,8 @@ def load_policy(render, logdir):
     n_envs = 2
     env_args = {"num": n_envs,
                 "env_name": "coinrun",
-                "start_level": 325,
-                "num_levels": 1,
+                "start_level": 0,#325
+                "num_levels": 500,
                 "paint_vel_info": True,
                 "distribution_mode": "hard"}
     normalize_rew = hyperparameters.get('normalize_rew', True)
@@ -156,4 +156,13 @@ def swap_indexed_values_and_print(action_names, done, hidden_state, left_frame, 
 
 
 if __name__ == "__main__":
-    main(logdir="logs/train/coinrun/coinrun/2023-11-23__10-31-05__seed_6033/")
+    # main(logdir="logs/train/coinrun/coinrun/2023-11-23__10-31-05__seed_6033/")
+
+    #impalavqmha
+    # main(logdir="logs/train/coinrun/coinrun/2023-11-28__11-37-25__seed_6033/")
+
+    #impala:
+    main(logdir="logs/train/coinrun/coinrun/2023-11-28__10-59-15__seed_6033/")
+
+
+

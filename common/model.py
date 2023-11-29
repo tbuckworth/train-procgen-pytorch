@@ -351,6 +351,8 @@ class ImpalaVQMHAModel(nn.Module):
         x = self.block3(x)
         self.print_if_nan("block3", print_nans, x)
 
+        #normalize?
+
         # Move channels to end
         x = x.permute(0, 2, 3, 1)
         self.print_if_nan("x.permute", print_nans, x)
