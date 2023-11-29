@@ -6,7 +6,8 @@ import numpy as np
 import torch
 
 from common.storage import Storage
-from helper import get_hyperparams, initialize_model, print_values_actions, get_action_names, create_env, save_gif
+from helper import get_hyperparams, initialize_model, print_values_actions, get_action_names, save_gif
+from common.env.procgen_wrappers import create_env
 
 
 def predict(policy, obs, hidden_state, done):
@@ -57,7 +58,7 @@ def load_policy(render, logdir):
                 "paint_vel_info": True,
                 "distribution_mode": "hard"}
     normalize_rew = hyperparameters.get('normalize_rew', True)
-    env = create_env(env_args, render, normalize_rew)
+    env = create_env(env_args, render, normalize_rew, mirror_some=True)
     model, observation_shape, policy = initialize_model(device, env, hyperparameters)
     policy.load_state_dict(torch.load(last_model, map_location=device)["model_state_dict"])
     # Test if necessary:

@@ -2,14 +2,15 @@ import gym
 import numpy as np
 import pandas as pd
 import yaml
-from gym3 import ViewerWrapper, ToBaselinesVecEnv
-from procgen import ProcgenGym3Env
 
-from common.env.procgen_wrappers import VecExtractDictObs, VecNormalize, TransposeFrame, ScaledFloatFrame
 from common.model import NatureModel, ImpalaModel, VQMHAModel, ImpalaVQModel, ImpalaVQMHAModel, ImpalaFSQModel
 from common.policy import CategoricalPolicy
 from moviepy.editor import ImageSequenceClip
 
+def match(a, b):
+    a = a.tolist()
+    b = b.tolist()
+    return np.array([b.index(x) for x in a if x in b])
 
 def save_gif(frames, filename="test.gif", fps=20):
     frames = np.array(frames.transpose(0, 2, 3, 1) * 255, dtype=np.uint8)
@@ -33,10 +34,10 @@ def print_values_actions(action_names, pi, value, i=""):
         print(f"{np.squeeze(value[0]):.2f}\t{top_actions}")
 
 
-def match(a, b):
+def match(a, b, dtype=np.int32):
     a = a.tolist()
     b = b.tolist()
-    return np.array([b.index(x) for x in a if x in b])
+    return np.array([b.index(x) for x in a if x in b],dtype=dtype)
 
 
 def get_combos(env):
@@ -92,22 +93,6 @@ def initialize_model(device, env, hyperparameters):
         raise NotImplementedError
     policy.to(device)
     return model, observation_shape, policy
-
-
-def create_env(env_args, render, normalize_rew=True):
-    if render:
-        env_args["render_mode"] = "rgb_array"
-    venv = ProcgenGym3Env(**env_args)
-    if render:
-        venv = ViewerWrapper(venv, info_key="rgb")
-    venv = ToBaselinesVecEnv(venv)
-    venv = VecExtractDictObs(venv, "rgb")
-    if normalize_rew:
-        venv = VecNormalize(venv, ob=False)  # normalizing returns, but not
-        # the img frames
-    venv = TransposeFrame(venv)
-    venv = ScaledFloatFrame(venv)
-    return venv
 
 
 def create_name_from_dict(prefix, suffix, specifications, exclusions=[]):

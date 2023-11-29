@@ -37,6 +37,7 @@ if __name__ == '__main__':
     parser.add_argument('--model_file', type=str)
     parser.add_argument('--use_wandb', action="store_true")
     parser.add_argument('--real_procgen', action="store_true", default=True)
+    parser.add_argument('--mirror_env', action="store_true", default=False)
 
     parser.add_argument('--wandb_tags', type=str, nargs='+')
 
@@ -126,9 +127,12 @@ if __name__ == '__main__':
         venv = VecExtractDictObs(venv, "rgb")
 
         normalize_rew = hyperparameters.get('normalize_rew', True)
+        mirror_some = hyperparameters.get('mirror_env', False)
         if normalize_rew:
             venv = VecNormalize(venv, ob=False)  # normalizing returns, but not
             # the img frames
+        if mirror_some:
+            venv = MirrorFrame(venv)
         venv = TransposeFrame(venv)
         venv = ScaledFloatFrame(venv)
         return venv

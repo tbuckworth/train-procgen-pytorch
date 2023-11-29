@@ -2,7 +2,8 @@ import os
 
 import numpy as np
 
-from helper import create_env, create_name_from_dict
+from helper import create_name_from_dict
+from common.env.procgen_wrappers import create_env
 
 
 def randomly_explore_environment(env, frame_file, n_frames, force, checkpoint=50000):

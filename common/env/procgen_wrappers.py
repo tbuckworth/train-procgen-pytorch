@@ -1,5 +1,6 @@
 import contextlib
 import os
+import re
 from abc import ABC, abstractmethod
 import numpy as np
 import gym
@@ -7,11 +8,15 @@ from gym import spaces
 import time
 from collections import deque
 import torch
+from gym3 import ViewerWrapper, ToBaselinesVecEnv
+from procgen import ProcgenGym3Env
 
+from helper import get_action_names, match
 
 """
 Copy-pasted from OpenAI to obviate dependency on Baselines. Required for vectorized environments.
 """
+
 
 class AlreadySteppingError(Exception):
     """
@@ -118,7 +123,7 @@ class VecEnv(ABC):
 
     def render(self, mode='human'):
         imgs = self.get_images()
-        bigimg = "ARGHH" #tile_images(imgs)
+        bigimg = "ARGHH"  # tile_images(imgs)
         if mode == 'human':
             self.get_viewer().imshow(bigimg)
             return self.get_viewer().isopen
@@ -146,7 +151,7 @@ class VecEnv(ABC):
             self.viewer = rendering.SimpleImageViewer()
         return self.viewer
 
-    
+
 class VecEnvWrapper(VecEnv):
     """
     An environment wrapper that applies to an entire batch
@@ -156,8 +161,8 @@ class VecEnvWrapper(VecEnv):
     def __init__(self, venv, observation_space=None, action_space=None):
         self.venv = venv
         super().__init__(num_envs=venv.num_envs,
-                        observation_space=observation_space or venv.observation_space,
-                        action_space=action_space or venv.action_space)
+                         observation_space=observation_space or venv.observation_space,
+                         action_space=action_space or venv.action_space)
 
     def step_async(self, actions):
         self.venv.step_async(actions)
@@ -184,7 +189,7 @@ class VecEnvWrapper(VecEnv):
             raise AttributeError("attempted to get missing private attribute '{}'".format(name))
         return getattr(self.venv, name)
 
-    
+
 class VecEnvObservationWrapper(VecEnvWrapper):
     @abstractmethod
     def process(self, obs):
@@ -198,7 +203,7 @@ class VecEnvObservationWrapper(VecEnvWrapper):
         obs, rews, dones, infos = self.venv.step_wait()
         return self.process(obs), rews, dones, infos
 
-    
+
 class CloudpickleWrapper(object):
     """
     Uses cloudpickle to serialize contents (otherwise multiprocessing tries to use pickle)
@@ -215,7 +220,7 @@ class CloudpickleWrapper(object):
         import pickle
         self.x = pickle.loads(ob)
 
-        
+
 @contextlib.contextmanager
 def clear_mpi_env_vars():
     """
@@ -234,7 +239,7 @@ def clear_mpi_env_vars():
     finally:
         os.environ.update(removed_environment)
 
-        
+
 class VecFrameStack(VecEnvWrapper):
     def __init__(self, venv, nstack):
         self.venv = venv
@@ -260,17 +265,18 @@ class VecFrameStack(VecEnvWrapper):
         self.stackedobs[...] = 0
         self.stackedobs[..., -obs.shape[-1]:] = obs
         return self.stackedobs
-    
+
+
 class VecExtractDictObs(VecEnvObservationWrapper):
     def __init__(self, venv, key):
         self.key = key
         super().__init__(venv=venv,
-            observation_space=venv.observation_space.spaces[self.key])
+                         observation_space=venv.observation_space.spaces[self.key])
 
     def process(self, obs):
         return obs[self.key]
-    
-    
+
+
 class RunningMeanStd(object):
     # https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Parallel_algorithm
     def __init__(self, epsilon=1e-4, shape=()):
@@ -288,7 +294,7 @@ class RunningMeanStd(object):
         self.mean, self.var, self.count = update_mean_var_count_from_moments(
             self.mean, self.var, self.count, batch_mean, batch_var, batch_count)
 
-        
+
 def update_mean_var_count_from_moments(mean, var, count, batch_mean, batch_var, batch_count):
     delta = batch_mean - mean
     tot_count = count + batch_count
@@ -314,7 +320,7 @@ class VecNormalize(VecEnvWrapper):
 
         self.ob_rms = RunningMeanStd(shape=self.observation_space.shape) if ob else None
         self.ret_rms = RunningMeanStd(shape=()) if ret else None
-        
+
         self.clipob = clipob
         self.cliprew = cliprew
         self.ret = np.zeros(self.num_envs)
@@ -348,36 +354,53 @@ class VecNormalize(VecEnvWrapper):
 
 
 class MirrorFrame(VecEnvWrapper):
+    '''
+    This wrapper mirror flips (left-right) even envs of the batch.
+    This is to force the agent to utilise the image (otherwise repeating RIGHT_UP can get a decent score)
+    '''
+
     def __init__(self, env):
         super().__init__(venv=env)
         obs_shape = self.observation_space.shape
         self.observation_space = gym.spaces.Box(low=0, high=255, shape=obs_shape, dtype=np.float32)
+        self.action_names = get_action_names(env)
+        # self.mirror_action_names = self.action_names.copy()
+        self.mirror_act_names = np.array(
+            [re.sub("LEFT", "RIGHT", x) if re.search("LEFT", x) else re.sub("RIGHT", "LEFT", x) for x in
+             self.action_names]
+        )
+        self.action_mapping = match(self.mirror_act_names, self.action_names, dtype=self.venv.action_space.dtype)
+        self.flip_env = np.array([x % 2 == 0 for x in range(self.num_envs)])
 
     def step_wait(self):
         obs, reward, done, info = self.venv.step_wait()
-        return obs.flip(2), reward, done, info
+        obs[self.flip_env] = np.flip(obs[self.flip_env], 2)
+        return obs, reward, done, info
 
     def reset(self):
         obs = self.venv.reset()
-        return obs.flip(2)
+        obs[self.flip_env] = np.flip(obs[self.flip_env], 2)
+        return obs
 
     def step_async(self, actions):
-        #TODO: flip actions RIGHT/LEFT
+        actions[self.flip_env] = self.action_mapping[actions[self.flip_env]]
         self.venv.step_async(actions)
+
 
 class TransposeFrame(VecEnvWrapper):
     def __init__(self, env):
         super().__init__(venv=env)
         obs_shape = self.observation_space.shape
-        self.observation_space = gym.spaces.Box(low=0, high=255, shape=(obs_shape[2], obs_shape[0], obs_shape[1]), dtype=np.float32)
+        self.observation_space = gym.spaces.Box(low=0, high=255, shape=(obs_shape[2], obs_shape[0], obs_shape[1]),
+                                                dtype=np.float32)
 
     def step_wait(self):
         obs, reward, done, info = self.venv.step_wait()
-        return obs.transpose(0,3,1,2), reward, done, info
+        return obs.transpose(0, 3, 1, 2), reward, done, info
 
     def reset(self):
         obs = self.venv.reset()
-        return obs.transpose(0,3,1,2)
+        return obs.transpose(0, 3, 1, 2)
 
 
 class ScaledFloatFrame(VecEnvWrapper):
@@ -388,8 +411,27 @@ class ScaledFloatFrame(VecEnvWrapper):
 
     def step_wait(self):
         obs, reward, done, info = self.venv.step_wait()
-        return obs/255.0, reward, done, info
+        return obs / 255.0, reward, done, info
 
     def reset(self):
         obs = self.venv.reset()
-        return obs/255.0
+        return obs / 255.0
+
+
+def create_env(env_args, render, normalize_rew=True, mirror_some=False):
+    if render:
+        env_args["render_mode"] = "rgb_array"
+    venv = ProcgenGym3Env(**env_args)
+    if render:
+        venv = ViewerWrapper(venv, info_key="rgb")
+    venv = ToBaselinesVecEnv(venv)
+    venv = VecExtractDictObs(venv, "rgb")
+    if normalize_rew:
+        venv = VecNormalize(venv, ob=False)  # normalizing returns, but not
+        # the img frames
+    if mirror_some:
+        venv = MirrorFrame(venv)
+    venv = TransposeFrame(venv)
+    venv = ScaledFloatFrame(venv)
+
+    return venv

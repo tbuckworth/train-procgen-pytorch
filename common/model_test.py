@@ -5,7 +5,8 @@ import torch
 from torchinfo import summary
 
 from common.model import ImpalaVQMHAModel, ImpalaFSQModel
-from helper import create_env, initialize_model
+from helper import initialize_model
+from common.env.procgen_wrappers import create_env
 
 
 class MyTestCase(unittest.TestCase):
