@@ -347,6 +347,24 @@ class VecNormalize(VecEnvWrapper):
         return self._obfilt(obs)
 
 
+class MirrorFrame(VecEnvWrapper):
+    def __init__(self, env):
+        super().__init__(venv=env)
+        obs_shape = self.observation_space.shape
+        self.observation_space = gym.spaces.Box(low=0, high=255, shape=obs_shape, dtype=np.float32)
+
+    def step_wait(self):
+        obs, reward, done, info = self.venv.step_wait()
+        return obs.flip(2), reward, done, info
+
+    def reset(self):
+        obs = self.venv.reset()
+        return obs.flip(2)
+
+    def step_async(self, actions):
+        #TODO: flip actions RIGHT/LEFT
+        self.venv.step_async(actions)
+
 class TransposeFrame(VecEnvWrapper):
     def __init__(self, env):
         super().__init__(venv=env)

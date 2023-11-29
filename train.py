@@ -10,6 +10,7 @@ import gym
 from procgen import ProcgenEnv
 import random
 import torch
+import numpy as np
 
 from helper import get_hyperparams, initialize_model
 
@@ -177,9 +178,10 @@ if __name__ == '__main__':
         wandb.login(key="cfc00eee102a1e9647b244a40066bfc5f1a96610")
         cfg = vars(args)
         cfg.update(hyperparameters)
+        name = f"{hyperparameters['architecture']}-{np.random.randint(1e5)}"
         wb_resume = "allow" if args.model_file is None else "must"
         wandb.init(project="Coinrun VQMHA", config=cfg, sync_tensorboard=True,
-                   tags=args.wandb_tags, resume=wb_resume, name=hyperparameters["architecture"])
+                   tags=args.wandb_tags, resume=wb_resume, name=name)
     logger = Logger(n_envs, logdir, use_wandb=args.use_wandb)
 
     ###########
