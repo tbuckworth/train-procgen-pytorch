@@ -423,6 +423,7 @@ def create_env(env_args, render, normalize_rew=True, mirror_some=False):
         env_args["render_mode"] = "rgb_array"
     venv = ProcgenGym3Env(**env_args)
     if render:
+        # could create a mirrorFrame wrapper that goes on gym3 envs, and put before the viewer...
         venv = ViewerWrapper(venv, info_key="rgb")
     venv = ToBaselinesVecEnv(venv)
     venv = VecExtractDictObs(venv, "rgb")

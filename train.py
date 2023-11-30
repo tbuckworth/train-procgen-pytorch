@@ -58,7 +58,7 @@ if __name__ == '__main__':
     env_name = args.env_name
     val_env_name = args.val_env_name if args.val_env_name else args.env_name
     start_level = args.start_level
-    start_level_val = random.randint(0, 9999)
+    start_level_val = random.randint(500, 9999)
     num_levels = args.num_levels
     distribution_mode = args.distribution_mode
     param_name = args.param_name
