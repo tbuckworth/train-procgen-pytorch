@@ -33,14 +33,6 @@ class CategoricalPolicy(nn.Module):
             hidden, hx = self.gru(hidden, hx, masks)
         logits = self.fc_policy(hidden)
         log_probs = F.log_softmax(logits, dim=1)
-        if log_probs.isnan().any():
-            flt = log_probs.isnan().any(axis=1)
-            print(f"logits:\n{logits[flt]}")
-            print(f"log_probs:\n{log_probs[flt]}")
-            print(f"where_nan:\n{flt.argwhere()}")
-
-            print(f"hidden:\n{hidden}")
-            self.embedder(x, print_nans=True)
         p = Categorical(logits=log_probs)
         v = self.fc_value(hidden).reshape(-1)
         return p, v, hx

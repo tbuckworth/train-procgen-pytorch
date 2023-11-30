@@ -112,9 +112,7 @@ class PPO(BaseAgent):
 
                 # Policy Entropy
                 # entropy_loss = dist_batch.entropy().mean()
-                entropy_per_batch, x_batch_entropy = cross_batch_entropy(dist_batch)
-                entropy_loss = entropy_per_batch.mean()
-                x_batch_ent_loss = x_batch_entropy.mean()
+                x_batch_ent_loss, entropy_loss,  = cross_batch_entropy(dist_batch)
                 loss = pi_loss + self.value_coef * value_loss - self.entropy_coef * entropy_loss - self.x_entropy_coef * x_batch_ent_loss
                 loss.backward()
 

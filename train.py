@@ -38,6 +38,7 @@ if __name__ == '__main__':
     parser.add_argument('--use_wandb', action="store_true")
     parser.add_argument('--real_procgen', action="store_true", default=True)
     parser.add_argument('--mirror_env', action="store_true", default=False)
+    parser.add_argument('--mut_info_alpha', type=float, default=None)
 
     parser.add_argument('--wandb_tags', type=str, nargs='+')
 
@@ -79,6 +80,12 @@ if __name__ == '__main__':
     ####################
     print('[LOADING HYPERPARAMETERS...]')
     hyperparameters = get_hyperparams(param_name)
+    if args.mut_info_alpha is not None:
+        alpha = args.mut_info_alpha
+        ent_coef = hyperparameters["entropy_coef"]
+        hyperparameters["entropy_coef"] = ent_coef * alpha
+        hyperparameters["x_entropy_coef"] = ent_coef * (1-alpha)
+
     for key, value in hyperparameters.items():
         print(key, ':', value)
 
