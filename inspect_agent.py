@@ -38,7 +38,7 @@ def main(logdir, render=True):
             print(f"Level seed: {info[0]['level_seed']}")
 
 
-def load_policy(render, logdir):
+def load_policy(render, logdir, n_envs=2):
     # logdir = "logs/train/coinrun/coinrun/2023-10-31__10-49-30__seed_6033"
     # df = pd.read_csv(os.path.join(logdir, "log-append.csv"))
     files = os.listdir(logdir)
@@ -50,8 +50,7 @@ def load_policy(render, logdir):
     hp_file = os.path.join(logdir, "hyperparameters.npy")
     if os.path.exists(hp_file):
         hyperparameters = np.load(hp_file, allow_pickle='TRUE').item()
-    n_envs = 2
-    env_args = {"num": n_envs,
+    env_args = {"num": hyperparameters["n_envs"],
                 "env_name": "coinrun",
                 "start_level": 0,#325
                 "num_levels": 500,

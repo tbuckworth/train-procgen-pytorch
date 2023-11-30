@@ -98,10 +98,13 @@ if __name__ == '__main__':
     ## ENVIRONMENT ##
     #################
     print('INITIALIZAING ENVIRONMENTS...')
+    # If Windows:
+    if os.name == "nt":
+        hyperparameters["n_envs"] = 16
+        hyperparameters["use_wandb"] = False
 
     n_steps = hyperparameters.get('n_steps', 256)
     n_envs = hyperparameters.get('n_envs', 256)
-
 
     def create_venv(args, hyperparameters, is_valid=False):
         if args.real_procgen:

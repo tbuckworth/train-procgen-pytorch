@@ -82,14 +82,13 @@ class Logger(object):
         episode_statistics = self._get_episode_statistics()
         episode_statistics_list = list(episode_statistics.values())
         loss_statistics = list(summary.values())
-        log = [self.timesteps, wall_time, self.num_episodes] + episode_statistics_list + [episode_statistics['Rewards/mean_episodes']] + loss_statistics
-        self.log.loc[len(self.log)] = log
-
-        if len(self.log) > 1:
+        ema_reward = episode_statistics['Rewards/mean_episodes']
+        if len(self.log) > 0:
             smoothing = .99/(1+len(self.log))
-            prev_ema = self.log["ema_rewards"].loc[len(self.log) - 2]
-            curr_val = self.log["ema_rewards"].loc[len(self.log) - 1]
-            self.log["ema_rewards"].loc[len(self.log) - 1] = curr_val * smoothing + prev_ema * (1-smoothing)
+            prev_ema = self.log["ema_rewards"].loc[len(self.log) - 1]
+            ema_reward = ema_reward * smoothing + prev_ema * (1-smoothing)
+        log = [self.timesteps, wall_time, self.num_episodes] + episode_statistics_list + [ema_reward] + loss_statistics
+        self.log.loc[len(self.log)] = log
 
         with open(self.logdir + '/log-append.csv', 'a') as f:
             writer = csv.writer(f)

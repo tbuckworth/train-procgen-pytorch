@@ -4,7 +4,7 @@ import gym
 import torch
 import torch.nn as nn
 
-
+torch.nn.CrossEntropyLoss
 def cross_batch_entropy(p):
     '''
     The idea here is to emulate torch.distributions.Categorical.entropy(), but instead of computing it per batch
