@@ -133,7 +133,9 @@ def distill(args, logdir_trained):
             Y_batch = Y_gold[i * batch_size: (i + 1) * batch_size]
 
             # Forward pass
-            Y_pred, _ = predict(new_policy, obs_batch, hidden_state, done, with_grad=True)
+            # Y_pred, _ = predict(new_policy, obs_batch, hidden_state, done, with_grad=True)
+            dist_batch, value_batch, _ = new_policy(obs_batch, hidden_state, hidden_state)
+            Y_pred = dist_batch.logits
             loss = criterion(Y_pred.squeeze(), Y_batch.squeeze())
 
             # Backward pass
