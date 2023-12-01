@@ -111,7 +111,7 @@ def distill(args, logdir_trained):
         cfg = vars(args)
         cfg.update(hyperparameters)
         # cfg.update(hyperparameters)
-        name = f"{hyperparameters['architecture']}-{distill}-{np.random.randint(1e5)}"
+        name = f"{hyperparameters['architecture']}-distill-{np.random.randint(1e5)}"
         wandb.init(project="Coinrun VQMHA - Distill", config=cfg, sync_tensorboard=True,
                    tags=args.wandb_tags, resume="allow", name=name)
 
@@ -121,7 +121,7 @@ def distill(args, logdir_trained):
     for epoch in range(args.nb_epoch):
         obs, rew, done = collect_obs(new_policy, obs, hidden_state, done, env, n_states=epoch_size)
         shuffle_index = np.random.permutation([x for x in range(len(obs))])
-        obs = torch.Tensor(obs[shuffle_index]).to(device)
+        obs_tensor = torch.Tensor(obs[shuffle_index]).to(device)
         done = done[shuffle_index]
         N_batchs = int(len(obs) / batch_size)
         Y_gold, _ = predict(policy, obs, hidden_state, done)
@@ -129,7 +129,7 @@ def distill(args, logdir_trained):
         epoch_loss = 0.0
         for i in range(N_batchs):
             optimizer.zero_grad()
-            obs_batch = obs[i * batch_size: (i + 1) * batch_size]
+            obs_batch = obs_tensor[i * batch_size: (i + 1) * batch_size]
             Y_batch = Y_gold[i * batch_size: (i + 1) * batch_size]
 
             # Forward pass
@@ -147,7 +147,7 @@ def distill(args, logdir_trained):
         print('Epoch {}: total train loss: {:.5f}'.format(epoch, epoch_loss))
 
         if args.use_wandb:
-            perf_dict = {"Epoch": epoch, "Loss": epoch_loss, "Mean_Reward": np.mean(rew)}
+            perf_dict = {"Epoch": epoch, "Loss": epoch_loss, "Mean_Reward": float(np.mean(rew))}
             wandb.log(perf_dict)
         log.loc[len(log)] = perf_dict.values()
         with open(logdir + '/log-append.csv', 'a') as f:
