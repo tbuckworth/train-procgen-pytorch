@@ -98,7 +98,7 @@ def distill(args, logdir_trained):
     elif args.device == 'cpu':
         device = torch.device('cpu')
     # Load Trained Model
-    done, env, hidden_state, obs, policy = load_policy(render=False,
+    done, env, hidden_state, first_obs, policy = load_policy(render=False,
                                                        logdir=logdir_trained,
                                                        args=args,
                                                        device=device)
@@ -119,7 +119,7 @@ def distill(args, logdir_trained):
     optimizer = torch.optim.SGD(new_policy.parameters(), lr=args.lr)
     new_policy.train()
     for epoch in range(args.nb_epoch):
-        obs, rew, done = collect_obs(new_policy, obs, hidden_state, done, env, n_states=epoch_size)
+        obs, rew, done = collect_obs(new_policy, first_obs, hidden_state, done, env, n_states=epoch_size)
         shuffle_index = np.random.permutation([x for x in range(len(obs))])
         obs_tensor = torch.Tensor(obs[shuffle_index]).to(device)
         done = done[shuffle_index]
