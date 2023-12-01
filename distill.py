@@ -124,7 +124,7 @@ def distill(args, logdir_trained):
         obs = obs[shuffle_index]
         done = done[shuffle_index]
         N_batchs = int(len(obs) / batch_size)
-        Y_gold, _, hidden_state = predict(policy, obs, hidden_state, done)
+        Y_gold, _ = predict(policy, obs, hidden_state, done)
 
         epoch_loss = 0.0
         for i in range(N_batchs):
@@ -133,7 +133,7 @@ def distill(args, logdir_trained):
             Y_batch = Y_gold[i * batch_size: (i + 1) * batch_size]
 
             # Forward pass
-            Y_pred, _, _ = predict(new_policy, obs_batch, hidden_state, done)
+            Y_pred, _ = predict(new_policy, obs_batch, hidden_state, done)
             loss = criterion(Y_pred.squeeze(), Y_batch.squeeze())
 
             # Backward pass
