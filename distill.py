@@ -22,10 +22,10 @@ except ImportError:
 
 def predict(policy, obs, hidden_state, done, with_grad=False):
     with torch.no_grad() if policy.training or not with_grad else nullcontext():
-        obs = torch.FloatTensor(obs).to(device=policy.device)
-        hidden_state = torch.FloatTensor(hidden_state).to(device=policy.device)
-        mask = torch.FloatTensor(1 - done).to(device=policy.device)
-        dist, value, hidden_state = policy(obs, hidden_state, mask)
+        obs = torch.Tensor(obs).to(device=policy.device)
+        # hidden_state = torch.FloatTensor(hidden_state).to(device=policy.device)
+        # mask = torch.FloatTensor(1 - done).to(device=policy.device)
+        dist, value, hidden_state = policy(obs, hidden_state, hidden_state)
         act = dist.sample()
     return dist.logits, act.cpu().numpy()
 
