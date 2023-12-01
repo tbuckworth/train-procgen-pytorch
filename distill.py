@@ -20,8 +20,8 @@ except ImportError:
     pass
 
 
-def predict(policy, obs, hidden_state, done):
-    with torch.no_grad() if policy.training else nullcontext():
+def predict(policy, obs, hidden_state, done, with_grad=False):
+    with torch.no_grad() if policy.training or not with_grad else nullcontext():
         obs = torch.FloatTensor(obs).to(device=policy.device)
         hidden_state = torch.FloatTensor(hidden_state).to(device=policy.device)
         mask = torch.FloatTensor(1 - done).to(device=policy.device)
@@ -133,7 +133,7 @@ def distill(args, logdir_trained):
             Y_batch = Y_gold[i * batch_size: (i + 1) * batch_size]
 
             # Forward pass
-            Y_pred, _ = predict(new_policy, obs_batch, hidden_state, done)
+            Y_pred, _ = predict(new_policy, obs_batch, hidden_state, done, with_grad=True)
             loss = criterion(Y_pred.squeeze(), Y_batch.squeeze())
 
             # Backward pass
