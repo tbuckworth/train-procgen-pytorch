@@ -160,6 +160,9 @@ def swap_indexed_values_and_print(action_names, done, hidden_state, left_frame, 
 
 
 if __name__ == "__main__":
+
+
+
     # main(logdir="logs/train/coinrun/coinrun/2023-11-23__10-31-05__seed_6033/")
 
     #impalavqmha
@@ -167,11 +170,18 @@ if __name__ == "__main__":
 
     # #impala:
     # main(logdir="logs/train/coinrun/coinrun/2023-11-28__10-59-15__seed_6033/")
-    #
-    #impalavqmha - Using low x_entropy coefficient (with old entropy metric)
-    main(logdir="logs/train/coinrun/coinrun/2023-11-30__13-33-16__seed_6033")
+    # Strong Impala:
+    main(logdir="logs/train/coinrun/coinrun/2023-10-31__10-49-30__seed_6033/")
+
+    # #impalavqmha - Using low x_entropy coefficient (with old entropy metric)
+    # main(logdir="logs/train/coinrun/coinrun/2023-11-30__13-33-16__seed_6033")
 
     # #impalavqmha - No x-entropy - mirror env. only
     # main(logdir="logs/train/coinrun/coinrun/2023-11-30__17-47-52__seed_6033")
 
 
+    # #mut_info alpha=1/3 : (ignores inputs)
+    # main(logdir="logs/train/coinrun/coinrun/2023-12-01__10-47-13__seed_6033")
+
+    #mut_info alpha=2/3
+    # main(logdir="logs/train/coinrun/coinrun/2023-12-01__10-47-20__seed_6033")

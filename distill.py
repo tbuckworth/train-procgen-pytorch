@@ -13,10 +13,12 @@ from common.env.procgen_wrappers import create_env
 from common.storage import Storage
 from helper import initialize_model, get_hyperparams
 from contextlib import nullcontext
+
 try:
     import wandb
 except ImportError:
     pass
+
 
 def predict(policy, obs, hidden_state, done):
     with torch.no_grad() if policy.training else nullcontext():
@@ -25,30 +27,28 @@ def predict(policy, obs, hidden_state, done):
         mask = torch.FloatTensor(1 - done).to(device=policy.device)
         dist, value, hidden_state = policy(obs, hidden_state, mask)
         act = dist.sample()
-    return dist.logits, act
+    return dist.logits, act.cpu().numpy()
 
 
-def load_policy(render, logdir, device, n_envs=None):
-    # logdir = "logs/train/coinrun/coinrun/2023-10-31__10-49-30__seed_6033"
-    # df = pd.read_csv(os.path.join(logdir, "log-append.csv"))
+def load_policy(render, logdir, device, args):
     files = os.listdir(logdir)
     pattern = r"model_(\d*)\.pth"
     checkpoints = [int(re.search(pattern, x).group(1)) for x in files if re.search(pattern, x)]
     last_model = os.path.join(logdir, f"model_{max(checkpoints)}.pth")
     # device = torch.device('cpu')
+    hyperparameters = get_hyperparams("hard-500-impala")
     hp_file = os.path.join(logdir, "hyperparameters.npy")
     if os.path.exists(hp_file):
         hyperparameters = np.load(hp_file, allow_pickle='TRUE').item()
-    if n_envs is not None:
-        hyperparameters["n_envs"] = n_envs
-    env_args = {"num": hyperparameters["n_envs"],
+    n_envs = args.n_envs
+    env_args = {"num": n_envs,
                 "env_name": "coinrun",
-                "start_level": 0,
-                "num_levels": 500,
+                "start_level": args.start_level,
+                "num_levels": args.num_levels,
                 "paint_vel_info": True,
                 "distribution_mode": "hard"}
     normalize_rew = hyperparameters.get('normalize_rew', True)
-    env = create_env(env_args, render, normalize_rew, mirror_some=True)
+    env = create_env(env_args, render, normalize_rew, mirror_some=False)
     model, observation_shape, policy = initialize_model(device, env, hyperparameters)
     policy.load_state_dict(torch.load(last_model, map_location=device)["model_state_dict"])
     # Test if necessary:
@@ -64,27 +64,28 @@ def load_policy(render, logdir, device, n_envs=None):
 
 
 def collect_obs(new_policy, obs, hidden_state, done, env, n_states):
-    observations = np.array()
+    observations = obs
     rewards = np.array([])
-    dones = np.array()
-    while len(observations) < n_states:
+    dones = done
+    while len(observations) <= n_states:
         # Predict:
         logits, act = predict(new_policy, obs, hidden_state, done)
         # Store:
-        observations = np.append(observations, obs)
+        observations = np.append(observations, obs, axis=0)
         # Act:
         next_obs, rew, done, info = env.step(act)
         rewards = np.append(rewards, rew[done])
-        dones = np.append(dones, done)
+        dones = np.append(dones, done, axis=0)
         obs = next_obs
-    return observations, rewards, dones
+    return observations[1:], rewards, dones[1:]
 
 
 def distill(args, logdir_trained):
-
     logdir = os.path.join('logs', 'distill', "coinrun", "distill")
     run_name = time.strftime("%Y-%m-%d__%H-%M-%S") + f'__seed_{args.seed}'
     logdir = os.path.join(logdir, run_name)
+    if not (os.path.exists(logdir)):
+        os.makedirs(logdir)
 
     hyperparameters = get_hyperparams('hard-500-impalavqmha')
     batch_size = args.batch_size
@@ -97,12 +98,13 @@ def distill(args, logdir_trained):
     elif args.device == 'cpu':
         device = torch.device('cpu')
     # Load Trained Model
-    action_names, done, env, hidden_state, obs, policy, old_hyperparameters = load_policy(render=False,
-                                                                                      logdir=logdir_trained,
-                                                                                        n_envs=args.n_envs,
-                                                                                      device=device)
+    done, env, hidden_state, obs, policy = load_policy(render=False,
+                                                       logdir=logdir_trained,
+                                                       args=args,
+                                                       device=device)
     # Load Blank Model
     model, observation_shape, new_policy = initialize_model(device, env, hyperparameters)
+    new_policy.device = device
     log = pd.DataFrame(columns=["Epoch", "Loss", "Mean_Reward"])
     if args.use_wandb:
         wandb.login(key="cfc00eee102a1e9647b244a40066bfc5f1a96610")
@@ -114,7 +116,7 @@ def distill(args, logdir_trained):
                    tags=args.wandb_tags, resume="allow", name=name)
 
     criterion = torch.nn.MSELoss()
-    optimizer = torch.optim.SGD(new_policy.parameters(), lr=args.learning_rate)
+    optimizer = torch.optim.SGD(new_policy.parameters(), lr=args.lr)
     new_policy.train()
     for epoch in range(args.nb_epoch):
         obs, rew, done = collect_obs(new_policy, obs, hidden_state, done, env, n_states=epoch_size)
@@ -149,7 +151,7 @@ def distill(args, logdir_trained):
         with open(logdir + '/log-append.csv', 'a') as f:
             writer = csv.writer(f)
             if f.tell() == 0:
-                writer.writerow(loss.columns)
+                writer.writerow(log.columns)
             writer.writerow(log)
         # Save the model
         if epoch > ((checkpoint_cnt + 1) * save_every):
@@ -158,11 +160,18 @@ def distill(args, logdir_trained):
                         'optimizer_state_dict': optimizer.state_dict()},
                        f"{logdir}/model_{epoch}.pth")
             checkpoint_cnt += 1
+    return epoch_loss, np.mean(rew)
+
+
+def distill_with_lr(args, lr):
+    args.lr = lr
+    return distill(args, "logs/train/coinrun/coinrun/2023-10-31__10-49-30__seed_6033/")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--start_level', type=int, default=int(0), help='start-level for environment')
-    parser.add_argument('--num_levels', type=int, default=int(0), help='number of training levels for environment')
+    parser.add_argument('--num_levels', type=int, default=int(500), help='number of training levels for environment')
     parser.add_argument('--distribution_mode', type=str, default='easy', help='distribution mode for environment')
     parser.add_argument('--param_name', type=str, default='easy-200', help='hyper-parameter ID')
     parser.add_argument('--device', type=str, default='cpu', required=False, help='whether to use gpu')
@@ -175,8 +184,7 @@ if __name__ == "__main__":
     parser.add_argument('--lr', type=float, default=float(1e-4), help='learning rate')
     parser.add_argument('--batch_size', type=int, default=int(256), help='batch size')
     parser.add_argument('--nb_epoch', type=int, default=int(1e4), help='number of epochs')
-    parser.add_argument('--epoch_size', type=int, default=int(256*8), help='number of epochs')
-
+    parser.add_argument('--epoch_size', type=int, default=int(256 * 8), help='number of epochs')
 
     # multi threading
     parser.add_argument('--num_threads', type=int, default=8)
@@ -187,6 +195,24 @@ if __name__ == "__main__":
     if os.name == "nt":
         args.device = "cpu"
         args.n_envs = 2
+        args.use_wandb = False
 
-    # Impala
-    distill(args, "logs/train/coinrun/coinrun/2023-11-28__10-59-15__seed_6033/")
+
+
+    # for lr in [1e-4, 1e-3, 1e-2, 1e-5]:
+
+    low = 1e-3
+    high = 1e-4
+    l_loss, _ = distill_with_lr(args, low)
+    h_loss, _ = distill_with_lr(args, low)
+
+    diff = h_loss - l_loss
+    if diff > 0:
+        low = (low + high)/2
+        high *= 10
+    else:
+        high = (low + high)/2
+        low /= 10
+
+    l_loss, _ = distill_with_lr(args, low)
+    h_loss, _ = distill_with_lr(args, low)
