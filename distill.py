@@ -121,7 +121,7 @@ def distill(args, logdir_trained):
     for epoch in range(args.nb_epoch):
         obs, rew, done = collect_obs(new_policy, obs, hidden_state, done, env, n_states=epoch_size)
         shuffle_index = np.random.permutation([x for x in range(len(obs))])
-        obs = obs[shuffle_index]
+        obs = torch.Tensor(obs[shuffle_index])
         done = done[shuffle_index]
         N_batchs = int(len(obs) / batch_size)
         Y_gold, _ = predict(policy, obs, hidden_state, done)
