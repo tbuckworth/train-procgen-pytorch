@@ -370,7 +370,7 @@ class MirrorFrame(VecEnvWrapper):
              self.action_names]
         )
         self.action_mapping = match(self.mirror_act_names, self.action_names, dtype=self.venv.action_space.dtype)
-        self.flip_env = np.array([x % 2 == 0 for x in range(self.num_envs)])
+        self.flip_env = np.array([x % 2 == 1 for x in range(self.num_envs)])
 
     def step_wait(self):
         obs, reward, done, info = self.venv.step_wait()

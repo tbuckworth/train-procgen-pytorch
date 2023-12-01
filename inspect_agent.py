@@ -25,11 +25,13 @@ def predict(policy, obs, hidden_state, done):
 
 
 def main(logdir, render=True):
-    action_names, done, env, hidden_state, obs, policy = load_policy(render, logdir)
+    action_names, done, env, hidden_state, obs, policy = load_policy(render, logdir, n_envs=2)
+    rewards = np.array([])
     while True:
         act, log_prob_act, value, next_hidden_state, pi = predict(policy, obs, hidden_state, done)
-        print_values_actions(action_names, pi, value)
+        print_values_actions(action_names, pi, value, rewards=rewards)
         next_obs, rew, done, info = env.step(act)
+        rewards = np.append(rewards, rew[done])
         obs = next_obs
         # frames = np.append(frames, obs, axis=0)
         # np.save("logs/train/coinrun/coinrun/2023-10-31__10-49-30__seed_6033/go_left.npy", frames)
@@ -38,7 +40,7 @@ def main(logdir, render=True):
             print(f"Level seed: {info[0]['level_seed']}")
 
 
-def load_policy(render, logdir, n_envs=2):
+def load_policy(render, logdir, n_envs=None):
     # logdir = "logs/train/coinrun/coinrun/2023-10-31__10-49-30__seed_6033"
     # df = pd.read_csv(os.path.join(logdir, "log-append.csv"))
     files = os.listdir(logdir)
@@ -50,6 +52,8 @@ def load_policy(render, logdir, n_envs=2):
     hp_file = os.path.join(logdir, "hyperparameters.npy")
     if os.path.exists(hp_file):
         hyperparameters = np.load(hp_file, allow_pickle='TRUE').item()
+    if n_envs is not None:
+        hyperparameters["n_envs"] = n_envs
     env_args = {"num": hyperparameters["n_envs"],
                 "env_name": "coinrun",
                 "start_level": 0,#325
@@ -161,8 +165,13 @@ if __name__ == "__main__":
     #impalavqmha
     # main(logdir="logs/train/coinrun/coinrun/2023-11-28__11-37-25__seed_6033/")
 
-    #impala:
-    main(logdir="logs/train/coinrun/coinrun/2023-11-28__10-59-15__seed_6033/")
+    # #impala:
+    # main(logdir="logs/train/coinrun/coinrun/2023-11-28__10-59-15__seed_6033/")
+    #
+    #impalavqmha - Using low x_entropy coefficient (with old entropy metric)
+    main(logdir="logs/train/coinrun/coinrun/2023-11-30__13-33-16__seed_6033")
 
+    # #impalavqmha - No x-entropy - mirror env. only
+    # main(logdir="logs/train/coinrun/coinrun/2023-11-30__17-47-52__seed_6033")
 
 
