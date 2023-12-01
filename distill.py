@@ -190,7 +190,7 @@ if __name__ == "__main__":
     parser.add_argument('--num_threads', type=int, default=8)
 
     args = parser.parse_args()
-    args.n_envs = None
+    args.n_envs = 256
     # If Windows:
     if os.name == "nt":
         args.device = "cpu"
