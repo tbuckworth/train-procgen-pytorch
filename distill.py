@@ -193,10 +193,10 @@ def distill(args, logdir_trained):
 
             valid_loss = validate(new_policy, valid_X, valid_Y_gold, criterion, hidden_state)
 
-            threshold = valid_loss - epoch_loss
-            loss_diffs.append(threshold)
-            if len(loss_diffs) > 10 and valid_loss - epoch_loss > min(loss_diffs) + np.std(loss_diffs):
-                break
+            # threshold = valid_loss - epoch_loss
+            # loss_diffs.append(threshold)
+            # if len(loss_diffs) > 10 and valid_loss - epoch_loss > min(loss_diffs) + np.std(loss_diffs):
+            #     break
 
         print(f'Epoch {epoch}: total train loss: {epoch_loss:.5f}, valid loss: {valid_loss:.5f}')
 
