@@ -105,7 +105,7 @@ def distill(args, logdir_trained):
     # Load Blank Model
     model, observation_shape, new_policy = initialize_model(device, env, hyperparameters)
     new_policy.device = device
-    log = pd.DataFrame(columns=["Epoch", "Loss", "Mean_Reward"])
+    log = pd.DataFrame(columns=["Exploration", "Epoch", "Loss", "Mean_Reward"])
     if args.use_wandb:
         wandb.login(key="cfc00eee102a1e9647b244a40066bfc5f1a96610")
         cfg = vars(args)
@@ -118,50 +118,51 @@ def distill(args, logdir_trained):
     criterion = torch.nn.MSELoss()
     optimizer = torch.optim.SGD(new_policy.parameters(), lr=args.lr)
     new_policy.train()
-    for epoch in range(args.nb_epoch):
+
+    for n_explores in range(args.n_explore):
         obs, rew, done = collect_obs(new_policy, first_obs, hidden_state, done, env, n_states=epoch_size)
         shuffle_index = np.random.permutation([x for x in range(len(obs))])
         obs_tensor = torch.Tensor(obs[shuffle_index]).to(device)
         done = done[shuffle_index]
         N_batchs = int(len(obs) / batch_size)
         Y_gold, _ = predict(policy, obs, hidden_state, done)
+        for epoch in range(args.nb_epoch):
+            epoch_loss = 0.0
+            for i in range(N_batchs):
+                optimizer.zero_grad()
+                obs_batch = obs_tensor[i * batch_size: (i + 1) * batch_size]
+                Y_batch = Y_gold[i * batch_size: (i + 1) * batch_size]
 
-        epoch_loss = 0.0
-        for i in range(N_batchs):
-            optimizer.zero_grad()
-            obs_batch = obs_tensor[i * batch_size: (i + 1) * batch_size]
-            Y_batch = Y_gold[i * batch_size: (i + 1) * batch_size]
+                # Forward pass
+                # Y_pred, _ = predict(new_policy, obs_batch, hidden_state, done, with_grad=True)
+                dist_batch, value_batch, _ = new_policy(obs_batch, hidden_state, hidden_state)
+                Y_pred = dist_batch.logits
+                loss = criterion(Y_pred.squeeze(), Y_batch.squeeze())
 
-            # Forward pass
-            # Y_pred, _ = predict(new_policy, obs_batch, hidden_state, done, with_grad=True)
-            dist_batch, value_batch, _ = new_policy(obs_batch, hidden_state, hidden_state)
-            Y_pred = dist_batch.logits
-            loss = criterion(Y_pred.squeeze(), Y_batch.squeeze())
+                # Backward pass
+                loss.backward()
+                optimizer.step()
 
-            # Backward pass
-            loss.backward()
-            optimizer.step()
+                epoch_loss += loss.item() * len(Y_batch)
 
-            epoch_loss += loss.item() * len(Y_batch)
+            print('Epoch {}: total train loss: {:.5f}'.format(epoch, epoch_loss))
 
-        print('Epoch {}: total train loss: {:.5f}'.format(epoch, epoch_loss))
-
-        if args.use_wandb:
-            perf_dict = {"Epoch": epoch, "Loss": epoch_loss, "Mean_Reward": float(np.mean(rew))}
-            wandb.log(perf_dict)
-        log.loc[len(log)] = perf_dict.values()
-        with open(logdir + '/log-append.csv', 'a') as f:
-            writer = csv.writer(f)
-            if f.tell() == 0:
-                writer.writerow(log.columns)
-            writer.writerow(log)
-        # Save the model
-        if epoch > ((checkpoint_cnt + 1) * save_every):
-            print("Saving model.")
-            torch.save({'model_state_dict': new_policy.state_dict(),
-                        'optimizer_state_dict': optimizer.state_dict()},
-                       f"{logdir}/model_{epoch}.pth")
-            checkpoint_cnt += 1
+            if args.use_wandb:
+                perf_dict = {"Exploration": n_explores, "Epoch": epoch, "Loss": epoch_loss, "Mean_Reward": float(np.mean(rew))}
+                wandb.log(perf_dict)
+            log.loc[len(log)] = perf_dict.values()
+            with open(logdir + '/log-append.csv', 'a') as f:
+                writer = csv.writer(f)
+                if f.tell() == 0:
+                    writer.writerow(log.columns)
+                writer.writerow(log)
+            # Save the model
+            if epoch > ((checkpoint_cnt + 1) * save_every):
+                print("Saving model.")
+                torch.save({'model_state_dict': new_policy.state_dict(),
+                            'optimizer_state_dict': optimizer.state_dict()},
+                           f"{logdir}/model_{epoch}.pth")
+                checkpoint_cnt += 1
     return epoch_loss, np.mean(rew)
 
 

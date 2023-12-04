@@ -73,16 +73,20 @@ def initialize_model(device, env, hyperparameters):
     architecture = hyperparameters.get('architecture', 'impala')
     in_channels = observation_shape[0]
     action_space = env.action_space
+    has_vq = False
     # Model architecture
     if architecture == 'nature':
         model = NatureModel(in_channels=in_channels)
     elif architecture == 'impala':
         model = ImpalaModel(in_channels=in_channels)
     elif architecture == 'vqmha':
+        has_vq = True
         model = VQMHAModel(in_channels, hyperparameters)
     elif architecture == 'impalavq':
+        has_vq = True
         model = ImpalaVQModel(in_channels=in_channels)
     elif architecture == 'impalavqmha':
+        has_vq = True
         mha_layers = hyperparameters.get("mha_layers", 1)
         use_vq = hyperparameters.get("use_vq", True)
         model = ImpalaVQMHAModel(in_channels=in_channels, mha_layers=mha_layers, device=device, use_vq=use_vq)
@@ -92,7 +96,7 @@ def initialize_model(device, env, hyperparameters):
     recurrent = hyperparameters.get('recurrent', False)
     if isinstance(action_space, gym.spaces.Discrete):
         action_size = action_space.n
-        policy = CategoricalPolicy(model, recurrent, action_size)
+        policy = CategoricalPolicy(model, recurrent, action_size, has_vq)
     else:
         raise NotImplementedError
     policy.to(device)

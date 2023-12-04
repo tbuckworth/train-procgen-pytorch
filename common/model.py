@@ -331,6 +331,7 @@ class ImpalaVQMHAModel(nn.Module):
         # self.fc = nn.Linear(in_features=32 * scale * 8 * 8, out_features=256)
         # decay=.99,cc=.25 is the VQ-VAE values
         if use_vq:
+            # pass in in-place codebook optimizer? think this trains the codebook every time you use it.
             self.vq = VectorQuantize(dim=latent_dim-2, codebook_size=128, decay=.8, commitment_weight=1.)
         # self.mhas = [GlobalSelfAttention(shape=(256), num_heads=8, embed_dim=256, dropout=0.1) for _ in range(mha_layers)]
         self.mha1 = GlobalSelfAttention(shape=(n_latents, latent_dim), num_heads=4, embed_dim=latent_dim, dropout=0.1)
@@ -370,7 +371,7 @@ class ImpalaVQMHAModel(nn.Module):
         x = self.mha1(x)
         x = self.mha2(x)
         x = self.max_pool(x)
-        return x.squeeze()
+        return x.squeeze(), commit_loss
 
     def print_if_nan(self, name, print_nans, x):
         if print_nans:

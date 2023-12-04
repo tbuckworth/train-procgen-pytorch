@@ -12,7 +12,7 @@ except ImportError:
 
 class Logger(object):
 
-    def __init__(self, n_envs, logdir, use_wandb=False):
+    def __init__(self, n_envs, logdir, use_wandb=False, has_vq=False):
         self.start_time = time.time()
         self.n_envs = n_envs
         self.logdir = logdir
@@ -38,6 +38,8 @@ class Logger(object):
 
         time_metrics = ["timesteps", "wall_time", "num_episodes"]  # only collected once
         loss_metrics = ["loss_pi", "loss_v", "loss_entropy", "loss_x_entropy", "loss_total"]
+        if has_vq:
+            loss_metrics = ["loss_pi", "loss_v", "loss_entropy", "loss_x_entropy", "loss_commit", "loss_total"]
         episode_metrics = ["max_episode_rewards", "mean_episode_rewards", "min_episode_rewards",
                            "max_episode_len", "mean_episode_len", "min_episode_len",
                            "mean_timeouts"]  # collected for both train and val envs

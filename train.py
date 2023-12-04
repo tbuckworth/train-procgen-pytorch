@@ -196,13 +196,13 @@ if __name__ == '__main__':
         wb_resume = "allow" if args.model_file is None else "must"
         wandb.init(project="Coinrun VQMHA", config=cfg, sync_tensorboard=True,
                    tags=args.wandb_tags, resume=wb_resume, name=name)
-    logger = Logger(n_envs, logdir, use_wandb=args.use_wandb)
 
     ###########
     ## MODEL ##
     ###########
     print('INTIALIZING MODEL...')
     model, observation_shape, policy = initialize_model(device, env, hyperparameters)
+    logger = Logger(n_envs, logdir, use_wandb=args.use_wandb, has_vq=policy.has_vq)
 
     #############
     ## STORAGE ##
@@ -218,7 +218,10 @@ if __name__ == '__main__':
     print('INTIALIZING AGENT...')
     algo = hyperparameters.get('algo', 'ppo')
     if algo == 'ppo':
-        from agents.ppo import PPO as AGENT
+        if policy.has_vq:
+            from agents.ppo import PPO_VQ as AGENT
+        else:
+            from agents.ppo import PPO as AGENT
     else:
         raise NotImplementedError
     agent = AGENT(env, policy, logger, storage, device,
