@@ -72,14 +72,14 @@ def collect_obs(new_policy, obs, hidden_state, done, env, n_states, return_logit
     dones = done
     if return_logits:
         logits, _ = predict(new_policy, obs, hidden_state, done)
-        logits_store = logits.numpy()
+        logits_store = logits.cpu().numpy()
     while len(observations) <= n_states:
         # Predict:
         logits, act = predict(new_policy, obs, hidden_state, done)
         # Store:
         observations = np.append(observations, obs, axis=0)
         if return_logits:
-            logits_store = np.append(logits_store, logits.numpy(), axis=0)
+            logits_store = np.append(logits_store, logits.cpu().numpy(), axis=0)
         # Act:
         next_obs, rew, done, info = env.step(act)
         rewards = np.append(rewards, rew[done])
