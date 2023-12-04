@@ -110,6 +110,8 @@ def validate(new_policy, valid_X, valid_Y_gold, criterion, hidden_state):
     else:
         dist_batch, value_batch, _ = new_policy(valid_X, hidden_state, hidden_state)
     Y_pred = dist_batch.logits
+    print(Y_pred.shape)
+    print(valid_Y_gold.shape)
     loss = criterion(Y_pred.squeeze(), valid_Y_gold.squeeze())
     return loss.item() * len(valid_Y_gold)
 
