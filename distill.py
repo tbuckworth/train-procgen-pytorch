@@ -237,7 +237,7 @@ if __name__ == "__main__":
     parser.add_argument('--batch_size', type=int, default=int(256), help='batch size')
     parser.add_argument('--nb_epoch', type=int, default=int(1e3), help='number of epochs per exploration')
     parser.add_argument('--explore_size', type=int, default=int(256 * 8), help='size of each exploration')
-    parser.add_argument('--n_explores', type=int, default=int(2500), help='number of explorations')
+    parser.add_argument('--n_explore', type=int, default=int(2500), help='number of explorations')
 
     # multi threading
     parser.add_argument('--num_threads', type=int, default=8)
