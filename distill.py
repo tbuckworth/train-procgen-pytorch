@@ -25,7 +25,10 @@ def predict(policy, obs, hidden_state, done, with_grad=False):
         obs = torch.Tensor(obs).to(device=policy.device)
         # hidden_state = torch.FloatTensor(hidden_state).to(device=policy.device)
         # mask = torch.FloatTensor(1 - done).to(device=policy.device)
-        dist, value, hidden_state = policy(obs, hidden_state, hidden_state)
+        if policy.has_vq:
+            dist, value, hidden_state, commit_loss = policy(obs, hidden_state, hidden_state)
+        else:
+            dist, value, hidden_state = policy(obs, hidden_state, hidden_state)
         act = dist.sample()
     return dist.logits, act.cpu().numpy()
 
@@ -166,12 +169,19 @@ def distill(args, logdir_trained):
 
                 # Forward pass
                 # Y_pred, _ = predict(new_policy, obs_batch, hidden_state, done, with_grad=True)
-                dist_batch, value_batch, _ = new_policy(obs_batch, hidden_state, hidden_state)
+                if new_policy.has_vq:
+                    dist_batch, value_batch, _, commit_loss = new_policy(obs_batch, hidden_state, hidden_state)
+                else:
+                    dist_batch, value_batch, _ = new_policy(obs_batch, hidden_state, hidden_state)
                 Y_pred = dist_batch.logits
                 loss = criterion(Y_pred.squeeze(), Y_batch.squeeze())
 
-                # Backward pass
-                loss.backward()
+                if new_policy.has_vq:
+                    total_loss = loss + commit_loss
+                    total_loss.backward()
+                else:
+                    # Backward pass
+                    loss.backward()
                 optimizer.step()
 
                 epoch_loss += loss.item() * len(Y_batch)
