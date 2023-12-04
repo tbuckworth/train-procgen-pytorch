@@ -228,7 +228,7 @@ class PPO_VQ(BaseAgent):
                  normalize_rew=True,
                  use_gae=True,
                  **kwargs):
-        super(PPO, self).__init__(env, policy, logger, storage, device,
+        super(PPO_VQ, self).__init__(env, policy, logger, storage, device,
                                   n_checkpoints, env_valid, storage_valid)
         assert (policy.has_vq)
         self.n_steps = n_steps
