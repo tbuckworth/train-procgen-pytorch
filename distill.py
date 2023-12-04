@@ -103,6 +103,7 @@ def collect_validation_data(policy, device, args, hyperparameters, hidden_state,
     obs, rew, done, logits = collect_obs(policy, first_obs, hidden_state, done, valid_env, n_states, return_logits=True)
     return torch.Tensor(obs).to(device), logits
 
+
 def validate(new_policy, valid_X, valid_Y_gold, criterion, hidden_state):
     if new_policy.has_vq:
         dist_batch, value_batch, _, commit_loss = new_policy(valid_X, hidden_state, hidden_state)
@@ -111,6 +112,7 @@ def validate(new_policy, valid_X, valid_Y_gold, criterion, hidden_state):
     Y_pred = dist_batch.logits
     loss = criterion(Y_pred.squeeze(), valid_Y_gold.squeeze())
     return loss.item() * len(valid_Y_gold)
+
 
 def distill(args, logdir_trained):
     logdir = os.path.join('logs', 'distill', "coinrun", "distill")
@@ -139,7 +141,8 @@ def distill(args, logdir_trained):
     new_policy.device = device
     log = pd.DataFrame(columns=["Exploration", "Epoch", "Loss", "Valid_Loss", "Mean_Reward"])
 
-    valid_X, valid_Y_gold = collect_validation_data(policy, device, args, hyperparameters, hidden_state, done, n_states=explore_size)
+    valid_X, valid_Y_gold = collect_validation_data(policy, device, args, hyperparameters, hidden_state, done,
+                                                    n_states=explore_size)
 
     if args.use_wandb:
         wandb.login(key="cfc00eee102a1e9647b244a40066bfc5f1a96610")
@@ -161,7 +164,7 @@ def distill(args, logdir_trained):
         done = done[shuffle_index]
         N_batchs = int(len(obs) / batch_size)
         Y_gold, _ = predict(policy, obs, hidden_state, done)
-        threshold = None
+        loss_diffs = []
         for epoch in range(args.nb_epoch):
             epoch_loss = 0.0
             for i in range(N_batchs):
@@ -189,9 +192,10 @@ def distill(args, logdir_trained):
                 epoch_loss += loss.item() * len(Y_batch)
 
             valid_loss = validate(new_policy, valid_X, valid_Y_gold, criterion, hidden_state)
-            if threshold is None:
-                threshold = valid_loss - epoch_loss
-            elif valid_loss - epoch_loss > threshold:
+
+            threshold = valid_loss - epoch_loss
+            loss_diffs.append(threshold)
+            if len(loss_diffs) > 10 and valid_loss - epoch_loss > min(loss_diffs) + np.std(loss_diffs):
                 break
 
         print(f'Epoch {epoch}: total train loss: {epoch_loss:.5f}, valid loss: {valid_loss:.5f}')
