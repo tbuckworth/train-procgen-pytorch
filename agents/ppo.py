@@ -223,6 +223,7 @@ class PPO_VQ(BaseAgent):
                  value_coef=0.5,
                  entropy_coef=0.01,
                  x_entropy_coef=0.,
+                 commit_coef=1.0,
                  normalize_adv=True,
                  normalize_rew=True,
                  use_gae=True,
@@ -244,6 +245,7 @@ class PPO_VQ(BaseAgent):
         self.value_coef = value_coef
         self.entropy_coef = entropy_coef
         self.x_entropy_coef = x_entropy_coef
+        self.commit_coef = commit_coef
         self.normalize_adv = normalize_adv
         self.normalize_rew = normalize_rew
         self.use_gae = use_gae
@@ -308,7 +310,11 @@ class PPO_VQ(BaseAgent):
                 # Policy Entropy
                 # entropy_loss = dist_batch.entropy().mean()
                 x_batch_ent_loss, entropy_loss, = cross_batch_entropy(dist_batch)
-                loss = pi_loss + self.value_coef * value_loss - self.entropy_coef * entropy_loss - self.x_entropy_coef * x_batch_ent_loss + commit_loss
+                loss = pi_loss \
+                       + self.value_coef * value_loss \
+                       - self.entropy_coef * entropy_loss \
+                       - self.x_entropy_coef * x_batch_ent_loss \
+                       + self.commit_coef * commit_loss
                 loss.backward()
 
                 # Let model to handle the large batch-size with small gpu-memory
