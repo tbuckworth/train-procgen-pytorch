@@ -142,7 +142,7 @@ def distill(args, logdir_trained):
     log = pd.DataFrame(columns=["Exploration", "Epoch", "Loss", "Valid_Loss", "Mean_Reward"])
 
     valid_X, valid_Y_gold = collect_validation_data(policy, device, args, hyperparameters, hidden_state, done,
-                                                    n_states=explore_size)
+                                                    n_states=explore_size//32)
 
     if args.use_wandb:
         wandb.login(key="cfc00eee102a1e9647b244a40066bfc5f1a96610")
