@@ -114,6 +114,18 @@ def validate(new_policy, valid_X, valid_Y_gold, criterion, hidden_state):
     return loss.item() * len(valid_Y_gold)
 
 
+def predict_in_batches(policy, obs, hidden_state, done, batch_size=32*8):
+    N_batchs = int(len(obs) / batch_size)
+    for i in range(N_batchs):
+        obs_batch = obs[i * batch_size: (i + 1) * batch_size]
+        Y_gold, _ = predict(policy, obs_batch, hidden_state, done)
+        if i == 0:
+            total = Y_gold
+        else:
+            total = torch.cat(total, Y_gold, dim=0)
+    return total
+
+
 def distill(args, logdir_trained):
     logdir = os.path.join('logs', 'distill', "coinrun", "distill")
     run_name = time.strftime("%Y-%m-%d__%H-%M-%S") + f'__seed_{args.seed}'
@@ -163,7 +175,9 @@ def distill(args, logdir_trained):
         obs_tensor = torch.Tensor(obs[shuffle_index]).to(device)
         done = done[shuffle_index]
         N_batchs = int(len(obs) / batch_size)
-        Y_gold, _ = predict(policy, obs, hidden_state, done)
+        # Y_gold, _ = predict(policy, obs, hidden_state, done)
+        Y_gold = predict_in_batches(policy, obs, hidden_state, done)
+
         loss_diffs = []
         for epoch in range(args.nb_epoch):
             epoch_loss = 0.0
@@ -191,7 +205,7 @@ def distill(args, logdir_trained):
 
                 epoch_loss += loss.item() * len(Y_batch)
 
-            valid_loss = validate(new_policy, valid_X, valid_Y_gold, criterion, hidden_state)
+        valid_loss = validate(new_policy, valid_X, valid_Y_gold, criterion, hidden_state)
 
             # threshold = valid_loss - epoch_loss
             # loss_diffs.append(threshold)
