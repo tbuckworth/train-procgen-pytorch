@@ -7,10 +7,12 @@ from common.model import NatureModel, ImpalaModel, VQMHAModel, ImpalaVQModel, Im
 from common.policy import CategoricalPolicy
 from moviepy.editor import ImageSequenceClip
 
+
 def match(a, b):
     a = a.tolist()
     b = b.tolist()
     return np.array([b.index(x) for x in a if x in b])
+
 
 def save_gif(frames, filename="test.gif", fps=20):
     frames = np.array(frames.transpose(0, 2, 3, 1) * 255, dtype=np.uint8)
@@ -41,7 +43,7 @@ def print_values_actions(action_names, pi, value, i="", rewards=None):
 def match(a, b, dtype=np.int32):
     a = a.tolist()
     b = b.tolist()
-    return np.array([b.index(x) for x in a if x in b],dtype=dtype)
+    return np.array([b.index(x) for x in a if x in b], dtype=dtype)
 
 
 def get_combos(env):
@@ -89,7 +91,9 @@ def initialize_model(device, env, hyperparameters):
         has_vq = True
         mha_layers = hyperparameters.get("mha_layers", 1)
         use_vq = hyperparameters.get("use_vq", True)
-        model = ImpalaVQMHAModel(in_channels=in_channels, mha_layers=mha_layers, device=device, use_vq=use_vq)
+        in_place_optim = hyperparameters.get("in_place_optim_vq", True)
+        model = ImpalaVQMHAModel(in_channels=in_channels, mha_layers=mha_layers, device=device, use_vq=use_vq,
+                                 in_place_optimize_vq=in_place_optim)
     elif architecture == 'impalafsq':
         model = ImpalaFSQModel(in_channels=in_channels)
     # Discrete action space

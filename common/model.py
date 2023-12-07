@@ -313,7 +313,7 @@ class GlobalSelfAttention(BaseAttention):
 
 
 class ImpalaVQMHAModel(nn.Module):
-    def __init__(self, in_channels, mha_layers, device, use_vq=True, **kwargs):
+    def __init__(self, in_channels, mha_layers, device, in_place_optimize_vq, use_vq=True, **kwargs):
         super(ImpalaVQMHAModel, self).__init__()
         hid_channels = 16
         latent_dim = 32
@@ -332,7 +332,11 @@ class ImpalaVQMHAModel(nn.Module):
         # decay=.99,cc=.25 is the VQ-VAE values
         if use_vq:
             # pass in in-place codebook optimizer? think this trains the codebook every time you use it.
-            self.vq = VectorQuantize(dim=latent_dim-2, codebook_size=128, decay=.8, commitment_weight=1.)
+            if in_place_optimize_vq:
+                self.vq = VectorQuantize(dim=latent_dim - 2, codebook_size=128, decay=.8, commitment_weight=1.,
+                                         in_place_codebook_optimizer=torch.optim.adam)
+            else:
+                self.vq = VectorQuantize(dim=latent_dim-2, codebook_size=128, decay=.8, commitment_weight=1.)
         # self.mhas = [GlobalSelfAttention(shape=(256), num_heads=8, embed_dim=256, dropout=0.1) for _ in range(mha_layers)]
         self.mha1 = GlobalSelfAttention(shape=(n_latents, latent_dim), num_heads=4, embed_dim=latent_dim, dropout=0.1)
         self.mha2 = GlobalSelfAttention(shape=(n_latents, latent_dim), num_heads=4, embed_dim=latent_dim, dropout=0.1)
