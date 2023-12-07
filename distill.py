@@ -122,7 +122,7 @@ def predict_in_batches(policy, obs, hidden_state, done, batch_size=32*8):
         if i == 0:
             total = Y_gold
         else:
-            total = torch.cat(total, Y_gold, dim=0)
+            total = torch.cat((total, Y_gold), dim=0)
     return total
 
 
