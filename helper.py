@@ -91,11 +91,11 @@ def initialize_model(device, env, hyperparameters):
         has_vq = True
         mha_layers = hyperparameters.get("mha_layers", 1)
         use_vq = hyperparameters.get("use_vq", True)
-        in_place_optim = hyperparameters.get("in_place_optim_vq", True)
-        model = ImpalaVQMHAModel(in_channels=in_channels, mha_layers=mha_layers, device=device, use_vq=use_vq,
-                                 in_place_optimize_vq=in_place_optim)
+        model = ImpalaVQMHAModel(in_channels=in_channels, mha_layers=mha_layers, device=device, use_vq=use_vq)
     elif architecture == 'impalafsq':
         model = ImpalaFSQModel(in_channels=in_channels)
+    elif architecture == 'implafsqmha':
+        model = ImpalaFSQModel(in_channels, device, use_mha=True)
     # Discrete action space
     recurrent = hyperparameters.get('recurrent', False)
     if isinstance(action_space, gym.spaces.Discrete):

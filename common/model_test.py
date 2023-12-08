@@ -24,18 +24,18 @@ class MyTestCase(unittest.TestCase):
         cls.obs = torch.FloatTensor(cls.env.reset())
 
     def test_ImpalaVQMHAModel(self):
-        model = ImpalaVQMHAModel(self.in_channels, 1, self.device, use_vq=False)
+        model = ImpalaVQMHAModel(self.in_channels, 1, self.device, use_vq=True)
         model.forward(self.obs)
         summary(model, self.obs.shape)
         hyperparameters = {"architecture": "impalavqmha",
                            "mha_layers": 2,
-                           "use_vq": False,
+                           "use_vq": True,
                            }
         model, obs_shape, policy = initialize_model(self.device, self.env, hyperparameters)
         policy.forward(self.obs, None, None)
 
     def test_ImpalaFSQModel(self):
-        model = ImpalaFSQModel(self.in_channels)
+        model = ImpalaFSQModel(self.in_channels, self.device, use_mha=True)
         model.forward(self.obs)
         summary(model, self.obs.shape)
 

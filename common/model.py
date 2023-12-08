@@ -250,14 +250,19 @@ class ImpalaVQModel(nn.Module):
         return quantized
 
 class ImpalaFSQModel(nn.Module):
-    def __init__(self, in_channels, **kwargs):
+    def __init__(self, in_channels, device, use_mha=False, **kwargs):
         super(ImpalaFSQModel, self).__init__()
+        self.use_mha = use_mha
+        self.device = device
         self.block1 = ImpalaBlock(in_channels=in_channels, out_channels=16 * scale)
         self.block2 = ImpalaBlock(in_channels=16 * scale, out_channels=32 * scale)
         self.block3 = ImpalaBlock(in_channels=32 * scale, out_channels=3 * scale)
         levels = [8, 6, 5]
         self.vq = FSQ(levels)
-        self.max_pool = nn.MaxPool1d(kernel_size=3, stride=1)
+        if self.use_mha:
+            self.mha1 = GlobalSelfAttention(shape=(64, 5), num_heads=5, embed_dim=5, dropout=0.1)
+
+        self.max_pool = nn.MaxPool1d(kernel_size=5, stride=1)
         self.fc = nn.Linear(in_features=64, out_features=256)
 
         # self.vq = VectorQuantize(dim=256, codebook_size=128, decay=.8, commitment_weight=1.)
@@ -271,9 +276,22 @@ class ImpalaFSQModel(nn.Module):
         x = self.block3(x)
         x = nn.ReLU()(x)
         x = x.permute(0, 2, 3, 1)
-        x = entities_flatten(x)
-        x, indices = self.vq(x)
-        # print(x.shape)
+
+        # Extract coordinates
+        coor = get_coor(x)
+        # Flatten
+        flat_coor = entities_flatten(coor).to(device=self.device)
+        flattened_features = entities_flatten(x)
+
+        # Quantize
+        x, indices = self.vq(flattened_features)
+
+        # Add Co-ordinates to quantized latents
+        x = torch.concat([x, flat_coor], axis=2)
+
+        # Add mha layers
+        if self.use_mha:
+            x = self.mha1(x)
         x = self.max_pool(x)
         x = x.permute(0, 2, 1)
         # print(x.shape)
@@ -313,7 +331,7 @@ class GlobalSelfAttention(BaseAttention):
 
 
 class ImpalaVQMHAModel(nn.Module):
-    def __init__(self, in_channels, mha_layers, device, in_place_optimize_vq, use_vq=True, **kwargs):
+    def __init__(self, in_channels, mha_layers, device, use_vq=True, **kwargs):
         super(ImpalaVQMHAModel, self).__init__()
         hid_channels = 16
         latent_dim = 32
@@ -332,11 +350,7 @@ class ImpalaVQMHAModel(nn.Module):
         # decay=.99,cc=.25 is the VQ-VAE values
         if use_vq:
             # pass in in-place codebook optimizer? think this trains the codebook every time you use it.
-            if in_place_optimize_vq:
-                self.vq = VectorQuantize(dim=latent_dim - 2, codebook_size=128, decay=.8, commitment_weight=1.,
-                                         in_place_codebook_optimizer=torch.optim.adam)
-            else:
-                self.vq = VectorQuantize(dim=latent_dim-2, codebook_size=128, decay=.8, commitment_weight=1.)
+            self.vq = VectorQuantize(dim=latent_dim-2, codebook_size=128, decay=.8, commitment_weight=1.)
         # self.mhas = [GlobalSelfAttention(shape=(256), num_heads=8, embed_dim=256, dropout=0.1) for _ in range(mha_layers)]
         self.mha1 = GlobalSelfAttention(shape=(n_latents, latent_dim), num_heads=4, embed_dim=latent_dim, dropout=0.1)
         self.mha2 = GlobalSelfAttention(shape=(n_latents, latent_dim), num_heads=4, embed_dim=latent_dim, dropout=0.1)
@@ -375,7 +389,10 @@ class ImpalaVQMHAModel(nn.Module):
         x = self.mha1(x)
         x = self.mha2(x)
         x = self.max_pool(x)
-        return x.squeeze(), commit_loss
+        if self.use_vq:
+            return x.squeeze(), commit_loss
+        else:
+            return x.squeeze()
 
     def print_if_nan(self, name, print_nans, x):
         if print_nans:

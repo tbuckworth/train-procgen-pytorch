@@ -141,7 +141,6 @@ hard-500-impalavqmha:
     architecture: impalavqmha
     recurrent: False
     mha_layers: 2
-    in_place_optim_vq: True
 
 hard-500-impalamha:
     algo: ppo
