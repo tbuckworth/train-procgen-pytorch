@@ -94,8 +94,10 @@ def initialize_model(device, env, hyperparameters):
         model = ImpalaVQMHAModel(in_channels=in_channels, mha_layers=mha_layers, device=device, use_vq=use_vq)
     elif architecture == 'impalafsq':
         model = ImpalaFSQModel(in_channels=in_channels)
-    elif architecture == 'implafsqmha':
+    elif architecture == 'impalafsqmha':
         model = ImpalaFSQModel(in_channels, device, use_mha=True)
+    else:
+        raise NotImplementedError(f"Architecture:{architecture} not found in helper.py")
     # Discrete action space
     recurrent = hyperparameters.get('recurrent', False)
     if isinstance(action_space, gym.spaces.Discrete):

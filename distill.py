@@ -255,7 +255,7 @@ if __name__ == "__main__":
     parser.add_argument('--wandb_tags', type=str, nargs='+')
     parser.add_argument('--lr', type=float, default=float(1e-4), help='learning rate')
     parser.add_argument('--batch_size', type=int, default=int(8192), help='batch size')
-    parser.add_argument('--nb_epoch', type=int, default=int(1e3), help='number of epochs per exploration')
+    parser.add_argument('--nb_epoch', type=int, default=int(10), help='number of epochs per exploration')
     parser.add_argument('--explore_size', type=int, default=int(256 * 256), help='size of each exploration')
     parser.add_argument('--n_explore', type=int, default=int(300), help='number of explorations')
 
