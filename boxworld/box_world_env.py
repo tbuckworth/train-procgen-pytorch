@@ -6,10 +6,10 @@ from gym.spaces import Box
 import matplotlib.pyplot as plt
 from collections import deque
 
-from gym3 import FromGymEnv, ViewerWrapper, ToBaselinesVecEnv, vectorize_gym
-
-from boxworld_gen import *
-from common.env.procgen_wrappers import VecExtractDictObs, VecNormalize, TransposeFrame, ScaledFloatFrame
+# from gym3 import FromGymEnv, ViewerWrapper, ToBaselinesVecEnv, vectorize_gym
+import numpy as np
+from .boxworld_gen import is_empty, wall_color, goal_color, update_color, grid_color, world_gen
+# from common.env.procgen_wrappers import VecExtractDictObs, VecNormalize, TransposeFrame, ScaledFloatFrame
 
 
 # def boxworld_gym3(n, goal_length, num_distractor, distractor_length, max_steps=10**6, collect_key=True, world=None, render_mode=None, seed=None):
@@ -18,35 +18,7 @@ from common.env.procgen_wrappers import VecExtractDictObs, VecNormalize, Transpo
 #
 #     return env3
 
-def registerAndCreateBoxWorld(env_args, seed):
-    boxWorldId = 'BoxWorld-v0'  # It is best practice to have a space name and version number.
 
-    gym.envs.registration.register(
-        id=boxWorldId,
-        entry_point=BoxWorld,
-        max_episode_steps=env_args.max_steps,  # Customize to your needs.
-        reward_threshold=10  # Customize to your needs.
-    )
-    env_args["id"] = boxWorldId
-    env = vectorize_gym(num=env_args.n_envs, env_kwargs=env_args, seed=seed)
-    return env
-
-
-def create_box_world_env(env_args, render, normalize_rew=True):
-    if render:
-        env_args["render_mode"] = "rgb_array"
-    venv = registerAndCreateBoxWorld(env_args, seed=env_args.seed)
-    if render:
-        # could create a mirrorFrame wrapper that goes on gym3 envs, and put before the viewer...
-        venv = ViewerWrapper(venv, info_key="rgb")
-    venv = ToBaselinesVecEnv(venv)
-    venv = VecExtractDictObs(venv, "rgb")
-    if normalize_rew:
-        venv = VecNormalize(venv, ob=False)  # normalizing returns, but not
-        # the img frames
-    venv = TransposeFrame(venv)
-    venv = ScaledFloatFrame(venv)
-    return venv
 
 
 class BoxWorld(gym.Env):

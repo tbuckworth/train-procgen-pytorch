@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 
 from .misc_util import orthogonal_init, xavier_uniform_init
@@ -22,6 +24,7 @@ def get_coor(input_tensor):
     """
     # batch_size = tf.shape(input_tensor)[0]
     batch_size, height, width, _ = input_tensor.shape
+    # change to -1:+1 as in deep rl w/ inductive biases (ICLR 2019)?
     coor = [[[h / height, w / width] for w in range(width)] for h in range(height)]
     coor = torch.unsqueeze(torch.Tensor(coor), axis=0)
     # [1,Height,W,2] --> [B,Height,W,2]
@@ -329,17 +332,23 @@ class GlobalSelfAttention(BaseAttention):
         )
         return attn_weight
 
+def halve_rounding_n_times(x, n_impala_blocks):
+    for _ in range(n_impala_blocks):
+        x = math.ceil(x / 2)
+    return x
 
 class ImpalaVQMHAModel(nn.Module):
-    def __init__(self, in_channels, mha_layers, device, use_vq=True, **kwargs):
+    def __init__(self, in_channels, mha_layers, device, obs_shape, use_vq=True, **kwargs):
         super(ImpalaVQMHAModel, self).__init__()
         hid_channels = 16
         latent_dim = 32
-        input_shape = (3, 64, 64)
+        input_shape = obs_shape
         n_impala_blocks = 3
         # Each impala block halves input height and width.
         # These are flattened before VQ (hence prod)
-        n_latents = int(np.prod([x/(2**n_impala_blocks) for x in input_shape[1:]]))
+        # n_latents = int(np.prod([x/(2**n_impala_blocks) for x in input_shape[1:]]))
+
+        n_latents = int(np.prod([halve_rounding_n_times(x, n_impala_blocks) for x in input_shape[1:]]))
 
         self.device = device
         self.use_vq = use_vq
@@ -358,6 +367,8 @@ class ImpalaVQMHAModel(nn.Module):
 
         self.output_dim = n_latents
         self.apply(xavier_uniform_init)
+
+
 
     def forward(self, x, print_nans=False):
         # Impala Blocks
@@ -398,6 +409,63 @@ class ImpalaVQMHAModel(nn.Module):
         if print_nans:
             print(f"{name}:{'nans' if x.isnan().any() else ''}\n{x}")
 
+
+class ribMHA(nn.Module):
+    def __init__(self, in_channels, device, **kwargs):
+        super(ribMHA, self).__init__()
+
+        self.device = device
+        n_latents = in_channels
+        latent_dim = in_channels
+
+        self.conv1 = nn.Conv2d(in_channels=in_channels, out_channels=12, kernel_size=2, stride=1, padding=1)
+        self.conv2 = nn.Conv2d(in_channels=12, out_channels=30, kernel_size=2, stride=1, padding=1)
+
+        self.mha1 = GlobalSelfAttention(shape=(256, 32), num_heads=4, embed_dim=32, dropout=0.1)
+        self.mha2 = GlobalSelfAttention(shape=(256, 32), num_heads=4, embed_dim=32, dropout=0.1)
+        self.max_pool = nn.MaxPool1d(kernel_size=32, stride=1)
+
+        self.fc1 = nn.Linear(256, 256)
+        self.fc2 = nn.Linear(256, 256)
+        self.fc3 = nn.Linear(256, 256)
+        self.fc4 = nn.Linear(256, 256)
+
+        self.output_dim = 256
+        self.apply(xavier_uniform_init)
+
+
+
+    def forward(self, x, print_nans=False):
+        # Impala Blocks
+        x = self.conv1(x)
+        x = self.conv2(x)
+        x = nn.ReLU()(x)
+
+        # Move channels to end
+        x = x.permute(0, 2, 3, 1)
+        # Extract coordinates
+        coor = get_coor(x)
+        # Flatten
+        flat_coor = entities_flatten(coor).to(device=self.device)
+        x = entities_flatten(x)
+
+        # Add Co-ordinates to quantized latents
+        x = torch.concat([x, flat_coor], axis=2)
+
+        x = self.mha1(x)
+        x = self.mha2(x)
+        x = self.max_pool(x)
+        x = x.squeeze()
+        x = self.fc1(x)
+        x = nn.ReLU()(x)
+        x = self.fc2(x)
+        x = nn.ReLU()(x)
+        x = self.fc3(x)
+        x = nn.ReLU()(x)
+        x = self.fc4(x)
+        x = nn.ReLU()(x)
+
+        return x
 
 class ResidualStack(nn.Module):
     def __init__(self, num_hiddens, num_residual_layers, num_residual_hiddens):

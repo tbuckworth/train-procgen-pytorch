@@ -1,1 +1,1 @@
-from .box_world_env import boxworld
+from .box_world_env import BoxWorld

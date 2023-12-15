@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import yaml
 
-from common.model import NatureModel, ImpalaModel, VQMHAModel, ImpalaVQModel, ImpalaVQMHAModel, ImpalaFSQModel
+from common.model import NatureModel, ImpalaModel, VQMHAModel, ImpalaVQModel, ImpalaVQMHAModel, ImpalaFSQModel, ribMHA
 from common.policy import CategoricalPolicy
 from moviepy.editor import ImageSequenceClip
 
@@ -91,11 +91,13 @@ def initialize_model(device, env, hyperparameters):
         has_vq = True
         mha_layers = hyperparameters.get("mha_layers", 1)
         use_vq = hyperparameters.get("use_vq", True)
-        model = ImpalaVQMHAModel(in_channels=in_channels, mha_layers=mha_layers, device=device, use_vq=use_vq)
+        model = ImpalaVQMHAModel(in_channels=in_channels, mha_layers=mha_layers, device=device, use_vq=use_vq, obs_shape=observation_shape)
     elif architecture == 'impalafsq':
         model = ImpalaFSQModel(in_channels=in_channels)
     elif architecture == 'impalafsqmha':
         model = ImpalaFSQModel(in_channels, device, use_mha=True)
+    elif architecture == 'ribmha':
+        model = ribMHA(in_channels, device)
     else:
         raise NotImplementedError(f"Architecture:{architecture} not found in helper.py")
     # Discrete action space
