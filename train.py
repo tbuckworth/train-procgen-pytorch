@@ -150,16 +150,15 @@ if __name__ == '__main__':
 
     def create_bw_env(args, hyperparameters, is_valid=False):
         # n, goal_length, num_distractor, distractor_length, max_steps = 10 ** 6, collect_key = True, world = None, render_mode = None, seed = None
-        env_args = args.copy
-        env_args["n_envs"] = n_envs
+        env_args = {"n_envs": n_envs,
+                    "n": hyperparameters.get('grid_size', 12),
+                    "goal_length": hyperparameters.get('goal_length', 5),
+                    "num_distractor": hyperparameters.get('num_distractor', 0),
+                    "distractor_length": hyperparameters.get('distractor_length', 0),
+                    "max_steps": 10 ** 6,
+                    "seed": args.seed,
+                    }
         normalize_rew = hyperparameters.get('normalize_rew', True)
-        env_args["n"] = hyperparameters.get('grid_size', 12)
-        env_args["goal_length"] = hyperparameters.get('goal_length', 5)
-        env_args["num_distractor"] = hyperparameters.get('num_distractor', 0)
-        env_args["distractor_length"] = hyperparameters.get('distractor_length', 0)
-        env_args["seed"] = args.seed
-        # reduce max_steps?
-        env_args["max_steps"] = 10**6
         if is_valid:
             env_args["n"] = hyperparameters.get('grid_size_v', 12)
             env_args["goal_length"] = hyperparameters.get('goal_length_v', 5)
