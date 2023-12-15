@@ -1,4 +1,4 @@
-from boxworld.box_world_env import create_box_world_env
+from boxworld.create_box_world import create_box_world_env
 from common.env.procgen_wrappers import *
 from common.logger import Logger
 from common.storage import Storage
