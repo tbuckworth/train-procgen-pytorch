@@ -147,7 +147,7 @@ if __name__ == '__main__':
         venv = TransposeFrame(venv)
         venv = ScaledFloatFrame(venv)
         return venv
-    print("Defining bw env")
+
     def create_bw_env(args, hyperparameters, is_valid=False):
         # n, goal_length, num_distractor, distractor_length, max_steps = 10 ** 6, collect_key = True, world = None, render_mode = None, seed = None
         env_args = {"n_envs": n_envs,
@@ -167,12 +167,9 @@ if __name__ == '__main__':
             env_args["seed"] = args.seed + 100
         return create_box_world_env(env_args, render=False, normalize_rew=normalize_rew)
 
-    print("bw defined")
     if args.env_name == "boxworld":
         create_venv = create_bw_env
-    print("Creating Env")
     env = create_venv(args, hyperparameters)
-    print("Creating Validation Env")
     env_valid = create_venv(args, hyperparameters, is_valid=True)
 
 
