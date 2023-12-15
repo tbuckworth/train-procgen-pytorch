@@ -155,7 +155,7 @@ if __name__ == '__main__':
                     "goal_length": hyperparameters.get('goal_length', 5),
                     "num_distractor": hyperparameters.get('num_distractor', 0),
                     "distractor_length": hyperparameters.get('distractor_length', 0),
-                    "max_steps": 10 ** 6,
+                    "max_steps": 10 ** 3,
                     "seed": args.seed,
                     }
         normalize_rew = hyperparameters.get('normalize_rew', True)
