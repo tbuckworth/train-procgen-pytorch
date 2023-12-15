@@ -217,7 +217,11 @@ if __name__ == '__main__':
         cfg.update(hyperparameters)
         name = f"{hyperparameters['architecture']}-{np.random.randint(1e5)}"
         wb_resume = "allow" if args.model_file is None else "must"
-        wandb.init(project="Coinrun VQMHA", config=cfg, sync_tensorboard=True,
+        if env_name == "boxworld":
+            project = "Box-World"
+        else:
+            project = "Coinrun VQMHA"
+        wandb.init(project=project, config=cfg, sync_tensorboard=True,
                    tags=args.wandb_tags, resume=wb_resume, name=name)
 
     ###########
