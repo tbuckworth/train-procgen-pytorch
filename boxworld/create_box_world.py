@@ -5,7 +5,7 @@ from boxworld.box_world_env import BoxWorld
 from common.env.procgen_wrappers import VecExtractDictObs, VecNormalize, TransposeFrame, ScaledFloatFrame
 
 
-def vectorizeBoxWorld(env_args, n_envs, seed):
+def vectorizeBoxWorld(env_args, n_envs, seed, use_subproc=True):
     # boxWorldId = 'BoxWorld-v0'  # It is best practice to have a space name and version number.
 
     # gym.envs.registration.register(
@@ -15,7 +15,7 @@ def vectorizeBoxWorld(env_args, n_envs, seed):
     #     reward_threshold=10  # Customize to your needs.
     # )
     # env_args["id"] = boxWorldId
-    env = vectorize_gym(num=n_envs, env_kwargs=env_args, seed=seed, env_fn=make_boxworld)
+    env = vectorize_gym(num=n_envs, env_kwargs=env_args, seed=seed, env_fn=make_boxworld, use_subproc=use_subproc)
     return env
 
 def make_boxworld(n, goal_length, num_distractor, distractor_length, max_steps=10**6, collect_key=True, world=None):
@@ -30,6 +30,7 @@ def create_box_world_env(env_args, render, normalize_rew=True):
     del env_args["n_envs"]
     seed = env_args["seed"]
     del env_args["seed"]
+    #use_subproc?
     venv = vectorizeBoxWorld(env_args, n_envs=n_envs, seed=seed)
     if render:
         # could create a mirrorFrame wrapper that goes on gym3 envs, and put before the viewer...
