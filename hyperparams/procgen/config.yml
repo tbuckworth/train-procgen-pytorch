@@ -407,7 +407,7 @@ boxworld-impala:
 
 boxworld-ribmha:
     algo: ppo
-    n_envs: 64
+    n_envs: 32
     n_steps: 256
     epoch: 3
     mini_batch_per_epoch: 8
