@@ -18,7 +18,7 @@ from common.env.procgen_wrappers import VecExtractDictObs, VecNormalize, Transpo
 #
 #     return env3
 
-def registerAndCreateBoxWorld(env_args):
+def registerAndCreateBoxWorld(env_args, seed):
     boxWorldId = 'BoxWorld-v0'  # It is best practice to have a space name and version number.
 
     gym.envs.registration.register(
@@ -28,14 +28,14 @@ def registerAndCreateBoxWorld(env_args):
         reward_threshold=10  # Customize to your needs.
     )
     env_args["id"] = boxWorldId
-    env = vectorize_gym(num=env_args.n_envs, env_kwargs=env_args)
+    env = vectorize_gym(num=env_args.n_envs, env_kwargs=env_args, seed=seed)
     return env
 
 
 def create_box_world_env(env_args, render, normalize_rew=True):
     if render:
         env_args["render_mode"] = "rgb_array"
-    venv = registerAndCreateBoxWorld(env_args)
+    venv = registerAndCreateBoxWorld(env_args, seed=env_args.seed)
     if render:
         # could create a mirrorFrame wrapper that goes on gym3 envs, and put before the viewer...
         venv = ViewerWrapper(venv, info_key="rgb")

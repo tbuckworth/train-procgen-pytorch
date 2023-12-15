@@ -149,12 +149,23 @@ if __name__ == '__main__':
         return venv
 
     def create_bw_env(args, hyperparameters, is_valid=False):
+        # reduce max_steps?
         # n, goal_length, num_distractor, distractor_length, max_steps = 10 ** 6, collect_key = True, world = None, render_mode = None, seed = None
-
+        env_args = args.copy
         normalize_rew = hyperparameters.get('normalize_rew', True)
-        return create_box_world_env(args, render=False, normalize_rew=normalize_rew)
+        env_args["n"] = hyperparameters.get('grid_size', 12)
+        env_args["goal_length"] = hyperparameters.get('goal_length', 5)
+        env_args["num_distractor"] = hyperparameters.get('num_distractor', 0)
+        env_args["distractor_length"] = hyperparameters.get('distractor_length', 0)
+        env_args["seed"] = args.seed
+        if is_valid:
+            env_args["n"] = hyperparameters.get('grid_size_v', 12)
+            env_args["goal_length"] = hyperparameters.get('goal_length_v', 5)
+            env_args["num_distractor"] = hyperparameters.get('num_distractor_v', 0)
+            env_args["distractor_length"] = hyperparameters.get('distractor_length_v', 0)
+            env_args["seed"] = args.seed + 100
+        return create_box_world_env(env_args, render=False, normalize_rew=normalize_rew)
 
-    # TODO:
     if args.env_name == "boxworld":
         create_venv = create_bw_env
 
