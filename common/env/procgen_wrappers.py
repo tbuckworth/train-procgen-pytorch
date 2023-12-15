@@ -364,7 +364,6 @@ class MirrorFrame(VecEnvWrapper):
         obs_shape = self.observation_space.shape
         self.observation_space = gym.spaces.Box(low=0, high=255, shape=obs_shape, dtype=np.float32)
         self.action_names = get_action_names(env)
-        # self.mirror_action_names = self.action_names.copy()
         self.mirror_act_names = np.array(
             [re.sub("LEFT", "RIGHT", x) if re.search("LEFT", x) else re.sub("RIGHT", "LEFT", x) for x in
              self.action_names]

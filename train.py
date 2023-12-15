@@ -1,3 +1,4 @@
+from boxworld.box_world_env import create_box_world_env
 from common.env.procgen_wrappers import *
 from common.logger import Logger
 from common.storage import Storage
@@ -146,6 +147,16 @@ if __name__ == '__main__':
         venv = TransposeFrame(venv)
         venv = ScaledFloatFrame(venv)
         return venv
+
+    def create_bw_env(args, hyperparameters, is_valid=False):
+        # n, goal_length, num_distractor, distractor_length, max_steps = 10 ** 6, collect_key = True, world = None, render_mode = None, seed = None
+
+        normalize_rew = hyperparameters.get('normalize_rew', True)
+        return create_box_world_env(args, render=False, normalize_rew=normalize_rew)
+
+    # TODO:
+    if args.env_name == "boxworld":
+        create_venv = create_bw_env
 
     env = create_venv(args, hyperparameters)
     env_valid = create_venv(args, hyperparameters, is_valid=True)
