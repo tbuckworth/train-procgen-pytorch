@@ -6,6 +6,7 @@ from .misc_util import orthogonal_init, xavier_uniform_init
 import torch.nn as nn
 import torch
 from vector_quantize_pytorch import VectorQuantize, FSQ
+from einops.layers.torch import Reduce
 
 
 def flatten_features(features):
@@ -419,13 +420,15 @@ class ribMHA(nn.Module):
         latent_dim = in_channels
 
         self.conv1 = nn.Conv2d(in_channels=in_channels, out_channels=12, kernel_size=2, stride=1, padding=1)
-        self.conv2 = nn.Conv2d(in_channels=12, out_channels=30, kernel_size=2, stride=1, padding=1)
+        self.conv2 = nn.Conv2d(in_channels=12, out_channels=62, kernel_size=2, stride=1, padding=1)
 
-        self.mha1 = GlobalSelfAttention(shape=(256, 32), num_heads=4, embed_dim=32, dropout=0.1)
-        self.mha2 = GlobalSelfAttention(shape=(256, 32), num_heads=4, embed_dim=32, dropout=0.1)
-        self.max_pool = nn.MaxPool1d(kernel_size=32, stride=1)
+        self.mha1 = GlobalSelfAttention(shape=(256, 64), num_heads=4, embed_dim=64, dropout=0.1)
+        # self.mha2 = GlobalSelfAttention(shape=(256, 64), num_heads=4, embed_dim=64, dropout=0.1)
+        # self.max_pool = nn.MaxPool1d(kernel_size=64, stride=1)
 
-        self.fc1 = nn.Linear(256, 256)
+        self.max_pool = Reduce('b h w -> b w', 'max')
+
+        self.fc1 = nn.Linear(64, 256)
         self.fc2 = nn.Linear(256, 256)
         self.fc3 = nn.Linear(256, 256)
         self.fc4 = nn.Linear(256, 256)
@@ -452,8 +455,9 @@ class ribMHA(nn.Module):
         # Add Co-ordinates to quantized latents
         x = torch.concat([x, flat_coor], axis=2)
 
+        # shared weights:
         x = self.mha1(x)
-        x = self.mha2(x)
+        x = self.mha1(x)
         x = self.max_pool(x)
         x = x.squeeze()
         x = self.fc1(x)
