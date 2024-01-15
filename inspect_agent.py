@@ -161,7 +161,7 @@ def swap_indexed_values_and_print(action_names, done, hidden_state, left_frame, 
 
 if __name__ == "__main__":
     # IMPALAFSQMHA:
-    main(logdir="logs/train/coinrun/coinrun/2023-12-08__17-11-08__seed_6033")
+    # main(logdir="logs/train/coinrun/coinrun/2023-12-08__17-11-08__seed_6033")
 
 
     # main(logdir="logs/train/coinrun/coinrun/2023-11-23__10-31-05__seed_6033/")
