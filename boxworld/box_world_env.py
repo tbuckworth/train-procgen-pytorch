@@ -1,5 +1,4 @@
 import gym
-import gym3
 from gym.spaces.discrete import Discrete
 from gym.spaces import Box
 
@@ -17,6 +16,7 @@ from .boxworld_gen import is_empty, wall_color, goal_color, update_color, grid_c
 #     env3 = FromGymEnv(env, render_mode, seed)
 #
 #     return env3
+
 
 
 
@@ -163,8 +163,9 @@ class BoxWorld(gym.Env):
                                "length": self.num_env_steps,
                                "solved": solved}
         self.last_frames.append(self.world)
-
-        return (self.world - grid_color[0])/255 * 2, reward, done, info
+        obs = (self.world - grid_color[0]) / 255 * 2
+        info["rgb"] = self.world.astype(np.uint8)
+        return obs, reward, done, info
 
     def reset(self, world=None):
         if world is None:

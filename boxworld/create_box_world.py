@@ -1,3 +1,4 @@
+import numpy as np
 from gym3 import vectorize_gym, ViewerWrapper, ToBaselinesVecEnv
 # from stable_baselines3.common.vec_env import VecExtractDictObs
 
@@ -23,9 +24,10 @@ def make_boxworld(n, goal_length, num_distractor, distractor_length, max_steps=1
 
 
 
-def create_box_world_env(env_args, render, normalize_rew=True):
-    if render:
-        env_args["render_mode"] = "rgb_array"
+def create_box_world_env(env_args_in, render, normalize_rew=True):
+    # if render:
+    #     env_args["render_mode"] = "rgb_array"
+    env_args = env_args_in.copy()
     n_envs = env_args["n_envs"]
     del env_args["n_envs"]
     seed = env_args["seed"]
@@ -33,7 +35,6 @@ def create_box_world_env(env_args, render, normalize_rew=True):
     #use_subproc?
     venv = vectorizeBoxWorld(env_args, n_envs=n_envs, seed=seed)
     if render:
-        # could create a mirrorFrame wrapper that goes on gym3 envs, and put before the viewer...
         venv = ViewerWrapper(venv, info_key="rgb")
     venv = ToBaselinesVecEnv(venv)
     # venv = VecExtractDictObs(venv, "rgb")
@@ -43,3 +44,27 @@ def create_box_world_env(env_args, render, normalize_rew=True):
     venv = TransposeFrame(venv)
     venv = ScaledFloatFrame(venv)
     return venv
+
+
+if __name__ == "__main__":
+    hyperparameters = {}
+    env_args = {"n_envs": 2,
+                "n": hyperparameters.get('grid_size', 12),
+                "goal_length": hyperparameters.get('goal_length', 5),
+                "num_distractor": hyperparameters.get('num_distractor', 0),
+                "distractor_length": hyperparameters.get('distractor_length', 0),
+                "max_steps": 10 ** 3,
+                "seed": 6033,
+                }
+    normalize_rew = hyperparameters.get('normalize_rew', True)
+    env = create_box_world_env(env_args, render=True, normalize_rew=normalize_rew)
+    num_actions = env.action_space.n
+
+    np.random.randint(0, num_actions, size=env_args["n_envs"])
+    while True:
+        actions = np.random.randint(0, num_actions, size=env_args["n_envs"])
+        # actions = np.array([np.random.choice(num_actions) for _ in range(env_args["n_envs"])])
+        next_obs, rew, done, info = env.step(actions)
+        if np.any(done):
+            print("done")
+
