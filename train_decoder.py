@@ -25,7 +25,7 @@ def retrieve_coinrun_data(device, frame_file="data/coinrun_random_frames_500.npy
 
     train_data = data[:train]
     valid_data = data[train:]
-
+    return train_data, valid_data, 0.0
     # train_data_variance = np.var(train_data / 255.0)
 
     data_t = torch.Tensor(train_data).to(device) / 255.0
@@ -34,11 +34,22 @@ def retrieve_coinrun_data(device, frame_file="data/coinrun_random_frames_500.npy
     return data_t, data_v, train_data_variance
 
 
-def validate(data, x, decoder, criterion):
-    #TODO: may need to split this into chunks
-    recon = decoder.forward(x)
-    loss = criterion(recon, data)
-    return loss.item() / len(data)
+def validate(data, encoder, decoder, criterion, device, batch_size=2048):
+    # #TODO: may need to split this into chunks
+    # recon = decoder.forward(x)
+    # loss = criterion(recon, data)
+    # return loss.item() / len(data)
+    total_loss = 0.
+    n_evals = 0
+    for i in range(len(data)//batch_size+1):
+        data_slice = data[i * batch_size:(i + 1) * batch_size]
+        obs_batch = torch.Tensor(data_slice/255.0).to(device)
+        x_batch = latents(encoder, obs_batch)
+        recon = decoder.forward(x_batch)
+        loss = criterion(obs_batch, recon)
+        total_loss += loss.item()
+        n_evals += len(obs_batch)
+    return total_loss / n_evals
 
 
 def train_decoder(args, trained_model_folder):
@@ -52,6 +63,7 @@ def train_decoder(args, trained_model_folder):
     hyperparameters = {"architecture": "VQ Decoder"}
 
     encoder = policy.embedder
+    encoder.device = device
     decoder = Decoder(
         embedding_dim=32,
         num_hiddens=64,
@@ -61,8 +73,8 @@ def train_decoder(args, trained_model_folder):
     )
     decoder.device = device
 
-    # TODO: may need to split this into chunks
-    valid_latents = latents(encoder, valid_data)
+    # TODO: valid_latents may be too large
+    # valid_latents = latents_by_batch(encoder, valid_data, device, batch_size=2048)
 
     nb_epoch = args.nb_epoch
     batch_size = args.batch_size
@@ -93,7 +105,8 @@ def train_decoder(args, trained_model_folder):
         n_evals = 0
         for i in range(n_batch):
             optimizer.zero_grad()
-            obs_batch = train_data[i * batch_size:(i + 1) * batch_size]
+            data_slice = train_data[i * batch_size:(i + 1) * batch_size]
+            obs_batch = torch.Tensor(data_slice/255.0).to(device)
             x_batch = latents(encoder, obs_batch)
             recon = decoder.forward(x_batch)
             loss = criterion(obs_batch, recon)
@@ -102,7 +115,7 @@ def train_decoder(args, trained_model_folder):
             epoch_loss += loss.item()
             n_evals += len(obs_batch)
         epoch_loss /= n_evals
-        valid_loss = validate(valid_data, valid_latents, decoder, criterion)
+        valid_loss = validate(valid_data, encoder, decoder, criterion, device)
         print(f"Epoch {epoch}: train loss: {epoch_loss:.5f}, {valid_loss:.5f}")
 
         if args.use_wandb:
@@ -124,6 +137,15 @@ def train_decoder(args, trained_model_folder):
     wandb.finish()
 
 
+# def latents_by_batch(encoder, valid_data, device, batch_size):
+#     for i in range(len(valid_data) // batch_size + 1):
+#         x = torch.Tensor(valid_data[i * batch_size:(i + 1) * batch_size] / 255.0).to(device)
+#         l = latents(encoder, x)
+#         if valid_latents is None:
+#             valid_latents = l
+#         else:
+#             valid_latents = torch.cat((l, valid_latents), dim=0)
+#     return valid_latents
 
 
 def latents(model, obs):
