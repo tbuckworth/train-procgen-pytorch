@@ -1,5 +1,6 @@
 import argparse
 import csv
+import os
 import random
 
 import numpy as np
@@ -143,5 +144,10 @@ if __name__ == "__main__":
     parser.add_argument('--lr', type=float, default=float(1e-5), help='learning rate')
     parser.add_argument('--batch_size', type=int, default=int(256), help='batch size')
     parser.add_argument('--nb_epoch', type=int, default=int(100), help='number of epochs per exploration')
+    args = parser.parse_args()
+    # If Windows:
+    if os.name == "nt":
+        args.device = "cpu"
+        args.use_wandb = False
     # Strong Impala:
-    train_decoder(logdir="logs/train/coinrun/coinrun/2023-10-31__10-49-30__seed_6033/")
+    train_decoder(args, "logs/train/coinrun/coinrun/2023-10-31__10-49-30__seed_6033/")
