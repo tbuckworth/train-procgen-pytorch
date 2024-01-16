@@ -3,7 +3,6 @@ import csv
 import os
 import random
 import re
-import time
 
 import numpy as np
 import pandas as pd
@@ -11,7 +10,7 @@ import torch
 
 from common.env.procgen_wrappers import create_env
 from common.storage import Storage
-from helper import initialize_model, get_hyperparams
+from helper import initialize_model, get_hyperparams, create_logdir
 from contextlib import nullcontext
 
 try:
@@ -127,11 +126,8 @@ def predict_in_batches(policy, obs, hidden_state, done, batch_size=32*8):
 
 
 def distill(args, logdir_trained):
-    logdir = os.path.join('logs', 'distill', "coinrun", "distill")
-    run_name = time.strftime("%Y-%m-%d__%H-%M-%S") + f'__seed_{args.seed}'
-    logdir = os.path.join(logdir, run_name)
-    if not (os.path.exists(logdir)):
-        os.makedirs(logdir)
+
+    logdir = create_logdir(args, 'distill', "coinrun", "distill")
 
     hyperparameters = get_hyperparams('hard-500-impalavqmha')
     batch_size = args.batch_size
@@ -204,7 +200,7 @@ def distill(args, logdir_trained):
                 optimizer.step()
 
                 epoch_loss += loss.item() * len(Y_batch)
-
+        # shouldn't valid_loss be one scope to the right?
         valid_loss = validate(new_policy, valid_X, valid_Y_gold, criterion, hidden_state)
 
             # threshold = valid_loss - epoch_loss

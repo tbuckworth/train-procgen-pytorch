@@ -1,3 +1,6 @@
+import os
+import time
+
 import gym
 import numpy as np
 import pandas as pd
@@ -122,3 +125,12 @@ def create_name_from_dict(prefix, suffix, specifications, exclusions=[]):
     if suffix == "":
         return f"{prefix}{outstr}"
     return f"{prefix}{outstr}.{suffix}"
+
+
+def create_logdir(args, folder, project, subfolder):
+    logdir = os.path.join('logs', folder, project, subfolder)
+    run_name = time.strftime("%Y-%m-%d__%H-%M-%S") + f'__seed_{args.seed}'
+    logdir = os.path.join(logdir, run_name)
+    if not (os.path.exists(logdir)):
+        os.makedirs(logdir)
+    return logdir
