@@ -63,7 +63,7 @@ def train_decoder(args, trained_model_folder):
     hyperparameters = {"architecture": "VQ Decoder"}
 
     encoder = policy.embedder
-    encoder.device = device
+    encoder.to(device)
     decoder = Decoder(
         embedding_dim=32,
         num_hiddens=64,
@@ -71,7 +71,7 @@ def train_decoder(args, trained_model_folder):
         num_residual_layers=2,
         num_residual_hiddens=32,
     )
-    decoder.device = device
+    decoder.to(device)
 
     # TODO: valid_latents may be too large
     # valid_latents = latents_by_batch(encoder, valid_data, device, batch_size=2048)
