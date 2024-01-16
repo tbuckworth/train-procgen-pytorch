@@ -43,10 +43,7 @@ def main(logdir, render=True):
 def load_policy(render, logdir, n_envs=None):
     # logdir = "logs/train/coinrun/coinrun/2023-10-31__10-49-30__seed_6033"
     # df = pd.read_csv(os.path.join(logdir, "log-append.csv"))
-    files = os.listdir(logdir)
-    pattern = r"model_(\d*)\.pth"
-    checkpoints = [int(re.search(pattern, x).group(1)) for x in files if re.search(pattern, x)]
-    last_model = os.path.join(logdir, f"model_{max(checkpoints)}.pth")
+    last_model = latest_model_path(logdir)
     device = torch.device('cpu')
     hyperparameters = get_hyperparams("hard-500-impala")
     hp_file = os.path.join(logdir, "hyperparameters.npy")
@@ -74,6 +71,14 @@ def load_policy(render, logdir, n_envs=None):
     # frames = obs
     policy.eval()
     return action_names, done, env, hidden_state, obs, policy
+
+
+def latest_model_path(logdir):
+    files = os.listdir(logdir)
+    pattern = r"model_(\d*)\.pth"
+    checkpoints = [int(re.search(pattern, x).group(1)) for x in files if re.search(pattern, x)]
+    last_model = os.path.join(logdir, f"model_{max(checkpoints)}.pth")
+    return last_model
 
 
 def inspect_frames():
