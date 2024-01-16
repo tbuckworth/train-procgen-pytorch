@@ -452,7 +452,7 @@ boxworld-ribmha-easy:
     use_gae: True
     architecture: ribmha
     recurrent: False
-    grid_size: 6
+    grid_size: 12
     goal_length: 2
     num_distractor: 1
     distractor_length: 1
