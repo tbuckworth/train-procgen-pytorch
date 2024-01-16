@@ -138,6 +138,7 @@ class PPO(BaseAgent):
     def train(self, num_timesteps):
         save_every = num_timesteps // self.num_checkpoints
         checkpoint_cnt = 0
+        checkpoints = [1e6, 1.2e6, 1.35e6, 1.5e6, 2e6] + [i * save_every for i in range(self.num_checkpoints)]
         obs = self.env.reset()
         hidden_state = np.zeros((self.n_envs, self.storage.hidden_state_size))
         done = np.zeros(self.n_envs)
@@ -189,7 +190,8 @@ class PPO(BaseAgent):
             self.logger.dump(summary)
             self.optimizer = adjust_lr(self.optimizer, self.learning_rate, self.t, num_timesteps)
             # Save the model
-            if self.t > ((checkpoint_cnt + 1) * save_every):
+            # if self.t > ((checkpoint_cnt + 1) * save_every):
+            if self.t > checkpoints[checkpoint_cnt]:
                 print("Saving model.")
                 torch.save({'model_state_dict': self.policy.state_dict(),
                             'optimizer_state_dict': self.optimizer.state_dict()},
