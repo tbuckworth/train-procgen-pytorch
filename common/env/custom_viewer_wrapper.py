@@ -2,13 +2,14 @@ import time
 from typing import Any, Optional
 
 import numpy as np
+import torch
 
 from gym3 import types_np
 from gym3.env import Env
 from gym3.internal.renderer import Renderer
 from gym3.wrapper import Wrapper
 
-from train_decoder import latents
+from helper import impala_latents
 
 HELP_TEXT = """\
 p: (p)ause
@@ -39,7 +40,7 @@ class DecodedViewerWrapper(Wrapper):
             env_index: int = 0,
             ob_key: Optional[str] = None,
             info_key: Optional[str] = None,
-            width: int = 768*2,
+            width: int = 768 * 2,
             height: int = 768,
             tps: int = 15,
     ) -> None:
@@ -128,13 +129,14 @@ class DecodedViewerWrapper(Wrapper):
                 break
 
     def _get_image_with_decoded(self):
-        x = self._get_image()
-        l = latents(self.encoder, x)
+        _, ob, _ = self.observe()
+        x = (ob["rgb"].transpose(0, 3, 1, 2) / 255.0).astype(np.float32)
+        l = impala_latents(self.encoder, torch.Tensor(x))
         recon = self.decoder.forward(l)
-        image = np.concatenate((x, recon), dim=3) * 255.0
-        image.dtype = np.uint8
-        image.transpose(0, 2, 3, 1)
-        return image
+        reconp = recon.detach().numpy()
+        image = (np.concatenate((x, reconp), axis=3) * 255.0).astype(np.uint8)
+        image = image.transpose(0, 2, 3, 1)
+        return image[self._env_index]
 
 
 def main():

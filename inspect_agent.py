@@ -40,7 +40,7 @@ def main(logdir, render=True):
             print(f"Level seed: {info[0]['level_seed']}")
 
 
-def load_policy(render, logdir, n_envs=None):
+def load_policy(render, logdir, n_envs=None, decoding_info={}):
     # logdir = "logs/train/coinrun/coinrun/2023-10-31__10-49-30__seed_6033"
     # df = pd.read_csv(os.path.join(logdir, "log-append.csv"))
     last_model = latest_model_path(logdir)
@@ -58,7 +58,7 @@ def load_policy(render, logdir, n_envs=None):
                 "paint_vel_info": True,
                 "distribution_mode": "hard"}
     normalize_rew = hyperparameters.get('normalize_rew', True)
-    env = create_env(env_args, render, normalize_rew, mirror_some=True)
+    env = create_env(env_args, render, normalize_rew, mirror_some=True, decoding_info=decoding_info)
     model, observation_shape, policy = initialize_model(device, env, hyperparameters)
     policy.load_state_dict(torch.load(last_model, map_location=device)["model_state_dict"])
     # Test if necessary:

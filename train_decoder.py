@@ -8,7 +8,7 @@ import pandas as pd
 import torch
 
 from common.model import Decoder
-from helper import create_logdir
+from helper import create_logdir, impala_latents
 from inspect_agent import load_policy
 from torch import nn as nn
 
@@ -44,7 +44,7 @@ def validate(data, encoder, decoder, criterion, device, batch_size=2048):
     for i in range(len(data)//batch_size+1):
         data_slice = data[i * batch_size:(i + 1) * batch_size]
         obs_batch = torch.Tensor(data_slice/255.0).to(device)
-        x_batch = latents(encoder, obs_batch)
+        x_batch = impala_latents(encoder, obs_batch)
         recon = decoder.forward(x_batch)
         loss = criterion(obs_batch, recon)
         total_loss += loss.item()
@@ -107,7 +107,7 @@ def train_decoder(args, trained_model_folder):
             optimizer.zero_grad()
             data_slice = train_data[i * batch_size:(i + 1) * batch_size]
             obs_batch = torch.Tensor(data_slice/255.0).to(device)
-            x_batch = latents(encoder, obs_batch)
+            x_batch = impala_latents(encoder, obs_batch)
             recon = decoder.forward(x_batch)
             loss = criterion(obs_batch, recon)
             loss.backward()
@@ -146,13 +146,6 @@ def train_decoder(args, trained_model_folder):
 #         else:
 #             valid_latents = torch.cat((l, valid_latents), dim=0)
 #     return valid_latents
-
-
-def latents(model, obs):
-    x = model.block1(obs)
-    x = model.block2(x)
-    x = model.block3(x)
-    return x
 
 
 if __name__ == "__main__":

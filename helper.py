@@ -56,6 +56,17 @@ def get_combos(env):
         return get_combos(env.env)
     raise NotImplementedError("No combos found in env")
 
+def add_encoder_to_env(env, encoder):
+    if hasattr(env, "encoder"):
+        env.encoder = encoder
+        return
+    if hasattr(env, "env"):
+        add_encoder_to_env(env.env, encoder)
+        return
+    if hasattr(env, "venv"):
+        add_encoder_to_env(env.venv, encoder)
+        return
+    raise NotImplementedError("No env wrapper in the onion has encoder parameter")
 
 def get_action_names(env):
     action_names = np.array(
@@ -134,3 +145,10 @@ def create_logdir(args, folder, project, subfolder):
     if not (os.path.exists(logdir)):
         os.makedirs(logdir)
     return logdir
+
+
+def impala_latents(model, obs):
+    x = model.block1(obs)
+    x = model.block2(x)
+    x = model.block3(x)
+    return x

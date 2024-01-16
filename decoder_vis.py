@@ -1,20 +1,15 @@
 from common.env.custom_viewer_wrapper import DecodedViewerWrapper
-from helper import print_values_actions
+from helper import print_values_actions, add_encoder_to_env
 from inspect_agent import load_policy, latest_model_path, predict
 import torch
 from common.model import Decoder
 
-def main(args):
-    if args.device == 'gpu':
-        device = torch.device('cuda')
-    elif args.device == 'cpu':
-        device = torch.device('cpu')
+def main():
+
+    device = torch.device('cpu')
     encoder_path = "logs/train/coinrun/coinrun/2023-10-31__10-49-30__seed_6033/"
     decoder_path = "logs/decode/coinrun/decode/2024-01-16__11-47-52__seed_6033"
 
-    # load encoder
-    action_names, done, env, hidden_state, obs, policy = load_policy(render=False, logdir=encoder_path, n_envs=2)
-    encoder = policy.embedder
     # load decoder
     decoder = Decoder(
         embedding_dim=32,
@@ -26,7 +21,13 @@ def main(args):
     last_model = latest_model_path(decoder_path)
     decoder.load_state_dict(torch.load(last_model, map_location=device)["model_state_dict"])
 
-    env = DecodedViewerWrapper(env, encoder, decoder, info_key="rgb")
+    decoding_info = {"decoder": decoder}
+    # load encoder
+    action_names, done, env, hidden_state, obs, policy = load_policy(render=True, logdir=encoder_path, n_envs=2, decoding_info=decoding_info)
+    encoder = policy.embedder
+    add_encoder_to_env(env, encoder)
+    # env.env.
+    # env = DecodedViewerWrapper(env, encoder, decoder, info_key="rgb")
     while True:
         act, log_prob_act, value, next_hidden_state, pi = predict(policy, obs, hidden_state, done)
         print_values_actions(action_names, pi, value)

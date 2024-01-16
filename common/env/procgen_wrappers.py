@@ -11,6 +11,7 @@ import torch
 from gym3 import ViewerWrapper, ToBaselinesVecEnv
 from procgen import ProcgenGym3Env
 
+from common.env.custom_viewer_wrapper import DecodedViewerWrapper
 from helper import get_action_names, match
 
 """
@@ -417,13 +418,16 @@ class ScaledFloatFrame(VecEnvWrapper):
         return obs / 255.0
 
 
-def create_env(env_args, render, normalize_rew=True, mirror_some=False):
+def create_env(env_args, render, normalize_rew=True, mirror_some=False, decoding_info={}):
     if render:
         env_args["render_mode"] = "rgb_array"
     venv = ProcgenGym3Env(**env_args)
     if render:
-        # could create a mirrorFrame wrapper that goes on gym3 envs, and put before the viewer...
-        venv = ViewerWrapper(venv, info_key="rgb")
+        if decoding_info != {}:
+            venv = DecodedViewerWrapper(venv, None, decoding_info["decoder"], info_key="rgb")
+        else:
+            # could create a mirrorFrame wrapper that goes on gym3 envs, and put before the viewer...
+            venv = ViewerWrapper(venv, info_key="rgb")
     venv = ToBaselinesVecEnv(venv)
     venv = VecExtractDictObs(venv, "rgb")
     if normalize_rew:
