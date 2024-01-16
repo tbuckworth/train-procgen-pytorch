@@ -432,3 +432,31 @@ boxworld-ribmha:
     goal_length_v: 5
     num_distractor_v: 3
     distractor_length_v: 3
+
+boxworld-ribmha-easy:
+    algo: ppo
+    n_envs: 32
+    n_steps: 256
+    epoch: 3
+    mini_batch_per_epoch: 8
+    mini_batch_size: 8192
+    gamma: 0.99
+    lmbda: 0.95
+    learning_rate: 0.0005
+    grad_clip_norm: 0.5
+    eps_clip: 0.2
+    value_coef: 0.5
+    entropy_coef: 0.005
+    normalize_adv: True
+    normalize_rew: True
+    use_gae: True
+    architecture: ribmha
+    recurrent: False
+    grid_size: 6
+    goal_length: 2
+    num_distractor: 1
+    distractor_length: 1
+    grid_size_v: 12
+    goal_length_v: 5
+    num_distractor_v: 3
+    distractor_length_v: 3
