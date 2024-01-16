@@ -17,7 +17,7 @@ try:
 except ImportError:
     pass
 
-def retrieve_coinrun_data(device, frame_file="data/coinrun_frames_500.npy"):
+def retrieve_coinrun_data(device, frame_file="data/coinrun_random_frames_500.npy"):
     data = np.load(frame_file)
     data = data.transpose(0, 3, 1, 2)
     np.random.shuffle(data)
@@ -26,11 +26,11 @@ def retrieve_coinrun_data(device, frame_file="data/coinrun_frames_500.npy"):
     train_data = data[:train]
     valid_data = data[train:]
 
-    train_data_variance = np.var(train_data / 255.0)
+    # train_data_variance = np.var(train_data / 255.0)
 
-    data_t = torch.Tensor(train_data, dtype=torch.float32).to(device) / 255.0
-    data_v = torch.Tensor(valid_data, dtype=torch.float32).to(device) / 255.0
-
+    data_t = torch.Tensor(train_data).to(device) / 255.0
+    data_v = torch.Tensor(valid_data).to(device) / 255.0
+    train_data_variance = torch.var(train_data)
     return data_t, data_v, train_data_variance
 
 
