@@ -63,9 +63,9 @@ def train_decoder(args, trained_model_folder):
     # TODO: may need to split this into chunks
     valid_latents = latents(encoder, valid_data)
 
-    nb_epoch = 1e3
-    batch_size = 256
-    lr = 1e-5
+    nb_epoch = args.nb_epoch
+    batch_size = args.batch_size
+    lr = args.lr
     checkpoint_cnt = 0
     save_every = nb_epoch // args.num_checkpoints
     n_batch = len(train_data) // batch_size
@@ -137,11 +137,11 @@ if __name__ == "__main__":
     parser.add_argument('--device', type=str, default='cpu', required=False, help='whether to use gpu')
     parser.add_argument('--gpu_device', type=int, default=int(0), required=False, help='visible device in CUDA')
     parser.add_argument('--seed', type=int, default=random.randint(0, 9999), help='Random generator seed')
-    parser.add_argument('--num_checkpoints', type=int, default=int(1), help='number of checkpoints to store')
+    parser.add_argument('--num_checkpoints', type=int, default=int(5), help='number of checkpoints to store')
     parser.add_argument('--use_wandb', action="store_true")
     parser.add_argument('--wandb_tags', type=str, nargs='+')
-    parser.add_argument('--lr', type=float, default=float(1e-4), help='learning rate')
-    parser.add_argument('--batch_size', type=int, default=int(8192), help='batch size')
-    parser.add_argument('--nb_epoch', type=int, default=int(10), help='number of epochs per exploration')
+    parser.add_argument('--lr', type=float, default=float(1e-5), help='learning rate')
+    parser.add_argument('--batch_size', type=int, default=int(256), help='batch size')
+    parser.add_argument('--nb_epoch', type=int, default=int(100), help='number of epochs per exploration')
     # Strong Impala:
     train_decoder(logdir="logs/train/coinrun/coinrun/2023-10-31__10-49-30__seed_6033/")
