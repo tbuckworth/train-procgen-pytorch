@@ -65,7 +65,7 @@ def encode_and_decode(encoder, decoder, device, train_data):
     x = torch.Tensor(train_data / 255.0).to(device)
     l = impala_latents(encoder, x)
     r = decoder(l)
-    return r.detach().numpy().transpose(0, 2, 3, 1)
+    return r.cpu().numpy().transpose(0, 2, 3, 1)
 
 
 def train_decoder(args, trained_model_folder):
@@ -98,6 +98,7 @@ def train_decoder(args, trained_model_folder):
     lr = args.lr
     checkpoint_cnt = 0
     save_every = nb_epoch // args.num_checkpoints
+    checkpoints = [50, 100] + [i * save_every for i in range(args.num_checkpoints)] + [nb_epoch - 1]
     n_batch = len(train_data) // batch_size
 
     logdir = create_logdir(args, 'decode', 'coinrun', 'decode')
@@ -114,6 +115,7 @@ def train_decoder(args, trained_model_folder):
     criterion = nn.MSELoss()
     optimizer = torch.optim.SGD(decoder.parameters(), lr=lr)
     decoder.train()
+    send_reconstruction_update(decoder, encoder, 0, logdir, train_data, valid_data, device)
 
     for epoch in range(nb_epoch):
         epoch_loss = 0.
@@ -143,7 +145,7 @@ def train_decoder(args, trained_model_folder):
                 writer.writerow(log.columns)
             writer.writerow(log)
         # Save the model
-        if epoch > ((checkpoint_cnt + 1) * save_every):
+        if epoch > checkpoints[checkpoint_cnt]:
             print("Saving model.")
             torch.save({'model_state_dict': decoder.state_dict(),
                         'optimizer_state_dict': optimizer.state_dict()},
