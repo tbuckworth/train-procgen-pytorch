@@ -1,14 +1,17 @@
-from common.env.custom_viewer_wrapper import DecodedViewerWrapper
+import re
+
 from helper import print_values_actions, add_encoder_to_env
 from inspect_agent import load_policy, latest_model_path, predict
 import torch
 from common.model import Decoder
+from train_decoder import retrieve_coinrun_data, send_reconstruction_update
+
 
 def main():
 
     device = torch.device('cpu')
     encoder_path = "logs/train/coinrun/coinrun/2023-10-31__10-49-30__seed_6033/"
-    decoder_path = "logs/decode/coinrun/decode/2024-01-16__11-47-52__seed_6033"
+    decoder_path = "logs/decode/coinrun/decode/2024-01-16__14-51-17__seed_6033"
 
     # load decoder
     decoder = Decoder(
@@ -26,6 +29,11 @@ def main():
     action_names, done, env, hidden_state, obs, policy = load_policy(render=True, logdir=encoder_path, n_envs=2, decoding_info=decoding_info)
     encoder = policy.embedder
     add_encoder_to_env(env, encoder)
+
+    epoch = int(re.search(r"model_(\d*)\.pth", last_model).group(1))
+    train_data, valid_data, _ = retrieve_coinrun_data()
+    send_reconstruction_update(decoder, encoder, epoch, "data/plots", train_data, valid_data, device)
+
     # env.env.
     # env = DecodedViewerWrapper(env, encoder, decoder, info_key="rgb")
     while True:

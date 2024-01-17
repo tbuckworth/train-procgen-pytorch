@@ -5,6 +5,7 @@ import gym
 import numpy as np
 import pandas as pd
 import yaml
+from matplotlib import pyplot as plt
 
 from common.model import NatureModel, ImpalaModel, VQMHAModel, ImpalaVQModel, ImpalaVQMHAModel, ImpalaFSQModel, ribMHA
 from common.policy import CategoricalPolicy
@@ -152,3 +153,40 @@ def impala_latents(model, obs):
     x = model.block2(x)
     x = model.block3(x)
     return x
+
+
+def plot_reconstructions(data, filename):
+
+    train_reconstructions = data["train_reconstructions"]
+    valid_reconstructions = data["valid_reconstructions"]
+    train_batch = data["train_batch"]
+    valid_batch = data["valid_batch"]
+
+    def convert_batch_to_image_grid(image_batch, image_size=64):
+        reshaped = (image_batch.reshape(4, 8, image_size, image_size, 3)
+                    .transpose(0, 2, 1, 3, 4)
+                    .reshape(4 * image_size, 8 * image_size, 3))
+        return reshaped
+
+    f = plt.figure(figsize=(16, 8))
+    ax = f.add_subplot(2, 2, 1)
+    ax.imshow(convert_batch_to_image_grid(train_batch),
+              interpolation='nearest')
+    ax.set_title('training data originals')
+    plt.axis('off')
+    ax = f.add_subplot(2, 2, 2)
+    ax.imshow(convert_batch_to_image_grid(train_reconstructions),
+              interpolation='nearest')
+    ax.set_title('training data reconstructions')
+    plt.axis('off')
+    ax = f.add_subplot(2, 2, 3)
+    ax.imshow(convert_batch_to_image_grid(valid_batch),
+              interpolation='nearest')
+    ax.set_title('validation data originals')
+    plt.axis('off')
+    ax = f.add_subplot(2, 2, 4)
+    ax.imshow(convert_batch_to_image_grid(valid_reconstructions),
+              interpolation='nearest')
+    ax.set_title('validation data reconstructions')
+    plt.axis('off')
+    plt.savefig(filename)

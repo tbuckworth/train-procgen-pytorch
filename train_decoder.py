@@ -8,7 +8,8 @@ import pandas as pd
 import torch
 
 from common.model import Decoder
-from helper import create_logdir, impala_latents
+from email_results import send_image
+from helper import create_logdir, impala_latents, plot_reconstructions
 from inspect_agent import load_policy
 from torch import nn as nn
 
@@ -17,7 +18,8 @@ try:
 except ImportError:
     pass
 
-def retrieve_coinrun_data(device, frame_file="data/coinrun_random_frames_500.npy"):
+
+def retrieve_coinrun_data(frame_file="data/coinrun_random_frames_500.npy"):
     data = np.load(frame_file)
     data = data.transpose(0, 3, 1, 2)
     np.random.shuffle(data)
@@ -28,10 +30,10 @@ def retrieve_coinrun_data(device, frame_file="data/coinrun_random_frames_500.npy
     return train_data, valid_data, 0.0
     # train_data_variance = np.var(train_data / 255.0)
 
-    data_t = torch.Tensor(train_data).to(device) / 255.0
-    data_v = torch.Tensor(valid_data).to(device) / 255.0
-    train_data_variance = torch.var(train_data)
-    return data_t, data_v, train_data_variance
+    # data_t = torch.Tensor(train_data).to(device) / 255.0
+    # data_v = torch.Tensor(valid_data).to(device) / 255.0
+    # train_data_variance = torch.var(train_data)
+    # return data_t, data_v, train_data_variance
 
 
 def validate(data, encoder, decoder, criterion, device, batch_size=2048):
@@ -41,9 +43,9 @@ def validate(data, encoder, decoder, criterion, device, batch_size=2048):
     # return loss.item() / len(data)
     total_loss = 0.
     n_evals = 0
-    for i in range(len(data)//batch_size+1):
+    for i in range(len(data) // batch_size + 1):
         data_slice = data[i * batch_size:(i + 1) * batch_size]
-        obs_batch = torch.Tensor(data_slice/255.0).to(device)
+        obs_batch = torch.Tensor(data_slice / 255.0).to(device)
         x_batch = impala_latents(encoder, obs_batch)
         recon = decoder.forward(x_batch)
         loss = criterion(obs_batch, recon)
@@ -52,13 +54,28 @@ def validate(data, encoder, decoder, criterion, device, batch_size=2048):
     return total_loss / n_evals
 
 
+def get_recons(encoder, decoder, train_data, valid_data, device):
+    return {"train_reconstructions": encode_and_decode(encoder, decoder, device, train_data),
+            "valid_reconstructions": encode_and_decode(encoder, decoder, device, valid_data),
+            "train_batch": train_data.transpose(0, 2, 3, 1),
+            "valid_batch": valid_data.transpose(0, 2, 3, 1)}
+
+
+def encode_and_decode(encoder, decoder, device, train_data):
+    x = torch.Tensor(train_data / 255.0).to(device)
+    l = impala_latents(encoder, x)
+    r = decoder(l)
+    return r.detach().numpy().transpose(0, 2, 3, 1)
+
+
 def train_decoder(args, trained_model_folder):
     if args.device == 'gpu':
         device = torch.device('cuda')
     elif args.device == 'cpu':
         device = torch.device('cpu')
-    action_names, done, env, hidden_state, obs, policy = load_policy(render=False, logdir=trained_model_folder, n_envs=2)
-    train_data, valid_data, train_data_variance = retrieve_coinrun_data(device)
+    action_names, done, env, hidden_state, obs, policy = load_policy(render=False, logdir=trained_model_folder,
+                                                                     n_envs=2)
+    train_data, valid_data, _ = retrieve_coinrun_data()
 
     hyperparameters = {"architecture": "VQ Decoder"}
 
@@ -83,10 +100,8 @@ def train_decoder(args, trained_model_folder):
     save_every = nb_epoch // args.num_checkpoints
     n_batch = len(train_data) // batch_size
 
-
     logdir = create_logdir(args, 'decode', 'coinrun', 'decode')
     log = pd.DataFrame(columns=["Epoch", "Loss", "Valid_Loss"])
-
 
     if args.use_wandb:
         wandb.login(key="cfc00eee102a1e9647b244a40066bfc5f1a96610")
@@ -106,7 +121,7 @@ def train_decoder(args, trained_model_folder):
         for i in range(n_batch):
             optimizer.zero_grad()
             data_slice = train_data[i * batch_size:(i + 1) * batch_size]
-            obs_batch = torch.Tensor(data_slice/255.0).to(device)
+            obs_batch = torch.Tensor(data_slice / 255.0).to(device)
             x_batch = impala_latents(encoder, obs_batch)
             recon = decoder.forward(x_batch)
             loss = criterion(obs_batch, recon)
@@ -134,7 +149,15 @@ def train_decoder(args, trained_model_folder):
                         'optimizer_state_dict': optimizer.state_dict()},
                        f"{logdir}/model_{epoch}.pth")
             checkpoint_cnt += 1
+            send_reconstruction_update(decoder, encoder, epoch, logdir, train_data, valid_data, device)
     wandb.finish()
+
+
+def send_reconstruction_update(decoder, encoder, epoch, logdir, train_data, valid_data, device):
+    plot_file = os.path.join(logdir, f"reconstructions_{epoch}.png")
+    recons = get_recons(encoder, decoder, train_data[:32], valid_data[:32], device)
+    plot_reconstructions(recons, plot_file)
+    send_image(plot_file, "Coinrun Decoder Reconstructions")
 
 
 # def latents_by_batch(encoder, valid_data, device, batch_size):
@@ -156,7 +179,7 @@ if __name__ == "__main__":
     parser.add_argument('--num_checkpoints', type=int, default=int(5), help='number of checkpoints to store')
     parser.add_argument('--use_wandb', action="store_true")
     parser.add_argument('--wandb_tags', type=str, nargs='+')
-    parser.add_argument('--lr', type=float, default=float(1e-5), help='learning rate')
+    parser.add_argument('--lr', type=float, default=float(1e-4), help='learning rate')
     parser.add_argument('--batch_size', type=int, default=int(256), help='batch size')
     parser.add_argument('--nb_epoch', type=int, default=int(100), help='number of epochs per exploration')
     args = parser.parse_args()
