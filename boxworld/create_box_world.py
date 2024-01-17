@@ -53,14 +53,13 @@ if __name__ == "__main__":
                 "goal_length": hyperparameters.get('goal_length', 5),
                 "num_distractor": hyperparameters.get('num_distractor', 0),
                 "distractor_length": hyperparameters.get('distractor_length', 0),
-                "max_steps": 10 ** 3,
-                "seed": 6033,
+                "max_steps": 10 ** 2,
+                "seed": None,
                 }
     normalize_rew = hyperparameters.get('normalize_rew', True)
     env = create_box_world_env(env_args, render=True, normalize_rew=normalize_rew)
     num_actions = env.action_space.n
 
-    np.random.randint(0, num_actions, size=env_args["n_envs"])
     while True:
         actions = np.random.randint(0, num_actions, size=env_args["n_envs"])
         # actions = np.array([np.random.choice(num_actions) for _ in range(env_args["n_envs"])])

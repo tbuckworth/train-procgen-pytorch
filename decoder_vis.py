@@ -7,7 +7,7 @@ from common.model import Decoder
 from train_decoder import retrieve_coinrun_data, send_reconstruction_update
 
 
-def main():
+def main(send_reconstructions=False):
 
     device = torch.device('cpu')
     encoder_path = "logs/train/coinrun/coinrun/2023-10-31__10-49-30__seed_6033/"
@@ -30,9 +30,10 @@ def main():
     encoder = policy.embedder
     add_encoder_to_env(env, encoder)
 
-    epoch = int(re.search(r"model_(\d*)\.pth", last_model).group(1))
-    train_data, valid_data, _ = retrieve_coinrun_data()
-    send_reconstruction_update(decoder, encoder, epoch, "data/plots", train_data, valid_data, device)
+    if send_reconstructions:
+        epoch = int(re.search(r"model_(\d*)\.pth", last_model).group(1))
+        train_data, valid_data, _ = retrieve_coinrun_data()
+        send_reconstruction_update(decoder, encoder, epoch, "data/plots", train_data, valid_data, device)
 
     # env.env.
     # env = DecodedViewerWrapper(env, encoder, decoder, info_key="rgb")

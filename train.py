@@ -32,7 +32,7 @@ if __name__ == '__main__':
     parser.add_argument('--device', type=str, default='cpu', required=False, help='whether to use gpu')
     parser.add_argument('--gpu_device', type=int, default=int(0), required=False, help='visible device in CUDA')
     parser.add_argument('--num_timesteps', type=int, default=int(25000000), help='number of training timesteps')
-    parser.add_argument('--seed', type=int, default=random.randint(0, 9999), help='Random generator seed')
+    parser.add_argument('--seed', type=int, default=None, help='Random generator seed')
     parser.add_argument('--log_level', type=int, default=int(40), help='[10,20,30,40]')
     parser.add_argument('--num_checkpoints', type=int, default=int(1), help='number of checkpoints to store')
     parser.add_argument('--model_file', type=str)
@@ -66,6 +66,8 @@ if __name__ == '__main__':
     param_name = args.param_name
     gpu_device = args.gpu_device
     num_timesteps = int(args.num_timesteps)
+    if args.seed is None and env_name == "coinrun":
+        args.seed = random.randint(0, 9999)
     seed = args.seed
     log_level = args.log_level
     num_checkpoints = args.num_checkpoints
@@ -155,7 +157,7 @@ if __name__ == '__main__':
                     "goal_length": hyperparameters.get('goal_length', 5),
                     "num_distractor": hyperparameters.get('num_distractor', 0),
                     "distractor_length": hyperparameters.get('distractor_length', 0),
-                    "max_steps": 10 ** 3,
+                    "max_steps": hyperparameters.get("max_steps", 10 ** 3),
                     "seed": args.seed,
                     }
         normalize_rew = hyperparameters.get('normalize_rew', True)
