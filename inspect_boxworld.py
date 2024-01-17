@@ -9,7 +9,7 @@ from helper import initialize_model
 from inspect_agent import latest_model_path, predict
 
 if __name__ == "__main__":
-    logdir = "logs/train/boxworld/boxworld/2024-01-17__09-16-24__seed_6033"
+    logdir = "logs/train/boxworld/boxworld/2024-01-16__12-29-10__seed_6033"
 
     last_model = latest_model_path(logdir)
     device = torch.device('cpu')

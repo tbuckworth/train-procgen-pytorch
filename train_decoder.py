@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import torch
 
+from common import orthogonal_init
 from common.model import Decoder
 from email_results import send_image
 from helper import create_logdir, impala_latents, plot_reconstructions
@@ -50,7 +51,7 @@ def validate(data, encoder, decoder, criterion, device, batch_size=2048):
         recon = decoder.forward(x_batch)
         loss = criterion(obs_batch, recon)
         total_loss += loss.item()
-        n_evals += len(obs_batch)
+        n_evals += 1#len(obs_batch)
     return total_loss / n_evals
 
 
@@ -89,9 +90,7 @@ def train_decoder(args, trained_model_folder):
         num_residual_hiddens=32,
     )
     decoder.to(device)
-
-    # TODO: valid_latents may be too large
-    # valid_latents = latents_by_batch(encoder, valid_data, device, batch_size=2048)
+    decoder.apply(orthogonal_init)
 
     nb_epoch = args.nb_epoch
     batch_size = args.batch_size
@@ -112,7 +111,12 @@ def train_decoder(args, trained_model_folder):
         wandb.init(project="Coinrun - Decode", config=cfg, sync_tensorboard=True,
                    tags=args.wandb_tags, resume="allow", name=name)
 
-    criterion = nn.MSELoss()
+    # criterion = nn.MSELoss()
+    def criterion(output, target):
+        se = output - target ** 2
+        loss = torch.mean(se) + torch.max(se)
+        return loss
+
     optimizer = torch.optim.SGD(decoder.parameters(), lr=lr)
     decoder.train()
     send_reconstruction_update(decoder, encoder, 0, logdir, train_data, valid_data, device)
@@ -130,7 +134,7 @@ def train_decoder(args, trained_model_folder):
             loss.backward()
             optimizer.step()
             epoch_loss += loss.item()
-            n_evals += len(obs_batch)
+            n_evals += 1#len(obs_batch)
         epoch_loss /= n_evals
         valid_loss = validate(valid_data, encoder, decoder, criterion, device)
         print(f"Epoch {epoch}: train loss: {epoch_loss:.5f}, {valid_loss:.5f}")

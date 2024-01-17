@@ -11,7 +11,7 @@ def main(send_reconstructions=False):
 
     device = torch.device('cpu')
     encoder_path = "logs/train/coinrun/coinrun/2023-10-31__10-49-30__seed_6033/"
-    decoder_path = "logs/decode/coinrun/decode/2024-01-16__14-51-17__seed_6033"
+    decoder_path = "logs/decode/coinrun/decode/2024-01-17__09-16-24__seed_6033"
 
     # load decoder
     decoder = Decoder(
