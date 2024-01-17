@@ -65,7 +65,7 @@ def encode_and_decode(encoder, decoder, device, train_data):
     x = torch.Tensor(train_data / 255.0).to(device)
     l = impala_latents(encoder, x)
     r = decoder(l)
-    return r.cpu().numpy().transpose(0, 2, 3, 1)
+    return r.detach().cpu().numpy().transpose(0, 2, 3, 1)
 
 
 def train_decoder(args, trained_model_folder):
