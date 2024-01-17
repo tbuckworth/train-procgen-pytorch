@@ -9,7 +9,7 @@ from helper import initialize_model
 from inspect_agent import latest_model_path, predict
 
 if __name__ == "__main__":
-    logdir = "logs/train/boxworld/boxworld/2024-01-16__12-29-10__seed_6033"
+    logdir = "logs/train/boxworld/boxworld/2024-01-17__10-17-54__seed_6033"
 
     last_model = latest_model_path(logdir)
     device = torch.device('cpu')
@@ -23,7 +23,7 @@ if __name__ == "__main__":
                 "num_distractor": hyperparameters.get('num_distractor', 0),
                 "distractor_length": hyperparameters.get('distractor_length', 0),
                 "max_steps": 10 ** 3,
-                "seed": 6033,
+                "seed": None,
                 }
     normalize_rew = hyperparameters.get('normalize_rew', True)
     env = create_box_world_env(env_args, render=True, normalize_rew=normalize_rew)
