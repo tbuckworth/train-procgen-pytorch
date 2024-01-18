@@ -99,7 +99,7 @@ def train_decoder(args, trained_model_folder):
     lr = args.lr
     checkpoint_cnt = 0
     save_every = nb_epoch // args.num_checkpoints
-    checkpoints = [50, 100] + [i * save_every for i in range(args.num_checkpoints)] + [nb_epoch - 1]
+    checkpoints = [50, 100] + [i * save_every for i in range(args.num_checkpoints)] + [nb_epoch - 2]
     n_batch = len(train_data) // batch_size
 
     logdir = create_logdir(args, 'decode', 'coinrun', 'decode')
@@ -113,13 +113,20 @@ def train_decoder(args, trained_model_folder):
         wandb.init(project="Coinrun - Decode", config=cfg, sync_tensorboard=True,
                    tags=args.wandb_tags, resume="allow", name=name)
 
-    # criterion = nn.MSELoss()
-    def criterion(output, target):
-        se = output - target ** 2
-        loss = torch.mean(se) + torch.max(se)
-        return loss
+    if args.add_max:
+        def criterion(output, target):
+            se = output - target ** 2
+            loss = torch.mean(se) + torch.max(se)
+            return loss
+    else:
+        criterion = nn.MSELoss()
 
-    optimizer = torch.optim.SGD(decoder.parameters(), lr=lr)
+    if args.optim == "SGD":
+        optimizer = torch.optim.SGD(decoder.parameters(), lr=lr)
+    elif args.optim == "Adam":
+        optimizer = torch.optim.Adam(decoder.parameters(), lr=lr)
+    else:
+        raise NotImplementedError(f"Optimizer {args.optim} must be one of 'SGD','Adam'.")
     decoder.train()
     send_reconstruction_update(decoder, encoder, 0, logdir, train_data, valid_data, device)
 
@@ -184,12 +191,15 @@ if __name__ == "__main__":
     parser.add_argument('--device', type=str, default='cpu', required=False, help='whether to use gpu')
     parser.add_argument('--gpu_device', type=int, default=int(0), required=False, help='visible device in CUDA')
     parser.add_argument('--seed', type=int, default=random.randint(0, 9999), help='Random generator seed')
-    parser.add_argument('--num_checkpoints', type=int, default=int(5), help='number of checkpoints to store')
+    parser.add_argument('--num_checkpoints', type=int, default=int(50), help='number of checkpoints to store')
     parser.add_argument('--use_wandb', action="store_true")
     parser.add_argument('--wandb_tags', type=str, nargs='+')
     parser.add_argument('--lr', type=float, default=float(1e-4), help='learning rate')
     parser.add_argument('--batch_size', type=int, default=int(256), help='batch size')
-    parser.add_argument('--nb_epoch', type=int, default=int(100), help='number of epochs per exploration')
+    parser.add_argument('--nb_epoch', type=int, default=int(10000), help='number of epochs per exploration')
+    parser.add_argument('--optim', type=str, default="SGD", help='Optimizer: "SGD" or "Adam"')
+    parser.add_argument('--use_max', action="store_true")
+
     args = parser.parse_args()
     # If Windows:
     if os.name == "nt":

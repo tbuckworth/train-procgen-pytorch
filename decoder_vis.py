@@ -25,7 +25,8 @@ def main(send_reconstructions=False):
 
     decoding_info = {"decoder": decoder}
     # load encoder
-    action_names, done, env, hidden_state, obs, policy = load_policy(render=True, logdir=encoder_path, n_envs=2, decoding_info=decoding_info)
+    action_names, done, env, hidden_state, obs, policy = load_policy(render=True, logdir=encoder_path, n_envs=2,
+                                                                     decoding_info=decoding_info, start_level=0)
     encoder = policy.embedder
     add_encoder_to_env(env, encoder)
 
@@ -58,4 +59,5 @@ if __name__ == "__main__":
     # "logs/decode/coinrun/decode/2024-01-17__15-04-40__seed_6033"
     # # level 315 (or 352?) has intense blue code behaviour
     # # level 152 (or 87?) it gets stuck and blue code seems to be the cause.
+    # also 49!
 
