@@ -76,10 +76,10 @@ class BoxWorldTestModel(unittest.TestCase):
         cls.device = torch.device('cpu')
         env_args = {"n_envs": 2,
                     # "env_name": "BoxWorld-v0",
-                    "n": 7,
-                    "goal_length": 2,
+                    "n": 6,
+                    "goal_length": 3,
                     "num_distractor": 1,
-                    "distractor_length": 1,
+                    "distractor_length": 2,
                     "max_steps": 10**6,
                     "seed": None,
                     }
