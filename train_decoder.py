@@ -113,7 +113,7 @@ def train_decoder(args, trained_model_folder):
         wandb.init(project="Coinrun - Decode", config=cfg, sync_tensorboard=True,
                    tags=args.wandb_tags, resume="allow", name=name)
 
-    if args.add_max:
+    if args.use_max:
         def criterion(output, target):
             se = output - target ** 2
             loss = torch.mean(se) + torch.max(se)
