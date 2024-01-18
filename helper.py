@@ -113,7 +113,7 @@ def initialize_model(device, env, hyperparameters):
     elif architecture == 'impalafsqmha':
         model = ImpalaFSQModel(in_channels, device, use_mha=True)
     elif architecture == 'ribmha':
-        model = ribMHA(in_channels, device)
+        model = ribMHA(in_channels, device, observation_shape)
     else:
         raise NotImplementedError(f"Architecture:{architecture} not found in helper.py")
     # Discrete action space

@@ -413,28 +413,29 @@ class ImpalaVQMHAModel(nn.Module):
 
 
 class ribMHA(nn.Module):
-    def __init__(self, in_channels, device, **kwargs):
+    def __init__(self, in_channels, device, ob_shape, **kwargs):
         super(ribMHA, self).__init__()
 
         self.device = device
-        n_latents = in_channels
-        latent_dim = in_channels
+        self.ob_shape = ob_shape
+        # add 2 for the padding and square because we flatten
+        n_latents = (ob_shape[-1]+2)**2
+        embed_dim = 64
+        output_dim = 256
 
         self.conv1 = nn.Conv2d(in_channels=in_channels, out_channels=12, kernel_size=2, stride=1, padding=1)
-        self.conv2 = nn.Conv2d(in_channels=12, out_channels=62, kernel_size=2, stride=1, padding=1)
+        self.conv2 = nn.Conv2d(in_channels=12, out_channels=embed_dim-2, kernel_size=2, stride=1, padding=1)
 
-        self.mha1 = GlobalSelfAttention(shape=(256, 64), num_heads=4, embed_dim=64, dropout=0.1)
-        # self.mha2 = GlobalSelfAttention(shape=(256, 64), num_heads=4, embed_dim=64, dropout=0.1)
-        # self.max_pool = nn.MaxPool1d(kernel_size=64, stride=1)
+        self.mha1 = GlobalSelfAttention(shape=(n_latents, embed_dim), num_heads=4, embed_dim=embed_dim, dropout=0.1)
 
         self.max_pool = Reduce('b h w -> b w', 'max')
 
-        self.fc1 = nn.Linear(64, 256)
+        self.fc1 = nn.Linear(embed_dim, 256)
         self.fc2 = nn.Linear(256, 256)
         self.fc3 = nn.Linear(256, 256)
-        self.fc4 = nn.Linear(256, 256)
+        self.fc4 = nn.Linear(256, output_dim)
 
-        self.output_dim = 256
+        self.output_dim = output_dim
         self.apply(xavier_uniform_init)
 
 
