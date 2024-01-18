@@ -1,4 +1,5 @@
 import os
+import re
 import time
 
 import gym
@@ -190,3 +191,24 @@ def plot_reconstructions(data, filename):
     ax.set_title('validation data reconstructions')
     plt.axis('off')
     plt.savefig(filename)
+
+
+def last_folder(dir, n=1):
+    files = [os.path.join(dir, x) for x in os.listdir(dir)]
+    sl_files = {x: os.path.getmtime(x) for x in files}
+    if n == 1:
+        return max(sl_files, key=sl_files.get)
+    sl_files = dict(sorted(sl_files.items(), key=lambda item: item[1]))
+    return list(sl_files.keys())[-n]
+
+
+def get_latest_file_matching(pattern, n, folder=""):
+    if folder == "":
+        files = os.listdir()
+    else:
+        files = [os.path.join(folder, x) for x in os.listdir(folder)]
+    sl_files = {x: os.path.getmtime(x) for x in files if re.search(pattern, x)}
+    if n == 1:
+        return max(sl_files, key=sl_files.get)
+    sl_files = dict(sorted(sl_files.items(), key=lambda item: item[1]))
+    return list(sl_files.keys())[-n]

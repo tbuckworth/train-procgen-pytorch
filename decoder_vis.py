@@ -1,6 +1,6 @@
 import re
 
-from helper import print_values_actions, add_encoder_to_env
+from helper import print_values_actions, add_encoder_to_env, last_folder
 from inspect_agent import load_policy, latest_model_path, predict
 import torch
 from common.model import Decoder
@@ -11,8 +11,7 @@ def main(send_reconstructions=False):
 
     device = torch.device('cpu')
     encoder_path = "logs/train/coinrun/coinrun/2023-10-31__10-49-30__seed_6033/"
-    decoder_path = "logs/decode/coinrun/decode/2024-01-17__09-16-24__seed_6033"
-
+    decoder_path = last_folder("logs/decode/coinrun/decode", 1)
     # load decoder
     decoder = Decoder(
         embedding_dim=32,
@@ -54,3 +53,9 @@ def main(send_reconstructions=False):
 
 if __name__ == "__main__":
     main()
+
+    # #This one shows crazy blue smudge behaviour - the blue smudge seems to correlate with enemies. (just MSE loss)
+    # "logs/decode/coinrun/decode/2024-01-17__15-04-40__seed_6033"
+    # # level 315 (or 352?) has intense blue code behaviour
+    # # level 152 (or 87?) it gets stuck and blue code seems to be the cause.
+

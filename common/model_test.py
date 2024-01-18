@@ -30,7 +30,8 @@ class CoinrunTestModel(unittest.TestCase):
         cls.obs = torch.FloatTensor(cls.env.reset())
 
     def test_ImpalaVQMHAModel(self):
-        model = ImpalaVQMHAModel(self.in_channels, 1, self.device, use_vq=True)
+        obs_shape = self.env.observation_space.shape
+        model = ImpalaVQMHAModel(self.in_channels, 1, self.device, obs_shape, use_vq=True)
         model.forward(self.obs)
         summary(model, self.obs.shape)
         hyperparameters = {"architecture": "impalavqmha",
@@ -75,12 +76,12 @@ class BoxWorldTestModel(unittest.TestCase):
         cls.device = torch.device('cpu')
         env_args = {"n_envs": 2,
                     # "env_name": "BoxWorld-v0",
-                    "n": 12,
-                    "goal_length": 5,
-                    "num_distractor": 3,
-                    "distractor_length": 3,
+                    "n": 6,
+                    "goal_length": 3,
+                    "num_distractor": 1,
+                    "distractor_length": 1,
                     "max_steps": 10**6,
-                    "seed": 6033,
+                    "seed": None,
                     }
         cls.env = create_box_world_env(env_args, render=False, normalize_rew=True)
         cls.in_channels = cls.env.observation_space.shape[0]

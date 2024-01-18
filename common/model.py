@@ -364,9 +364,10 @@ class ImpalaVQMHAModel(nn.Module):
         # self.mhas = [GlobalSelfAttention(shape=(256), num_heads=8, embed_dim=256, dropout=0.1) for _ in range(mha_layers)]
         self.mha1 = GlobalSelfAttention(shape=(n_latents, latent_dim), num_heads=4, embed_dim=latent_dim, dropout=0.1)
         self.mha2 = GlobalSelfAttention(shape=(n_latents, latent_dim), num_heads=4, embed_dim=latent_dim, dropout=0.1)
-        self.max_pool = nn.MaxPool1d(kernel_size=latent_dim, stride=1)
+        # self.max_pool = nn.MaxPool1d(kernel_size=latent_dim, stride=1)
+        self.max_pool = Reduce('b h w -> b w', 'max')
 
-        self.output_dim = n_latents
+        self.output_dim = latent_dim
         self.apply(xavier_uniform_init)
 
 
@@ -399,7 +400,7 @@ class ImpalaVQMHAModel(nn.Module):
         #     x = mha(x)
 
         x = self.mha1(x)
-        x = self.mha2(x)
+        x = self.mha1(x)
         x = self.max_pool(x)
         if self.use_vq:
             return x.squeeze(), commit_loss
