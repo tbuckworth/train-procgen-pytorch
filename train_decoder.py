@@ -198,7 +198,7 @@ if __name__ == "__main__":
     parser.add_argument('--batch_size', type=int, default=int(256), help='batch size')
     parser.add_argument('--nb_epoch', type=int, default=int(10000), help='number of epochs per exploration')
     parser.add_argument('--optim', type=str, default="SGD", help='Optimizer: "SGD" or "Adam"')
-    parser.add_argument('--use_max', action="store_true")
+    parser.add_argument('--use_max', action="store_true", default=False, type=bool, help="Add max squared error to MSE loss?")
 
     args = parser.parse_args()
     # If Windows:
