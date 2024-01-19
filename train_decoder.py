@@ -55,14 +55,14 @@ def validate(data, encoder, decoder, criterion, device, batch_size=2048):
     return total_loss / n_evals
 
 
-def get_recons(encoder, decoder, train_data, valid_data, device):
-    return {"train_reconstructions": encode_and_decode(encoder, decoder, device, train_data),
-            "valid_reconstructions": encode_and_decode(encoder, decoder, device, valid_data),
+def get_recons(encoder, decoder, train_data, valid_data, device, impala_latents):
+    return {"train_reconstructions": encode_and_decode(encoder, decoder, device, train_data, impala_latents),
+            "valid_reconstructions": encode_and_decode(encoder, decoder, device, valid_data, impala_latents),
             "train_batch": train_data.transpose(0, 2, 3, 1),
             "valid_batch": valid_data.transpose(0, 2, 3, 1)}
 
 
-def encode_and_decode(encoder, decoder, device, train_data):
+def encode_and_decode(encoder, decoder, device, train_data, impala_latents):
     x = torch.Tensor(train_data / 255.0).to(device)
     l = impala_latents(encoder, x)
     r = decoder(l)
@@ -86,7 +86,7 @@ def train_decoder(args, trained_model_folder):
     encoder.to(device)
 
     latent_layer = args.latent_layer
-    decoder_params, impala_latents = get_decoder_details(args, latent_layer)
+    decoder_params, impala_latents = get_decoder_details(latent_layer)
 
     decoder = Decoder(**decoder_params)
     decoder.to(device)
@@ -126,7 +126,7 @@ def train_decoder(args, trained_model_folder):
     else:
         raise NotImplementedError(f"Optimizer {args.optim} must be one of 'SGD','Adam'.")
     decoder.train()
-    send_reconstruction_update(decoder, encoder, 0, logdir, train_data, valid_data, device)
+    send_reconstruction_update(decoder, encoder, 0, logdir, train_data, valid_data, device, impala_latents)
 
     for epoch in range(nb_epoch):
         epoch_loss = 0.
@@ -162,11 +162,11 @@ def train_decoder(args, trained_model_folder):
                         'optimizer_state_dict': optimizer.state_dict()},
                        f"{logdir}/model_{epoch}.pth")
             checkpoint_cnt += 1
-            send_reconstruction_update(decoder, encoder, epoch, logdir, train_data, valid_data, device)
+            send_reconstruction_update(decoder, encoder, epoch, logdir, train_data, valid_data, device, impala_latents)
     wandb.finish()
 
 
-def get_decoder_details(args, latent_layer):
+def get_decoder_details(latent_layer):
     decoder_params = {"embedding_dim": 32,
                       "num_hiddens": 64,
                       "num_upsampling_layers": 2,
@@ -196,13 +196,13 @@ def get_decoder_details(args, latent_layer):
             return x.reshape((obs.shape[0], 1, 16, 16))
             # 16 is square root of obs.shape[1]
     else:
-        raise NotImplementedError(f"latent_layer has to be 'block2', 'block3' or 'fc', not {args.latent_layer}.")
+        raise NotImplementedError(f"latent_layer has to be 'block2', 'block3' or 'fc', not {latent_layer}.")
     return decoder_params, impala_latents
 
 
-def send_reconstruction_update(decoder, encoder, epoch, logdir, train_data, valid_data, device):
+def send_reconstruction_update(decoder, encoder, epoch, logdir, train_data, valid_data, device, impala_latents):
     plot_file = os.path.join(logdir, f"reconstructions_{epoch}.png")
-    recons = get_recons(encoder, decoder, train_data[:32], valid_data[:32], device)
+    recons = get_recons(encoder, decoder, train_data[:32], valid_data[:32], device, impala_latents)
     plot_reconstructions(recons, plot_file)
     send_image(plot_file, "Coinrun Decoder Reconstructions")
 

@@ -4,7 +4,7 @@ from helper import print_values_actions, add_encoder_to_env, last_folder
 from inspect_agent import load_policy, latest_model_path, predict
 import torch
 from common.model import Decoder
-from train_decoder import retrieve_coinrun_data, send_reconstruction_update
+from train_decoder import retrieve_coinrun_data, send_reconstruction_update, get_decoder_details
 
 
 def main(send_reconstructions=False):
@@ -12,14 +12,18 @@ def main(send_reconstructions=False):
     device = torch.device('cpu')
     encoder_path = "logs/train/coinrun/coinrun/2023-10-31__10-49-30__seed_6033/"
     decoder_path = last_folder("logs/decode/coinrun/decode", 1)
+    latent_layer = "block3"
     # load decoder
-    decoder = Decoder(
-        embedding_dim=32,
-        num_hiddens=64,
-        num_upsampling_layers=3,
-        num_residual_layers=2,
-        num_residual_hiddens=32,
-    )
+    # decoder = Decoder(
+    #     embedding_dim=32,
+    #     num_hiddens=64,
+    #     num_upsampling_layers=3,
+    #     num_residual_layers=2,
+    #     num_residual_hiddens=32,
+    # )
+
+    decoder_params, impala_latents = get_decoder_details(latent_layer)
+    decoder = Decoder(**decoder_params)
     last_model = latest_model_path(decoder_path)
     decoder.load_state_dict(torch.load(last_model, map_location=device)["model_state_dict"])
 
@@ -34,7 +38,7 @@ def main(send_reconstructions=False):
     if send_reconstructions:
         epoch = int(re.search(r"model_(\d*)\.pth", last_model).group(1))
         train_data, valid_data, _ = retrieve_coinrun_data()
-        send_reconstruction_update(decoder, encoder, epoch, "data/plots", train_data, valid_data, device)
+        send_reconstruction_update(decoder, encoder, epoch, "data/plots", train_data, valid_data, device, impala_latents)
 
     # env.env.
     # env = DecodedViewerWrapper(env, encoder, decoder, info_key="rgb")
