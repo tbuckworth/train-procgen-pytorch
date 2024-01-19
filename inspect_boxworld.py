@@ -5,12 +5,11 @@ import torch
 
 from boxworld.create_box_world import create_box_world_env
 from common.storage import Storage
-from helper import initialize_model
+from helper import initialize_model, last_folder
 from inspect_agent import latest_model_path, predict
 
 if __name__ == "__main__":
-    logdir = "logs/train/boxworld/boxworld/2024-01-17__10-17-54__seed_6033"
-
+    logdir = last_folder("logs/train/boxworld/boxworld")
     last_model = latest_model_path(logdir)
     device = torch.device('cpu')
     hp_file = os.path.join(logdir, "hyperparameters.npy")

@@ -40,7 +40,7 @@ def main(logdir, render=True):
             print(f"Level seed: {info[0]['level_seed']}")
 
 
-def load_policy(render, logdir, n_envs=None, decoding_info={}, start_level=0):
+def load_policy(render, logdir, n_envs=None, decoding_info={}, start_level=0, repeat_level=False):
     # logdir = "logs/train/coinrun/coinrun/2023-10-31__10-49-30__seed_6033"
     # df = pd.read_csv(os.path.join(logdir, "log-append.csv"))
     last_model = latest_model_path(logdir)
@@ -54,7 +54,7 @@ def load_policy(render, logdir, n_envs=None, decoding_info={}, start_level=0):
     env_args = {"num": hyperparameters["n_envs"],
                 "env_name": "coinrun",
                 "start_level": start_level,#325
-                "num_levels": 500,
+                "num_levels": 1 if repeat_level else 500,
                 "paint_vel_info": True,
                 "distribution_mode": "hard"}
     normalize_rew = hyperparameters.get('normalize_rew', True)

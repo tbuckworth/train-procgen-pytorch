@@ -10,10 +10,12 @@ from common.model import ImpalaVQMHAModel, ImpalaFSQModel, ImpalaModel, Decoder
 from helper import initialize_model
 from common.env.procgen_wrappers import create_env
 
+
 def get_hyperparams(param_name):
     with open('../hyperparams/procgen/config.yml', 'r') as f:
         hyperparameters = yaml.safe_load(f)[param_name]
     return hyperparameters
+
 
 class CoinrunTestModel(unittest.TestCase):
     @classmethod
@@ -58,10 +60,14 @@ class CoinrunTestModel(unittest.TestCase):
         x = model.block1(self.obs)
         x = model.block2(x)
         x = model.block3(x)
+        print(x.shape)
+        x = model.forward(self.obs)
+        print(x.shape)
+        x = x.reshape(2, 1, 16, 16)
         decoder = Decoder(
-            embedding_dim=32,
+            embedding_dim=1,
             num_hiddens=64,
-            num_upsampling_layers=3,
+            num_upsampling_layers=2,
             num_residual_layers=2,
             num_residual_hiddens=32,
         )
@@ -80,7 +86,7 @@ class BoxWorldTestModel(unittest.TestCase):
                     "goal_length": 3,
                     "num_distractor": 1,
                     "distractor_length": 2,
-                    "max_steps": 10**6,
+                    "max_steps": 10 ** 6,
                     "seed": None,
                     }
         cls.env = create_box_world_env(env_args, render=False, normalize_rew=True)
@@ -105,6 +111,7 @@ class BoxWorldTestModel(unittest.TestCase):
         model.forward(self.obs)
         summary(model, self.obs.shape)
         policy.forward(self.obs, None, None)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -10,7 +10,7 @@ import torch
 from common import orthogonal_init
 from common.model import Decoder
 from email_results import send_image
-from helper import create_logdir, impala_latents, plot_reconstructions
+from helper import create_logdir, plot_reconstructions
 from inspect_agent import load_policy
 from torch import nn as nn
 
@@ -51,7 +51,7 @@ def validate(data, encoder, decoder, criterion, device, batch_size=2048):
         recon = decoder.forward(x_batch)
         loss = criterion(obs_batch, recon)
         total_loss += loss.item()
-        n_evals += 1#len(obs_batch)
+        n_evals += 1  # len(obs_batch)
     return total_loss / n_evals
 
 
@@ -84,13 +84,11 @@ def train_decoder(args, trained_model_folder):
 
     encoder = policy.embedder
     encoder.to(device)
-    decoder = Decoder(
-        embedding_dim=32,
-        num_hiddens=64,
-        num_upsampling_layers=3,
-        num_residual_layers=2,
-        num_residual_hiddens=32,
-    )
+
+    latent_layer = args.latent_layer
+    decoder_params, impala_latents = get_decoder_details(args, latent_layer)
+
+    decoder = Decoder(**decoder_params)
     decoder.to(device)
     decoder.apply(orthogonal_init)
 
@@ -99,10 +97,10 @@ def train_decoder(args, trained_model_folder):
     lr = args.lr
     checkpoint_cnt = 0
     save_every = nb_epoch // args.num_checkpoints
-    checkpoints = [50, 100] + [i * save_every for i in range(args.num_checkpoints)] + [nb_epoch - 2]
+    checkpoints = [50, 100] + [i * save_every for i in range(args.num_checkpoints)] + [nb_epoch - 1]
     n_batch = len(train_data) // batch_size
 
-    logdir = create_logdir(args, 'decode', 'coinrun', 'decode')
+    logdir = create_logdir(args, 'decode', 'coinrun', f'decode_{latent_layer}')
     log = pd.DataFrame(columns=["Epoch", "Loss", "Valid_Loss"])
 
     if args.use_wandb:
@@ -143,7 +141,7 @@ def train_decoder(args, trained_model_folder):
             loss.backward()
             optimizer.step()
             epoch_loss += loss.item()
-            n_evals += 1#len(obs_batch)
+            n_evals += 1  # len(obs_batch)
         epoch_loss /= n_evals
         valid_loss = validate(valid_data, encoder, decoder, criterion, device)
         print(f"Epoch {epoch}: train loss: {epoch_loss:.5f}, {valid_loss:.5f}")
@@ -158,7 +156,7 @@ def train_decoder(args, trained_model_folder):
                 writer.writerow(log.columns)
             writer.writerow(log)
         # Save the model
-        if epoch > checkpoints[checkpoint_cnt]:
+        if epoch == checkpoints[checkpoint_cnt]:
             print("Saving model.")
             torch.save({'model_state_dict': decoder.state_dict(),
                         'optimizer_state_dict': optimizer.state_dict()},
@@ -166,6 +164,40 @@ def train_decoder(args, trained_model_folder):
             checkpoint_cnt += 1
             send_reconstruction_update(decoder, encoder, epoch, logdir, train_data, valid_data, device)
     wandb.finish()
+
+
+def get_decoder_details(args, latent_layer):
+    decoder_params = {"embedding_dim": 32,
+                      "num_hiddens": 64,
+                      "num_upsampling_layers": 2,
+                      "num_residual_layers": 2,
+                      "num_residual_hiddens": 32,
+                      }
+    if latent_layer == "block2":
+        def impala_latents(model, obs):
+            x = model.block1(obs)
+            x = model.block2(x)
+            return x
+
+    elif latent_layer == "block3":
+        decoder_params["num_upsampling_layers"] = 3
+
+        def impala_latents(model, obs):
+            x = model.block1(obs)
+            x = model.block2(x)
+            x = model.block3(x)
+            x = nn.ReLU()(x)
+            return x
+    elif latent_layer == "fc":
+        decoder_params["embedding_dim"] = 1
+
+        def impala_latents(model, obs):
+            x = model.forward(obs)
+            return x.reshape((obs.shape[0], 1, 16, 16))
+            # 16 is square root of obs.shape[1]
+    else:
+        raise NotImplementedError(f"latent_layer has to be 'block2', 'block3' or 'fc', not {args.latent_layer}.")
+    return decoder_params, impala_latents
 
 
 def send_reconstruction_update(decoder, encoder, epoch, logdir, train_data, valid_data, device):
@@ -198,7 +230,9 @@ if __name__ == "__main__":
     parser.add_argument('--batch_size', type=int, default=int(256), help='batch size')
     parser.add_argument('--nb_epoch', type=int, default=int(10000), help='number of epochs per exploration')
     parser.add_argument('--optim', type=str, default="SGD", help='Optimizer: "SGD" or "Adam"')
-    parser.add_argument('--use_max', action="store_true", default=False,  help="Add max squared error to MSE loss?")
+    parser.add_argument('--use_max', action="store_true", default=False, help="Add max squared error to MSE loss?")
+    parser.add_argument('--latent_layer', type=str, default="block3",
+                        help='Which layer to decode from? "blockn" n=2,3; "fc"')
 
     args = parser.parse_args()
     # If Windows:
