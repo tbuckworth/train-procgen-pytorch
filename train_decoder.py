@@ -37,7 +37,7 @@ def retrieve_coinrun_data(frame_file="data/coinrun_random_frames_500.npy"):
     # return data_t, data_v, train_data_variance
 
 
-def validate(data, encoder, decoder, criterion, device, batch_size=2048):
+def validate(data, encoder, decoder, criterion, device, impala_latents, batch_size=2048):
     # #TODO: may need to split this into chunks
     # recon = decoder.forward(x)
     # loss = criterion(recon, data)
@@ -143,7 +143,7 @@ def train_decoder(args, trained_model_folder):
             epoch_loss += loss.item()
             n_evals += 1  # len(obs_batch)
         epoch_loss /= n_evals
-        valid_loss = validate(valid_data, encoder, decoder, criterion, device)
+        valid_loss = validate(valid_data, encoder, decoder, criterion, device, impala_latents)
         print(f"Epoch {epoch}: train loss: {epoch_loss:.5f}, {valid_loss:.5f}")
 
         if args.use_wandb:
