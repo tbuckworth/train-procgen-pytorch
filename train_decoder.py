@@ -239,5 +239,7 @@ if __name__ == "__main__":
     if os.name == "nt":
         args.device = "cpu"
         args.use_wandb = False
+
+    print(f"--latent_layer: {args.latent_layer}")
     # Strong Impala:
     train_decoder(args, "logs/train/coinrun/coinrun/2023-10-31__10-49-30__seed_6033/")
