@@ -223,16 +223,15 @@ if __name__ == "__main__":
     parser.add_argument('--device', type=str, default='cpu', required=False, help='whether to use gpu')
     parser.add_argument('--gpu_device', type=int, default=int(0), required=False, help='visible device in CUDA')
     parser.add_argument('--seed', type=int, default=random.randint(0, 9999), help='Random generator seed')
-    parser.add_argument('--num_checkpoints', type=int, default=int(50), help='number of checkpoints to store')
+    parser.add_argument('--num_checkpoints', type=int, default=int(5), help='number of checkpoints to store')
     parser.add_argument('--use_wandb', action="store_true")
     parser.add_argument('--wandb_tags', type=str, nargs='+')
     parser.add_argument('--lr', type=float, default=float(1e-4), help='learning rate')
     parser.add_argument('--batch_size', type=int, default=int(256), help='batch size')
-    parser.add_argument('--nb_epoch', type=int, default=int(10000), help='number of epochs per exploration')
+    parser.add_argument('--nb_epoch', type=int, default=int(1000), help='number of epochs per exploration')
     parser.add_argument('--optim', type=str, default="SGD", help='Optimizer: "SGD" or "Adam"')
     parser.add_argument('--use_max', action="store_true", default=False, help="Add max squared error to MSE loss?")
-    parser.add_argument('--latent_layer', type=str, default="block3",
-                        help='Which layer to decode from? "blockn" n=2,3; "fc"')
+    parser.add_argument('--latent_layer', type=str, help='Which layer to decode from? "blockn" n=2,3; "fc"')
 
     args = parser.parse_args()
     # If Windows:
@@ -241,5 +240,7 @@ if __name__ == "__main__":
         args.use_wandb = False
 
     print(f"--latent_layer: {args.latent_layer}")
-    # Strong Impala:
-    train_decoder(args, "logs/train/coinrun/coinrun/2023-10-31__10-49-30__seed_6033/")
+    for latent_layer in ["block2", "fc"]:
+        args.latent_layer = latent_layer
+        # Strong Impala:
+        train_decoder(args, "logs/train/coinrun/coinrun/2023-10-31__10-49-30__seed_6033/")
