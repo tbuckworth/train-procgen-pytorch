@@ -143,7 +143,7 @@ def main():
     import procgen
 
     env = procgen.ProcgenGym3Env(num=1, env_name="coinrun", render_mode="rgb_array")
-    env = ViewerWrapper(env=env, info_key="rgb")
+    env = DecodedViewerWrapper(env=env, info_key="rgb")
     start = time.time()
     for i in range(10000):
         env.act(types_np.sample(env.ac_space, bshape=(env.num,)))

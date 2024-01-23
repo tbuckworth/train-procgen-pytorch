@@ -70,6 +70,16 @@ def add_encoder_to_env(env, encoder):
         return
     raise NotImplementedError("No env wrapper in the onion has encoder parameter")
 
+def get_actions(env):
+    if hasattr(env, "unwrapped"):
+        return env.unwrapped.get_action_lookup()
+    if hasattr(env, "env"):
+        return get_actions(env.env)
+    if hasattr(env, "venv"):
+        return get_actions(env.venv)
+    raise NotImplementedError("No env wrapper in the onion has get_action_lookup method")
+
+
 def get_action_names(env):
     action_names = np.array(
         [x[0] + "_" + x[1] if len(x) == 2 else (x[0] if len(x) == 1 else "") for x in get_combos(env)])
