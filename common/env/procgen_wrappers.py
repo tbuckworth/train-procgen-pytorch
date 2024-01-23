@@ -424,7 +424,7 @@ def create_env(env_args, render, normalize_rew=True, mirror_some=False, decoding
     venv = ProcgenGym3Env(**env_args)
     if render:
         if decoding_info != {}:
-            venv = DecodedViewerWrapper(venv, None, decoding_info["decoder"], info_key="rgb")
+            venv = DecodedViewerWrapper(venv, None, decoding_info, info_key="rgb")
         else:
             # could create a mirrorFrame wrapper that goes on gym3 envs, and put before the viewer...
             venv = ViewerWrapper(venv, info_key="rgb")

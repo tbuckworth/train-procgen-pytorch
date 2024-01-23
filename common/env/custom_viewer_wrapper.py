@@ -3,6 +3,7 @@ from typing import Any, Optional
 
 import numpy as np
 import torch
+from torch import nn as nn
 
 from gym3 import types_np
 from gym3.env import Env
@@ -36,12 +37,12 @@ class DecodedViewerWrapper(Wrapper):
             self,
             env: Env,
             encoder,
-            decoder,
+            decoding_info,
             env_index: int = 0,
             ob_key: Optional[str] = None,
             info_key: Optional[str] = None,
             width: int = 768 * 2,
-            height: int = 768,
+            height: int = 768 * 2,
             tps: int = 15,
     ) -> None:
         super().__init__(env=env)
@@ -55,7 +56,7 @@ class DecodedViewerWrapper(Wrapper):
         self._overlay_enabled = True
         self._fast_mode = False
         self.encoder = encoder
-        self.decoder = decoder
+        self.decoding_info = decoding_info
 
     def _get_image(self) -> None:
         _, ob, _ = self.observe()
@@ -131,10 +132,27 @@ class DecodedViewerWrapper(Wrapper):
     def _get_image_with_decoded(self):
         _, ob, _ = self.observe()
         x = (ob["rgb"].transpose(0, 3, 1, 2) / 255.0).astype(np.float32)
-        l = impala_latents(self.encoder, torch.Tensor(x))
-        recon = self.decoder.forward(l)
-        reconp = recon.detach().numpy()
-        image = (np.concatenate((x, reconp), axis=3) * 255.0).astype(np.uint8)
+        x1 = self.encoder.block1(torch.Tensor(x))
+        x2 = self.encoder.block2(x1)
+        x3 = self.encoder.block3(x2)
+        x3 = nn.ReLU()(x3)
+        x4 = self.encoder.fc(x3)
+
+        recon2 = self.decoding_info["decoder_2"](x2)
+        recon3 = self.decoding_info["decoder_3"](x3)
+        reconfc = self.decoding_info["decoder_fc"](x4)
+
+        # l = impala_latents(self.encoder, torch.Tensor(x))
+        # recon = self.decoder.forward(l)
+        recon2np = recon2.detach().numpy()
+        image_top = (np.concatenate((x, recon2np), axis=3) * 255.0).astype(np.uint8)
+
+        recon3np = recon3.detach().numpy()
+        reconfcnp = reconfc.detach().numpy()
+        image_bottom = (np.concatenate((recon3np, reconfcnp), axis=3) * 255.0).astype(np.uint8)
+
+        image = np.concatenate((image_top, image_bottom), axis=2)
+
         image = image.transpose(0, 2, 3, 1)
         return image[self._env_index]
 

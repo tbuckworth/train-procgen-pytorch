@@ -11,23 +11,15 @@ def main(send_reconstructions=False):
 
     device = torch.device('cpu')
     encoder_path = "logs/train/coinrun/coinrun/2023-10-31__10-49-30__seed_6033/"
-    decoder_path = last_folder("logs/decode/coinrun/decode", 1)
-    latent_layer = "block3"
-    # load decoder
-    # decoder = Decoder(
-    #     embedding_dim=32,
-    #     num_hiddens=64,
-    #     num_upsampling_layers=3,
-    #     num_residual_layers=2,
-    #     num_residual_hiddens=32,
-    # )
 
-    decoder_params, impala_latents = get_decoder_details(latent_layer)
-    decoder = Decoder(**decoder_params)
-    last_model = latest_model_path(decoder_path)
-    decoder.load_state_dict(torch.load(last_model, map_location=device)["model_state_dict"])
+    decoder_3, impala_latents_3 = load_decoder_at(device, "block3")
+    decoder_2, impala_latents_2 = load_decoder_at(device, "block2")
+    decoder_fc, impala_latents_fc = load_decoder_at(device, "fc")
 
-    decoding_info = {"decoder": decoder}
+    decoding_info = {"decoder_3": decoder_3,
+                     "decoder_2": decoder_2,
+                     "decoder_fc": decoder_fc,
+                     }
     # load encoder
     action_names, done, env, hidden_state, obs, policy = load_policy(render=True, logdir=encoder_path, n_envs=2,
                                                                      decoding_info=decoding_info, start_level=0,
@@ -35,10 +27,10 @@ def main(send_reconstructions=False):
     encoder = policy.embedder
     add_encoder_to_env(env, encoder)
 
-    if send_reconstructions:
-        epoch = int(re.search(r"model_(\d*)\.pth", last_model).group(1))
-        train_data, valid_data, _ = retrieve_coinrun_data()
-        send_reconstruction_update(decoder, encoder, epoch, "data/plots", train_data, valid_data, device, impala_latents)
+    # if send_reconstructions:
+    #     epoch = int(re.search(r"model_(\d*)\.pth", last_model).group(1))
+    #     train_data, valid_data, _ = retrieve_coinrun_data()
+    #     send_reconstruction_update(decoder, encoder, epoch, "data/plots", train_data, valid_data, device, impala_latents)
 
     # env.env.
     # env = DecodedViewerWrapper(env, encoder, decoder, info_key="rgb")
@@ -55,6 +47,14 @@ def main(send_reconstructions=False):
     # process example
     # print example
 
+
+def load_decoder_at(device, latent_layer):
+    decoder_path = last_folder(f"logs/decode/coinrun/decode_{latent_layer}", 1)
+    decoder_params, impala_latents = get_decoder_details(latent_layer)
+    decoder = Decoder(**decoder_params)
+    last_model = latest_model_path(decoder_path)
+    decoder.load_state_dict(torch.load(last_model, map_location=device)["model_state_dict"])
+    return decoder, impala_latents
 
 
 if __name__ == "__main__":
