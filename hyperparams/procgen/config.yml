@@ -426,9 +426,9 @@ boxworld-ribmha:
     recurrent: False
     max_steps: 1000
     grid_size: 12
-    goal_length: 5
-    num_distractor: 3
-    distractor_length: 3
+    goal_length: 4
+    num_distractor: 2
+    distractor_length: 2
     grid_size_v: 12
     goal_length_v: 5
     num_distractor_v: 3
