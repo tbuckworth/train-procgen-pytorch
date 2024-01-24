@@ -97,7 +97,8 @@ def train_decoder(args, trained_model_folder):
     lr = args.lr
     checkpoint_cnt = 0
     save_every = nb_epoch // args.num_checkpoints
-    checkpoints = [50, 100] + [i * save_every for i in range(args.num_checkpoints)] + [nb_epoch - 1]
+    checkpoints = [50, 100] + [(i+1) * save_every for i in range(args.num_checkpoints)] + [nb_epoch - 1]
+    checkpoints.sort()
     n_batch = len(train_data) // batch_size
 
     logdir = create_logdir(args, 'decode', 'coinrun', f'decode_{latent_layer}')
@@ -240,7 +241,7 @@ if __name__ == "__main__":
         args.use_wandb = False
 
     print(f"--latent_layer: {args.latent_layer}")
-    for latent_layer in ["block2", "fc"]:
+    for latent_layer in ["fc", "block2", "block3"]:
         args.latent_layer = latent_layer
         # Strong Impala:
         train_decoder(args, "logs/train/coinrun/coinrun/2023-10-31__10-49-30__seed_6033/")
