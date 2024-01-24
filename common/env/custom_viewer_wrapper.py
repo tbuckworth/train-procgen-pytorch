@@ -139,6 +139,7 @@ class DecodedViewerWrapper(Wrapper):
         x3 = nn.ReLU()(x3)
         x4 = Flatten()(x3)
         x5 = self.encoder.fc(x4)
+        x5 = nn.ReLU()(x5)
         x5 = x5.reshape((ob["rgb"].shape[0], 1, 16, 16))
         recon2 = self.decoding_info["decoder_2"](x2)
         recon3 = self.decoding_info["decoder_3"](x3)

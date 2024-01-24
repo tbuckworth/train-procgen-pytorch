@@ -72,3 +72,5 @@ if __name__ == "__main__":
     # 295 - a lot of colour when landing on first obstacle - indicate enemy/danger?
     # action was DOWN mostly, during colour, but then changed to right as colour went away
     #
+
+    # Tri-decode: 498 - gets stuck and there's loads of intense colour in the image
