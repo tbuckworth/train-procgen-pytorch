@@ -48,6 +48,11 @@ class CoinrunTestModel(unittest.TestCase):
         model.forward(self.obs)
         summary(model, self.obs.shape)
 
+    def test_ImpalaModel(self):
+        model = ImpalaModel(self.in_channels)
+        model.forward(self.obs)
+        summary(model, self.obs.shape)
+
     def test_ImpalaDecoder(self):
         model = ImpalaModel(self.in_channels)
         x = model.forward(self.obs)

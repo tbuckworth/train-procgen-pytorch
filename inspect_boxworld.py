@@ -32,7 +32,6 @@ def run_boxworld(use_valid_env=False):
     normalize_rew = hyperparameters.get('normalize_rew', True)
     env = create_box_world_env(env_args, render=True, normalize_rew=normalize_rew)
     num_actions = env.action_space.n
-    # TODO: check this is correct:
     action_names = ["UP", "DOWN", "LEFT", "RIGHT"]
     # env.venv.get_action_lookup()
     model, observation_shape, policy = initialize_model(device, env, hyperparameters)
@@ -57,4 +56,4 @@ def run_boxworld(use_valid_env=False):
 
 
 if __name__ == "__main__":
-    run_boxworld(True)
+    run_boxworld(False)

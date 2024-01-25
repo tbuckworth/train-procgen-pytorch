@@ -74,3 +74,4 @@ if __name__ == "__main__":
     #
 
     # Tri-decode: 498 - gets stuck and there's loads of intense colour in the image
+    # 210: same as 498

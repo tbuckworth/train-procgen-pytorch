@@ -413,18 +413,22 @@ class ImpalaVQMHAModel(nn.Module):
 
 
 class ribMHA(nn.Module):
-    def __init__(self, in_channels, device, ob_shape, **kwargs):
+    def __init__(self, in_channels, device, ob_shape, use_vq=False, **kwargs):
         super(ribMHA, self).__init__()
 
+        self.use_vq = use_vq
         self.device = device
         self.ob_shape = ob_shape
         # add 2 for the padding and square because we flatten
-        n_latents = (ob_shape[-1]+2)**2
+        n_latents = (ob_shape[-1])**2
         embed_dim = 64
         output_dim = 256
 
-        self.conv1 = nn.Conv2d(in_channels=in_channels, out_channels=12, kernel_size=2, stride=1, padding=1)
-        self.conv2 = nn.Conv2d(in_channels=12, out_channels=embed_dim-2, kernel_size=2, stride=1, padding=1)
+        self.conv1 = nn.Conv2d(in_channels=in_channels, out_channels=12, kernel_size=2, stride=1, padding=0)
+        self.conv2 = nn.Conv2d(in_channels=12, out_channels=embed_dim-2, kernel_size=2, stride=1, padding=0)
+
+        if use_vq:
+            self.vq = VectorQuantize(dim=embed_dim-2, codebook_size=128, decay=.8, commitment_weight=1.)
 
         self.mha1 = GlobalSelfAttention(shape=(n_latents, embed_dim), num_heads=4, embed_dim=embed_dim, dropout=0.1)
 
@@ -442,24 +446,17 @@ class ribMHA(nn.Module):
 
     def forward(self, x, print_nans=False):
         # Impala Blocks
-        x = self.conv1(x)
-        x = self.conv2(x)
-        x = nn.ReLU()(x)
+        x = self.encoder(x)
+        if self.use_vq:
+            x, indices, commit_loss = self.vq(x)
+        x = self.flatten_and_append_coor(x)
 
-        # Move channels to end
-        x = x.permute(0, 2, 3, 1)
-        # Extract coordinates
-        coor = get_coor(x)
-        # Flatten
-        flat_coor = entities_flatten(coor).to(device=self.device)
-        x = entities_flatten(x)
+        x = self.attention(x)
+        x = self.pool_and_mlp(x)
 
-        # Add Co-ordinates to quantized latents
-        x = torch.concat([x, flat_coor], axis=2)
+        return x
 
-        # shared weights:
-        x = self.mha1(x)
-        x = self.mha1(x)
+    def pool_and_mlp(self, x):
         x = self.max_pool(x)
         x = x.squeeze()
         x = self.fc1(x)
@@ -470,8 +467,32 @@ class ribMHA(nn.Module):
         x = nn.ReLU()(x)
         x = self.fc4(x)
         x = nn.ReLU()(x)
-
         return x
+
+    def attention(self, x):
+        # shared weights:
+        x = self.mha1(x)
+        x = self.mha1(x)
+        return x
+
+    def flatten_and_append_coor(self, x):
+        # Move channels to end
+        x = x.permute(0, 2, 3, 1)
+        # Extract coordinates
+        coor = get_coor(x)
+        # Flatten
+        flat_coor = entities_flatten(coor).to(device=self.device)
+        x = entities_flatten(x)
+        # Add Co-ordinates to quantized latents
+        x = torch.concat([x, flat_coor], axis=2)
+        return x
+
+    def encoder(self, x):
+        x = self.conv1(x)
+        x = self.conv2(x)
+        x = nn.ReLU()(x)
+        return x
+
 
 class ResidualStack(nn.Module):
     def __init__(self, num_hiddens, num_residual_layers, num_residual_hiddens):
