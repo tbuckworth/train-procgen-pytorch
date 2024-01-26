@@ -162,7 +162,7 @@ def distill(args, logdir_trained):
                    tags=args.wandb_tags, resume="allow", name=name)
 
     criterion = torch.nn.MSELoss()
-    optimizer = torch.optim.SGD(new_policy.parameters(), lr=args.lr)
+    optimizer = torch.optim.Adam(new_policy.parameters(), lr=args.lr)
     new_policy.train()
 
     for n_explores in range(args.n_explore):
@@ -268,18 +268,18 @@ if __name__ == "__main__":
 
     # for lr in [1e-4, 1e-3, 1e-2, 1e-5]:
 
-    low = 1e-3
-    high = 1e-4
+    low = 1e-4
+    high = 1e-5
     l_loss, _ = distill_with_lr(args, low)
     h_loss, _ = distill_with_lr(args, low)
 
-    diff = h_loss - l_loss
-    if diff > 0:
-        low = (low + high) / 2
-        high *= 10
-    else:
-        high = (low + high) / 2
-        low /= 10
-
-    l_loss, _ = distill_with_lr(args, low)
-    h_loss, _ = distill_with_lr(args, low)
+    # diff = h_loss - l_loss
+    # if diff > 0:
+    #     low = (low + high) / 2
+    #     high *= 10
+    # else:
+    #     high = (low + high) / 2
+    #     low /= 10
+    #
+    # l_loss, _ = distill_with_lr(args, low)
+    # h_loss, _ = distill_with_lr(args, low)
