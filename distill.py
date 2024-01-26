@@ -110,7 +110,7 @@ def validate(new_policy, valid_X, valid_Y_gold, criterion, hidden_state):
         dist_batch, value_batch, _ = new_policy(valid_X, hidden_state, hidden_state)
     Y_pred = dist_batch.logits
     loss = criterion(Y_pred.squeeze(), valid_Y_gold.squeeze())
-    return loss.item() * len(valid_Y_gold)
+    return loss.item()
 
 
 def predict_in_batches(policy, obs, hidden_state, done, batch_size=32*8):
@@ -177,6 +177,7 @@ def distill(args, logdir_trained):
         loss_diffs = []
         for epoch in range(args.nb_epoch):
             epoch_loss = 0.0
+            n_evals = 0
             for i in range(N_batchs):
                 optimizer.zero_grad()
                 obs_batch = obs_tensor[i * batch_size: (i + 1) * batch_size]
@@ -199,14 +200,16 @@ def distill(args, logdir_trained):
                     loss.backward()
                 optimizer.step()
 
-                epoch_loss += loss.item() * len(Y_batch)
+                epoch_loss += loss.item() #* len(Y_batch)
+                n_evals += 1
+        epoch_loss /= n_evals
         # shouldn't valid_loss be one scope to the right?
         valid_loss = validate(new_policy, valid_X, valid_Y_gold, criterion, hidden_state)
 
-            # threshold = valid_loss - epoch_loss
-            # loss_diffs.append(threshold)
-            # if len(loss_diffs) > 10 and valid_loss - epoch_loss > min(loss_diffs) + np.std(loss_diffs):
-            #     break
+        # threshold = valid_loss - epoch_loss
+        # loss_diffs.append(threshold)
+        # if len(loss_diffs) > 10 and valid_loss - epoch_loss > min(loss_diffs) + np.std(loss_diffs):
+        #     break
 
         print(f'Epoch {epoch}: total train loss: {epoch_loss:.5f}, valid loss: {valid_loss:.5f}')
 
