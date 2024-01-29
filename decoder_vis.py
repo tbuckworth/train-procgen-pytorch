@@ -1,5 +1,7 @@
 import re
 
+import numpy as np
+
 from helper import print_values_actions, add_encoder_to_env, last_folder
 from inspect_agent import load_policy, latest_model_path, predict
 import torch
@@ -8,7 +10,6 @@ from train_decoder import retrieve_coinrun_data, send_reconstruction_update, get
 
 
 def main(send_reconstructions=False):
-
     device = torch.device('cpu')
     encoder_path = "logs/train/coinrun/coinrun/2023-10-31__10-49-30__seed_6033/"
 
@@ -32,20 +33,16 @@ def main(send_reconstructions=False):
     #     train_data, valid_data, _ = retrieve_coinrun_data()
     #     send_reconstruction_update(decoder, encoder, epoch, "data/plots", train_data, valid_data, device, impala_latents)
 
-    # env.env.
-    # env = DecodedViewerWrapper(env, encoder, decoder, info_key="rgb")
+    frames = np.expand_dims(obs[0], 0)
     while True:
         act, log_prob_act, value, next_hidden_state, pi = predict(policy, obs, hidden_state, done)
         print_values_actions(action_names, pi, value)
         next_obs, rew, done, info = env.step(act)
-        # rewards = np.append(rewards, rew[done])
+        frames = np.concatenate((frames[-100:], np.expand_dims(next_obs[0], 0)), 0)
         obs = next_obs
         hidden_state = next_hidden_state
         if done[0]:
             print(f"Level seed: {info[0]['level_seed']}")
-    # load data
-    # process example
-    # print example
 
 
 def load_decoder_at(device, latent_layer):
@@ -53,6 +50,7 @@ def load_decoder_at(device, latent_layer):
     decoder_params, impala_latents = get_decoder_details(latent_layer)
     decoder = Decoder(**decoder_params)
     last_model = latest_model_path(decoder_path)
+    print(last_model)
     decoder.load_state_dict(torch.load(last_model, map_location=device)["model_state_dict"])
     return decoder, impala_latents
 
@@ -66,7 +64,6 @@ if __name__ == "__main__":
     # # level 152 (or 87?) it gets stuck and blue code seems to be the cause.
     # also 49! 366! 64
 
-
     # logs/decode/coinrun/decode/2024-01-18__11-44-53__seed_6033
     # 404 - mistook background for enemy - colours indicate enemy?
     # 295 - a lot of colour when landing on first obstacle - indicate enemy/danger?
@@ -75,3 +72,8 @@ if __name__ == "__main__":
 
     # Tri-decode: 498 - gets stuck and there's loads of intense colour in the image
     # 210: same as 498
+
+    # Tri-decode fully trained:
+    # 299 - gets stuck, but not for long
+    # 59 - jumps over background image as if enemy
+    # 97 - goes back left and then gets stuck
