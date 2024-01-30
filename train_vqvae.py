@@ -72,7 +72,9 @@ def train_vqvae(args):
     hyperparameters = get_hyperparams(args.param_name)
 
     model = VQVAE(in_channels, **hyperparameters)
+    model.to(device)
     model.apply(orthogonal_init)
+
 
     nb_epoch = args.nb_epoch
     batch_size = args.batch_size
