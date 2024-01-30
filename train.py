@@ -40,7 +40,9 @@ if __name__ == '__main__':
     parser.add_argument('--real_procgen', action="store_true", default=True)
     parser.add_argument('--mirror_env', action="store_true", default=False)
     parser.add_argument('--mut_info_alpha', type=float, default=None)
-    parser.add_argument('--n_envs',type=int,default=None)
+    parser.add_argument('--n_envs', type=int, default=None)
+    parser.add_argument('--detect_nan', action="store_true", default=False)
+
 
     parser.add_argument('--wandb_tags', type=str, nargs='+')
 
@@ -104,7 +106,8 @@ if __name__ == '__main__':
         device = torch.device('cpu')
 
     # For debugging nans:
-    # torch.autograd.set_detect_anomaly(True)
+    if args.detect_nan:
+        torch.autograd.set_detect_anomaly(True)
 
     #################
     ## ENVIRONMENT ##
