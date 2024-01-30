@@ -381,7 +381,13 @@ class ImpalaVQMHAModel(nn.Module):
         x = self.encoder(x)
         x, commit_loss = self.flatten_and_append_coor(x)
 
-        x = self.attention(x)
+        try:
+            x = self.attention(x)
+        except RuntimeError as e:
+            print(e)
+            print(f"x.shape:{x.shape}")
+            print(f"x:\n{x}")
+
         x = self.pool_and_mlp(x)
 
         if self.use_vq:
