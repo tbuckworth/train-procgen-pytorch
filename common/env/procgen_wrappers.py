@@ -418,6 +418,27 @@ class ScaledFloatFrame(VecEnvWrapper):
         return obs / 255.0
 
 
+class EncoderWrapper(VecEnvWrapper):
+    def __init__(self, env, encoder):
+        super().__init__(venv=env)
+        encoder.train(False)
+        self.encoder = encoder
+        # Need to change obs_shape?
+        obs_shape = self.observation_space.shape
+        self.observation_space = gym.spaces.Box(low=0, high=1, shape=obs_shape, dtype=np.float32)
+
+    def encode(self, obs):
+        z_quantized, dictionary_loss, commitment_loss, encoding_indices = self.encoder.quantize(torch.Tensor(obs))
+        return z_quantized.detach().cpu().numpy()
+
+    def step_wait(self):
+        obs, reward, done, info = self.venv.step_wait()
+        return self.encode(obs), reward, done, info
+
+    def reset(self):
+        obs = self.venv.reset()
+        return self.encode(obs)
+
 def create_env(env_args, render, normalize_rew=True, mirror_some=False, decoding_info={}):
     if render:
         env_args["render_mode"] = "rgb_array"

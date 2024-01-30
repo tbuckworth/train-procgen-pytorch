@@ -721,30 +721,53 @@ class VQVAE(nn.Module):
         return vq_output, z
 
 
-def get_trained_vqvqae(in_channels, hyperparameters):
-    vqvae = VQVAE(in_channels,
-                  num_hiddens=hyperparameters["num_hiddens"],
-                  num_downsampling_layers=hyperparameters["num_downsampling_layers"],
-                  num_residual_layers=hyperparameters["num_residual_layers"],
-                  num_residual_hiddens=hyperparameters["num_residual_hiddens"],
-                  embedding_dim=hyperparameters["embedding_dim"],
-                  num_embeddings=hyperparameters["num_embeddings"],
-                  use_ema=hyperparameters["use_ema"],
-                  decay=hyperparameters["decay"],
-                  epsilon=hyperparameters["epsilon"], )
-    pass
+def get_trained_vqvqae(in_channels, hyperparameters, device):
+    model = VQVAE(in_channels,
+                  hyperparameters["num_hiddens"],
+                  hyperparameters["num_downsampling_layers"],
+                  hyperparameters["num_residual_layers"],
+                  hyperparameters["num_residual_hiddens"],
+                  hyperparameters["embedding_dim"],
+                  hyperparameters["num_embeddings"],
+                  hyperparameters["use_ema"],
+                  hyperparameters["decay"],
+                  hyperparameters["epsilon"],
+                  )
+    model.load_state_dict(torch.load(hyperparameters["model_path"], map_location=device)["model_state_dict"])
+    return model
+
 
 
 class VQMHAModel(nn.Module):
-    # TODO:
-    #   create VQVAE
-    #   load in trained VQVAE
-    def __init__(self, in_channels, hyperparameters):
+    def __init__(self, n_latents, latent_dim, mha_layers):
         super(VQMHAModel, self).__init__()
-        self.vqvae = get_trained_vqvqae(in_channels, hyperparameters)
-        self.mha = nn.MultiheadAttention(embed_dim=hyperparameters["embedding_dim"],
-                                         num_heads=hyperparameters["num_heads"])
-        pass
+        self.mha_layers = mha_layers
+        # self.vqvae = get_trained_vqvqae(in_channels, hyperparameters, model_path, device)
+
+        self.mha = GlobalSelfAttention(shape=(n_latents, latent_dim), num_heads=4, embed_dim=latent_dim, dropout=0.1)
+        self.max_pool = Reduce('b h w -> b w', 'max')
+
+        self.fc1 = nn.Linear(latent_dim, 256)
+        self.fc2 = nn.Linear(256, 256)
+        self.fc3 = nn.Linear(256, 256)
+        self.fc4 = nn.Linear(256, latent_dim)
+
+        self.output_dim = latent_dim
+        self.apply(xavier_uniform_init)
 
     def forward(self, x):
-        pass
+        for _ in range(self.mha_layers):
+            x = self.mha(x)
+        x = self.max_pool(x)
+        x = x.squeeze()
+        x = self.fc1(x)
+        x = nn.ReLU()(x)
+        x = self.fc2(x)
+        x = nn.ReLU()(x)
+        x = self.fc3(x)
+        x = nn.ReLU()(x)
+        x = self.fc4(x)
+        x = nn.ReLU()(x)
+        return x
+
+

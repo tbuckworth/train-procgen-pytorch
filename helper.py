@@ -108,8 +108,11 @@ def initialize_model(device, env, hyperparameters):
     elif architecture == 'impala':
         model = ImpalaModel(in_channels=in_channels)
     elif architecture == 'vqmha':
-        has_vq = True
-        model = VQMHAModel(in_channels, hyperparameters)
+        has_vq = False
+        mha_layers = hyperparameters.get("mha_layers", 1)
+        n_latents = hyperparameters.get("n_latents", 1)
+        latent_dim = hyperparameters.get("latent_dim", 1)
+        model = VQMHAModel(n_latents, latent_dim, mha_layers)
     elif architecture == 'impalavq':
         has_vq = True
         model = ImpalaVQModel(in_channels=in_channels)
@@ -222,3 +225,10 @@ def get_latest_file_matching(pattern, n, folder=""):
         return max(sl_files, key=sl_files.get)
     sl_files = dict(sorted(sl_files.items(), key=lambda item: item[1]))
     return list(sl_files.keys())[-n]
+
+
+def get_in_channels(venv):
+    observation_space = venv.observation_space
+    observation_shape = observation_space.shape
+    in_channels = observation_shape[0]
+    return in_channels

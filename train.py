@@ -2,18 +2,16 @@ from boxworld.create_box_world import create_box_world_env
 from common.env.procgen_wrappers import *
 from common.logger import Logger
 from common.storage import Storage
-from common.model import NatureModel, ImpalaModel, VQMHAModel
-from common.policy import CategoricalPolicy
+from common.model import get_trained_vqvqae
 from common import set_global_seeds, set_global_log_levels
 
-import os, time, yaml, argparse
-import gym
+import os, time, argparse
 from procgen import ProcgenEnv
 import random
 import torch
 import numpy as np
 
-from helper import get_hyperparams, initialize_model
+from helper import get_hyperparams, initialize_model, get_in_channels
 
 try:
     import wandb
@@ -153,7 +151,12 @@ if __name__ == '__main__':
             venv = MirrorFrame(venv)
         venv = TransposeFrame(venv)
         venv = ScaledFloatFrame(venv)
+        if hyperparameters.get('architecture', "impala") == "vqmha":
+            in_channels = get_in_channels(venv)
+            vqvae = get_trained_vqvqae(in_channels, hyperparameters, device)
+            venv = EncoderWrapper(venv, vqvae)
         return venv
+
 
     def create_bw_env(args, hyperparameters, is_valid=False):
         # n, goal_length, num_distractor, distractor_length, max_steps = 10 ** 6, collect_key = True, world = None, render_mode = None, seed = None
@@ -178,6 +181,7 @@ if __name__ == '__main__':
         create_venv = create_bw_env
     env = create_venv(args, hyperparameters)
     env_valid = create_venv(args, hyperparameters, is_valid=True)
+
 
 
     ############

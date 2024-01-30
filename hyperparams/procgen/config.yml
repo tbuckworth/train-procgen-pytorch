@@ -277,6 +277,7 @@ hard-500-vqmha:
     decay: .99
     epsilon: 1e-5
     num_heads: 8
+    model_path: "path"
 
 hard-500-mem:
     algo: ppo
