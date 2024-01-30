@@ -456,6 +456,7 @@ def create_env(env_args, render, normalize_rew=True, mirror_some=False, decoding
         # the img frames
     if mirror_some:
         venv = MirrorFrame(venv)
+
     venv = TransposeFrame(venv)
     venv = ScaledFloatFrame(venv)
 

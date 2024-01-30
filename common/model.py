@@ -254,6 +254,7 @@ class ImpalaVQModel(nn.Module):
         quantized, indices, commit_loss = self.vq(x)
         return quantized
 
+
 class ImpalaFSQModel(nn.Module):
     def __init__(self, in_channels, device, use_mha=False, **kwargs):
         super(ImpalaFSQModel, self).__init__()
@@ -305,6 +306,7 @@ class ImpalaFSQModel(nn.Module):
         x = nn.ReLU()(x)
         return x.squeeze()
 
+
 class BaseAttention(nn.Module):
     def __init__(self, shape, **kwargs):
         super(BaseAttention, self).__init__()
@@ -334,13 +336,16 @@ class GlobalSelfAttention(BaseAttention):
         )
         return attn_weight
 
+
 def halve_rounding_n_times(x, n_impala_blocks):
     for _ in range(n_impala_blocks):
         x = math.ceil(x / 2)
     return x
 
+
 class ImpalaVQMHAModel(nn.Module):
     use_vq: jit.Final[bool]
+
     def __init__(self, in_channels, mha_layers, device, obs_shape, use_vq=True, **kwargs):
         super(ImpalaVQMHAModel, self).__init__()
         hid_channels = 16
@@ -356,10 +361,10 @@ class ImpalaVQMHAModel(nn.Module):
         self.mha_layers = mha_layers
         self.block1 = ImpalaBlock(in_channels=in_channels, out_channels=hid_channels)
         self.block2 = ImpalaBlock(in_channels=hid_channels, out_channels=latent_dim)
-        self.block3 = ImpalaBlock(in_channels=latent_dim, out_channels=latent_dim-2) #-2 is for coordinates
+        self.block3 = ImpalaBlock(in_channels=latent_dim, out_channels=latent_dim - 2)  # -2 is for coordinates
         if use_vq:
             # pass in in-place codebook optimizer? think this trains the codebook every time you use it.
-            self.vq = VectorQuantize(dim=latent_dim-2, codebook_size=128, decay=.8, commitment_weight=1.)
+            self.vq = VectorQuantize(dim=latent_dim - 2, codebook_size=128, decay=.8, commitment_weight=1.)
         self.mha1 = GlobalSelfAttention(shape=(n_latents, latent_dim), num_heads=4, embed_dim=latent_dim, dropout=0.1)
         self.max_pool = Reduce('b h w -> b w', 'max')
 
@@ -370,8 +375,6 @@ class ImpalaVQMHAModel(nn.Module):
 
         self.output_dim = latent_dim
         self.apply(xavier_uniform_init)
-
-
 
     def forward(self, x, print_nans=False):
         # Impala Blocks
@@ -445,15 +448,15 @@ class ribMHA(nn.Module):
         self.device = device
         self.ob_shape = ob_shape
         # add 2 for the padding and square because we flatten
-        n_latents = (ob_shape[-1])**2
+        n_latents = (ob_shape[-1]) ** 2
         embed_dim = 64
         output_dim = 256
 
         self.conv1 = nn.Conv2d(in_channels=in_channels, out_channels=12, kernel_size=2, stride=1, padding=0)
-        self.conv2 = nn.Conv2d(in_channels=12, out_channels=embed_dim-2, kernel_size=2, stride=1, padding=0)
+        self.conv2 = nn.Conv2d(in_channels=12, out_channels=embed_dim - 2, kernel_size=2, stride=1, padding=0)
 
         if use_vq:
-            self.vq = VectorQuantize(dim=embed_dim-2, codebook_size=128, decay=.8, commitment_weight=1.)
+            self.vq = VectorQuantize(dim=embed_dim - 2, codebook_size=128, decay=.8, commitment_weight=1.)
 
         self.mha1 = GlobalSelfAttention(shape=(n_latents, embed_dim), num_heads=4, embed_dim=embed_dim, dropout=0.1)
 
@@ -466,8 +469,6 @@ class ribMHA(nn.Module):
 
         self.output_dim = output_dim
         self.apply(xavier_uniform_init)
-
-
 
     def forward(self, x, print_nans=False):
         # Impala Blocks
@@ -691,7 +692,8 @@ class VQVAE(nn.Module):
             codebook_size=num_embeddings,
             ema_update=use_ema,
             decay=decay,
-            eps=epsilon
+            eps=epsilon,
+            accept_image_fmap=True
         )
         self.decoder = Decoder(
             embedding_dim,
@@ -703,15 +705,14 @@ class VQVAE(nn.Module):
 
     def quantize(self, x):
         z = self.pre_vq_conv(self.encoder(x))
-        (z_quantized, dictionary_loss, commitment_loss, encoding_indices) = self.vq(z)
-        return (z_quantized, dictionary_loss, commitment_loss, encoding_indices)
+        (z_quantized, encoding_indices, loss) = self.vq(z)
+        return (z_quantized, encoding_indices, loss)
 
     def forward(self, x):
-        (z_quantized, dictionary_loss, commitment_loss, _) = self.quantize(x)
+        (z_quantized, indices, loss) = self.quantize(x)
         x_recon = self.decoder(z_quantized)
         return {
-            "dictionary_loss": dictionary_loss,
-            "commitment_loss": commitment_loss,
+            "loss": loss,
             "x_recon": x_recon,
         }
 
@@ -735,7 +736,6 @@ def get_trained_vqvqae(in_channels, hyperparameters, device):
                   )
     model.load_state_dict(torch.load(hyperparameters["model_path"], map_location=device)["model_state_dict"])
     return model
-
 
 
 class VQMHAModel(nn.Module):
@@ -769,5 +769,3 @@ class VQMHAModel(nn.Module):
         x = self.fc4(x)
         x = nn.ReLU()(x)
         return x
-
-
