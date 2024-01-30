@@ -376,9 +376,7 @@ class ImpalaVQMHAModel(nn.Module):
     def forward(self, x, print_nans=False):
         # Impala Blocks
         x = self.encoder(x)
-        if self.use_vq:
-            x, indices, commit_loss = self.vq(x)
-        x = self.flatten_and_append_coor(x)
+        x, commit_loss = self.flatten_and_append_coor(x)
 
         x = self.attention(x)
         x = self.pool_and_mlp(x)
@@ -409,7 +407,7 @@ class ImpalaVQMHAModel(nn.Module):
 
     def attention(self, x):
         # shared weights:
-        for _ in self.mha_layers:
+        for _ in range(self.mha_layers):
             x = self.mha1(x)
         return x
 
@@ -420,10 +418,19 @@ class ImpalaVQMHAModel(nn.Module):
         coor = get_coor(x)
         # Flatten
         flat_coor = entities_flatten(coor).to(device=self.device)
-        x = entities_flatten(x)
+        flattened_features = entities_flatten(x)
+
+        # Quantize
+        if self.use_vq:
+            x, indices, commit_loss = self.vq(flattened_features)
+        else:
+            x = flattened_features
+
         # Add Co-ordinates to quantized latents
         x = torch.concat([x, flat_coor], axis=2)
-        return x
+        if self.use_vq:
+            return x, commit_loss
+        return x, None
 
     def print_if_nan(self, name, print_nans, x):
         if print_nans:
