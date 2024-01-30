@@ -383,7 +383,7 @@ class ImpalaVQMHAModel(nn.Module):
 
         try:
             x = self.attention(x)
-        except RuntimeError as e:
+        except Exception as e:
             print(e)
             print(f"x.shape:{x.shape}")
             print(f"x:\n{x}")
