@@ -70,9 +70,8 @@ def train_vqvae(args):
     in_channels = train_data.shape[1]
 
     hyperparameters = get_hyperparams(args.param_name)
-    hyperparameters["architecture"] = "VQVAE"
 
-    model = VQVAE(in_channels)
+    model = VQVAE(in_channels, **hyperparameters)
     model.apply(orthogonal_init)
 
     nb_epoch = args.nb_epoch
@@ -91,7 +90,7 @@ def train_vqvae(args):
         wandb.login(key="cfc00eee102a1e9647b244a40066bfc5f1a96610")
         cfg = vars(args)
         cfg.update(hyperparameters)
-        name = f"{hyperparameters['architecture']}-decode-{np.random.randint(1e5)}"
+        name = f"VQVAE-decode-{np.random.randint(1e5)}"
         wandb.init(project="Coinrun - VQVAE", config=cfg, sync_tensorboard=True,
                    tags=args.wandb_tags, resume="allow", name=name)
 

@@ -687,7 +687,7 @@ class VQVAE(nn.Module):
             in_channels=num_hiddens, out_channels=embedding_dim, kernel_size=1
         )
         self.vq = VectorQuantize(
-            codebook_dim=embedding_dim,
+            dim=embedding_dim,
             codebook_size=num_embeddings,
             ema_update=use_ema,
             decay=decay,
