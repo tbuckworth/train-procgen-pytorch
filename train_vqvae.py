@@ -159,7 +159,7 @@ def send_reconstruction_update(model, epoch, logdir, train_data, valid_data, dev
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--device', type=str, default='cpu', required=False, help='whether to use gpu')
+    parser.add_argument('--device', type=str, default='gpu', required=False, help='whether to use gpu')
     parser.add_argument('--gpu_device', type=int, default=int(0), required=False, help='visible device in CUDA')
     parser.add_argument('--seed', type=int, default=random.randint(0, 9999), help='Random generator seed')
     parser.add_argument('--num_checkpoints', type=int, default=int(5), help='number of checkpoints to store')
@@ -179,4 +179,5 @@ if __name__ == "__main__":
         args.device = "cpu"
         args.use_wandb = False
 
+    print(f"Device:{args.device}")
     train_vqvae(args)
