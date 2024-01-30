@@ -353,6 +353,7 @@ class ImpalaVQMHAModel(nn.Module):
 
         self.device = device
         self.use_vq = use_vq
+        self.mha_layers = mha_layers
         self.block1 = ImpalaBlock(in_channels=in_channels, out_channels=hid_channels)
         self.block2 = ImpalaBlock(in_channels=hid_channels, out_channels=latent_dim)
         self.block3 = ImpalaBlock(in_channels=latent_dim, out_channels=latent_dim-2) #-2 is for coordinates
@@ -408,8 +409,8 @@ class ImpalaVQMHAModel(nn.Module):
 
     def attention(self, x):
         # shared weights:
-        x = self.mha1(x)
-        x = self.mha1(x)
+        for _ in self.mha_layers:
+            x = self.mha1(x)
         return x
 
     def flatten_and_append_coor(self, x):
