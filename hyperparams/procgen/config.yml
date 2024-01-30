@@ -544,3 +544,15 @@ boxworld-ribmha-easy-100-steps-large-batch:
     goal_length_v: 3
     num_distractor_v: 1
     distractor_length_v: 2
+    
+vq-vae:
+    num_hiddens: 128
+    num_downsampling_layers: 4
+    num_residual_layers: 2
+    num_residual_hiddens: 32
+    embedding_dim: 8
+    num_embeddings: 128
+    use_ema: True
+    decay: .99
+    epsilon: 0.00001
+    
