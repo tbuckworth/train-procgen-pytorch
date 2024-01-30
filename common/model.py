@@ -1,6 +1,7 @@
 import math
 
 import numpy as np
+from torch import jit
 
 from .misc_util import orthogonal_init, xavier_uniform_init
 import torch.nn as nn
@@ -339,6 +340,7 @@ def halve_rounding_n_times(x, n_impala_blocks):
     return x
 
 class ImpalaVQMHAModel(nn.Module):
+    use_vq: jit.Final[bool]
     def __init__(self, in_channels, mha_layers, device, obs_shape, use_vq=True, **kwargs):
         super(ImpalaVQMHAModel, self).__init__()
         hid_channels = 16
@@ -347,8 +349,6 @@ class ImpalaVQMHAModel(nn.Module):
         n_impala_blocks = 3
         # Each impala block halves input height and width.
         # These are flattened before VQ (hence prod)
-        # n_latents = int(np.prod([x/(2**n_impala_blocks) for x in input_shape[1:]]))
-
         n_latents = int(np.prod([halve_rounding_n_times(x, n_impala_blocks) for x in input_shape[1:]]))
 
         self.device = device
@@ -356,16 +356,16 @@ class ImpalaVQMHAModel(nn.Module):
         self.block1 = ImpalaBlock(in_channels=in_channels, out_channels=hid_channels)
         self.block2 = ImpalaBlock(in_channels=hid_channels, out_channels=latent_dim)
         self.block3 = ImpalaBlock(in_channels=latent_dim, out_channels=latent_dim-2) #-2 is for coordinates
-        # self.fc = nn.Linear(in_features=32 * scale * 8 * 8, out_features=256)
-        # decay=.99,cc=.25 is the VQ-VAE values
         if use_vq:
             # pass in in-place codebook optimizer? think this trains the codebook every time you use it.
             self.vq = VectorQuantize(dim=latent_dim-2, codebook_size=128, decay=.8, commitment_weight=1.)
-        # self.mhas = [GlobalSelfAttention(shape=(256), num_heads=8, embed_dim=256, dropout=0.1) for _ in range(mha_layers)]
         self.mha1 = GlobalSelfAttention(shape=(n_latents, latent_dim), num_heads=4, embed_dim=latent_dim, dropout=0.1)
-        # self.mha2 = GlobalSelfAttention(shape=(n_latents, latent_dim), num_heads=4, embed_dim=latent_dim, dropout=0.1)
-        # self.max_pool = nn.MaxPool1d(kernel_size=latent_dim, stride=1)
         self.max_pool = Reduce('b h w -> b w', 'max')
+
+        self.fc1 = nn.Linear(latent_dim, 256)
+        self.fc2 = nn.Linear(256, 256)
+        self.fc3 = nn.Linear(256, 256)
+        self.fc4 = nn.Linear(256, latent_dim)
 
         self.output_dim = latent_dim
         self.apply(xavier_uniform_init)
@@ -374,38 +374,55 @@ class ImpalaVQMHAModel(nn.Module):
 
     def forward(self, x, print_nans=False):
         # Impala Blocks
+        x = self.encoder(x)
+        if self.use_vq:
+            x, indices, commit_loss = self.vq(x)
+        x = self.flatten_and_append_coor(x)
+
+        x = self.attention(x)
+        x = self.pool_and_mlp(x)
+
+        if self.use_vq:
+            return x, commit_loss
+        return x
+
+    def encoder(self, x):
         x = self.block1(x)
         x = self.block2(x)
         x = self.block3(x)
+        x = nn.ReLU()(x)
+        return x
 
-        #normalize?
+    def pool_and_mlp(self, x):
+        x = self.max_pool(x)
+        x = x.squeeze()
+        x = self.fc1(x)
+        x = nn.ReLU()(x)
+        x = self.fc2(x)
+        x = nn.ReLU()(x)
+        x = self.fc3(x)
+        x = nn.ReLU()(x)
+        x = self.fc4(x)
+        x = nn.ReLU()(x)
+        return x
 
+    def attention(self, x):
+        # shared weights:
+        x = self.mha1(x)
+        x = self.mha1(x)
+        return x
+
+    def flatten_and_append_coor(self, x):
         # Move channels to end
         x = x.permute(0, 2, 3, 1)
         # Extract coordinates
         coor = get_coor(x)
         # Flatten
         flat_coor = entities_flatten(coor).to(device=self.device)
-        flattened_features = entities_flatten(x)
-
-        # Quantize
-        if self.use_vq:
-            x, indices, commit_loss = self.vq(flattened_features)
-        else:
-            x = flattened_features
-
+        x = entities_flatten(x)
         # Add Co-ordinates to quantized latents
         x = torch.concat([x, flat_coor], axis=2)
-        # for mha in self.mhas:
-        #     x = mha(x)
-
-        x = self.mha1(x)
-        x = self.mha1(x)
-        x = self.max_pool(x)
-        if self.use_vq:
-            return x.squeeze(), commit_loss
-        else:
-            return x.squeeze()
+        return x
 
     def print_if_nan(self, name, print_nans, x):
         if print_nans:
