@@ -190,17 +190,20 @@ class BoxWorldVec(Env):
         # generate new worlds:
 
         for i in list(np.where(self.done)[0]):
-            world, player_position, world_dic, num_env_steps, episode_reward, owned_key = self.generate_world(
-                self.np_random_seed)
+            seed = self.np_random_seed
+            self.replace_world_i(i, seed)
             self.increment_seed()
-            self.world[i] = world
-            self.player_position[i] = player_position
-            self.world_dic[i] = world_dic
-            self.num_env_steps[i] = num_env_steps
-            self.episode_reward[i] = episode_reward
-            self.owned_key[i] = owned_key
 
         return self.world, self.reward, self.done, self.info
+
+    def replace_world_i(self, i, seed):
+        world, player_position, world_dic, num_env_steps, episode_reward, owned_key = self.generate_world(seed)
+        self.world[i] = world
+        self.player_position[i] = player_position
+        self.world_dic[i] = world_dic
+        self.num_env_steps[i] = num_env_steps
+        self.episode_reward[i] = episode_reward
+        self.owned_key[i] = owned_key
 
     def update_world(self, curr_ind, pos_ind, flt):
         self.world[tuple(curr_ind[flt].T)] = grid_color

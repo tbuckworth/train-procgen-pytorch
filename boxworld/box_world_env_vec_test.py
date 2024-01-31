@@ -8,14 +8,15 @@ from boxworld.box_world_env_vec import BoxWorldVec
 class TestBoxWorldVec(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.env = BoxWorldVec(2, 6, 2, 1, 1, start_seed=0)
+        cls.n_env = 8192
+        cls.env = BoxWorldVec(cls.n_env, 6, 2, 1, 1, start_seed=0)
         cls.n_acts = cls.env.action_space.n
         cls.n_envs = cls.env.n_envs
         cls.action_names = cls.env.action_names
         # "UP", "DOWN", "LEFT", "RIGHT"
 
-    def setUp(self) -> None:
-        self.env = BoxWorldVec(2, 6, 2, 1, 1, start_seed=0)
+    def setUp(cls) -> None:
+        cls.env.replace_world_i(0, 0)
 
     def test_keys_are_locked(self):
         # left, left, down, down
