@@ -24,6 +24,7 @@ def colour_match(pos_colour, colour):
 class BoxWorldVec(Env):
     def __init__(self, n_envs, n, goal_length, num_distractor, distractor_length, max_steps=10 ** 6, collect_key=True, start_seed=0, n_levels=0):
 
+        self.infos = []
         self.observation_space = Box(low=0, high=255, shape=(n + 2, n + 2, 3), dtype=np.uint8)
         self.action_space = Discrete(len(ACTION_LOOKUP))
         super().__init__(self.observation_space, self.action_space, n_envs)
@@ -181,19 +182,21 @@ class BoxWorldVec(Env):
 
         self.episode_reward += self.reward
 
-        # TODO: switch dict of arrays into list of dicts?
-        self.info = {
-            "action.name": self.action_names[action],
-            "action.moved_player": possible_move,
-            "bad_transition": self.num_env_steps == self.max_steps,
-            "rgb": self.world,
-            "done": self.done,
-            "episode": {
-                "r": self.episode_reward,
-                "length": self.num_env_steps,
-                "solved": solved
-            }
-        }
+        # switching dict of arrays into list of dicts, unfortunately
+        self.infos = [self.create_info(i, action, possible_move, solved) for i in range(self.num_envs)]
+
+        # self.info = {
+        #     "action.name": self.action_names[action],
+        #     "action.moved_player": possible_move,
+        #     "bad_transition": self.num_env_steps == self.max_steps,
+        #     "rgb": self.world,
+        #     "done": self.done,
+        #     "episode": {
+        #         "r": self.episode_reward,
+        #         "length": self.num_env_steps,
+        #         "solved": solved
+        #     }
+        # }
 
 
         # generate new worlds:
@@ -203,7 +206,23 @@ class BoxWorldVec(Env):
             self.replace_world_i(i, seed)
             self.increment_seed()
 
-        return self.world, self.reward, self.done, self.info
+        return self.world, self.reward, self.done, self.infos
+
+    def create_info(self, i, action, possible_move, solved):
+        info = {
+            "action.name": self.action_names[action][i],
+            "action.moved_player": possible_move[i],
+            "bad_transition": self.num_env_steps[i] == self.max_steps,
+            "rgb": self.world[i],
+            "done": self.done[i],
+        }
+        if self.done[i]:
+            info["episode"] = {
+                "r": self.episode_reward[i],
+                "length": self.num_env_steps[i],
+                "solved": solved[i]
+            }
+        return info
 
     def reset(self):
         return self.world
@@ -297,7 +316,7 @@ class BoxWorldVec(Env):
         return self.reward, self.world, self.done
 
     def get_info(self) -> List[Dict]:
-        return self.info
+        return self.infos
         # result = []
         # for env in self.envs:
         #     result.extend(env.get_info())

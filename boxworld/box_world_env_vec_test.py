@@ -56,7 +56,7 @@ class TestBoxWorldVec(unittest.TestCase):
         world, reward, done, info, world2, reward2, done2, info2 = self.run_sequence(act_seq, False)
         self.assertTrue(reward2[0] == 11)
         self.assertTrue(done2[0])
-        self.assertTrue(info2["episode"]["solved"][0])
+        self.assertTrue(info2[0]["episode"]["solved"])
 
     def no_test_long_play(self):
         # remove 'no_' from the name in order to test - it's long, so best avoided
