@@ -1,39 +1,22 @@
-import gym
-from gym.spaces.discrete import Discrete
-from gym.spaces import Box
-
-import matplotlib.pyplot as plt
 from collections import deque
 
-# from gym3 import FromGymEnv, ViewerWrapper, ToBaselinesVecEnv, vectorize_gym
 import numpy as np
-from .boxworld_gen import is_empty, wall_color, goal_color, update_color, grid_color, world_gen
+from gym.spaces import Box, Discrete
+from gym3.env import Env
+from matplotlib import pyplot as plt
+from typing_extensions import Any, List, Dict, Tuple
+
+from boxworld.box_world_env import ACTION_LOOKUP, CHANGE_COORDINATES
+from boxworld.boxworld_gen_vec import world_gen, grid_color, update_color, wall_color, goal_color, is_empty
 
 
-# from common.env.procgen_wrappers import VecExtractDictObs, VecNormalize, TransposeFrame, ScaledFloatFrame
-
-
-# def boxworld_gym3(n, goal_length, num_distractor, distractor_length, max_steps=10**6, collect_key=True, world=None, render_mode=None, seed=None):
-#     env = BoxWorld(n, goal_length, num_distractor, distractor_length, max_steps, collect_key, world)
-#     env3 = FromGymEnv(env, render_mode, seed)
-#
-#     return env3
-
-
-class BoxWorld(gym.Env):
-    """Boxworld representation
-    Args:
-      n (int): Size of the field (n x n)
-      goal_length (int): Number of keys to collect to solve the level
-      num_distractor (int): Number of distractor trajectories
-      distractor_length (int): Number of distractor keys in each distractor trajectory
-      max_steps (int): Maximum number of env step for a given level
-      collect_key (bool): If true, a key is collected immediately when its corresponding lock is opened
-      world: an existing level. If None, generates a new level by calling the world_gen() function
-    """
-
-    def __init__(self, n, goal_length, num_distractor, distractor_length, max_steps=10 ** 6, collect_key=True,
-                 world=None):
+class BoxWorldVec(Env):
+    def __init__(self, n_envs, n, goal_length, num_distractor, distractor_length, max_steps=10 ** 6, collect_key=True,
+                 world=None, start_seed=0, n_levels=0):
+        self.observation_space = Box(low=0, high=255, shape=(n + 2, n + 2, 3), dtype=np.uint8)
+        self.action_space = Discrete(len(ACTION_LOOKUP))
+        super().__init__(self.observation_space, self.action_space, n_envs)
+        self.n_envs = n_envs
         self.goal_length = goal_length
         self.num_distractor = num_distractor
         self.distractor_length = distractor_length
@@ -42,27 +25,25 @@ class BoxWorld(gym.Env):
         self.collect_key = collect_key  # if True, keys are collected immediately when available
 
         # Penalties and Rewards
-        self.step_cost = 0
-        self.reward_gem = 10
-        self.reward_key = 1
-        self.reward_distractor = -1
+        self.step_cost = np.full(self.n_envs, 0)
+        self.reward_gem = np.full(self.n_envs, 10)
+        self.reward_key = np.full(self.n_envs, 1)
+        self.reward_distractor = np.full(self.n_envs, -1)
 
         # Other Settings
         self.viewer = None
         self.max_steps = max_steps
-        self.action_space = Discrete(len(ACTION_LOOKUP))
-        self.observation_space = Box(low=0, high=255, shape=(n + 2, n + 2, 3), dtype=np.uint8)
 
         # Game initialization
-        self.owned_key = [220, 220, 220]
 
-        self.np_random_seed = None
-        self.reset(world)
-
-        self.num_env_steps = 0
-        self.episode_reward = 0
+        self.start_seed = start_seed
+        self.np_random_seed = start_seed
+        self.n_levels = n_levels
+        self.reset()
 
         self.last_frames = deque(maxlen=3)
+        self.move_coordinates = np.array([[-1, 0], [1, 0], [0, -1], [0, 1]])
+
 
     def seed(self, seed=None):
         self.np_random_seed = seed
@@ -73,17 +54,24 @@ class BoxWorld(gym.Env):
 
     def step(self, action):
 
-        change = CHANGE_COORDINATES[action]
+        change = self.move_coordinates[action]
         new_position = self.player_position + change
         current_position = self.player_position.copy()
 
         self.num_env_steps += 1
 
-        reward = -self.step_cost
+        reward = - self.step_cost
         done = self.num_env_steps == self.max_steps
-        solved = False
+        solved = np.full_like(done, False)
 
         # Move player if the field in the moving direction is either
+
+        possible_move = np.bitwise_and(np.any(new_position > 0, 1),
+                                       np.any(new_position <= self.n, 1))
+
+        pos_ind = np.concatenate((np.array([[i] for i in range(self.n_envs)]), new_position), 1)
+
+        self.world[tuple(pos_ind.T)]
 
         if np.any(new_position < 1) or np.any(new_position >= self.n + 1):
             possible_move = False
@@ -167,23 +155,41 @@ class BoxWorld(gym.Env):
         info["rgb"] = self.world.astype(np.uint8)
         return obs, reward, done, info
 
-    def reset(self, world=None):
-        if world is None:
-            self.world, self.player_position, self.world_dic = world_gen(n=self.n, goal_length=self.goal_length,
-                                                                         num_distractor=self.num_distractor,
-                                                                         distractor_length=self.distractor_length,
-                                                                         seed=self.np_random_seed)
-        else:
-            self.world, self.player_position, self.world_dic = world
+    def generate_world(self, seed):
+        world, player_position, world_dic = world_gen(n=self.n, goal_length=self.goal_length,
+                                                      num_distractor=self.num_distractor,
+                                                      distractor_length=self.distractor_length,
+                                                      seed=seed)
+        num_env_steps = np.array([0])
+        episode_reward = np.array([0])
+        owned_key = np.array([[220, 220, 220]])
+        return world, player_position, world_dic, num_env_steps, episode_reward, owned_key
 
-        self.num_env_steps = 0
-        self.episode_reward = 0
-        self.owned_key = [220, 220, 220]
+    def reset(self):
+        for i in range(self.n_envs):
+            world, player_position, world_dic, num_env_steps, episode_reward, owned_key = self.generate_world(self.np_random_seed)
+            self.np_random_seed += 1
+            if self.n_levels > 0:
+                self.np_random_seed = ((self.np_random_seed - self.start_seed) % self.n_levels) + self.start_seed
+            if i == 0:
+                self.world = world
+                self.player_position = player_position
+                self.world_dic = world_dic
+                self.num_env_steps = num_env_steps
+                self.episode_reward = episode_reward
+                self.owned_key = owned_key
+            else:
+                self.world = np.concatenate((self.world, world))
+                self.player_position = np.concatenate((self.player_position, player_position))
+                self.world_dic = np.concatenate((self.world_dic, world_dic))
+                self.num_env_steps = np.concatenate((self.num_env_steps, num_env_steps))
+                self.episode_reward = np.concatenate((self.episode_reward, episode_reward))
+                self.owned_key = np.concatenate((self.owned_key, owned_key))
 
         return (self.world - grid_color[0]) / 255 * 2
 
     def render(self, mode="human"):
-        img = self.world.astype(np.uint8)
+        img = self.world[0].astype(np.uint8)
         if mode == "rgb_array":
             return img
 
@@ -196,39 +202,23 @@ class BoxWorld(gym.Env):
             plt.imshow(img, vmin=0, vmax=255, interpolation='none')
             plt.show()
 
-    def get_action_lookup(self):
-        return ACTION_LOOKUP
+    def observe(self) -> Tuple[Any, Any, Any]:
+        rews, obs, firsts = zip(*[env.observe() for env in self.envs])
+        return rews, obs, firsts
 
+    def get_info(self) -> List[Dict]:
+        result = []
+        for env in self.envs:
+            result.extend(env.get_info())
+        return result
 
-ACTION_LOOKUP = {
-    0: 'move up',
-    1: 'move down',
-    2: 'move left',
-    3: 'move right',
-}
-CHANGE_COORDINATES = {
-    0: (-1, 0),
-    1: (1, 0),
-    2: (0, -1),
-    3: (0, 1)
-}
+    def act(self, ac: Any) -> None:
+        self.step(ac)
 
 
 if __name__ == "__main__":
-    # import pickle
-
-    # execute only if run as a script
-    env = BoxWorld(6, 2, 1, 1)
-    env.seed(10)
-
-    # with open('/home/nathan/PycharmProjects/relational_RL_graphs/images/ex_world.pkl', 'rb') as file:
-
-    env.reset()
-    env.render()
-
-    env.reset()
-    env.render()
-    # with open('/home/nathan/PycharmProjects/relational_RL_graphs/images/ex_world.pkl', 'wb') as file:
-    #     pickle.dump([env.world, env.player_position, env.world_dic], file)
-
-# TO DO : impossible lvls ? (keys stacked right made inaccessible)
+    env = BoxWorldVec(2, 6, 2, 1, 1)
+    n_acts = env.action_space.n
+    n_envs = env.n_envs
+    actions = np.random.randint(0, n_acts, size=(n_envs))
+    env.step(actions)
