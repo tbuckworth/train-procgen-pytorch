@@ -80,7 +80,7 @@ def make_boxworld_vec(env_args, n_envs):
 
 if __name__ == "__main__":
     hyperparameters = {}
-    env_args = {"n_envs": 2,
+    env_args = {"n_envs": 512,
                 "n": hyperparameters.get('grid_size', 12),
                 "goal_length": hyperparameters.get('goal_length', 5),
                 "num_distractor": hyperparameters.get('num_distractor', 0),

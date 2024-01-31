@@ -1,4 +1,4 @@
-from boxworld.create_box_world import create_box_world_env
+from boxworld.create_box_world import create_box_world_env, create_box_world_env_pre_vec
 from common.env.procgen_wrappers import *
 from common.logger import Logger
 from common.storage import Storage
@@ -24,7 +24,7 @@ if __name__ == '__main__':
     parser.add_argument('--env_name', type=str, default='coinrun', help='environment ID')
     parser.add_argument('--val_env_name', type=str, default=None, help='optional validation environment ID')
     parser.add_argument('--start_level', type=int, default=int(0), help='start-level for environment')
-    parser.add_argument('--num_levels', type=int, default=int(0), help='number of training levels for environment')
+    parser.add_argument('--num_levels', type=int, default=int(500), help='number of training levels for environment')
     parser.add_argument('--distribution_mode', type=str, default='easy', help='distribution mode for environment')
     parser.add_argument('--param_name', type=str, default='easy-200', help='hyper-parameter ID')
     parser.add_argument('--device', type=str, default='cpu', required=False, help='whether to use gpu')
@@ -166,8 +166,8 @@ if __name__ == '__main__':
                     "num_distractor": hyperparameters.get('num_distractor', 0),
                     "distractor_length": hyperparameters.get('distractor_length', 0),
                     "max_steps": hyperparameters.get("max_steps", 10 ** 3),
-                    "n_levels": hyperparameters.get("n_levels", 0),
-                    "seed": hyperparameters.get("seed", 0),
+                    "n_levels": num_levels,
+                    "seed": args.seed,
                     }
         normalize_rew = hyperparameters.get('normalize_rew', True)
         if is_valid:
@@ -177,7 +177,7 @@ if __name__ == '__main__':
             env_args["distractor_length"] = hyperparameters.get('distractor_length_v', 0)
             env_args["seed"] = args.seed + np.random.randint(1e6, 1e7) if env_args["n_levels"] == 0 else env_args["n_levels"] + 1
             env_args["n_levels"] = 0
-        return create_box_world_env(env_args, render=False, normalize_rew=normalize_rew)
+        return create_box_world_env_pre_vec(env_args, render=False, normalize_rew=normalize_rew)
 
     if args.env_name == "boxworld":
         create_venv = create_bw_env
