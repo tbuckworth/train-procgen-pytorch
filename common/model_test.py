@@ -5,7 +5,7 @@ import torch
 import yaml
 from torchinfo import summary
 
-from boxworld.create_box_world import create_box_world_env
+from boxworld.create_box_world import create_box_world_env, create_box_world_env_pre_vec
 from common.model import ImpalaVQMHAModel, ImpalaFSQModel, ImpalaModel, Decoder, VQVAE
 from helper import initialize_model
 from common.env.procgen_wrappers import create_env
@@ -101,9 +101,10 @@ class BoxWorldTestModel(unittest.TestCase):
                     "num_distractor": 1,
                     "distractor_length": 2,
                     "max_steps": 10 ** 6,
-                    "seed": None,
+                    "seed": 0,
+                    "n_levels":0
                     }
-        cls.env = create_box_world_env(env_args, render=False, normalize_rew=True)
+        cls.env = create_box_world_env_pre_vec(env_args, render=False, normalize_rew=True)
         cls.in_channels = cls.env.observation_space.shape[0]
         cls.obs = torch.FloatTensor(cls.env.reset())
 
@@ -118,9 +119,20 @@ class BoxWorldTestModel(unittest.TestCase):
 
         policy.forward(self.obs, None, None)
 
+
+
     def test_ribMHA(self):
         hyperparameters = {"architecture": "ribmha",
                            "use_vq": False
+                           }
+        model, obs_shape, policy = initialize_model(self.device, self.env, hyperparameters)
+        model.forward(self.obs)
+        summary(model, self.obs.shape)
+        policy.forward(self.obs, None, None)
+
+    def test_ribVQMHA(self):
+        hyperparameters = {"architecture": "ribmha",
+                           "use_vq": True
                            }
         model, obs_shape, policy = initialize_model(self.device, self.env, hyperparameters)
         model.forward(self.obs)
