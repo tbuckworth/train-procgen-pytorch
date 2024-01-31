@@ -1,7 +1,6 @@
 import unittest
 
 import numpy as np
-from matplotlib import pyplot as plt
 
 from boxworld.box_world_env_vec import BoxWorldVec
 
@@ -14,6 +13,9 @@ class TestBoxWorldVec(unittest.TestCase):
         cls.n_envs = cls.env.n_envs
         cls.action_names = cls.env.action_names
         # "UP", "DOWN", "LEFT", "RIGHT"
+
+    def setUp(self) -> None:
+        self.env = BoxWorldVec(2, 6, 2, 1, 1, start_seed=0)
 
     def test_keys_are_locked(self):
         # left, left, down, down
@@ -46,9 +48,14 @@ class TestBoxWorldVec(unittest.TestCase):
         act_seq = [2, 2, 2, 1, 1, 1, 3, 3, 0]
         world, reward, done, info, world2, reward2, done2, info2 = self.run_sequence(act_seq, False)
         self.assertTrue(reward2[0] == -1)
+        self.assertTrue(done2[0])
 
     def test_goal_reachable(self):
-        pass
+        act_seq = [2, 2, 2, 3, 3, 3, 1]
+        world, reward, done, info, world2, reward2, done2, info2 = self.run_sequence(act_seq, False)
+        self.assertTrue(reward2[0] == 11)
+        self.assertTrue(done2[0])
+        self.assertTrue(info2["episode"]["solved"][0])
 
     def impossible_move(self, act_seq, render):
         world, reward, done, info, world2, reward2, done2, info2 = self.run_sequence(act_seq, render)
@@ -56,6 +63,7 @@ class TestBoxWorldVec(unittest.TestCase):
 
     def run_sequence(self, act_seq, render):
         world = self.env.world
+        reward, done, info = None, None, None
         if render:
             self.env.render()
         for act in act_seq[:-1]:

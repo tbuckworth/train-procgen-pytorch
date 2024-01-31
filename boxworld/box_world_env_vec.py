@@ -158,9 +158,9 @@ class BoxWorldVec(Env):
         is_distractor = np.bitwise_and(pos_lock_status == 0, flt)
         self.reward[is_distractor] += self.reward_distractor[is_distractor]
 
-        self.world[curr_ind[flt]] = grid_color
-        self.world[left_of_ind[flt]] = grid_color
-        self.world[pos_ind[flt]] = agent_color
+        self.world[tuple(curr_ind[flt].T)] = grid_color
+        self.world[tuple(left_of_ind[flt].T)] = grid_color
+        self.world[tuple(pos_ind[flt].T)] = agent_color
         self.world[flt, 0, 0] = left_colour[flt]
         self.owned_key[flt] = left_colour[flt]
         moved[flt] = True
@@ -218,7 +218,8 @@ class BoxWorldVec(Env):
         return pos_colour
 
     def position_index(self, new_position):
-        pos_ind = np.concatenate((np.array([[i] for i in range(self.n_envs)]), new_position), 1)
+        capped_position = np.minimum(np.maximum(new_position, 0), self.n + 1)
+        pos_ind = np.concatenate((np.array([[i] for i in range(self.n_envs)]), capped_position), 1)
         return pos_ind
 
     def generate_world(self, seed):
