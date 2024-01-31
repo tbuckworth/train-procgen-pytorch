@@ -380,13 +380,8 @@ class ImpalaVQMHAModel(nn.Module):
         # Impala Blocks
         x = self.encoder(x)
         x, commit_loss = self.flatten_and_append_coor(x)
+        x = self.attention(x)
 
-        try:
-            x = self.attention(x)
-        except Exception as e:
-            print(e)
-            print(f"x.shape:{x.shape}")
-            print(f"x:\n{x}")
 
         x = self.pool_and_mlp(x)
 
@@ -447,6 +442,7 @@ class ImpalaVQMHAModel(nn.Module):
 
 
 class ribMHA(nn.Module):
+    use_vq: jit.Final[bool]
     def __init__(self, in_channels, device, ob_shape, use_vq=False, **kwargs):
         super(ribMHA, self).__init__()
 
@@ -458,7 +454,7 @@ class ribMHA(nn.Module):
         embed_dim = 64
         output_dim = 256
 
-        self.conv1 = nn.Conv2d(in_channels=in_channels, out_channels=12, kernel_size=2, stride=1, padding=0)
+        self.conv1 = nn.Conv2d(in_channels=in_channels, out_channels=12, kernel_size=2, stride=1, padding=1)
         self.conv2 = nn.Conv2d(in_channels=12, out_channels=embed_dim - 2, kernel_size=2, stride=1, padding=0)
 
         if use_vq:
@@ -479,13 +475,13 @@ class ribMHA(nn.Module):
     def forward(self, x, print_nans=False):
         # Impala Blocks
         x = self.encoder(x)
-        if self.use_vq:
-            x, indices, commit_loss = self.vq(x)
-        x = self.flatten_and_append_coor(x)
+        x, commit_loss = self.flatten_and_append_coor(x)
 
         x = self.attention(x)
         x = self.pool_and_mlp(x)
 
+        if self.use_vq:
+            return x, commit_loss
         return x
 
     def pool_and_mlp(self, x):
@@ -514,10 +510,19 @@ class ribMHA(nn.Module):
         coor = get_coor(x)
         # Flatten
         flat_coor = entities_flatten(coor).to(device=self.device)
-        x = entities_flatten(x)
+        flattened_features = entities_flatten(x)
+
+        # Quantize
+        if self.use_vq:
+            x, indices, commit_loss = self.vq(flattened_features)
+        else:
+            x = flattened_features
+
         # Add Co-ordinates to quantized latents
         x = torch.concat([x, flat_coor], axis=2)
-        return x
+        if self.use_vq:
+            return x, commit_loss
+        return x, None
 
     def encoder(self, x):
         x = self.conv1(x)

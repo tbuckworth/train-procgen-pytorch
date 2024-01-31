@@ -120,6 +120,7 @@ class BoxWorldTestModel(unittest.TestCase):
 
     def test_ribMHA(self):
         hyperparameters = {"architecture": "ribmha",
+                           "use_vq": False
                            }
         model, obs_shape, policy = initialize_model(self.device, self.env, hyperparameters)
         model.forward(self.obs)
