@@ -7,7 +7,11 @@ from matplotlib import pyplot as plt
 from typing_extensions import Any, List, Dict, Tuple
 
 from boxworld.box_world_env import ACTION_LOOKUP, CHANGE_COORDINATES
-from boxworld.boxworld_gen_vec import world_gen, grid_color, update_color, wall_color, goal_color, is_empty
+from boxworld.boxworld_gen_vec import world_gen, grid_color, update_color, wall_color, goal_color, is_empty, agent_color
+
+
+def colour_match(pos_colour, colour):
+    return np.logical_and.reduce(pos_colour == colour, 1)
 
 
 class BoxWorldVec(Env):
@@ -43,7 +47,7 @@ class BoxWorldVec(Env):
 
         self.last_frames = deque(maxlen=3)
         self.move_coordinates = np.array([[-1, 0], [1, 0], [0, -1], [0, 1]])
-
+        self.action_names = np.array(["UP", "DOWN", "LEFT", "RIGHT"])
 
     def seed(self, seed=None):
         self.np_random_seed = seed
@@ -60,100 +64,148 @@ class BoxWorldVec(Env):
 
         self.num_env_steps += 1
 
-        reward = - self.step_cost
-        done = self.num_env_steps == self.max_steps
-        solved = np.full_like(done, False)
+        self.reward = - self.step_cost
+        self.done = self.num_env_steps == self.max_steps
+        solved = np.full_like(self.done, False)
+        moved = np.full_like(self.done, False)
 
         # Move player if the field in the moving direction is either
+        pos_ind = self.position_index(new_position)
+        curr_ind = self.position_index(current_position)
+        left_of_ind = self.position_index(new_position - [0, 1])
 
-        possible_move = np.bitwise_and(np.any(new_position > 0, 1),
-                                       np.any(new_position <= self.n, 1))
+        pos_in_grid = np.bitwise_and(np.all(new_position > 0, 1),
+                                     np.all(new_position <= self.n, 1))
 
-        pos_ind = np.concatenate((np.array([[i] for i in range(self.n_envs)]), new_position), 1)
+        pos_empty = self.position_empty(pos_ind)
 
-        self.world[tuple(pos_ind.T)]
+        pos_is_first_key = np.bitwise_and(
+            np.bitwise_not(pos_empty),
+            np.bitwise_or(
+                new_position.T[1] == 1,  # is_first_column
+                self.position_empty(left_of_ind)
+            ))
 
-        if np.any(new_position < 1) or np.any(new_position >= self.n + 1):
-            possible_move = False
+        pos_lock_status = self.get_lock_status(pos_ind)
 
-        elif is_empty(self.world[new_position[0], new_position[1]]):
-            # No key, no lock
-            possible_move = True
+        pos_is_lock = pos_lock_status != -1
 
-        elif new_position[1] == 1 or is_empty(self.world[new_position[0], new_position[1] - 1]):
-            # It is a key
-            if is_empty(self.world[new_position[0], new_position[1] + 1]):
-                # Key is not locked
-                possible_move = True
-                self.owned_key = self.world[new_position[0], new_position[1]].copy()
-                self.world[0, 0] = self.owned_key
-                if np.array_equal(self.world[new_position[0], new_position[1]], goal_color):
-                    # Goal reached
-                    self.world[0, 0] = wall_color
-                    reward += self.reward_gem
-                    solved = True
-                    done = True
+        pos_colour = self.colour_at_position(pos_ind)
 
-                else:
-                    reward += self.reward_key
-            else:
-                possible_move = False
-        else:
-            # It is a lock
-            if np.array_equal(self.world[new_position[0], new_position[1]], self.owned_key):
-                # The lock matches the key
-                possible_move = True
+        owned_key_matches_new_pos = np.logical_and.reduce(
+            np.bitwise_and(self.owned_key == pos_colour,
+                           self.owned_key != grid_color), 1
+        )
 
-                if self.collect_key:
-                    # goal reached
-                    if np.array_equal(self.world[new_position[0], new_position[1] - 1], goal_color):
-                        # Goal reached
-                        self.world[new_position[0], new_position[1] - 1] = [220, 220, 220]
-                        self.world[0, 0] = wall_color
-                        reward += self.reward_gem
-                        solved = True
-                        done = True
+        unlocked_box = np.bitwise_and(pos_is_lock, owned_key_matches_new_pos)
 
-                    else:
-                        # loose old key and collect new one
-                        self.owned_key = np.copy(self.world[new_position[0], new_position[1] - 1])
-                        self.world[new_position[0], new_position[1] - 1] = [220, 220, 220]
-                        self.world[0, 0] = self.owned_key
-                        if self.world_dic[tuple(new_position)] == 0:
-                            reward += self.reward_distractor
-                            done = True
-                        else:
-                            reward += self.reward_key
-                else:
-                    self.owned_key = [220, 220, 220]
-                    self.world[0, 0] = [0, 0, 0]
-                    if self.world_dic[tuple(new_position)] == 0:
-                        reward += self.reward_distractor
-                        done = True
-            else:
-                possible_move = False
-                # print("lock color is {}, but owned key is {}".format(
-                #     self.world[new_position[0], new_position[1]], self.owned_key))
+        # try to move outside bounds
+        # If not in grid then turn has been taken
+        moved[np.bitwise_not(pos_in_grid)] = True
 
-        if possible_move:
-            self.player_position = new_position
-            update_color(self.world, previous_agent_loc=current_position, new_agent_loc=new_position)
+        # move to unavailable lock/key
+        unavailable_key = np.bitwise_not(np.bitwise_or(pos_empty, pos_is_first_key, pos_is_lock))
+        unavailable_lock = np.bitwise_and(pos_is_lock, np.bitwise_not(owned_key_matches_new_pos))
+        unavailable = np.bitwise_or(unavailable_key, unavailable_lock)
+        moved[unavailable] = True
 
-        self.episode_reward += reward
+        possible_move = np.bitwise_and(pos_in_grid, np.bitwise_not(unavailable))
 
-        info = {
-            "action.name": ACTION_LOOKUP[action],
+        # move to empty square
+        flt = np.bitwise_and(pos_empty, pos_in_grid)
+        self.player_position[flt] = new_position[flt]
+        self.update_world(curr_ind, pos_ind, flt)
+        moved[flt] = True
+
+        # move to free key
+        flt = np.bitwise_and(pos_is_first_key, pos_in_grid)
+        self.player_position[flt] = new_position[flt]
+        self.owned_key[flt] = pos_colour[flt]
+        self.world[flt, 0, 0] = pos_colour[flt]
+        self.update_world(curr_ind, pos_ind, flt)
+        moved[flt] = True
+        self.reward[flt] += self.reward_key[flt]
+
+        # move to lock and have correct key
+        #   is distractor
+        #   is on_branch
+        #       is goal
+        #       is not goal
+        flt = unlocked_box
+        self.player_position[flt] = new_position[flt]
+        left_colour = self.colour_at_position(left_of_ind)
+        is_goal = np.bitwise_and(colour_match(left_colour, goal_color), flt)
+        self.reward[is_goal] += self.reward_gem[is_goal]
+
+        is_on_branch = np.bitwise_and(pos_lock_status == 1, flt)
+        # TODO: is this necessary?
+        self.reward[is_on_branch] += self.reward_key[is_on_branch]
+
+        is_distractor = np.bitwise_and(pos_lock_status == 0, flt)
+        self.reward[is_distractor] += self.reward_distractor[is_distractor]
+
+        self.world[curr_ind[flt]] = grid_color
+        self.world[left_of_ind[flt]] = grid_color
+        self.world[pos_ind[flt]] = agent_color
+        self.world[flt, 0, 0] = left_colour[flt]
+        self.owned_key[flt] = left_colour[flt]
+        moved[flt] = True
+
+        self.done[np.bitwise_or(is_distractor, is_goal)] = True
+        solved[is_goal] = True
+
+        assert (np.all(moved))
+
+        self.episode_reward += self.reward
+
+        # TODO: switch dict of arrays into list of dicts?
+        self.info = {
+            "action.name": self.action_names[action],
             "action.moved_player": possible_move,
-            "bad_transition": self.max_steps == self.num_env_steps,
+            "bad_transition": self.num_env_steps == self.max_steps,
+            "rgb": self.world,
+            "done": self.done,
+            "episode": {
+                "r": self.episode_reward,
+                "length": self.num_env_steps,
+                "solved": solved
+            }
         }
-        if done:
-            info["episode"] = {"r": self.episode_reward,
-                               "length": self.num_env_steps,
-                               "solved": solved}
-        self.last_frames.append(self.world)
-        obs = (self.world - grid_color[0]) / 255 * 2
-        info["rgb"] = self.world.astype(np.uint8)
-        return obs, reward, done, info
+
+
+        # generate new worlds:
+
+        for i in list(np.where(self.done)[0]):
+            world, player_position, world_dic, num_env_steps, episode_reward, owned_key = self.generate_world(
+                self.np_random_seed)
+            self.increment_seed()
+            self.world[i] = world
+            self.player_position[i] = player_position
+            self.world_dic[i] = world_dic
+            self.num_env_steps[i] = num_env_steps
+            self.episode_reward[i] = episode_reward
+            self.owned_key[i] = owned_key
+
+        return self.world, self.reward, self.done, self.info
+
+    def update_world(self, curr_ind, pos_ind, flt):
+        self.world[tuple(curr_ind[flt].T)] = grid_color
+        self.world[tuple(pos_ind[flt].T)] = agent_color
+
+    def get_lock_status(self, pos_ind):
+        return self.world_dic[tuple(pos_ind.T)]
+
+    def position_empty(self, pos_ind):
+        pos_colour = self.colour_at_position(pos_ind)
+        return colour_match(pos_colour, grid_color)
+
+    def colour_at_position(self, pos_ind):
+        pos_colour = self.world[tuple(pos_ind.T)]
+        return pos_colour
+
+    def position_index(self, new_position):
+        pos_ind = np.concatenate((np.array([[i] for i in range(self.n_envs)]), new_position), 1)
+        return pos_ind
 
     def generate_world(self, seed):
         world, player_position, world_dic = world_gen(n=self.n, goal_length=self.goal_length,
@@ -167,10 +219,9 @@ class BoxWorldVec(Env):
 
     def reset(self):
         for i in range(self.n_envs):
-            world, player_position, world_dic, num_env_steps, episode_reward, owned_key = self.generate_world(self.np_random_seed)
-            self.np_random_seed += 1
-            if self.n_levels > 0:
-                self.np_random_seed = ((self.np_random_seed - self.start_seed) % self.n_levels) + self.start_seed
+            world, player_position, world_dic, num_env_steps, episode_reward, owned_key = self.generate_world(
+                self.np_random_seed)
+            self.increment_seed()
             if i == 0:
                 self.world = world
                 self.player_position = player_position
@@ -188,6 +239,11 @@ class BoxWorldVec(Env):
 
         return (self.world - grid_color[0]) / 255 * 2
 
+    def increment_seed(self):
+        self.np_random_seed += 1
+        if self.n_levels > 0:
+            self.np_random_seed = ((self.np_random_seed - self.start_seed) % self.n_levels) + self.start_seed
+
     def render(self, mode="human"):
         img = self.world[0].astype(np.uint8)
         if mode == "rgb_array":
@@ -202,15 +258,17 @@ class BoxWorldVec(Env):
             plt.imshow(img, vmin=0, vmax=255, interpolation='none')
             plt.show()
 
+    ###TODO:
+
     def observe(self) -> Tuple[Any, Any, Any]:
-        rews, obs, firsts = zip(*[env.observe() for env in self.envs])
-        return rews, obs, firsts
+        return self.reward, self.world, self.done
 
     def get_info(self) -> List[Dict]:
-        result = []
-        for env in self.envs:
-            result.extend(env.get_info())
-        return result
+        return self.info
+        # result = []
+        # for env in self.envs:
+        #     result.extend(env.get_info())
+        # return result
 
     def act(self, ac: Any) -> None:
         self.step(ac)
@@ -220,5 +278,8 @@ if __name__ == "__main__":
     env = BoxWorldVec(2, 6, 2, 1, 1)
     n_acts = env.action_space.n
     n_envs = env.n_envs
-    actions = np.random.randint(0, n_acts, size=(n_envs))
-    env.step(actions)
+    while True:
+        actions = np.random.randint(0, n_acts, size=(n_envs))
+        # actions[0] = 0
+        env.step(actions)
+        env.render()

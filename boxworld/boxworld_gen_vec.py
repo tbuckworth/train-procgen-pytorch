@@ -44,7 +44,7 @@ def world_gen(n=12, goal_length=3, num_distractor=2, distractor_length=2, seed=N
         random.seed(seed)
 
     world_dic = - np.ones((n+2, n+2)) # dic keys are lock positions, value is 0 if distractor, else 1.
-    world = np.ones((n, n, 3)) * 220
+    world = np.ones((n, n, 3), dtype=np.uint8) * 220
     goal_colors = random.sample(range(num_colors), goal_length - 1)
     distractor_possible_colors = [color for color in range(num_colors) if color not in goal_colors]
     distractor_colors = [random.sample(distractor_possible_colors, distractor_length) for k in range(num_distractor)]
@@ -89,8 +89,8 @@ def world_gen(n=12, goal_length=3, num_distractor=2, distractor_length=2, seed=N
     agent_pos += np.array([1, 1])
 
     # add black wall
-    wall_0 = np.zeros((1, n, 3))
-    wall_1 = np.zeros((n+2, 1, 3))
+    wall_0 = np.zeros((1, n, 3), dtype=np.uint8)
+    wall_1 = np.zeros((n+2, 1, 3), dtype=np.uint8)
     world = np.concatenate((wall_0, world, wall_0), axis=0)
     world = np.concatenate((wall_1, world, wall_1), axis=1)
 
