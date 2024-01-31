@@ -13,14 +13,21 @@ from boxworld.boxworld_gen_vec import world_gen, grid_color, update_color, wall_
 def colour_match(pos_colour, colour):
     return np.logical_and.reduce(pos_colour == colour, 1)
 
+# reset()
+# step(act)
+# close()
+# observation_space
+# action_space
+
+
 
 class BoxWorldVec(Env):
-    def __init__(self, n_envs, n, goal_length, num_distractor, distractor_length, max_steps=10 ** 6, collect_key=True,
-                 world=None, start_seed=0, n_levels=0):
+    def __init__(self, n_envs, n, goal_length, num_distractor, distractor_length, max_steps=10 ** 6, collect_key=True, start_seed=0, n_levels=0):
+
         self.observation_space = Box(low=0, high=255, shape=(n + 2, n + 2, 3), dtype=np.uint8)
         self.action_space = Discrete(len(ACTION_LOOKUP))
         super().__init__(self.observation_space, self.action_space, n_envs)
-        self.n_envs = n_envs
+        self.num_envs = n_envs
         self.goal_length = goal_length
         self.num_distractor = num_distractor
         self.distractor_length = distractor_length
@@ -29,10 +36,13 @@ class BoxWorldVec(Env):
         self.collect_key = collect_key  # if True, keys are collected immediately when available
 
         # Penalties and Rewards
-        self.step_cost = np.full(self.n_envs, 0)
-        self.reward_gem = np.full(self.n_envs, 10)
-        self.reward_key = np.full(self.n_envs, 1)
-        self.reward_distractor = np.full(self.n_envs, -1)
+        self.step_cost = np.full(self.num_envs, 0)
+        self.reward_gem = np.full(self.num_envs, 10)
+        self.reward_key = np.full(self.num_envs, 1)
+        self.reward_distractor = np.full(self.num_envs, -1)
+
+        self.done = np.full(self.num_envs, False)
+        self.reward = np.full(self.num_envs, 0)
 
         # Other Settings
         self.viewer = None
@@ -43,7 +53,7 @@ class BoxWorldVec(Env):
         self.start_seed = start_seed
         self.np_random_seed = start_seed
         self.n_levels = n_levels
-        self.reset()
+        self.start_envs()
 
         self.last_frames = deque(maxlen=3)
         self.move_coordinates = np.array([[-1, 0], [1, 0], [0, -1], [0, 1]])
@@ -195,6 +205,12 @@ class BoxWorldVec(Env):
 
         return self.world, self.reward, self.done, self.info
 
+    def reset(self):
+        return self.world
+
+    def close(self):
+        return
+
     def replace_world_i(self, i, seed):
         world, player_position, world_dic, num_env_steps, episode_reward, owned_key = self.generate_world(seed)
         self.world[i] = world
@@ -221,7 +237,7 @@ class BoxWorldVec(Env):
 
     def position_index(self, new_position):
         capped_position = np.minimum(np.maximum(new_position, 0), self.n + 1)
-        pos_ind = np.concatenate((np.array([[i] for i in range(self.n_envs)]), capped_position), 1)
+        pos_ind = np.concatenate((np.array([[i] for i in range(self.num_envs)]), capped_position), 1)
         return pos_ind
 
     def generate_world(self, seed):
@@ -234,8 +250,8 @@ class BoxWorldVec(Env):
         owned_key = np.array([[220, 220, 220]])
         return world, player_position, world_dic, num_env_steps, episode_reward, owned_key
 
-    def reset(self):
-        for i in range(self.n_envs):
+    def start_envs(self):
+        for i in range(self.num_envs):
             world, player_position, world_dic, num_env_steps, episode_reward, owned_key = self.generate_world(
                 self.np_random_seed)
             self.increment_seed()
@@ -254,7 +270,7 @@ class BoxWorldVec(Env):
                 self.episode_reward = np.concatenate((self.episode_reward, episode_reward))
                 self.owned_key = np.concatenate((self.owned_key, owned_key))
 
-        return (self.world - grid_color[0]) / 255 * 2
+        return self.world
 
     def increment_seed(self):
         self.np_random_seed += 1
@@ -294,7 +310,7 @@ class BoxWorldVec(Env):
 if __name__ == "__main__":
     env = BoxWorldVec(2, 6, 2, 1, 1)
     n_acts = env.action_space.n
-    n_envs = env.n_envs
+    n_envs = env.num_envs
     while True:
         actions = np.random.randint(0, n_acts, size=(n_envs))
         # actions[0] = 0

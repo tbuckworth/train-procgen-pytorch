@@ -166,7 +166,8 @@ if __name__ == '__main__':
                     "num_distractor": hyperparameters.get('num_distractor', 0),
                     "distractor_length": hyperparameters.get('distractor_length', 0),
                     "max_steps": hyperparameters.get("max_steps", 10 ** 3),
-                    "seed": None, # a fixed seed generates the same level on repeat
+                    "n_levels": hyperparameters.get("n_levels", 0),
+                    "seed": hyperparameters.get("seed", 0),
                     }
         normalize_rew = hyperparameters.get('normalize_rew', True)
         if is_valid:
@@ -174,7 +175,8 @@ if __name__ == '__main__':
             env_args["goal_length"] = hyperparameters.get('goal_length_v', 5)
             env_args["num_distractor"] = hyperparameters.get('num_distractor_v', 0)
             env_args["distractor_length"] = hyperparameters.get('distractor_length_v', 0)
-            env_args["seed"] = args.seed + 100
+            env_args["seed"] = args.seed + np.random.randint(1e6, 1e7) if env_args["n_levels"] == 0 else env_args["n_levels"] + 1
+            env_args["n_levels"] = 0
         return create_box_world_env(env_args, render=False, normalize_rew=normalize_rew)
 
     if args.env_name == "boxworld":

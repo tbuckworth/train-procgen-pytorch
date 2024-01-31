@@ -11,7 +11,7 @@ class TestBoxWorldVec(unittest.TestCase):
         cls.n_env = 160
         cls.env = BoxWorldVec(cls.n_env, 6, 2, 1, 1, start_seed=0)
         cls.n_acts = cls.env.action_space.n
-        cls.n_envs = cls.env.n_envs
+        cls.n_envs = cls.env.num_envs
         cls.action_names = cls.env.action_names
         # "UP", "DOWN", "LEFT", "RIGHT"
 

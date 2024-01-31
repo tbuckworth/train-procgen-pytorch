@@ -42,7 +42,7 @@ def load_policy(render, logdir, device, args):
     hp_file = os.path.join(logdir, "hyperparameters.npy")
     if os.path.exists(hp_file):
         hyperparameters = np.load(hp_file, allow_pickle='TRUE').item()
-    n_envs = args.n_envs
+    n_envs = args.num_envs
     env_args = {"num": n_envs,
                 "env_name": "coinrun",
                 "start_level": args.start_level,
@@ -89,7 +89,7 @@ def collect_obs(new_policy, obs, hidden_state, done, env, n_states, return_logit
 
 
 def collect_validation_data(policy, device, args, hyperparameters, hidden_state, done, n_states):
-    env_args = {"num": args.n_envs,
+    env_args = {"num": args.num_envs,
                 "env_name": "coinrun",
                 "start_level": args.start_level + args.num_levels + 1,
                 "num_levels": 0,
