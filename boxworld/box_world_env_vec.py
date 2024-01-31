@@ -73,18 +73,28 @@ class BoxWorldVec(Env):
         pos_ind = self.position_index(new_position)
         curr_ind = self.position_index(current_position)
         left_of_ind = self.position_index(new_position - [0, 1])
+        right_of_ind = self.position_index(new_position + [0, 1])
 
         pos_in_grid = np.bitwise_and(np.all(new_position > 0, 1),
                                      np.all(new_position <= self.n, 1))
 
         pos_empty = self.position_empty(pos_ind)
 
-        pos_is_first_key = np.bitwise_and(
+        pos_full_and_left_clear = np.bitwise_and(
             np.bitwise_not(pos_empty),
             np.bitwise_or(
                 new_position.T[1] == 1,  # is_first_column
                 self.position_empty(left_of_ind)
-            ))
+            )
+        )
+        right_colour = self.colour_at_position(right_of_ind)
+
+        pos_is_first_key = np.bitwise_and(pos_full_and_left_clear,
+                                          np.bitwise_or(
+                                              colour_match(right_colour, grid_color),
+                                              colour_match(right_colour, agent_color)
+                                          )
+                                          )
 
         pos_lock_status = self.get_lock_status(pos_ind)
 
@@ -112,13 +122,13 @@ class BoxWorldVec(Env):
         possible_move = np.bitwise_and(pos_in_grid, np.bitwise_not(unavailable))
 
         # move to empty square
-        flt = np.bitwise_and(pos_empty, pos_in_grid)
+        flt = np.bitwise_and(pos_empty, pos_in_grid, np.bitwise_not(moved))
         self.player_position[flt] = new_position[flt]
         self.update_world(curr_ind, pos_ind, flt)
         moved[flt] = True
 
         # move to free key
-        flt = np.bitwise_and(pos_is_first_key, pos_in_grid)
+        flt = np.bitwise_and(pos_is_first_key, pos_in_grid, np.bitwise_not(moved))
         self.player_position[flt] = new_position[flt]
         self.owned_key[flt] = pos_colour[flt]
         self.world[flt, 0, 0] = pos_colour[flt]
@@ -131,7 +141,7 @@ class BoxWorldVec(Env):
         #   is on_branch
         #       is goal
         #       is not goal
-        flt = unlocked_box
+        flt = np.bitwise_and(unlocked_box, np.bitwise_not(moved))
         self.player_position[flt] = new_position[flt]
         left_colour = self.colour_at_position(left_of_ind)
         is_goal = np.bitwise_and(colour_match(left_colour, goal_color), flt)
