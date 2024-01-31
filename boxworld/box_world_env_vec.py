@@ -152,7 +152,6 @@ class BoxWorldVec(Env):
         self.reward[is_goal] += self.reward_gem[is_goal]
 
         is_on_branch = np.bitwise_and(pos_lock_status == 1, flt)
-        # TODO: is this necessary?
         self.reward[is_on_branch] += self.reward_key[is_on_branch]
 
         is_distractor = np.bitwise_and(pos_lock_status == 0, flt)
