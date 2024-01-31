@@ -114,7 +114,9 @@ class BoxWorldVec(Env):
         moved[np.bitwise_not(pos_in_grid)] = True
 
         # move to unavailable lock/key
-        unavailable_key = np.bitwise_not(np.bitwise_or(pos_empty, pos_is_first_key, pos_is_lock))
+        unavailable_key = np.bitwise_not(
+            np.bitwise_or(np.bitwise_or(pos_empty, pos_is_first_key), pos_is_lock)
+        )
         unavailable_lock = np.bitwise_and(pos_is_lock, np.bitwise_not(owned_key_matches_new_pos))
         unavailable = np.bitwise_or(unavailable_key, unavailable_lock)
         moved[unavailable] = True
@@ -122,13 +124,15 @@ class BoxWorldVec(Env):
         possible_move = np.bitwise_and(pos_in_grid, np.bitwise_not(unavailable))
 
         # move to empty square
-        flt = np.bitwise_and(pos_empty, pos_in_grid, np.bitwise_not(moved))
+        flt = np.bitwise_and(pos_empty, pos_in_grid)
+        flt = np.bitwise_and(flt, np.bitwise_not(moved))
         self.player_position[flt] = new_position[flt]
         self.update_world(curr_ind, pos_ind, flt)
         moved[flt] = True
 
         # move to free key
-        flt = np.bitwise_and(pos_is_first_key, pos_in_grid, np.bitwise_not(moved))
+        flt = np.bitwise_and(pos_is_first_key, pos_in_grid)
+        flt = np.bitwise_and(flt, np.bitwise_not(moved))
         self.player_position[flt] = new_position[flt]
         self.owned_key[flt] = pos_colour[flt]
         self.world[flt, 0, 0] = pos_colour[flt]

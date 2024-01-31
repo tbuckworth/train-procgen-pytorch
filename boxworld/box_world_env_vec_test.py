@@ -38,13 +38,14 @@ class TestBoxWorldVec(unittest.TestCase):
         self.impossible_move([2, 1], render=False)
 
     def test_free_key_accessible(self):
-        render = True
         act_seq = [2, 2, 2]
-        world, reward, done, info, world2, reward2, done2, info2 = self.run_sequence(act_seq, render)
-        reward
+        world, reward, done, info, world2, reward2, done2, info2 = self.run_sequence(act_seq, False)
+        self.assertTrue(reward2[0] == 1)
 
     def test_distractor_ends_game(self):
-        pass
+        act_seq = [2, 2, 2, 1, 1, 1, 3, 3, 0]
+        world, reward, done, info, world2, reward2, done2, info2 = self.run_sequence(act_seq, False)
+        self.assertTrue(reward2[0] == -1)
 
     def test_goal_reachable(self):
         pass
