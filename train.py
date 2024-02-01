@@ -234,6 +234,7 @@ def train_ppo(args):
     ##############
     print('START TRAINING...')
     agent.train(num_timesteps)
+    wandb.finish()
 
 
 if __name__ == '__main__':
