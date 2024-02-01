@@ -460,8 +460,8 @@ boxworld-ribmha:
 
 boxworld-ribmha-easy:
     algo: ppo
-    n_envs: 8192
-    n_steps: 256
+    n_envs: 1024
+    n_steps: 64
     epoch: 3
     mini_batch_per_epoch: 8
     mini_batch_size: 8192

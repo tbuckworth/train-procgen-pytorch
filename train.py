@@ -39,7 +39,9 @@ if __name__ == '__main__':
     parser.add_argument('--mirror_env', action="store_true", default=False)
     parser.add_argument('--mut_info_alpha', type=float, default=None)
     parser.add_argument('--n_envs', type=int, default=None)
+    parser.add_argument('--n_steps', type=int, default=None)
     parser.add_argument('--detect_nan', action="store_true", default=False)
+    parser.add_argument('--wandb_name', type=str, default=None)
 
 
     parser.add_argument('--wandb_tags', type=str, nargs='+')
@@ -90,6 +92,13 @@ if __name__ == '__main__':
 
     if args.n_envs is not None:
         hyperparameters["n_envs"] = args.n_envs
+
+    if args.n_steps is not None:
+        hyperparameters["n_steps"] = args.n_steps
+
+    wandb_name = args.wandb_name
+    if args.wandb_name is None:
+        wandb_name = np.random.randint(1e5)
 
     for key, value in hyperparameters.items():
         print(key, ':', value)
@@ -227,7 +236,8 @@ if __name__ == '__main__':
         wandb.login(key="cfc00eee102a1e9647b244a40066bfc5f1a96610")
         cfg = vars(args)
         cfg.update(hyperparameters)
-        name = f"{hyperparameters['architecture']}-{np.random.randint(1e5)}"
+
+        name = f"{hyperparameters['architecture']}-{wandb_name}"
         wb_resume = "allow" if args.model_file is None else "must"
         if env_name == "boxworld":
             project = "Box-World"
