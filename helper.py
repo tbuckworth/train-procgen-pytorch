@@ -8,7 +8,7 @@ import pandas as pd
 import yaml
 from matplotlib import pyplot as plt
 
-from common.model import NatureModel, ImpalaModel, VQMHAModel, ImpalaVQModel, ImpalaVQMHAModel, ImpalaFSQModel, ribMHA
+from common.model import NatureModel, ImpalaModel, MHAModel, ImpalaVQModel, ImpalaVQMHAModel, ImpalaFSQModel, ribMHA
 from common.policy import CategoricalPolicy
 from moviepy.editor import ImageSequenceClip
 
@@ -112,7 +112,7 @@ def initialize_model(device, env, hyperparameters):
         mha_layers = hyperparameters.get("mha_layers", 1)
         n_latents = hyperparameters.get("n_latents", 1)
         latent_dim = hyperparameters.get("latent_dim", 1)
-        model = VQMHAModel(n_latents, latent_dim, mha_layers)
+        model = MHAModel(n_latents, latent_dim, mha_layers)
     elif architecture == 'impalavq':
         has_vq = True
         model = ImpalaVQModel(in_channels=in_channels)

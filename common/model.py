@@ -342,6 +342,20 @@ def halve_rounding_n_times(x, n_impala_blocks):
         x = math.ceil(x / 2)
     return x
 
+class ImpalaCNN(nn.Module):
+    def __init__(self, in_channels, mid_channels, latent_dim):
+        super(ImpalaCNN, self).__init__()
+        self.block1 = ImpalaBlock(in_channels=in_channels, out_channels=mid_channels)
+        self.block2 = ImpalaBlock(in_channels=mid_channels, out_channels=latent_dim)
+        self.block3 = ImpalaBlock(in_channels=latent_dim, out_channels=latent_dim - 2)
+
+    def forward(self, x):
+        x = self.block1(x)
+        x = self.block2(x)
+        x = self.block3(x)
+        x = nn.ReLU()(x)
+        return x
+
 
 class ImpalaVQMHAModel(nn.Module):
     use_vq: jit.Final[bool]
@@ -350,6 +364,7 @@ class ImpalaVQMHAModel(nn.Module):
         super(ImpalaVQMHAModel, self).__init__()
         hid_channels = 16
         latent_dim = 32
+        output_dim = 256
         input_shape = obs_shape
         n_impala_blocks = 3
         # Each impala block halves input height and width.
@@ -359,60 +374,58 @@ class ImpalaVQMHAModel(nn.Module):
         self.device = device
         self.use_vq = use_vq
         self.mha_layers = mha_layers
-        self.block1 = ImpalaBlock(in_channels=in_channels, out_channels=hid_channels)
-        self.block2 = ImpalaBlock(in_channels=hid_channels, out_channels=latent_dim)
-        self.block3 = ImpalaBlock(in_channels=latent_dim, out_channels=latent_dim - 2)  # -2 is for coordinates
+
+        encoder = ImpalaCNN(in_channels, hid_channels, latent_dim)
+        quantizer = None
         if use_vq:
-            # pass in in-place codebook optimizer? think this trains the codebook every time you use it.
-            self.vq = VectorQuantize(dim=latent_dim - 2, codebook_size=128, decay=.8, commitment_weight=1.)
-        self.mha1 = GlobalSelfAttention(shape=(n_latents, latent_dim), num_heads=4, embed_dim=latent_dim, dropout=0.1)
-        self.max_pool = Reduce('b h w -> b w', 'max')
+            quantizer = VectorQuantize(dim=latent_dim - 2, codebook_size=128, decay=.8, commitment_weight=1.)
 
-        self.fc1 = nn.Linear(latent_dim, 256)
-        self.fc2 = nn.Linear(256, 256)
-        self.fc3 = nn.Linear(256, 256)
-        self.fc4 = nn.Linear(256, latent_dim)
+        self.output_dim = output_dim
 
-        self.output_dim = latent_dim
+        self.quantizedMHA = QuantizedMHAModel(in_channels, device, input_shape, n_latents, encoder, quantizer,
+                                              mha_layers, num_heads=4, embed_dim=latent_dim, output_dim=output_dim)
         self.apply(xavier_uniform_init)
 
-    def forward(self, x, print_nans=False):
-        # Impala Blocks
+    def forward(self, x):
+        return self.quantizedMHA(x)
+
+    def print_if_nan(self, name, print_nans, x):
+        if print_nans:
+            print(f"{name}:{'nans' if x.isnan().any() else ''}\n{x}")
+
+
+class QuantizedMHAModel(nn.Module):
+    use_vq: jit.Final[bool]
+
+    def __init__(self,
+                 in_channels,
+                 device,
+                 ob_shape,
+                 n_latents,
+                 encoder,
+                 quantizer=None,
+                 mha_layers=2,
+                 num_heads=4,
+                 embed_dim=64,
+                 output_dim=256,
+                 **kwargs):
+        super(QuantizedMHAModel, self).__init__()
+
+        self.use_vq = True if quantizer is not None else False
+        self.device = device
+        self.ob_shape = ob_shape
+
+        self.encoder = encoder
+        self.quantizer = quantizer
+        self.MHA = MHAModel(n_latents, embed_dim, mha_layers, output_dim, num_heads=num_heads)
+
+    def forward(self, x):
         x = self.encoder(x)
         x, commit_loss = self.flatten_and_append_coor(x)
-        x = self.attention(x)
-
-
-        x = self.pool_and_mlp(x)
+        x = self.MHA(x)
 
         if self.use_vq:
             return x, commit_loss
-        return x
-
-    def encoder(self, x):
-        x = self.block1(x)
-        x = self.block2(x)
-        x = self.block3(x)
-        x = nn.ReLU()(x)
-        return x
-
-    def pool_and_mlp(self, x):
-        x = self.max_pool(x)
-        x = x.squeeze()
-        x = self.fc1(x)
-        x = nn.ReLU()(x)
-        x = self.fc2(x)
-        x = nn.ReLU()(x)
-        x = self.fc3(x)
-        x = nn.ReLU()(x)
-        x = self.fc4(x)
-        x = nn.ReLU()(x)
-        return x
-
-    def attention(self, x):
-        # shared weights:
-        for _ in range(self.mha_layers):
-            x = self.mha1(x)
         return x
 
     def flatten_and_append_coor(self, x):
@@ -426,7 +439,7 @@ class ImpalaVQMHAModel(nn.Module):
 
         # Quantize
         if self.use_vq:
-            x, indices, commit_loss = self.vq(flattened_features)
+            x, indices, commit_loss = self.quantizer(flattened_features)
         else:
             x = flattened_features
 
@@ -436,14 +449,31 @@ class ImpalaVQMHAModel(nn.Module):
             return x, commit_loss
         return x, None
 
-    def print_if_nan(self, name, print_nans, x):
-        if print_nans:
-            print(f"{name}:{'nans' if x.isnan().any() else ''}\n{x}")
+
+class ribEncoder(nn.Module):
+    def __init__(self, in_channels, mid_channels, embed_dim):
+        super(ribEncoder, self).__init__()
+        self.conv1 = nn.Conv2d(in_channels=in_channels, out_channels=mid_channels, kernel_size=2, stride=1, padding=1)
+        self.conv2 = nn.Conv2d(in_channels=mid_channels, out_channels=embed_dim, kernel_size=2, stride=1, padding=0)
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.conv2(x)
+        x = nn.ReLU()(x)
+        return x
 
 
 class ribMHA(nn.Module):
     use_vq: jit.Final[bool]
-    def __init__(self, in_channels, device, ob_shape, use_vq=False, **kwargs):
+
+    def __init__(self,
+                 in_channels,
+                 device,
+                 ob_shape,
+                 use_vq=False,
+                 mha_layers=2,
+                 num_heads=4,
+                 **kwargs):
         super(ribMHA, self).__init__()
 
         self.use_vq = use_vq
@@ -454,81 +484,19 @@ class ribMHA(nn.Module):
         embed_dim = 64
         output_dim = 256
 
-        self.conv1 = nn.Conv2d(in_channels=in_channels, out_channels=12, kernel_size=2, stride=1, padding=1)
-        self.conv2 = nn.Conv2d(in_channels=12, out_channels=embed_dim - 2, kernel_size=2, stride=1, padding=0)
-
+        encoder = ribEncoder(in_channels, mid_channels=12, embed_dim=embed_dim - 2)
+        quantizer = None
         if use_vq:
-            self.vq = VectorQuantize(dim=embed_dim - 2, codebook_size=128, decay=.8, commitment_weight=1.)
+            quantizer = VectorQuantize(dim=embed_dim - 2, codebook_size=128, decay=.8, commitment_weight=1.)
 
-        self.mha1 = GlobalSelfAttention(shape=(n_latents, embed_dim), num_heads=4, embed_dim=embed_dim, dropout=0.1)
-
-        self.max_pool = Reduce('b h w -> b w', 'max')
-
-        self.fc1 = nn.Linear(embed_dim, 256)
-        self.fc2 = nn.Linear(256, 256)
-        self.fc3 = nn.Linear(256, 256)
-        self.fc4 = nn.Linear(256, output_dim)
-
+        self.quantizedMHA = QuantizedMHAModel(in_channels, device, ob_shape, n_latents, encoder, quantizer,
+                                              mha_layers, num_heads, embed_dim, output_dim)
         self.output_dim = output_dim
         self.apply(xavier_uniform_init)
 
-    def forward(self, x, print_nans=False):
-        # Impala Blocks
-        x = self.encoder(x)
-        x, commit_loss = self.flatten_and_append_coor(x)
 
-        x = self.attention(x)
-        x = self.pool_and_mlp(x)
-
-        if self.use_vq:
-            return x, commit_loss
-        return x
-
-    def pool_and_mlp(self, x):
-        x = self.max_pool(x)
-        x = x.squeeze()
-        x = self.fc1(x)
-        x = nn.ReLU()(x)
-        x = self.fc2(x)
-        x = nn.ReLU()(x)
-        x = self.fc3(x)
-        x = nn.ReLU()(x)
-        x = self.fc4(x)
-        x = nn.ReLU()(x)
-        return x
-
-    def attention(self, x):
-        # shared weights:
-        x = self.mha1(x)
-        x = self.mha1(x)
-        return x
-
-    def flatten_and_append_coor(self, x):
-        # Move channels to end
-        x = x.permute(0, 2, 3, 1)
-        # Extract coordinates
-        coor = get_coor(x)
-        # Flatten
-        flat_coor = entities_flatten(coor).to(device=self.device)
-        flattened_features = entities_flatten(x)
-
-        # Quantize
-        if self.use_vq:
-            x, indices, commit_loss = self.vq(flattened_features)
-        else:
-            x = flattened_features
-
-        # Add Co-ordinates to quantized latents
-        x = torch.concat([x, flat_coor], axis=2)
-        if self.use_vq:
-            return x, commit_loss
-        return x, None
-
-    def encoder(self, x):
-        x = self.conv1(x)
-        x = self.conv2(x)
-        x = nn.ReLU()(x)
-        return x
+    def forward(self, x):
+        return self.quantizedMHA(x)
 
 
 class ResidualStack(nn.Module):
@@ -749,21 +717,22 @@ def get_trained_vqvqae(in_channels, hyperparameters, device):
     return model
 
 
-class VQMHAModel(nn.Module):
-    def __init__(self, n_latents, latent_dim, mha_layers):
-        super(VQMHAModel, self).__init__()
+class MHAModel(nn.Module):
+    def __init__(self, n_latents, latent_dim, mha_layers, output_dim, num_heads=4):
+        super(MHAModel, self).__init__()
         self.mha_layers = mha_layers
         # self.vqvae = get_trained_vqvqae(in_channels, hyperparameters, model_path, device)
 
-        self.mha = GlobalSelfAttention(shape=(n_latents, latent_dim), num_heads=4, embed_dim=latent_dim, dropout=0.1)
+        self.mha = GlobalSelfAttention(shape=(n_latents, latent_dim), num_heads=num_heads, embed_dim=latent_dim,
+                                       dropout=0.1)
         self.max_pool = Reduce('b h w -> b w', 'max')
 
         self.fc1 = nn.Linear(latent_dim, 256)
         self.fc2 = nn.Linear(256, 256)
         self.fc3 = nn.Linear(256, 256)
-        self.fc4 = nn.Linear(256, latent_dim)
+        self.fc4 = nn.Linear(256, output_dim)
 
-        self.output_dim = latent_dim
+        self.output_dim = output_dim
         self.apply(xavier_uniform_init)
 
     def forward(self, x):
