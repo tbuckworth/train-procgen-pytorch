@@ -1,4 +1,5 @@
 import argparse
+import random
 
 from train import train_ppo
 
@@ -28,6 +29,7 @@ if __name__ == '__main__':
     parser.add_argument('--detect_nan', action="store_true", default=False)
     parser.add_argument('--wandb_name', type=str, default=None)
 
+    parser.add_argument('--minibatches', type=int, nargs='+')
 
     parser.add_argument('--wandb_tags', type=str, nargs='+')
 
@@ -59,7 +61,7 @@ if __name__ == '__main__':
     args.device = "gpu"
     for n_envs in [32, 48, 16]:
         for n_steps in [40, 64, 16]:
-            for n_minibatch in [8, 4, 2, 1]:
+            for n_minibatch in args.minibatches:
                 args.n_envs = n_envs
                 args.n_steps = n_steps
                 args.n_minibatch = n_minibatch
