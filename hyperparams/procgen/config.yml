@@ -134,7 +134,7 @@ hard-500-impalavqmha:
     value_coef: 0.5
     entropy_coef: 0.01
     x_entropy_coef: 0.
-    commit_coef: 0.0
+    commit_coef: 0.01
     normalize_adv: True
     normalize_rew: True
     use_gae: True
