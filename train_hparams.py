@@ -1,0 +1,65 @@
+import argparse
+
+from train import train_ppo
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--exp_name', type=str, default='test', help='experiment name')
+    parser.add_argument('--env_name', type=str, default='coinrun', help='environment ID')
+    parser.add_argument('--val_env_name', type=str, default=None, help='optional validation environment ID')
+    parser.add_argument('--start_level', type=int, default=int(0), help='start-level for environment')
+    parser.add_argument('--num_levels', type=int, default=int(500), help='number of training levels for environment')
+    parser.add_argument('--distribution_mode', type=str, default='easy', help='distribution mode for environment')
+    parser.add_argument('--param_name', type=str, default='easy-200', help='hyper-parameter ID')
+    parser.add_argument('--device', type=str, default='cpu', required=False, help='whether to use gpu')
+    parser.add_argument('--gpu_device', type=int, default=int(0), required=False, help='visible device in CUDA')
+    parser.add_argument('--num_timesteps', type=int, default=int(25000000), help='number of training timesteps')
+    parser.add_argument('--seed', type=int, default=random.randint(0, 9999), help='Random generator seed')
+    parser.add_argument('--log_level', type=int, default=int(40), help='[10,20,30,40]')
+    parser.add_argument('--num_checkpoints', type=int, default=int(1), help='number of checkpoints to store')
+    parser.add_argument('--model_file', type=str)
+    parser.add_argument('--use_wandb', action="store_true")
+    parser.add_argument('--real_procgen', action="store_true", default=True)
+    parser.add_argument('--mirror_env', action="store_true", default=False)
+    parser.add_argument('--mut_info_alpha', type=float, default=None)
+    parser.add_argument('--n_envs', type=int, default=None)
+    parser.add_argument('--n_steps', type=int, default=None)
+    parser.add_argument('--n_minibatch', type=int, default=None)
+    parser.add_argument('--detect_nan', action="store_true", default=False)
+    parser.add_argument('--wandb_name', type=str, default=None)
+
+
+    parser.add_argument('--wandb_tags', type=str, nargs='+')
+
+    parser.add_argument('--random_percent', type=int, default=0,
+                        help='COINRUN: percent of environments in which coin is randomized (only for coinrun)')
+    parser.add_argument('--key_penalty', type=int, default=0,
+                        help='HEIST_AISC: Penalty for picking up keys (divided by 10)')
+    parser.add_argument('--step_penalty', type=int, default=0,
+                        help='HEIST_AISC: Time penalty per step (divided by 1000)')
+    parser.add_argument('--rand_region', type=int, default=0,
+                        help='MAZE: size of region (in upper left corner) in which goal is sampled.')
+
+    # multi threading
+    parser.add_argument('--num_threads', type=int, default=8)
+
+    args = parser.parse_args()
+
+
+
+    args.exp_name = "boxworld"
+    args.env_name = "boxworld"
+    args.distribution_mode = "hard"
+    args.param_name = "boxworld-ribmha-easy"
+    args.num_timesteps = 524288
+    args.num_checkpoints = 1
+    args.seed = 6033
+    args.use_wandb = True
+    args.wandb_tags = ["n_envs","long"]
+    args.device = "gpu"
+    args.n_envs = 32
+    args.n_steps = 40
+    args.n_minibatch = 8
+    args.wandb_name = "long_32x40"
+
+    train_ppo(args)

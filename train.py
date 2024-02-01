@@ -18,47 +18,9 @@ try:
 except ImportError:
     pass
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--exp_name', type=str, default='test', help='experiment name')
-    parser.add_argument('--env_name', type=str, default='coinrun', help='environment ID')
-    parser.add_argument('--val_env_name', type=str, default=None, help='optional validation environment ID')
-    parser.add_argument('--start_level', type=int, default=int(0), help='start-level for environment')
-    parser.add_argument('--num_levels', type=int, default=int(500), help='number of training levels for environment')
-    parser.add_argument('--distribution_mode', type=str, default='easy', help='distribution mode for environment')
-    parser.add_argument('--param_name', type=str, default='easy-200', help='hyper-parameter ID')
-    parser.add_argument('--device', type=str, default='cpu', required=False, help='whether to use gpu')
-    parser.add_argument('--gpu_device', type=int, default=int(0), required=False, help='visible device in CUDA')
-    parser.add_argument('--num_timesteps', type=int, default=int(25000000), help='number of training timesteps')
-    parser.add_argument('--seed', type=int, default=random.randint(0, 9999), help='Random generator seed')
-    parser.add_argument('--log_level', type=int, default=int(40), help='[10,20,30,40]')
-    parser.add_argument('--num_checkpoints', type=int, default=int(1), help='number of checkpoints to store')
-    parser.add_argument('--model_file', type=str)
-    parser.add_argument('--use_wandb', action="store_true")
-    parser.add_argument('--real_procgen', action="store_true", default=True)
-    parser.add_argument('--mirror_env', action="store_true", default=False)
-    parser.add_argument('--mut_info_alpha', type=float, default=None)
-    parser.add_argument('--n_envs', type=int, default=None)
-    parser.add_argument('--n_steps', type=int, default=None)
-    parser.add_argument('--detect_nan', action="store_true", default=False)
-    parser.add_argument('--wandb_name', type=str, default=None)
 
-
-    parser.add_argument('--wandb_tags', type=str, nargs='+')
-
-    parser.add_argument('--random_percent', type=int, default=0,
-                        help='COINRUN: percent of environments in which coin is randomized (only for coinrun)')
-    parser.add_argument('--key_penalty', type=int, default=0,
-                        help='HEIST_AISC: Penalty for picking up keys (divided by 10)')
-    parser.add_argument('--step_penalty', type=int, default=0,
-                        help='HEIST_AISC: Time penalty per step (divided by 1000)')
-    parser.add_argument('--rand_region', type=int, default=0,
-                        help='MAZE: size of region (in upper left corner) in which goal is sampled.')
-
-    # multi threading
-    parser.add_argument('--num_threads', type=int, default=8)
-
-    args = parser.parse_args()
+def train_ppo(args):
+    # exp_name, env_name, val_env_name, start_level, start_level_val, num_levels, distribution_mode, param_name, gpu_device, num_timesteps, seed, log_level, num_checkpoints, alpha, key, value, device, n_envs, env, listdir, logdir, d, filename, args
     exp_name = args.exp_name
     env_name = args.env_name
     val_env_name = args.val_env_name if args.val_env_name else args.env_name
@@ -72,13 +34,10 @@ if __name__ == '__main__':
     seed = args.seed
     log_level = args.log_level
     num_checkpoints = args.num_checkpoints
-
     set_global_seeds(seed)
     set_global_log_levels(log_level)
-
     if args.start_level == start_level_val:
         raise ValueError("Seeds for training and validation envs are equal.")
-
     ####################
     ## HYPERPARAMETERS #
     ####################
@@ -88,21 +47,20 @@ if __name__ == '__main__':
         alpha = args.mut_info_alpha
         ent_coef = hyperparameters["entropy_coef"]
         hyperparameters["entropy_coef"] = ent_coef * alpha
-        hyperparameters["x_entropy_coef"] = ent_coef * (1-alpha)
+        hyperparameters["x_entropy_coef"] = ent_coef * (1 - alpha)
 
     if args.n_envs is not None:
         hyperparameters["n_envs"] = args.n_envs
-
     if args.n_steps is not None:
         hyperparameters["n_steps"] = args.n_steps
+    if args.n_minibatch is not None:
+        hyperparameters["mini_batch_per_epoch"] = args.n_minibatch
 
     wandb_name = args.wandb_name
     if args.wandb_name is None:
         wandb_name = np.random.randint(1e5)
-
     for key, value in hyperparameters.items():
         print(key, ':', value)
-
     ############
     ## DEVICE ##
     ############
@@ -111,11 +69,9 @@ if __name__ == '__main__':
         device = torch.device('cuda')
     elif args.device == 'cpu':
         device = torch.device('cpu')
-
     # For debugging nans:
     if args.detect_nan:
         torch.autograd.set_detect_anomaly(True)
-
     #################
     ## ENVIRONMENT ##
     #################
@@ -124,7 +80,6 @@ if __name__ == '__main__':
     if os.name == "nt":
         hyperparameters["n_envs"] = 16
         hyperparameters["use_wandb"] = False
-
     n_steps = hyperparameters.get('n_steps', 256)
     n_envs = hyperparameters.get('n_envs', 256)
 
@@ -166,7 +121,6 @@ if __name__ == '__main__':
             venv = EncoderWrapper(venv, vqvae)
         return venv
 
-
     def create_bw_env(args, hyperparameters, is_valid=False):
         # n, goal_length, num_distractor, distractor_length, max_steps = 10 ** 6, collect_key = True, world = None, render_mode = None, seed = None
         env_args = {"n_envs": n_envs,
@@ -184,7 +138,8 @@ if __name__ == '__main__':
             env_args["goal_length"] = hyperparameters.get('goal_length_v', 5)
             env_args["num_distractor"] = hyperparameters.get('num_distractor_v', 0)
             env_args["distractor_length"] = hyperparameters.get('distractor_length_v', 0)
-            env_args["seed"] = args.seed + np.random.randint(1e6, 1e7) if env_args["n_levels"] == 0 else env_args["n_levels"] + 1
+            env_args["seed"] = args.seed + np.random.randint(1e6, 1e7) if env_args["n_levels"] == 0 else env_args[
+                                                                                                             "n_levels"] + 1
             env_args["n_levels"] = 0
         return create_box_world_env_pre_vec(env_args, render=False, normalize_rew=normalize_rew)
 
@@ -193,14 +148,11 @@ if __name__ == '__main__':
     env = create_venv(args, hyperparameters)
     env_valid = create_venv(args, hyperparameters, is_valid=True)
 
-
-
     ############
     ## LOGGER ##
     ############
     def listdir(path):
         return [os.path.join(path, d) for d in os.listdir(path)]
-
 
     def get_latest_model(model_dir):
         """given model_dir with files named model_n.pth where n is an integer,
@@ -208,9 +160,7 @@ if __name__ == '__main__':
         steps = [int(filename[6:-4]) for filename in os.listdir(model_dir) if filename.startswith("model_")]
         return list(os.listdir(model_dir))[np.argmax(steps)]
 
-
     print('INITIALIZING LOGGER...')
-
     logdir = os.path.join('logs', 'train', env_name, exp_name)
     if args.model_file == "auto":  # try to figure out which file to load
         logdirs_with_model = [d for d in listdir(logdir) if any(['model' in filename for filename in os.listdir(d)])]
@@ -230,7 +180,6 @@ if __name__ == '__main__':
         os.makedirs(logdir)
     # write hyperparameters to file
     np.save(os.path.join(logdir, "hyperparameters.npy"), hyperparameters)
-
     print(f'Logging to {logdir}')
     if args.use_wandb:
         wandb.login(key="cfc00eee102a1e9647b244a40066bfc5f1a96610")
@@ -245,14 +194,12 @@ if __name__ == '__main__':
             project = "Coinrun VQMHA"
         wandb.init(project=project, config=cfg, sync_tensorboard=True,
                    tags=args.wandb_tags, resume=wb_resume, name=name)
-
     ###########
     ## MODEL ##
     ###########
     print('INTIALIZING MODEL...')
     model, observation_shape, policy = initialize_model(device, env, hyperparameters)
     logger = Logger(n_envs, logdir, use_wandb=args.use_wandb, has_vq=policy.has_vq)
-
     #############
     ## STORAGE ##
     #############
@@ -260,7 +207,6 @@ if __name__ == '__main__':
     hidden_state_dim = model.output_dim
     storage = Storage(observation_shape, hidden_state_dim, n_steps, n_envs, device)
     storage_valid = Storage(observation_shape, hidden_state_dim, n_steps, n_envs, device)
-
     ###########
     ## AGENT ##
     ###########
@@ -283,9 +229,53 @@ if __name__ == '__main__':
         checkpoint = torch.load(args.model_file)
         agent.policy.load_state_dict(checkpoint["model_state_dict"])
         agent.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-
     ##############
     ## TRAINING ##
     ##############
     print('START TRAINING...')
     agent.train(num_timesteps)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--exp_name', type=str, default='test', help='experiment name')
+    parser.add_argument('--env_name', type=str, default='coinrun', help='environment ID')
+    parser.add_argument('--val_env_name', type=str, default=None, help='optional validation environment ID')
+    parser.add_argument('--start_level', type=int, default=int(0), help='start-level for environment')
+    parser.add_argument('--num_levels', type=int, default=int(500), help='number of training levels for environment')
+    parser.add_argument('--distribution_mode', type=str, default='easy', help='distribution mode for environment')
+    parser.add_argument('--param_name', type=str, default='easy-200', help='hyper-parameter ID')
+    parser.add_argument('--device', type=str, default='cpu', required=False, help='whether to use gpu')
+    parser.add_argument('--gpu_device', type=int, default=int(0), required=False, help='visible device in CUDA')
+    parser.add_argument('--num_timesteps', type=int, default=int(25000000), help='number of training timesteps')
+    parser.add_argument('--seed', type=int, default=random.randint(0, 9999), help='Random generator seed')
+    parser.add_argument('--log_level', type=int, default=int(40), help='[10,20,30,40]')
+    parser.add_argument('--num_checkpoints', type=int, default=int(1), help='number of checkpoints to store')
+    parser.add_argument('--model_file', type=str)
+    parser.add_argument('--use_wandb', action="store_true")
+    parser.add_argument('--real_procgen', action="store_true", default=True)
+    parser.add_argument('--mirror_env', action="store_true", default=False)
+    parser.add_argument('--mut_info_alpha', type=float, default=None)
+    parser.add_argument('--n_envs', type=int, default=None)
+    parser.add_argument('--n_steps', type=int, default=None)
+    parser.add_argument('--n_minibatch', type=int, default=None)
+    parser.add_argument('--detect_nan', action="store_true", default=False)
+    parser.add_argument('--wandb_name', type=str, default=None)
+
+
+    parser.add_argument('--wandb_tags', type=str, nargs='+')
+
+    parser.add_argument('--random_percent', type=int, default=0,
+                        help='COINRUN: percent of environments in which coin is randomized (only for coinrun)')
+    parser.add_argument('--key_penalty', type=int, default=0,
+                        help='HEIST_AISC: Penalty for picking up keys (divided by 10)')
+    parser.add_argument('--step_penalty', type=int, default=0,
+                        help='HEIST_AISC: Time penalty per step (divided by 1000)')
+    parser.add_argument('--rand_region', type=int, default=0,
+                        help='MAZE: size of region (in upper left corner) in which goal is sampled.')
+
+    # multi threading
+    parser.add_argument('--num_threads', type=int, default=8)
+
+    args = parser.parse_args()
+    train_ppo(args)

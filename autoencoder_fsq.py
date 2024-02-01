@@ -13,7 +13,7 @@ from torch.utils.data import DataLoader
 from vector_quantize_pytorch import FSQ
 
 class SimpleFSQAutoEncoder(nn.Module):
-    def __init__(self, levels: list[int]):
+    def __init__(self, levels):
         super().__init__()
         self.layers = nn.ModuleList(
             [
@@ -91,6 +91,8 @@ if __name__ == "__main__":
     print("baseline")
     torch.random.manual_seed(seed)
     model = SimpleFSQAutoEncoder(levels).to(device)
+    x, _ = next(train_dataset._get_iterator())
+    obs = x[:2]
     model.forward(obs)
     summary(model, obs.shape)
 
