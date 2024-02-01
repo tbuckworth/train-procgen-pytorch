@@ -183,3 +183,4 @@ if __name__ == "__main__":
 
     print(f"Device:{args.device}")
     train_vqvae(args)
+
