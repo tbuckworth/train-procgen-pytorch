@@ -51,15 +51,17 @@ if __name__ == '__main__':
     args.env_name = "boxworld"
     args.distribution_mode = "hard"
     args.param_name = "boxworld-ribmha-easy"
-    args.num_timesteps = 524288
+    args.num_timesteps = 2**20
     args.num_checkpoints = 1
     args.seed = 6033
     args.use_wandb = True
-    args.wandb_tags = ["n_envs","long"]
+    args.wandb_tags = ["n_envs", "n_minibatches"]
     args.device = "gpu"
-    args.n_envs = 32
-    args.n_steps = 40
-    args.n_minibatch = 8
-    args.wandb_name = "long_32x40"
-
-    train_ppo(args)
+    for n_envs in [32, 48, 16]:
+        for n_steps in [40, 64, 16]:
+            for n_minibatch in [8, 4, 2, 1]:
+                args.n_envs = n_envs
+                args.n_steps = n_steps
+                args.n_minibatch = n_minibatch
+                args.wandb_name = f"{args.n_envs}x{args.n_steps}_{args.n_minibatch}"
+                train_ppo(args)
