@@ -342,6 +342,7 @@ def halve_rounding_n_times(x, n_impala_blocks):
         x = math.ceil(x / 2)
     return x
 
+
 class ImpalaCNN(nn.Module):
     def __init__(self, in_channels, mid_channels, latent_dim):
         super(ImpalaCNN, self).__init__()
@@ -357,45 +358,9 @@ class ImpalaCNN(nn.Module):
         return x
 
 
-class ImpalaVQMHAModel(nn.Module):
-    use_vq: jit.Final[bool]
-
-    def __init__(self, in_channels, mha_layers, device, obs_shape, use_vq=True, **kwargs):
-        super(ImpalaVQMHAModel, self).__init__()
-        hid_channels = 16
-        latent_dim = 32
-        output_dim = 256
-        input_shape = obs_shape
-        n_impala_blocks = 3
-        # Each impala block halves input height and width.
-        # These are flattened before VQ (hence prod)
-        n_latents = int(np.prod([halve_rounding_n_times(x, n_impala_blocks) for x in input_shape[1:]]))
-
-        self.device = device
-        self.use_vq = use_vq
-        self.mha_layers = mha_layers
-
-        encoder = ImpalaCNN(in_channels, hid_channels, latent_dim)
-        quantizer = None
-        if use_vq:
-            quantizer = VectorQuantize(dim=latent_dim - 2, codebook_size=128, decay=.8, commitment_weight=1.)
-
-        self.output_dim = output_dim
-
-        self.quantizedMHA = QuantizedMHAModel(in_channels, device, input_shape, n_latents, encoder, quantizer,
-                                              mha_layers, num_heads=4, embed_dim=latent_dim, output_dim=output_dim)
-        self.apply(xavier_uniform_init)
-
-    def forward(self, x):
-        return self.quantizedMHA(x)
-
-    def print_if_nan(self, name, print_nans, x):
-        if print_nans:
-            print(f"{name}:{'nans' if x.isnan().any() else ''}\n{x}")
-
-
 class QuantizedMHAModel(nn.Module):
     use_vq: jit.Final[bool]
+    use_fq: jit.Final[bool]
 
     def __init__(self,
                  in_channels,
@@ -411,9 +376,11 @@ class QuantizedMHAModel(nn.Module):
                  **kwargs):
         super(QuantizedMHAModel, self).__init__()
 
-        self.use_vq = True if quantizer is not None else False
+        self.use_vq = True if isinstance(quantizer, VectorQuantize) else False
+        self.use_fq = True if isinstance(quantizer, FSQ) else False
         self.device = device
         self.ob_shape = ob_shape
+        self.output_dim = output_dim
 
         self.encoder = encoder
         self.quantizer = quantizer
@@ -440,6 +407,8 @@ class QuantizedMHAModel(nn.Module):
         # Quantize
         if self.use_vq:
             x, indices, commit_loss = self.quantizer(flattened_features)
+        elif self.use_fq:
+            x, indices = self.quantizer(flattened_features)
         else:
             x = flattened_features
 
@@ -449,6 +418,55 @@ class QuantizedMHAModel(nn.Module):
             return x, commit_loss
         return x, None
 
+
+class ImpalaVQMHAModel(QuantizedMHAModel):
+    def __init__(self, in_channels, mha_layers, device, obs_shape, use_vq=True, **kwargs):
+        hid_channels = 16
+        latent_dim = 32
+        # self.output_dim = 256
+        input_shape = obs_shape
+        # Each impala block halves input height and width.
+        # These are flattened before VQ (hence prod)
+        n_impala_blocks = 3
+        n_latents = int(np.prod([halve_rounding_n_times(x, n_impala_blocks) for x in input_shape[1:]]))
+        encoder = ImpalaCNN(in_channels, hid_channels, latent_dim)
+
+        self.device = device
+        self.use_vq = use_vq
+        self.mha_layers = mha_layers
+
+        quantizer = None
+        if use_vq:
+            quantizer = VectorQuantize(dim=latent_dim - 2, codebook_size=128, decay=.8, commitment_weight=1.)
+
+        super(ImpalaVQMHAModel, self).__init__(in_channels, device, input_shape, n_latents, encoder, quantizer,
+                                               mha_layers, num_heads=4, embed_dim=latent_dim, output_dim=256)
+
+    def print_if_nan(self, name, print_nans, x):
+        if print_nans:
+            print(f"{name}:{'nans' if x.isnan().any() else ''}\n{x}")
+
+class ImpalaFSQMHAModel(QuantizedMHAModel):
+    def __init__(self, in_channels, mha_layers, device, obs_shape, **kwargs):
+        hid_channels = 16
+        # self.output_dim = 256
+        input_shape = obs_shape
+
+        self.device = device
+        self.mha_layers = mha_layers
+
+        levels = [8, 6, 5]
+        quantizer = FSQ(levels)
+        latent_dim = len(levels) + 2
+        # Each impala block halves input height and width.
+        # These are flattened before VQ (hence prod)
+        n_impala_blocks = 3
+        n_latents = int(np.prod([halve_rounding_n_times(x, n_impala_blocks) for x in input_shape[1:]]))
+        encoder = ImpalaCNN(in_channels, hid_channels, latent_dim)
+
+
+        super(ImpalaFSQMHAModel, self).__init__(in_channels, device, input_shape, n_latents, encoder, quantizer,
+                                               mha_layers, num_heads=5, embed_dim=latent_dim, output_dim=256)
 
 class ribEncoder(nn.Module):
     def __init__(self, in_channels, mid_channels, embed_dim):
@@ -464,8 +482,6 @@ class ribEncoder(nn.Module):
 
 
 class ribMHA(nn.Module):
-    use_vq: jit.Final[bool]
-
     def __init__(self,
                  in_channels,
                  device,
@@ -493,7 +509,6 @@ class ribMHA(nn.Module):
                                               mha_layers, num_heads, embed_dim, output_dim)
         self.output_dim = output_dim
         self.apply(xavier_uniform_init)
-
 
     def forward(self, x):
         return self.quantizedMHA(x)

@@ -6,7 +6,7 @@ import yaml
 from torchinfo import summary
 
 from boxworld.create_box_world import create_box_world_env, create_box_world_env_pre_vec
-from common.model import ImpalaVQMHAModel, ImpalaFSQModel, ImpalaModel, Decoder, VQVAE
+from common.model import ImpalaVQMHAModel, ImpalaFSQModel, ImpalaModel, Decoder, VQVAE, ImpalaFSQMHAModel
 from helper import initialize_model
 from common.env.procgen_wrappers import create_env
 
@@ -30,6 +30,7 @@ class CoinrunTestModel(unittest.TestCase):
         cls.env = create_env(env_args, render=False, normalize_rew=True)
         cls.in_channels = cls.env.observation_space.shape[0]
         cls.obs = torch.FloatTensor(cls.env.reset())
+        cls.obs_shape = cls.env.observation_space.shape
 
 
     def testVQVAEModel(self):
@@ -54,6 +55,11 @@ class CoinrunTestModel(unittest.TestCase):
 
     def test_ImpalaFSQModel(self):
         model = ImpalaFSQModel(self.in_channels, self.device, use_mha=True)
+        model.forward(self.obs)
+        summary(model, self.obs.shape)
+
+    def test_ImpalaFSQMHAModel(self):
+        model = ImpalaFSQMHAModel(self.in_channels, 2, self.device, self.obs_shape)
         model.forward(self.obs)
         summary(model, self.obs.shape)
 
