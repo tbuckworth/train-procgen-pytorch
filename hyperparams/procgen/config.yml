@@ -227,6 +227,7 @@ hard-500-impalafsqmha:
     architecture: impalafsqmha
     recurrent: False
     mha_layers: 2
+    pool_direction: dim_wise
 
 hard-500-impalafsqmha-valuetest:
     algo: ppo

@@ -10,7 +10,7 @@ from helper import get_hyperparams, initialize_model, print_values_actions, get_
 from common.env.procgen_wrappers import create_env
 
 
-def predict(policy, obs, hidden_state, done):
+def predict(policy, obs, hidden_state, done, return_dist=False):
     with torch.no_grad():
         obs = torch.FloatTensor(obs).to(device=policy.device)
         hidden_state = torch.FloatTensor(hidden_state).to(device=policy.device)
@@ -21,6 +21,8 @@ def predict(policy, obs, hidden_state, done):
 
     pi = torch.nn.functional.softmax(dist.logits, dim=1)
 
+    if return_dist:
+        return act.cpu().numpy(), log_prob_act.cpu().numpy(), value.cpu().numpy(), hidden_state.cpu().numpy(), pi.cpu().numpy(), dist
     return act.cpu().numpy(), log_prob_act.cpu().numpy(), value.cpu().numpy(), hidden_state.cpu().numpy(), pi.cpu().numpy()
 
 
@@ -40,7 +42,7 @@ def main(logdir, render=True):
             print(f"Level seed: {info[0]['level_seed']}")
 
 
-def load_policy(render, logdir, n_envs=None, decoding_info={}, start_level=0, repeat_level=False):
+def load_policy(render, logdir, n_envs=None, decoding_info={}, start_level=0, repeat_level=False, num_levels=500):
     # logdir = "logs/train/coinrun/coinrun/2023-10-31__10-49-30__seed_6033"
     # df = pd.read_csv(os.path.join(logdir, "log-append.csv"))
     last_model = latest_model_path(logdir)
@@ -54,7 +56,7 @@ def load_policy(render, logdir, n_envs=None, decoding_info={}, start_level=0, re
     env_args = {"num": hyperparameters["n_envs"],
                 "env_name": "coinrun",
                 "start_level": start_level,#325
-                "num_levels": 1 if repeat_level else 500,
+                "num_levels": 1 if repeat_level else num_levels,
                 "paint_vel_info": True,
                 "distribution_mode": "hard"}
     normalize_rew = hyperparameters.get('normalize_rew', True)

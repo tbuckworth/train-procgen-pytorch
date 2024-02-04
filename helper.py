@@ -126,7 +126,8 @@ def initialize_model(device, env, hyperparameters):
         model = ImpalaFSQModel(in_channels=in_channels)
     elif architecture == 'impalafsqmha':
         mha_layers = hyperparameters.get("mha_layers", 2)
-        model = ImpalaFSQMHAModel(in_channels, mha_layers, device, observation_shape)
+        reduce = hyperparameters.get('pool_direction', 'feature_wise')
+        model = ImpalaFSQMHAModel(in_channels, mha_layers, device, observation_shape, reduce)
     elif architecture == 'ribmha':
         model = ribMHA(in_channels, device, observation_shape)
     else:

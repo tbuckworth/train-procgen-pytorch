@@ -373,6 +373,7 @@ class QuantizedMHAModel(nn.Module):
                  num_heads=4,
                  embed_dim=64,
                  output_dim=256,
+                 reduce='feature_wise',
                  **kwargs):
         super(QuantizedMHAModel, self).__init__()
 
@@ -384,7 +385,7 @@ class QuantizedMHAModel(nn.Module):
 
         self.encoder = encoder
         self.quantizer = quantizer
-        self.MHA = MHAModel(n_latents, embed_dim, mha_layers, output_dim, num_heads=num_heads)
+        self.MHA = MHAModel(n_latents, embed_dim, mha_layers, output_dim, num_heads, reduce)
 
     def forward(self, x):
         x = self.encoder(x)
@@ -447,7 +448,7 @@ class ImpalaVQMHAModel(QuantizedMHAModel):
             print(f"{name}:{'nans' if x.isnan().any() else ''}\n{x}")
 
 class ImpalaFSQMHAModel(QuantizedMHAModel):
-    def __init__(self, in_channels, mha_layers, device, obs_shape, **kwargs):
+    def __init__(self, in_channels, mha_layers, device, obs_shape, reduce, **kwargs):
         hid_channels = 16
         # self.output_dim = 256
         input_shape = obs_shape
@@ -466,7 +467,7 @@ class ImpalaFSQMHAModel(QuantizedMHAModel):
 
 
         super(ImpalaFSQMHAModel, self).__init__(in_channels, device, input_shape, n_latents, encoder, quantizer,
-                                               mha_layers, num_heads=5, embed_dim=latent_dim, output_dim=256)
+                                               mha_layers, num_heads=5, embed_dim=latent_dim, output_dim=256, reduce=reduce)
 
 class ribEncoder(nn.Module):
     def __init__(self, in_channels, mid_channels, embed_dim):
@@ -733,16 +734,24 @@ def get_trained_vqvqae(in_channels, hyperparameters, device):
 
 
 class MHAModel(nn.Module):
-    def __init__(self, n_latents, latent_dim, mha_layers, output_dim, num_heads=4):
+    def __init__(self, n_latents, latent_dim, mha_layers, output_dim, num_heads=4, reduce='feature_wise'):
         super(MHAModel, self).__init__()
         self.mha_layers = mha_layers
         # self.vqvae = get_trained_vqvqae(in_channels, hyperparameters, model_path, device)
 
         self.mha = GlobalSelfAttention(shape=(n_latents, latent_dim), num_heads=num_heads, embed_dim=latent_dim,
                                        dropout=0.1)
-        self.max_pool = Reduce('b h w -> b w', 'max')
+        if reduce == 'feature_wise':
+            pool_reduction = 'w'
+            fc_dim = latent_dim
+        elif reduce == 'dim_wise':
+            pool_reduction = 'h'
+            fc_dim = n_latents
+        else:
+            raise NotImplementedError
+        self.max_pool = Reduce(f'b h w -> b {pool_reduction}', 'max')
 
-        self.fc1 = nn.Linear(latent_dim, 256)
+        self.fc1 = nn.Linear(fc_dim, 256)
         self.fc2 = nn.Linear(256, 256)
         self.fc3 = nn.Linear(256, 256)
         self.fc4 = nn.Linear(256, output_dim)

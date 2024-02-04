@@ -81,9 +81,9 @@ class Logger(object):
 
     def dump(self, summary={}):
         wall_time = time.time() - self.start_time
-        episode_statistics = self._get_episode_statistics()
-        episode_statistics_list = list(episode_statistics.values())
-        loss_statistics = list(summary.values())
+        episode_statistics = self._get_episode_statistics() #14
+        episode_statistics_list = list(episode_statistics.values()) #14
+        loss_statistics = list(summary.values()) #5 (x_ent = #4)
         ema_reward = episode_statistics['Rewards/mean_episodes']
         if len(self.log) > 0:
             smoothing = .99/(1+len(self.log))

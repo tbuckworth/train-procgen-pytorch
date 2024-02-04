@@ -78,7 +78,7 @@ def train_ppo(args):
     print('INITIALIZING ENVIRONMENTS...')
     # If Windows:
     if os.name == "nt":
-        hyperparameters["n_envs"] = 16
+        # hyperparameters["n_envs"] = 16
         hyperparameters["use_wandb"] = False
     n_steps = hyperparameters.get('n_steps', 256)
     n_envs = hyperparameters.get('n_envs', 256)
@@ -253,7 +253,7 @@ if __name__ == '__main__':
     parser.add_argument('--log_level', type=int, default=int(40), help='[10,20,30,40]')
     parser.add_argument('--num_checkpoints', type=int, default=int(1), help='number of checkpoints to store')
     parser.add_argument('--model_file', type=str)
-    parser.add_argument('--use_wandb', action="store_true")
+    parser.add_argument('--use_wandb', action="store_true", default=False)
     parser.add_argument('--real_procgen', action="store_true", default=True)
     parser.add_argument('--mirror_env', action="store_true", default=False)
     parser.add_argument('--mut_info_alpha', type=float, default=None)
@@ -279,4 +279,16 @@ if __name__ == '__main__':
     parser.add_argument('--num_threads', type=int, default=8)
 
     args = parser.parse_args()
+
+    # args.exp_name = "test"
+    # args.env_name = "coinrun"
+    # args.num_levels = 10
+    # args.distribution_mode = "hard"
+    # args.start_level = 431
+    # args.param_name = "hard-500-impalafsqmha"
+    # args.num_timesteps = 2000000000
+    # args.num_checkpoints = 200
+    # args.seed = 6033
+    # args.mirror_env = True
+
     train_ppo(args)

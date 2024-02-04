@@ -25,8 +25,8 @@ def main(send_reconstructions=False):
                      }
     # load encoder
     action_names, done, env, hidden_state, obs, policy = load_policy(render=True, logdir=encoder_path, n_envs=2,
-                                                                     decoding_info=decoding_info, start_level=0,
-                                                                     repeat_level=False)
+                                                                     decoding_info=decoding_info, start_level=431,
+                                                                     repeat_level=False, num_levels=10)
     encoder = policy.embedder
     add_encoder_to_env(env, encoder)
 
@@ -38,7 +38,7 @@ def main(send_reconstructions=False):
     frames = np.expand_dims(obs[0], 0)
     while True:
         act, log_prob_act, value, next_hidden_state, pi = predict(policy, obs, hidden_state, done)
-        print_values_actions(action_names, pi, value)
+        # print_values_actions(action_names, pi, value)
         next_obs, rew, done, info = env.step(act)
         frames = np.concatenate((frames[-100:], np.expand_dims(next_obs[0], 0)), 0)
         obs = next_obs
@@ -171,7 +171,7 @@ def load_decoder_at(device, latent_layer):
 
 
 if __name__ == "__main__":
-    extreme_action_probs_inspection()
+    main()
 
     # #This one shows crazy blue smudge behaviour - the blue smudge seems to correlate with enemies. (just MSE loss)
     # "logs/decode/coinrun/decode/2024-01-17__15-04-40__seed_6033"
