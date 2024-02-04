@@ -469,7 +469,7 @@ boxworld-ribmha-easy:
     mini_batch_size: 8192
     gamma: 0.99
     lmbda: 0.95
-    learning_rate: 0.0005
+    learning_rate: 0.005
     grad_clip_norm: 0.5
     eps_clip: 0.2
     value_coef: 0.5
