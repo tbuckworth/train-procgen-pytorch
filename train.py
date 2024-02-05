@@ -78,7 +78,7 @@ def train_ppo(args):
     print('INITIALIZING ENVIRONMENTS...')
     # If Windows:
     if os.name == "nt":
-        # hyperparameters["n_envs"] = 16
+        hyperparameters["n_envs"] = 2
         hyperparameters["use_wandb"] = False
     n_steps = hyperparameters.get('n_steps', 256)
     n_envs = hyperparameters.get('n_envs', 256)
@@ -280,15 +280,15 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    # args.exp_name = "test"
-    # args.env_name = "coinrun"
-    # args.num_levels = 10
-    # args.distribution_mode = "hard"
-    # args.start_level = 431
-    # args.param_name = "hard-500-impalafsqmha"
-    # args.num_timesteps = 2000000000
-    # args.num_checkpoints = 200
-    # args.seed = 6033
-    # args.mirror_env = True
+    args.exp_name = "test"
+    args.env_name = "boxworld"
+    args.num_levels = 10
+    args.distribution_mode = "hard"
+    args.start_level = 431
+    args.param_name = "boxworld-ribmha-easy"
+    args.num_timesteps = 2000000000
+    args.num_checkpoints = 200
+    args.seed = 6033
+    args.mirror_env = True
 
     train_ppo(args)

@@ -31,10 +31,15 @@ class PPO(BaseAgent):
                  normalize_adv=True,
                  normalize_rew=True,
                  use_gae=True,
+                 use_ent_mult=False,
                  **kwargs):
         super(PPO, self).__init__(env, policy, logger, storage, device,
                                   n_checkpoints, env_valid, storage_valid)
 
+        self.use_ent_mult = use_ent_mult
+        self.entropy_multiplier = 1.
+        self.min_rew = -1.
+        self.max_rew = 11.
         self.n_steps = n_steps
         self.n_envs = n_envs
         self.epoch = epoch
@@ -113,7 +118,8 @@ class PPO(BaseAgent):
                 # Policy Entropy
                 # entropy_loss = dist_batch.entropy().mean()
                 x_batch_ent_loss, entropy_loss, = cross_batch_entropy(dist_batch)
-                loss = pi_loss + self.value_coef * value_loss - self.entropy_coef * entropy_loss - self.x_entropy_coef * x_batch_ent_loss
+                loss = pi_loss + self.value_coef * value_loss - self.entropy_coef * entropy_loss * \
+                       self.entropy_multiplier - self.x_entropy_coef * x_batch_ent_loss
                 loss.backward()
 
                 # Let model to handle the large batch-size with small gpu-memory
@@ -138,7 +144,7 @@ class PPO(BaseAgent):
     def train(self, num_timesteps):
         save_every = num_timesteps // self.num_checkpoints
         checkpoint_cnt = 0
-        checkpoints = [1e6, 1.2e6, 1.35e6, 1.5e6, 2e6] + [(i+1) * save_every for i in range(self.num_checkpoints)]
+        checkpoints = [1e6, 1.2e6, 1.35e6, 1.5e6, 2e6] + [(i + 1) * save_every for i in range(self.num_checkpoints)]
         checkpoints.sort()
         obs = self.env.reset()
         hidden_state = np.zeros((self.n_envs, self.storage.hidden_state_size))
@@ -188,6 +194,9 @@ class PPO(BaseAgent):
             else:
                 rew_batch_v = done_batch_v = None
             self.logger.feed(rew_batch, done_batch, rew_batch_v, done_batch_v)
+            mean_rew = np.mean(self.logger.episode_reward_buffer)
+            if self.use_ent_mult:
+                self.entropy_multiplier = (mean_rew - self.min_rew) / (self.max_rew - self.min_rew)
             self.logger.dump(summary)
             self.optimizer = adjust_lr(self.optimizer, self.learning_rate, self.t, num_timesteps)
             # Save the model
@@ -232,7 +241,7 @@ class PPO_VQ(BaseAgent):
                  use_gae=True,
                  **kwargs):
         super(PPO_VQ, self).__init__(env, policy, logger, storage, device,
-                                  n_checkpoints, env_valid, storage_valid)
+                                     n_checkpoints, env_valid, storage_valid)
         assert (policy.has_vq)
         self.n_steps = n_steps
         self.n_envs = n_envs
