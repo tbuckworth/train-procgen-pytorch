@@ -83,6 +83,10 @@ class PPO(BaseAgent):
         return act.detach().cpu().numpy(), log_prob_act.detach().cpu().numpy(), value.detach().cpu().numpy(), hidden_state.detach().cpu().numpy(), obs.grad.data.detach().cpu().numpy()
 
     def optimize(self):
+        mean_rew = np.mean(self.logger.episode_reward_buffer)
+        if self.use_ent_mult:
+            self.entropy_multiplier = 1 - ((mean_rew - self.min_rew) / (self.max_rew - self.min_rew))
+
         pi_loss_list, value_loss_list, entropy_loss_list, x_ent_loss_list, total_loss_list = [], [], [], [], []
         batch_size = self.n_steps * self.n_envs // self.mini_batch_per_epoch
         if batch_size < self.mini_batch_size:
@@ -194,9 +198,7 @@ class PPO(BaseAgent):
             else:
                 rew_batch_v = done_batch_v = None
             self.logger.feed(rew_batch, done_batch, rew_batch_v, done_batch_v)
-            mean_rew = np.mean(self.logger.episode_reward_buffer)
-            if self.use_ent_mult:
-                self.entropy_multiplier = (mean_rew - self.min_rew) / (self.max_rew - self.min_rew)
+
             self.logger.dump(summary)
             self.optimizer = adjust_lr(self.optimizer, self.learning_rate, self.t, num_timesteps)
             # Save the model
