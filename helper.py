@@ -13,8 +13,9 @@ from common.model import NatureModel, ImpalaModel, MHAModel, ImpalaVQModel, Impa
 from common.policy import CategoricalPolicy
 from moviepy.editor import ImageSequenceClip
 
-
-GLOBAL_DIR = "C:/Users/titus/PycharmProjects/train-procgen-pytorch/"
+GLOBAL_DIR = "/vol/bitbucket/tfb115/train-procgen-pytorch"
+if os.name == "nt":
+    GLOBAL_DIR = "C:/Users/titus/PycharmProjects/train-procgen-pytorch/"
 
 def match(a, b):
     a = a.tolist()
