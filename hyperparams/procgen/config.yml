@@ -477,7 +477,7 @@ boxworld-ribfsqmha-easy:
     normalize_adv: True
     normalize_rew: True
     use_gae: True
-    architecture: ribmha
+    architecture: ribfsqmha
     recurrent: False
     max_steps: 1000
     grid_size: 6
@@ -603,7 +603,7 @@ boxworld-ribmha-easy-100-steps-large-batch:
     normalize_adv: True
     normalize_rew: True
     use_gae: True
-    architecture: ribfsqmha
+    architecture: ribmha
     recurrent: False
     max_steps: 100
     grid_size: 6
