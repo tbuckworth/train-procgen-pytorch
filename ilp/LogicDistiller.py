@@ -7,6 +7,8 @@ import gym
 import numpy as np
 import pandas as pd
 import torch
+
+from helper import last_folder
 # from matplotlib import pyplot as plt
 
 # from VQMHA import flatten_features
@@ -14,17 +16,19 @@ import torch
 # from coinrun_ppo import input_to_state, sample_action
 from ilp_helper import new_file, create_cmd, run_subprocess, append_to_csv_if_exists, write_string_to_file, \
     extract_clingo_solution, clean_path
+from inspect_agent import load_policy, latest_model_path
 
 
 class LogicDistiller:
-    def __init__(self, policy, probabilistic=True, atn_threshold=0.6, action_threshold=0.6):
+    def __init__(self, policy, device, probabilistic=True, atn_threshold=0.6, action_threshold=0.6):
+        self.device = device
         self.clingo_file_contents = None
         self.number_zero_actions_clingo = 0
         self.clingo_file = "logic_examples/clingo_learning.lp"
         self.top_n = int(1e9)
         self.learning_file = "logic_examples/fastLAS_learning.las"
         self.hypothesis = None
-        self.e_facts = np.ndarray([], dtype=np.int)
+        self.e_facts = np.ndarray([], dtype=np.int32)
         self.r_facts = None
         self.coords = None
         self.f_facts = None
@@ -41,18 +45,16 @@ class LogicDistiller:
         self.example_strings = []
 
     def extract_example(self, observation):
-        z = self.policy.embedder.encoder(observation)
+        obs = torch.FloatTensor(observation).to(self.device)
+        x, atn, feature_indices = self.policy.embedder.forward_with_attn_indices(obs)
 
-        x = self.policy.embedder.flatten_and_append_coor(z)
-        atn = self.policy.embedder.mha1.get_attn_weights(x)
-        x = self.policy.embedder.attention(x)
-        x = self.policy.embedder.pool_and_mlp(x)
         actions, value = self.policy.hidden_to_output(x)
 
-
-        q_value = self.extract_q_vals(observation)
-
-        self.example_list.append((feature_indices, atn, actions, q_value))
+        actions = actions.probs.detach().cpu().numpy()
+        value = value.detach().cpu().numpy()
+        feature_indices = feature_indices.detach().cpu().numpy()
+        atn = atn.detach().cpu().numpy()
+        self.example_list.append((feature_indices, atn, actions, value))
 
     def write_examples_to_strings(self, training=True):
         for example in self.example_list:
@@ -399,7 +401,22 @@ def play_logic_record_gif():
 
 
 if __name__ == "__main__":
-    play_logic_record_gif()
+
+    # load model
+    device = torch.device('cpu')
+    logdir = "logs/train/coinrun/coinrun/2024-02-04__17-32-32__seed_6033/"
+    action_names, done, env, hidden_state, obs, policy = load_policy(False, logdir, n_envs=2)
+
+    # create_logicdistiller
+    ld = LogicDistiller(policy, device)
+    ld.extract_example(obs)
+    ld.write_examples_to_strings()
+    print(ld.example_strings[0])
+
+
+
+
+
 
 # TODO: x and y coords can be moved to background knowledge
 #   add other take(an) as negative examples

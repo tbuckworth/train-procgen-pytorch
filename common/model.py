@@ -387,6 +387,14 @@ class QuantizedMHAModel(nn.Module):
         self.quantizer = quantizer
         self.MHA = MHAModel(n_latents, embed_dim, mha_layers, output_dim, num_heads, reduce)
 
+    def forward_with_attn_indices(self, x):
+        x = self.encoder(x)
+        x, indices = self.flatten_and_append_coor(x, True)
+        atn = self.MHA.mha.get_attn_weights(x)
+        x = self.MHA(x)
+
+        return x, atn, indices
+
     def forward(self, x):
         x = self.encoder(x)
         x, commit_loss = self.flatten_and_append_coor(x)
@@ -396,14 +404,8 @@ class QuantizedMHAModel(nn.Module):
             return x, commit_loss
         return x
 
-    def flatten_and_append_coor(self, x):
-        # Move channels to end
-        x = x.permute(0, 2, 3, 1)
-        # Extract coordinates
-        coor = get_coor(x)
-        # Flatten
-        flat_coor = entities_flatten(coor).to(device=self.device)
-        flattened_features = entities_flatten(x)
+    def flatten_and_append_coor(self, x, return_indices=False):
+        flat_coor, flattened_features = self.flatten_and_get_coor(x)
 
         # Quantize
         if self.use_vq:
@@ -415,13 +417,25 @@ class QuantizedMHAModel(nn.Module):
 
         # Add Co-ordinates to quantized latents
         x = torch.concat([x, flat_coor], axis=2)
+        if return_indices:
+            return x, indices
         if self.use_vq:
             return x, commit_loss
         return x, None
 
+    def flatten_and_get_coor(self, x):
+        # Move channels to end
+        x = x.permute(0, 2, 3, 1)
+        # Extract coordinates
+        coor = get_coor(x)
+        # Flatten
+        flat_coor = entities_flatten(coor).to(device=self.device)
+        flattened_features = entities_flatten(x)
+        return flat_coor, flattened_features
+
 
 class ImpalaVQMHAModel(QuantizedMHAModel):
-    def __init__(self, in_channels, mha_layers, device, obs_shape, use_vq=True, **kwargs):
+    def __init__(self, in_channels, mha_layers, device, obs_shape, use_vq=True, num_heads=4, **kwargs):
         hid_channels = 16
         latent_dim = 32
         # self.output_dim = 256
@@ -441,7 +455,7 @@ class ImpalaVQMHAModel(QuantizedMHAModel):
             quantizer = VectorQuantize(dim=latent_dim - 2, codebook_size=128, decay=.8, commitment_weight=1.)
 
         super(ImpalaVQMHAModel, self).__init__(in_channels, device, input_shape, n_latents, encoder, quantizer,
-                                               mha_layers, num_heads=4, embed_dim=latent_dim, output_dim=256)
+                                               mha_layers, num_heads=num_heads, embed_dim=latent_dim, output_dim=256)
 
     def print_if_nan(self, name, print_nans, x):
         if print_nans:
@@ -467,7 +481,7 @@ class ImpalaFSQMHAModel(QuantizedMHAModel):
 
 
         super(ImpalaFSQMHAModel, self).__init__(in_channels, device, input_shape, n_latents, encoder, quantizer,
-                                               mha_layers, num_heads=5, embed_dim=latent_dim, output_dim=256, reduce=reduce)
+                                               mha_layers, num_heads=4, embed_dim=latent_dim, output_dim=256, reduce=reduce)
 
 class RibFSQMHAModel(QuantizedMHAModel):
     def __init__(self, in_channels, mha_layers, device, obs_shape, reduce, **kwargs):
@@ -485,7 +499,7 @@ class RibFSQMHAModel(QuantizedMHAModel):
 
 
         super(RibFSQMHAModel, self).__init__(in_channels, device, input_shape, n_latents, encoder, quantizer,
-                                               mha_layers, num_heads=5, embed_dim=latent_dim, output_dim=256, reduce=reduce)
+                                               mha_layers, num_heads=4, embed_dim=latent_dim, output_dim=256, reduce=reduce)
 
 
 
@@ -759,13 +773,13 @@ class MHAModel(nn.Module):
         self.mha_layers = mha_layers
         # self.vqvae = get_trained_vqvqae(in_channels, hyperparameters, model_path, device)
 
-        self.mha = GlobalSelfAttention(shape=(n_latents, latent_dim), num_heads=num_heads, embed_dim=latent_dim,
+        self.mha = GlobalSelfAttention(shape=(latent_dim, n_latents), num_heads=num_heads, embed_dim=n_latents,
                                        dropout=0.1)
         if reduce == 'feature_wise':
-            pool_reduction = 'w'
+            pool_reduction = 'h'
             fc_dim = latent_dim
         elif reduce == 'dim_wise':
-            pool_reduction = 'h'
+            pool_reduction = 'w'
             fc_dim = n_latents
         else:
             raise NotImplementedError
@@ -780,6 +794,7 @@ class MHAModel(nn.Module):
         self.apply(xavier_uniform_init)
 
     def forward(self, x):
+        x = x.permute(0, 2, 1)
         for _ in range(self.mha_layers):
             x = self.mha(x)
         x = self.max_pool(x)

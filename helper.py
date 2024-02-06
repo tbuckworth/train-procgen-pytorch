@@ -14,6 +14,8 @@ from common.policy import CategoricalPolicy
 from moviepy.editor import ImageSequenceClip
 
 
+GLOBAL_DIR = "C:/Users/titus/PycharmProjects/train-procgen-pytorch/"
+
 def match(a, b):
     a = a.tolist()
     b = b.tolist()
@@ -91,7 +93,7 @@ def get_action_names(env):
 
 
 def get_hyperparams(param_name):
-    with open('hyperparams/procgen/config.yml', 'r') as f:
+    with open(os.path.join(GLOBAL_DIR, 'hyperparams/procgen/config.yml'), 'r') as f:
         hyperparameters = yaml.safe_load(f)[param_name]
     return hyperparameters
 

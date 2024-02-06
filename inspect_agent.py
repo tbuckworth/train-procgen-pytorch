@@ -6,7 +6,7 @@ import numpy as np
 import torch
 
 from common.storage import Storage
-from helper import get_hyperparams, initialize_model, print_values_actions, get_action_names, save_gif
+from helper import get_hyperparams, initialize_model, print_values_actions, get_action_names, save_gif, GLOBAL_DIR
 from common.env.procgen_wrappers import create_env
 
 
@@ -48,7 +48,7 @@ def load_policy(render, logdir, n_envs=None, decoding_info={}, start_level=0, re
     last_model = latest_model_path(logdir)
     device = torch.device('cpu')
     hyperparameters = get_hyperparams("hard-500-impala")
-    hp_file = os.path.join(logdir, "hyperparameters.npy")
+    hp_file = os.path.join(GLOBAL_DIR, logdir, "hyperparameters.npy")
     if os.path.exists(hp_file):
         hyperparameters = np.load(hp_file, allow_pickle='TRUE').item()
     if n_envs is not None:
@@ -76,6 +76,7 @@ def load_policy(render, logdir, n_envs=None, decoding_info={}, start_level=0, re
 
 
 def latest_model_path(logdir):
+    logdir = os.path.join(GLOBAL_DIR, logdir)
     files = os.listdir(logdir)
     pattern = r"model_(\d*)\.pth"
     checkpoints = [int(re.search(pattern, x).group(1)) for x in files if re.search(pattern, x)]

@@ -122,6 +122,7 @@ class BoxWorldTestModel(unittest.TestCase):
                            "mha_layers": 2,
                            "use_vq": True,
                            }
+        # num_heads must be 1 for 6x6 puzzle
         model, obs_shape, policy = initialize_model(self.device, self.env, hyperparameters)
         model.forward(self.obs)
         summary(model, self.obs.shape)
