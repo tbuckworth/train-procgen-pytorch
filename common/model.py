@@ -469,6 +469,26 @@ class ImpalaFSQMHAModel(QuantizedMHAModel):
         super(ImpalaFSQMHAModel, self).__init__(in_channels, device, input_shape, n_latents, encoder, quantizer,
                                                mha_layers, num_heads=5, embed_dim=latent_dim, output_dim=256, reduce=reduce)
 
+class RibFSQMHAModel(QuantizedMHAModel):
+    def __init__(self, in_channels, mha_layers, device, obs_shape, reduce, **kwargs):
+        input_shape = obs_shape
+
+        self.device = device
+        self.mha_layers = mha_layers
+
+        levels = [8, 6, 5]
+        quantizer = FSQ(levels)
+        latent_dim = len(levels) + 2
+
+        n_latents = (obs_shape[-1]) ** 2
+        encoder = ribEncoder(in_channels, mid_channels=12, embed_dim=latent_dim-2)
+
+
+        super(RibFSQMHAModel, self).__init__(in_channels, device, input_shape, n_latents, encoder, quantizer,
+                                               mha_layers, num_heads=5, embed_dim=latent_dim, output_dim=256, reduce=reduce)
+
+
+
 class ribEncoder(nn.Module):
     def __init__(self, in_channels, mid_channels, embed_dim):
         super(ribEncoder, self).__init__()

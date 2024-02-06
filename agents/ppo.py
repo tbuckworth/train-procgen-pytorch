@@ -31,12 +31,13 @@ class PPO(BaseAgent):
                  normalize_adv=True,
                  normalize_rew=True,
                  use_gae=True,
-                 use_ent_mult=False,
+                 entropy_scaling=None,
                  **kwargs):
         super(PPO, self).__init__(env, policy, logger, storage, device,
                                   n_checkpoints, env_valid, storage_valid)
 
-        self.use_ent_mult = use_ent_mult
+        self.total_timesteps = 0
+        self.entropy_scaling = entropy_scaling
         self.entropy_multiplier = 1.
         self.min_rew = -1.
         self.max_rew = 11.
@@ -84,8 +85,10 @@ class PPO(BaseAgent):
 
     def optimize(self):
         mean_rew = np.mean(self.logger.episode_reward_buffer)
-        if self.use_ent_mult:
+        if self.entropy_scaling == "reward_based":
             self.entropy_multiplier = 1 - ((mean_rew - self.min_rew) / (self.max_rew - self.min_rew))
+        elif self.entropy_scaling == "time_based":
+            self.entropy_multiplier = 1 - (self.t/self.total_timesteps)
 
         pi_loss_list, value_loss_list, entropy_loss_list, x_ent_loss_list, total_loss_list = [], [], [], [], []
         batch_size = self.n_steps * self.n_envs // self.mini_batch_per_epoch
@@ -146,6 +149,7 @@ class PPO(BaseAgent):
         return summary
 
     def train(self, num_timesteps):
+        self.total_timesteps = num_timesteps
         save_every = num_timesteps // self.num_checkpoints
         checkpoint_cnt = 0
         checkpoints = [1e6, 1.2e6, 1.35e6, 1.5e6, 2e6] + [(i + 1) * save_every for i in range(self.num_checkpoints)]

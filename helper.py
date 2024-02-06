@@ -9,7 +9,7 @@ import yaml
 from matplotlib import pyplot as plt
 
 from common.model import NatureModel, ImpalaModel, MHAModel, ImpalaVQModel, ImpalaVQMHAModel, ImpalaFSQModel, ribMHA, \
-    ImpalaFSQMHAModel
+    ImpalaFSQMHAModel, RibFSQMHAModel
 from common.policy import CategoricalPolicy
 from moviepy.editor import ImageSequenceClip
 
@@ -130,6 +130,10 @@ def initialize_model(device, env, hyperparameters):
         model = ImpalaFSQMHAModel(in_channels, mha_layers, device, observation_shape, reduce)
     elif architecture == 'ribmha':
         model = ribMHA(in_channels, device, observation_shape)
+    elif architecture == 'ribfsqmha':
+        mha_layers = hyperparameters.get("mha_layers", 2)
+        reduce = hyperparameters.get('pool_direction', 'feature_wise')
+        model = RibFSQMHAModel(in_channels, mha_layers, device, observation_shape, reduce)
     else:
         raise NotImplementedError(f"Architecture:{architecture} not found in helper.py")
     # Discrete action space

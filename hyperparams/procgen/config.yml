@@ -460,6 +460,41 @@ boxworld-ribmha:
     num_distractor_v: 3
     distractor_length_v: 3
 
+boxworld-ribfsqmha-easy:
+    algo: ppo
+    n_envs: 48
+    n_steps: 64
+    epoch: 3
+    mini_batch_per_epoch: 8
+    mini_batch_size: 8192
+    gamma: 0.99
+    lmbda: 0.95
+    learning_rate: 0.005
+    grad_clip_norm: 0.5
+    eps_clip: 0.2
+    value_coef: 0.5
+    entropy_coef: 0.001
+    normalize_adv: True
+    normalize_rew: True
+    use_gae: True
+    architecture: ribmha
+    recurrent: False
+    max_steps: 1000
+    grid_size: 6
+    goal_length: 2
+    num_distractor: 1
+    distractor_length: 1
+    grid_size_v: 6
+    goal_length_v: 2
+    num_distractor_v: 1
+    distractor_length_v: 1
+    use_vq: False
+    entropy_scaling: time_based
+    mha_layers: 2
+    pool_direction: dim_wise
+
+
+
 boxworld-ribmha-easy:
     algo: ppo
     n_envs: 48
@@ -489,7 +524,7 @@ boxworld-ribmha-easy:
     num_distractor_v: 1
     distractor_length_v: 1
     use_vq: False
-    use_ent_mult: True
+    entropy_scaling: reward_based
 
 boxworld-ribvqmha-easy:
     algo: ppo
@@ -568,7 +603,7 @@ boxworld-ribmha-easy-100-steps-large-batch:
     normalize_adv: True
     normalize_rew: True
     use_gae: True
-    architecture: ribmha
+    architecture: ribfsqmha
     recurrent: False
     max_steps: 100
     grid_size: 6

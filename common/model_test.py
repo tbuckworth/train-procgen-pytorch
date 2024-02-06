@@ -6,7 +6,8 @@ import yaml
 from torchinfo import summary
 
 from boxworld.create_box_world import create_box_world_env, create_box_world_env_pre_vec
-from common.model import ImpalaVQMHAModel, ImpalaFSQModel, ImpalaModel, Decoder, VQVAE, ImpalaFSQMHAModel
+from common.model import ImpalaVQMHAModel, ImpalaFSQModel, ImpalaModel, Decoder, VQVAE, ImpalaFSQMHAModel, \
+    RibFSQMHAModel
 from helper import initialize_model
 from common.env.procgen_wrappers import create_env
 
@@ -113,6 +114,8 @@ class BoxWorldTestModel(unittest.TestCase):
         cls.env = create_box_world_env_pre_vec(env_args, render=False, normalize_rew=True)
         cls.in_channels = cls.env.observation_space.shape[0]
         cls.obs = torch.FloatTensor(cls.env.reset())
+        cls.obs_shape = cls.env.observation_space.shape
+
 
     def test_ImpalaVQMHAModel(self):
         hyperparameters = {"architecture": "impalavqmha",
@@ -145,6 +148,10 @@ class BoxWorldTestModel(unittest.TestCase):
         summary(model, self.obs.shape)
         policy.forward(self.obs, None, None)
 
+    def test_RibFSQMHAModel(self):
+        model = RibFSQMHAModel(self.in_channels, 2, self.device, self.obs_shape, reduce='dim_wise')
+        model.forward(self.obs)
+        summary(model, self.obs.shape)
 
 if __name__ == '__main__':
     unittest.main()
