@@ -238,7 +238,7 @@ def train_ppo(args):
                 print("Found NoneType when searching for NANs")
 
     if args.detect_nan:
-        for submodule in policy.modules():
+        for submodule in model.modules():
             submodule.register_forward_hook(nan_hook)
 
 
