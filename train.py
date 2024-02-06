@@ -219,6 +219,24 @@ def train_ppo(args):
             from agents.ppo import PPO as AGENT
     else:
         raise NotImplementedError
+
+    def nan_hook(self, inp, output):
+        if not isinstance(output, tuple):
+            outputs = [output]
+        else:
+            outputs = output
+
+        for i, out in enumerate(outputs):
+            nan_mask = torch.isnan(out)
+            if nan_mask.any():
+                print("In", self.__class__.__name__)
+                raise RuntimeError(f"Found NAN in output {i} at indices: ", nan_mask.nonzero(), "where:",
+                                   out[nan_mask.nonzero()[:, 0].unique(sorted=True)])
+    if args.detect_nan:
+        for submodule in policy.modules():
+            submodule.register_forward_hook(nan_hook)
+
+
     agent = AGENT(env, policy, logger, storage, device,
                   num_checkpoints,
                   env_valid=env_valid,
@@ -282,13 +300,13 @@ if __name__ == '__main__':
 
     args.exp_name = "test"
     args.env_name = "boxworld"
-    args.num_levels = 10
-    args.distribution_mode = "hard"
-    args.start_level = 431
-    args.param_name = "boxworld-ribmha-easy"
+    # args.num_levels = 10
+    # args.distribution_mode = "hard"
+    # args.start_level = 431
+    args.param_name = "boxworld-ribfsqmha-easy"
     args.num_timesteps = 2000000000
     args.num_checkpoints = 200
     args.seed = 6033
-    args.mirror_env = True
+    # args.mirror_env = True
 
     train_ppo(args)
