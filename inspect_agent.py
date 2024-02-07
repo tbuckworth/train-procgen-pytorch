@@ -42,15 +42,16 @@ def main(logdir, render=True):
             print(f"Level seed: {info[0]['level_seed']}")
 
 
-def load_policy(render, logdir, n_envs=None, decoding_info={}, start_level=0, repeat_level=False, num_levels=500):
+def load_policy(render, logdir, n_envs=None, decoding_info={}, start_level=0, repeat_level=False, num_levels=500, hparams="hard-500-impala"):
     # logdir = "logs/train/coinrun/coinrun/2023-10-31__10-49-30__seed_6033"
     # df = pd.read_csv(os.path.join(logdir, "log-append.csv"))
-    last_model = latest_model_path(logdir)
     device = torch.device('cpu')
-    hyperparameters = get_hyperparams("hard-500-impala")
-    hp_file = os.path.join(GLOBAL_DIR, logdir, "hyperparameters.npy")
-    if os.path.exists(hp_file):
-        hyperparameters = np.load(hp_file, allow_pickle='TRUE').item()
+    hyperparameters = get_hyperparams(hparams)
+    if logdir is not None:
+        last_model = latest_model_path(logdir)
+        hp_file = os.path.join(GLOBAL_DIR, logdir, "hyperparameters.npy")
+        if os.path.exists(hp_file):
+            hyperparameters = np.load(hp_file, allow_pickle='TRUE').item()
     if n_envs is not None:
         hyperparameters["n_envs"] = n_envs
     env_args = {"num": hyperparameters["n_envs"],
@@ -62,7 +63,8 @@ def load_policy(render, logdir, n_envs=None, decoding_info={}, start_level=0, re
     normalize_rew = hyperparameters.get('normalize_rew', True)
     env = create_env(env_args, render, normalize_rew, mirror_some=True, decoding_info=decoding_info)
     model, observation_shape, policy = initialize_model(device, env, hyperparameters)
-    policy.load_state_dict(torch.load(last_model, map_location=device)["model_state_dict"])
+    if logdir is not None:
+        policy.load_state_dict(torch.load(last_model, map_location=device)["model_state_dict"])
     # Test if necessary:
     policy.device = device
     storage = Storage(observation_shape, model.output_dim, 256, n_envs, device)

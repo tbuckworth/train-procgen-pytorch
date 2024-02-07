@@ -190,8 +190,12 @@ def train_ppo(args):
         wb_resume = "allow" if args.model_file is None else "must"
         if env_name == "boxworld":
             project = "Box-World"
-        else:
+        elif env_name == "coinrun":
             project = "Coinrun VQMHA"
+        elif env_name == "coinrun-hparams":
+            project = "Hparams Coinrun"
+        else:
+            project = env_name
         wandb.init(project=project, config=cfg, sync_tensorboard=True,
                    tags=args.wandb_tags, resume=wb_resume, name=name)
     ###########

@@ -332,7 +332,8 @@ class GlobalSelfAttention(BaseAttention):
             query=x,
             value=x,
             key=x,
-            need_weights=True
+            need_weights=True,
+            average_attn_weights=False,
         )
         return attn_weight
 

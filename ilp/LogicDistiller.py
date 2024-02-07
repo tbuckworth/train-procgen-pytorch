@@ -45,16 +45,19 @@ class LogicDistiller:
         self.example_strings = []
 
     def extract_example(self, observation):
+        act, act_probs, atn, feature_indices, value = self.forward(observation)
+        self.example_list.append((feature_indices, atn, act_probs, value))
+
+    def forward(self, observation):
         obs = torch.FloatTensor(observation).to(self.device)
         x, atn, feature_indices = self.policy.embedder.forward_with_attn_indices(obs)
-
-        actions, value = self.policy.hidden_to_output(x)
-
-        actions = actions.probs.detach().cpu().numpy()
+        dist, value = self.policy.hidden_to_output(x)
+        act = dist.sample().cpu().numpy()
+        act_probs = dist.probs.detach().cpu().numpy()
         value = value.detach().cpu().numpy()
         feature_indices = feature_indices.detach().cpu().numpy()
         atn = atn.detach().cpu().numpy()
-        self.example_list.append((feature_indices, atn, actions, value))
+        return act, act_probs, atn, feature_indices, value
 
     def write_examples_to_strings(self, training=True):
         for example in self.example_list:
@@ -86,7 +89,7 @@ class LogicDistiller:
         self.coords = concat_np_list(["coord(", coord_n, ").\n"], coord_n.shape)
 
     def features_to_string(self, feature_indices):
-        fact_strings = feature_indices.numpy().astype(str)
+        fact_strings = feature_indices.astype(str)
         fact_strings = np.core.defchararray.add("e", fact_strings)
         return fact_strings
 
@@ -136,9 +139,8 @@ class LogicDistiller:
             self.example_strings.append(example)
         return True
 
-    def actions_to_string(self, actions):
+    def actions_to_string(self, acts):
         # TODO: make sure this goes one at a time
-        acts = tf.keras.activations.softmax(actions, axis=1)
         acts_str = np.round(acts, 2).astype(str)
         ones = np.ones(acts_str.shape).astype(int)
         ind = np.cumsum(ones, axis=1).astype(str)
@@ -155,13 +157,7 @@ class LogicDistiller:
         act_names[filt] = ""
         return act_names, nact_names, a_facts
 
-    def extract_q_vals(self, frames):
-        q_vq_output, _ = self.critic.extract_features(frames)
-        q_features = flatten_features(q_vq_output["quantize"])
-        q_values = self.critic.call(q_features)
-        return q_values
-
-    def write_examples(self):
+    def write_strings_to_file(self):
         output = self.generate_mode_bias()
         output += ''.join(self.a_facts) + "\n\n"
         output += ''.join(self.f_facts) + "\n\n"
@@ -265,41 +261,46 @@ def main():
     print(logicDistiller.example_strings[0])
 
 
-def play_and_save():
-    actor_path = "trained_models/coinrun_ppo_actor_episode_578_running_reward_9.60_n_epchs_10000_n_hdn_128_n_res_hdn_32_n_res_lyrs_2_reduction_factor_16_embedding_dim_64_num_embeddings_512_cc_0.25_vq_use_ema_True_decay_0.99_lr_0.0003_attn_hds_8_dff_256_n_levels_1%2E"
-    critic_path = "trained_models/coinrun_ppo_critic_episode_578_running_reward_9.60_n_epchs_10000_n_hdn_128_n_res_hdn_32_n_res_lyrs_2_reduction_factor_16_embedding_dim_64_num_embeddings_512_cc_0.25_vq_use_ema_True_decay_0.99_lr_0.0003_attn_hds_8_dff_256_n_levels_1%2E"
-    logicDistiller = LogicDistiller(actor_path, critic_path, probabilistic=False, atn_threshold=.6, action_threshold=.3)
+def train_logic_program():
+    # load model
+    device = torch.device('cpu')
+    # logdir = "logs/train/coinrun/coinrun/2024-02-04__17-32-32__seed_6033/"
+    logdir = None
+    n_envs = 2
+    action_names, done, env, hidden_state, obs, policy = load_policy(False, logdir, n_envs=n_envs,
+                                                                     hparams="hard-500-impalafsqmha")
 
-    env_name = "procgen:procgen-coinrun-v0"
-    env = gym.make(env_name, start_level=0, num_levels=1)
-    reward = 0
-    while reward == 0:
-        observation = input_to_state(env.reset())
-        frames = observation
-        done = False
-        while not done:
-            _, action = sample_action(logicDistiller.actor, observation)
-            observation, reward, done, _ = env.step(action[0].numpy())
-            observation = input_to_state(observation)
-            frames = np.append(frames, observation, axis=0)
+    # create_logicdistiller
+    ld = LogicDistiller(policy, device)
+    reward = np.array([0. for _ in range(n_envs)])
+    # This is so that we learn from an example where the agent succeeds:
+    # while reward[0] == 0:
+    observation = env.reset()
+    frames = np.expand_dims(observation, 0)
+    done = np.array([False for _ in range(n_envs)])
+    while len(frames) < 100: #not done[0]:
+        act, act_probs, atn, feature_indices, value = ld.forward(observation)
+        observation, reward, done, info = env.step(act)
+        frames = np.append(frames, np.expand_dims(observation, 0), axis=0)
 
-    q_values = logicDistiller.extract_q_vals(frames)
-    q_diffs = np.diff(q_values.numpy().squeeze())
+    (s, b, c, w, h) = frames.shape
+    new_frames = frames.reshape((s*b, c, w, h), order='F')
+    act, act_probs, atn, feature_indices, value = ld.forward(new_frames)
+    q_diffs = np.diff(value)
     q_diffs = np.append(q_diffs, 0)
-    # df = pd.DataFrame(columns=["top_n", "action_threshold", "hypothesis"])
-    top_n = frames[np.argsort(q_diffs)]
-    logicDistiller.extract_example(top_n)
+    top_n = new_frames[np.argsort(q_diffs)]
+    ld.extract_example(top_n)
     for n in range(5, 101, 5):
-        logicDistiller.top_n = n
+        ld.top_n = n
         for i in range(1, 11):
             act_thr = i / 10
-            logicDistiller.reset_example_strings()
-            logicDistiller.action_threshold = act_thr
-            if not logicDistiller.write_examples_to_strings():
+            ld.reset_example_strings()
+            ld.action_threshold = act_thr
+            if not ld.write_examples_to_strings():
                 continue
-            logicDistiller.write_examples()
-            logicDistiller.generate_hypothesis()
-            data = {"top_n": [n], "action_threshold": [act_thr], "hypothesis": [logicDistiller.hypothesis]}
+            ld.write_strings_to_file()
+            ld.generate_hypothesis()
+            data = {"top_n": [n], "action_threshold": [act_thr], "hypothesis": [ld.hypothesis]}
             df = pd.DataFrame(data)
             append_to_csv_if_exists(df, "logic_examples/results.csv")
 
@@ -401,19 +402,20 @@ def play_logic_record_gif():
 
 
 if __name__ == "__main__":
-
+    train_logic_program()
+    exit(0)
     # load model
     device = torch.device('cpu')
-    logdir = "logs/train/coinrun/coinrun/2024-02-04__17-32-32__seed_6033/"
-    action_names, done, env, hidden_state, obs, policy = load_policy(False, logdir, n_envs=2)
+    # logdir = "logs/train/coinrun/coinrun/2024-02-04__17-32-32__seed_6033/"
+    logdir = None
+    action_names, done, env, hidden_state, obs, policy = load_policy(False, logdir, n_envs=2,hparams="hard-500-impalafsqmha")
 
     # create_logicdistiller
     ld = LogicDistiller(policy, device)
     ld.extract_example(obs)
     ld.write_examples_to_strings()
-    print(ld.example_strings[0])
-
-
+    ld.write_strings_to_file()
+    ld.run_clingo()
 
 
 

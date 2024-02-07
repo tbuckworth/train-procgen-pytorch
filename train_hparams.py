@@ -49,18 +49,19 @@ if __name__ == '__main__':
 
 
 
-    args.exp_name = "boxworld"
-    args.env_name = "boxworld"
+    args.exp_name = "coinrun-hparams"
+    args.env_name = "coinrun"
     args.distribution_mode = "hard"
-    args.param_name = "boxworld-ribmha-easy"
+    args.param_name = "hard-500-impalafsqmha"
     args.num_timesteps = 2**20
     args.num_checkpoints = 1
     args.seed = 6033
     args.use_wandb = True
     args.wandb_tags = ["n_envs", "n_minibatches"]
     args.device = "gpu"
-    for n_envs in [32, 48, 16]:
-        for n_steps in [40, 64, 16]:
+    args.minibatches = [8, 4, 2]
+    for n_envs in [256, 128, 64, 32, 16]:
+        for n_steps in [256, 128, 64]:
             for n_minibatch in args.minibatches:
                 args.n_envs = n_envs
                 args.n_steps = n_steps
