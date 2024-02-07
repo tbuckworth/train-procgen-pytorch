@@ -109,7 +109,7 @@ class BoxWorldTestModel(unittest.TestCase):
                     "distractor_length": 2,
                     "max_steps": 10 ** 6,
                     "seed": 0,
-                    "n_levels":0
+                    "n_levels": 0
                     }
         cls.env = create_box_world_env_pre_vec(env_args, render=False, normalize_rew=True)
         cls.in_channels = cls.env.observation_space.shape[0]

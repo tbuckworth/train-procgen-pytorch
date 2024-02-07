@@ -310,7 +310,7 @@ class ImpalaFSQModel(nn.Module):
 class BaseAttention(nn.Module):
     def __init__(self, shape, **kwargs):
         super(BaseAttention, self).__init__()
-        self.mha = nn.MultiheadAttention(**kwargs)
+        self.mha = nn.MultiheadAttention(batch_first=True, **kwargs)
         self.layernorm = nn.LayerNorm(normalized_shape=shape)
         # self.add = torch.add
 
@@ -344,16 +344,39 @@ def halve_rounding_n_times(x, n_impala_blocks):
 
 
 class ImpalaCNN(nn.Module):
-    def __init__(self, in_channels, mid_channels, latent_dim):
+    def __init__(self, in_channels, mid_channels, latent_dim, n_impala_blocks=3):
         super(ImpalaCNN, self).__init__()
-        self.block1 = ImpalaBlock(in_channels=in_channels, out_channels=mid_channels)
-        self.block2 = ImpalaBlock(in_channels=mid_channels, out_channels=latent_dim)
-        self.block3 = ImpalaBlock(in_channels=latent_dim, out_channels=latent_dim - 2)
+        self.blocks = []
+        for i in range(n_impala_blocks):
+            in_c = mid_channels
+            out_c = mid_channels
+            if i == 0:
+                in_c = in_channels
+                out_c = mid_channels
+            elif i == n_impala_blocks-1:
+                in_c = latent_dim
+                out_c = latent_dim-2
+            elif i == n_impala_blocks-2:
+                in_c = mid_channels
+                out_c = latent_dim
+            self.blocks.append(
+                ImpalaBlock(in_channels=in_c, out_channels=out_c)
+            )
+
+        # self.block1 = ImpalaBlock(in_channels=in_channels, out_channels=mid_channels)
+        # self.block2 = ImpalaBlock(in_channels=mid_channels, out_channels=latent_dim)
+        # self.block3 = ImpalaBlock(in_channels=latent_dim, out_channels=latent_dim - 2)
+
+    def get_n_latents(self, input_shape):
+        return int(np.prod([halve_rounding_n_times(x, len(self.blocks)) for x in input_shape[1:]]))
+
 
     def forward(self, x):
-        x = self.block1(x)
-        x = self.block2(x)
-        x = self.block3(x)
+        for block in self.blocks:
+            x = block(x)
+        # x = self.block1(x)
+        # x = self.block2(x)
+        # x = self.block3(x)
         x = nn.ReLU()(x)
         return x
 
@@ -442,9 +465,9 @@ class ImpalaVQMHAModel(QuantizedMHAModel):
         input_shape = obs_shape
         # Each impala block halves input height and width.
         # These are flattened before VQ (hence prod)
-        n_impala_blocks = 3
-        n_latents = int(np.prod([halve_rounding_n_times(x, n_impala_blocks) for x in input_shape[1:]]))
-        encoder = ImpalaCNN(in_channels, hid_channels, latent_dim)
+        n_impala_blocks = 4
+        encoder = ImpalaCNN(in_channels, hid_channels, latent_dim, n_impala_blocks)
+        n_latents = encoder.get_n_latents(input_shape)
 
         self.device = device
         self.use_vq = use_vq
@@ -475,13 +498,13 @@ class ImpalaFSQMHAModel(QuantizedMHAModel):
         latent_dim = len(levels) + 2
         # Each impala block halves input height and width.
         # These are flattened before VQ (hence prod)
-        n_impala_blocks = 3
-        n_latents = int(np.prod([halve_rounding_n_times(x, n_impala_blocks) for x in input_shape[1:]]))
-        encoder = ImpalaCNN(in_channels, hid_channels, latent_dim)
+        n_impala_blocks = 4
+        encoder = ImpalaCNN(in_channels, hid_channels, latent_dim, n_impala_blocks)
+        n_latents = encoder.get_n_latents(input_shape)
 
 
         super(ImpalaFSQMHAModel, self).__init__(in_channels, device, input_shape, n_latents, encoder, quantizer,
-                                               mha_layers, num_heads=4, embed_dim=latent_dim, output_dim=256, reduce=reduce)
+                                               mha_layers, num_heads=latent_dim, embed_dim=latent_dim, output_dim=256, reduce=reduce)
 
 class RibFSQMHAModel(QuantizedMHAModel):
     def __init__(self, in_channels, mha_layers, device, obs_shape, reduce, **kwargs):
@@ -494,19 +517,19 @@ class RibFSQMHAModel(QuantizedMHAModel):
         quantizer = FSQ(levels)
         latent_dim = len(levels) + 2
 
-        n_latents = (obs_shape[-1]) ** 2
         encoder = ribEncoder(in_channels, mid_channels=12, embed_dim=latent_dim-2)
+        n_latents = encoder.get_n_latents(obs_shape)
 
 
         super(RibFSQMHAModel, self).__init__(in_channels, device, input_shape, n_latents, encoder, quantizer,
-                                               mha_layers, num_heads=4, embed_dim=latent_dim, output_dim=256, reduce=reduce)
+                                               mha_layers, num_heads=latent_dim, embed_dim=latent_dim, output_dim=256, reduce=reduce)
 
 
 
 class ribEncoder(nn.Module):
     def __init__(self, in_channels, mid_channels, embed_dim):
         super(ribEncoder, self).__init__()
-        self.conv1 = nn.Conv2d(in_channels=in_channels, out_channels=mid_channels, kernel_size=2, stride=1, padding=1)
+        self.conv1 = nn.Conv2d(in_channels=in_channels, out_channels=mid_channels, kernel_size=2, stride=1, padding=0)
         self.conv2 = nn.Conv2d(in_channels=mid_channels, out_channels=embed_dim, kernel_size=2, stride=1, padding=0)
 
     def forward(self, x):
@@ -515,6 +538,8 @@ class ribEncoder(nn.Module):
         x = nn.ReLU()(x)
         return x
 
+    def get_n_latents(self, obs_shape):
+        return (obs_shape[-1]-2) ** 2
 
 class ribMHA(nn.Module):
     def __init__(self,
@@ -531,11 +556,11 @@ class ribMHA(nn.Module):
         self.device = device
         self.ob_shape = ob_shape
         # add 2 for the padding and square because we flatten
-        n_latents = (ob_shape[-1]) ** 2
         embed_dim = 64
         output_dim = 256
 
         encoder = ribEncoder(in_channels, mid_channels=12, embed_dim=embed_dim - 2)
+        n_latents = encoder.get_n_latents(ob_shape)
         quantizer = None
         if use_vq:
             quantizer = VectorQuantize(dim=embed_dim - 2, codebook_size=128, decay=.8, commitment_weight=1.)
@@ -773,13 +798,14 @@ class MHAModel(nn.Module):
         self.mha_layers = mha_layers
         # self.vqvae = get_trained_vqvqae(in_channels, hyperparameters, model_path, device)
 
-        self.mha = GlobalSelfAttention(shape=(latent_dim, n_latents), num_heads=num_heads, embed_dim=n_latents,
+        # Maybe dropout should be 0.0 to make relations less entangled
+        self.mha = GlobalSelfAttention(shape=(n_latents, latent_dim), num_heads=num_heads, embed_dim=latent_dim,
                                        dropout=0.1)
         if reduce == 'feature_wise':
-            pool_reduction = 'h'
+            pool_reduction = 'w'
             fc_dim = latent_dim
         elif reduce == 'dim_wise':
-            pool_reduction = 'w'
+            pool_reduction = 'h'
             fc_dim = n_latents
         else:
             raise NotImplementedError
@@ -794,7 +820,7 @@ class MHAModel(nn.Module):
         self.apply(xavier_uniform_init)
 
     def forward(self, x):
-        x = x.permute(0, 2, 1)
+        # x = x.permute(0, 2, 1)
         for _ in range(self.mha_layers):
             x = self.mha(x)
         x = self.max_pool(x)
