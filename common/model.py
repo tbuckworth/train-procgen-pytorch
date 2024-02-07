@@ -346,7 +346,7 @@ def halve_rounding_n_times(x, n_impala_blocks):
 class ImpalaCNN(nn.Module):
     def __init__(self, in_channels, mid_channels, latent_dim, n_impala_blocks=3):
         super(ImpalaCNN, self).__init__()
-        self.blocks = []
+        blocks = []
         for i in range(n_impala_blocks):
             in_c = mid_channels
             out_c = mid_channels
@@ -359,9 +359,10 @@ class ImpalaCNN(nn.Module):
             elif i == n_impala_blocks-2:
                 in_c = mid_channels
                 out_c = latent_dim
-            self.blocks.append(
+            blocks.append(
                 ImpalaBlock(in_channels=in_c, out_channels=out_c)
             )
+        self.blocks = nn.ModuleList(blocks)
 
         # self.block1 = ImpalaBlock(in_channels=in_channels, out_channels=mid_channels)
         # self.block2 = ImpalaBlock(in_channels=mid_channels, out_channels=latent_dim)
