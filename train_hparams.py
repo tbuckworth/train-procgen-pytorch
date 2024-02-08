@@ -56,9 +56,12 @@ if __name__ == '__main__':
     args.num_timesteps = 2**20
     args.num_checkpoints = 1
     args.seed = 6033
+    args.num_levels = 10
+    args.start_level = 431
     args.use_wandb = True
     args.wandb_tags = ["n_envs", "n_minibatches"]
     args.device = "gpu"
+    args.use_valid_env = False
     args.minibatches = [8, 4, 2]
     for n_envs in [256, 128, 64, 32, 16]:
         for n_steps in [256, 128, 64]:

@@ -146,7 +146,7 @@ def train_ppo(args):
     if args.env_name == "boxworld":
         create_venv = create_bw_env
     env = create_venv(args, hyperparameters)
-    env_valid = create_venv(args, hyperparameters, is_valid=True)
+    env_valid = create_venv(args, hyperparameters, is_valid=True) if args.use_valid_env else None
 
     ############
     ## LOGGER ##
@@ -287,6 +287,8 @@ if __name__ == '__main__':
     parser.add_argument('--n_minibatch', type=int, default=None)
     parser.add_argument('--detect_nan', action="store_true", default=False)
     parser.add_argument('--wandb_name', type=str, default=None)
+    parser.add_argument('--use_valid_env', action="store_true", default=True)
+
 
 
     parser.add_argument('--wandb_tags', type=str, nargs='+')
