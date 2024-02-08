@@ -71,3 +71,12 @@ if __name__ == '__main__':
                 args.n_minibatch = n_minibatch
                 args.wandb_name = f"{args.n_envs}x{args.n_steps}_{args.n_minibatch}"
                 train_ppo(args)
+
+    for n_envs in [256, 128, 64, 32, 16]:
+        for n_steps in [256, 128, 64]:
+            for n_minibatch in args.minibatches:
+                args.n_envs = n_envs
+                args.n_steps = n_steps
+                args.n_minibatch = n_minibatch
+                args.wandb_name = f"{args.n_envs}x{args.n_steps}_{args.n_minibatch}"
+                train_ppo(args)

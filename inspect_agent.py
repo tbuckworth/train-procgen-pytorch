@@ -11,6 +11,25 @@ from helper import get_hyperparams, initialize_model, print_values_actions, get_
 from common.env.procgen_wrappers import create_env
 
 
+def inspect_latents(policy, obs, device):
+    obs = torch.FloatTensor(obs).to(device)
+    l = policy.embedder.encoder(obs)
+    x, indices = policy.embedder.flatten_and_append_coor(l, True)
+    ind, count = indices.unique(return_counts=True)
+    print(torch.concatenate((ind.unsqueeze(0), count.unsqueeze(0)), dim=0).cpu().numpy())
+    #
+    #
+    # ind, count = np.unique(indices.cpu().numpy(), return_counts=True)
+    # np.concatenate((ind.unsqueeze(),count.unsqueeze()),axis=1)
+    # dist, value = policy.hidden_to_output(x)
+    #
+    # act = dist.sample().cpu().numpy()
+    # act_probs = dist.probs.detach().cpu().numpy()
+    # value = value.detach().cpu().numpy()
+    # feature_indices = feature_indices.detach().cpu().numpy()
+    # atn = atn.detach().cpu().numpy()
+    # return act, act_probs, atn, feature_indices, value
+
 def predict(policy, obs, hidden_state, done, return_dist=False):
     with torch.no_grad():
         obs = torch.FloatTensor(obs).to(device=policy.device)
@@ -34,6 +53,7 @@ def main(logdir, render=True, print_entropy=False):
         act, log_prob_act, value, next_hidden_state, pi = predict(policy, obs, hidden_state, done)
         if print_entropy:
             print_action_entropy(action_names, pi)
+            inspect_latents(policy, obs, policy.device)
         else:
             print_values_actions(action_names, pi, value, rewards=rewards)
         next_obs, rew, done, info = env.step(act)
@@ -176,7 +196,7 @@ def swap_indexed_values_and_print(action_names, done, hidden_state, left_frame, 
 
 if __name__ == "__main__":
 
-    main(last_folder("logs/train/coinrun/coinrun"))
+    main(last_folder("logs/train/coinrun/coinrun"), True, True)
 
     # IMPALAFSQMHA:
     # main(logdir="logs/train/coinrun/coinrun/2023-12-08__17-11-08__seed_6033")

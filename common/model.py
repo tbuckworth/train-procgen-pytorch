@@ -487,7 +487,7 @@ class ImpalaVQMHAModel(QuantizedMHAModel):
             print(f"{name}:{'nans' if x.isnan().any() else ''}\n{x}")
 
 class ImpalaFSQMHAModel(QuantizedMHAModel):
-    def __init__(self, in_channels, mha_layers, device, obs_shape, reduce, **kwargs):
+    def __init__(self, in_channels, mha_layers, device, obs_shape, reduce, n_impala_blocks=3, levels=[8, 5, 5, 5], **kwargs):
         hid_channels = 16
         # self.output_dim = 256
         input_shape = obs_shape
@@ -495,12 +495,11 @@ class ImpalaFSQMHAModel(QuantizedMHAModel):
         self.device = device
         self.mha_layers = mha_layers
 
-        levels = [8, 6, 5]
+        levels = levels
         quantizer = FSQ(levels)
         latent_dim = len(levels) + 2
         # Each impala block halves input height and width.
         # These are flattened before VQ (hence prod)
-        n_impala_blocks = 4
         encoder = ImpalaCNN(in_channels, hid_channels, latent_dim, n_impala_blocks)
         n_latents = encoder.get_n_latents(input_shape)
 
