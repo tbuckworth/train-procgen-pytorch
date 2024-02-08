@@ -6,11 +6,11 @@ import torch
 from boxworld.create_box_world import create_box_world_env, create_box_world_env_pre_vec
 from common import cross_batch_entropy
 from common.storage import Storage
-from helper import initialize_model, last_folder, print_values_actions
+from helper import initialize_model, last_folder, print_values_actions, print_action_entropy
 from inspect_agent import latest_model_path, predict
 
 
-def run_boxworld(use_valid_env=False):
+def run_boxworld(use_valid_env=False, print_entropy=False):
     # global logdir, device, n_envs, env, model, policy, policy
     env_suffix = ""
     if use_valid_env:
@@ -52,7 +52,10 @@ def run_boxworld(use_valid_env=False):
         act, log_prob_act, value, hidden_state, pi, dist = predict(policy, obs, hidden_state, done, return_dist=True)
         x_ent, ent = cross_batch_entropy(dist)
         x_ents.append(x_ent.item())
-        print_values_actions(action_names, pi, value, i=action_names[act[0]])
+        if print_entropy:
+            print_action_entropy(action_names, pi)
+        else:
+            print_values_actions(action_names, pi, value, i=action_names[act[0]])
         obs, rew, done, info = env.step(act)
         time_steps += 1
         if done[0]:
@@ -61,7 +64,7 @@ def run_boxworld(use_valid_env=False):
 
 
 if __name__ == "__main__":
-    run_boxworld(False)
+    run_boxworld(False, True)
     for n in range(200):
         x = np.array([1 / n for i in range(n)])
         y = np.array([1-(n*1e-5) if i == 0 else 1e-5 for i in range(n)])

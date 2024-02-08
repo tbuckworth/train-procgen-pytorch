@@ -17,6 +17,7 @@ GLOBAL_DIR = "/vol/bitbucket/tfb115/train-procgen-pytorch"
 if os.name == "nt":
     GLOBAL_DIR = "C:/Users/titus/PycharmProjects/train-procgen-pytorch/"
 
+
 def match(a, b):
     a = a.tolist()
     b = b.tolist()
@@ -49,6 +50,18 @@ def print_values_actions(action_names, pi, value, i="", rewards=None):
         print(out_str)
 
 
+def print_action_entropy(action_names, pi):
+    val_names = [f"env{i}" for i in range(len(pi))]
+    df = pd.DataFrame({**{"variables": action_names}, **{f"env{i}": x for i, x in enumerate(pi)}})
+    df2 = df.pivot_table(values=val_names, index="variables", aggfunc="sum")
+    scaled_entropy = -(df2[val_names]*np.log(df2[val_names])).sum(0)/np.log(len(df2))
+    df2.loc["Entropy(%)"] = scaled_entropy
+    df2[val_names] = np.asarray(np.round(np.squeeze(df2[val_names]) * 100, 0), dtype=np.int32)
+    print(df2)
+
+
+
+
 def match(a, b, dtype=np.int32):
     a = a.tolist()
     b = b.tolist()
@@ -62,6 +75,7 @@ def get_combos(env):
         return get_combos(env.env)
     raise NotImplementedError("No combos found in env")
 
+
 def add_encoder_to_env(env, encoder):
     if hasattr(env, "encoder"):
         env.encoder = encoder
@@ -73,6 +87,7 @@ def add_encoder_to_env(env, encoder):
         add_encoder_to_env(env.venv, encoder)
         return
     raise NotImplementedError("No env wrapper in the onion has encoder parameter")
+
 
 def get_actions(env):
     if hasattr(env, "unwrapped"):
@@ -124,7 +139,8 @@ def initialize_model(device, env, hyperparameters):
         has_vq = True
         mha_layers = hyperparameters.get("mha_layers", 1)
         use_vq = hyperparameters.get("use_vq", True)
-        model = ImpalaVQMHAModel(in_channels=in_channels, mha_layers=mha_layers, device=device, use_vq=use_vq, obs_shape=observation_shape)
+        model = ImpalaVQMHAModel(in_channels=in_channels, mha_layers=mha_layers, device=device, use_vq=use_vq,
+                                 obs_shape=observation_shape)
     elif architecture == 'impalafsq':
         model = ImpalaFSQModel(in_channels=in_channels)
     elif architecture == 'impalafsqmha':
@@ -180,7 +196,6 @@ def impala_latents(model, obs):
 
 
 def plot_reconstructions(data, filename):
-
     train_reconstructions = data["train_reconstructions"]
     valid_reconstructions = data["valid_reconstructions"]
     train_batch = data["train_batch"]

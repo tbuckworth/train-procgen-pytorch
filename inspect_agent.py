@@ -6,7 +6,8 @@ import numpy as np
 import torch
 
 from common.storage import Storage
-from helper import get_hyperparams, initialize_model, print_values_actions, get_action_names, save_gif, GLOBAL_DIR
+from helper import get_hyperparams, initialize_model, print_values_actions, get_action_names, save_gif, GLOBAL_DIR, \
+    last_folder, print_action_entropy
 from common.env.procgen_wrappers import create_env
 
 
@@ -26,12 +27,15 @@ def predict(policy, obs, hidden_state, done, return_dist=False):
     return act.cpu().numpy(), log_prob_act.cpu().numpy(), value.cpu().numpy(), hidden_state.cpu().numpy(), pi.cpu().numpy()
 
 
-def main(logdir, render=True):
-    action_names, done, env, hidden_state, obs, policy = load_policy(render, logdir, n_envs=2)
+def main(logdir, render=True, print_entropy=False):
+    action_names, done, env, hidden_state, obs, policy = load_policy(render, logdir, n_envs=8)
     rewards = np.array([])
     while True:
         act, log_prob_act, value, next_hidden_state, pi = predict(policy, obs, hidden_state, done)
-        print_values_actions(action_names, pi, value, rewards=rewards)
+        if print_entropy:
+            print_action_entropy(action_names, pi)
+        else:
+            print_values_actions(action_names, pi, value, rewards=rewards)
         next_obs, rew, done, info = env.step(act)
         rewards = np.append(rewards, rew[done])
         obs = next_obs
@@ -40,6 +44,7 @@ def main(logdir, render=True):
         hidden_state = next_hidden_state
         if done[0]:
             print(f"Level seed: {info[0]['level_seed']}")
+
 
 
 def load_policy(render, logdir, n_envs=None, decoding_info={}, start_level=0, repeat_level=False, num_levels=500, hparams="hard-500-impala"):
@@ -170,6 +175,9 @@ def swap_indexed_values_and_print(action_names, done, hidden_state, left_frame, 
 
 
 if __name__ == "__main__":
+
+    main(last_folder("logs/train/coinrun/coinrun"))
+
     # IMPALAFSQMHA:
     # main(logdir="logs/train/coinrun/coinrun/2023-12-08__17-11-08__seed_6033")
 
