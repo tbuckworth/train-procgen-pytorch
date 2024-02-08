@@ -11,4 +11,6 @@ TERM=vt100
 /usr/bin/nvidia-smi
 export CUDA_DIR=/vol/cuda/12.2.0/:${CUDAPATH}
 export XLA_FLAGS=--xla_gpu_cuda_data_dir=/vol/cuda/12.2.0/
-python3.8 /vol/bitbucket/${USER}/train-procgen-pytorch/train_decoder.py --num_checkpoints 5 --seed 6033 --use_wandb --device gpu --nb_epoch 1001
+python3.8 /vol/bitbucket/${USER}/train-procgen-pytorch/train_decoder.py --seed 6033 --use_wandb --device gpu --optim Adam
+--latent_layer block2
+

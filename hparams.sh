@@ -11,5 +11,5 @@ TERM=vt100
 /usr/bin/nvidia-smi
 export CUDA_DIR=/vol/cuda/12.2.0/:${CUDAPATH}
 export XLA_FLAGS=--xla_gpu_cuda_data_dir=/vol/cuda/12.2.0/
-python3.8 /vol/bitbucket/${USER}/train-procgen-pytorch/train.py --exp_name boxworld --env_name boxworld --distribution_mode hard --param_name boxworld-$1 --num_timesteps 2000000000 --num_checkpoints 200 --seed 6033 --use_wandb --real_procgen --device gpu
+python3.8 /vol/bitbucket/${USER}/train-procgen-pytorch/train_hparams.py --minibatches $1
 

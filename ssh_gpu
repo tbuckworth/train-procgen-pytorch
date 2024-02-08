@@ -1,0 +1,2 @@
+ssh $(./free_gpu)
+nvidia-smi
