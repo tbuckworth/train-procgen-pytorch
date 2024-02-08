@@ -210,7 +210,7 @@ def train_ppo(args):
     print('INITIALIZING STORAGE...')
     hidden_state_dim = model.output_dim
     storage = Storage(observation_shape, hidden_state_dim, n_steps, n_envs, device)
-    storage_valid = Storage(observation_shape, hidden_state_dim, n_steps, n_envs, device)
+    storage_valid = Storage(observation_shape, hidden_state_dim, n_steps, n_envs, device) if args.use_valid_env else None
     ###########
     ## AGENT ##
     ###########
