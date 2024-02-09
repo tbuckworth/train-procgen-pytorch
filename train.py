@@ -82,6 +82,7 @@ def train_ppo(args):
         hyperparameters["use_wandb"] = False
     n_steps = hyperparameters.get('n_steps', 256)
     n_envs = hyperparameters.get('n_envs', 256)
+    max_steps = hyperparameters.get("max_steps", 10 ** 3)
 
     def create_venv(args, hyperparameters, is_valid=False):
         if args.real_procgen:
@@ -128,7 +129,7 @@ def train_ppo(args):
                     "goal_length": hyperparameters.get('goal_length', 5),
                     "num_distractor": hyperparameters.get('num_distractor', 0),
                     "distractor_length": hyperparameters.get('distractor_length', 0),
-                    "max_steps": hyperparameters.get("max_steps", 10 ** 3),
+                    "max_steps": max_steps,
                     "n_levels": num_levels,
                     "seed": args.seed,
                     }
@@ -204,6 +205,7 @@ def train_ppo(args):
     print('INTIALIZING MODEL...')
     model, observation_shape, policy = initialize_model(device, env, hyperparameters)
     logger = Logger(n_envs, logdir, use_wandb=args.use_wandb, has_vq=policy.has_vq)
+    logger.max_steps = max_steps
     #############
     ## STORAGE ##
     #############
