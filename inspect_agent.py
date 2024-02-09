@@ -1,6 +1,7 @@
 import copy
 import os
 import re
+from collections import deque
 
 import numpy as np
 import torch
@@ -48,8 +49,9 @@ def predict(policy, obs, hidden_state, done, return_dist=False):
 
 def main(logdir, render=True, print_entropy=False):
     print(logdir)
-    action_names, done, env, hidden_state, obs, policy = load_policy(render, logdir, n_envs=2, start_level=431, num_levels=10)
+    action_names, done, env, hidden_state, obs, policy, storage = load_policy(render, logdir, n_envs=16, start_level=431, num_levels=10)
     rewards = np.array([])
+    performance_track = {}
     while True:
         act, log_prob_act, value, next_hidden_state, pi = predict(policy, obs, hidden_state, done)
         if print_entropy:
@@ -58,6 +60,7 @@ def main(logdir, render=True, print_entropy=False):
         else:
             print_values_actions(action_names, pi, value, rewards=rewards)
         next_obs, rew, done, info = env.step(act)
+        storage.store(obs, hidden_state, act, rew, done, info, log_prob_act, value)
         rewards = np.append(rewards, rew[done])
         obs = next_obs
         # frames = np.append(frames, obs, axis=0)
@@ -65,6 +68,16 @@ def main(logdir, render=True, print_entropy=False):
         hidden_state = next_hidden_state
         if done[0]:
             print(f"Level seed: {info[0]['level_seed']}")
+        completes = np.array(info)[done]
+        for info in completes:
+            seed = info["prev_level_seed"]
+            rew = info["env_reward"]
+            if seed not in performance_track.keys():
+                performance_track[seed] = deque(maxlen=10)
+            performance_track[seed].append(rew)
+        all_rewards = list(performance_track.values())
+        true_average_reward = np.mean([rew for rew_list in all_rewards for rew in rew_list])
+        print(true_average_reward)
 
 
 
@@ -75,6 +88,7 @@ def load_policy(render, logdir, n_envs=None, decoding_info={}, start_level=0, re
     hyperparameters = get_hyperparams(hparams)
     if logdir is not None:
         last_model = latest_model_path(logdir)
+        print(last_model)
         hp_file = os.path.join(GLOBAL_DIR, logdir, "hyperparameters.npy")
         if os.path.exists(hp_file):
             hyperparameters = np.load(hp_file, allow_pickle='TRUE').item()
@@ -93,14 +107,14 @@ def load_policy(render, logdir, n_envs=None, decoding_info={}, start_level=0, re
         policy.load_state_dict(torch.load(last_model, map_location=device)["model_state_dict"])
     # Test if necessary:
     policy.device = device
-    storage = Storage(observation_shape, model.output_dim, 256, n_envs, device)
+    storage = Storage(observation_shape, model.output_dim, hyperparameters["n_steps"], n_envs, device)
     action_names = get_action_names(env)
     obs = env.reset()
     hidden_state = np.zeros((n_envs, storage.hidden_state_size))
     done = np.zeros(n_envs)
     # frames = obs
     policy.eval()
-    return action_names, done, env, hidden_state, obs, policy
+    return action_names, done, env, hidden_state, obs, policy, storage
 
 
 def latest_model_path(logdir):
@@ -116,7 +130,7 @@ def inspect_frames():
     folder = "logs/train/coinrun/coinrun/2023-10-31__10-49-30__seed_6033/"
     import matplotlib.pyplot as plt
     frames = np.load(f"{folder}go_left.npy", allow_pickle='TRUE')
-    action_names, done, env, hidden_state, obs, policy = load_policy(render=False)
+    action_names, done, env, hidden_state, obs, policy, storage = load_policy(render=False)
 
     save_gif(frames[:234, ], f"{folder}normal_play.gif")
     save_gif(frames[234:, ], f"{folder}broken_play.gif")
@@ -197,7 +211,7 @@ def swap_indexed_values_and_print(action_names, done, hidden_state, left_frame, 
 
 if __name__ == "__main__":
 
-    main(last_folder("logs/train/coinrun/coinrun"), True, False)
+    main(last_folder("logs/train/coinrun/coinrun"), False, False)
 
     # IMPALAFSQMHA:
     # main(logdir="logs/train/coinrun/coinrun/2023-12-08__17-11-08__seed_6033")

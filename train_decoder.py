@@ -76,7 +76,7 @@ def train_decoder(args, trained_model_folder):
         device = torch.device('cpu')
     torch.autograd.set_detect_anomaly(True)
 
-    action_names, done, env, hidden_state, obs, policy = load_policy(render=False, logdir=trained_model_folder,
+    action_names, done, env, hidden_state, obs, policy, storage = load_policy(render=False, logdir=trained_model_folder,
                                                                      n_envs=2)
     train_data, valid_data, _ = retrieve_coinrun_data()
 

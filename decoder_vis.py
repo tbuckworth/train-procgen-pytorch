@@ -24,7 +24,7 @@ def main(send_reconstructions=False):
                      "decoder_fc": decoder_fc,
                      }
     # load encoder
-    action_names, done, env, hidden_state, obs, policy = load_policy(render=True, logdir=encoder_path, n_envs=2,
+    action_names, done, env, hidden_state, obs, policy, storage = load_policy(render=True, logdir=encoder_path, n_envs=2,
                                                                      decoding_info=decoding_info, start_level=431,
                                                                      repeat_level=False, num_levels=10)
     encoder = policy.embedder
@@ -52,7 +52,7 @@ def main(send_reconstructions=False):
 def value_saliency_gif():
     device = torch.device('cpu')
     encoder_path = "logs/train/coinrun/coinrun/2023-10-31__10-49-30__seed_6033/"
-    action_names, done, env, hidden_state, obs, policy = load_policy(render=True, logdir=encoder_path, n_envs=2,
+    action_names, done, env, hidden_state, obs, policy, storage = load_policy(render=True, logdir=encoder_path, n_envs=2,
                                                                      decoding_info={}, start_level=0,
                                                                      repeat_level=False)
     from agents.ppo import PPO as AGENT
@@ -88,7 +88,7 @@ def extreme_action_probs_inspection():
     image_path = os.path.join(encoder_path, "right_jump_obs.npy")
 
     obs = np.load(image_path, allow_pickle='TRUE')
-    action_names, done, env, hidden_state, _, policy = load_policy(render=True, logdir=encoder_path, n_envs=2,
+    action_names, done, env, hidden_state, _, policy, storage = load_policy(render=True, logdir=encoder_path, n_envs=2,
                                                                    decoding_info={}, start_level=0,
                                                                    repeat_level=False)
     from agents.ppo import PPO as AGENT

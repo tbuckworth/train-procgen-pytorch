@@ -267,7 +267,7 @@ def train_logic_program():
     # logdir = "logs/train/coinrun/coinrun/2024-02-04__17-32-32__seed_6033/"
     logdir = None
     n_envs = 2
-    action_names, done, env, hidden_state, obs, policy = load_policy(False, logdir, n_envs=n_envs,
+    action_names, done, env, hidden_state, obs, policy, storage = load_policy(False, logdir, n_envs=n_envs,
                                                                      hparams="hard-500-impalafsqmha")
 
     # create_logicdistiller
@@ -408,7 +408,7 @@ if __name__ == "__main__":
     device = torch.device('cpu')
     # logdir = "logs/train/coinrun/coinrun/2024-02-04__17-32-32__seed_6033/"
     logdir = None
-    action_names, done, env, hidden_state, obs, policy = load_policy(False, logdir, n_envs=2,hparams="hard-500-impalafsqmha")
+    action_names, done, env, hidden_state, obs, policy, storage = load_policy(False, logdir, n_envs=2,hparams="hard-500-impalafsqmha")
 
     # create_logicdistiller
     ld = LogicDistiller(policy, device)
