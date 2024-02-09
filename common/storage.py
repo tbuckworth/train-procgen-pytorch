@@ -6,6 +6,7 @@ from collections import deque
 class Storage():
 
     def __init__(self, obs_shape, hidden_state_size, num_steps, num_envs, device):
+        self.performance_track = {}
         self.obs_shape = obs_shape
         self.hidden_state_size = hidden_state_size
         self.num_steps = num_steps
@@ -123,4 +124,19 @@ class Storage():
             done_batch = np.array(done_batch)
         else:
             done_batch = self.done_batch.numpy()
-        return rew_batch, done_batch
+        if 'prev_level_seed' in self.info_batch[0][0]:
+            for step in range(self.num_steps):
+                infos = np.array(self.info_batch[step])
+                completes = infos[done_batch[step] > 0]
+                for info in completes:
+                    seed = info["prev_level_seed"]
+                    rew = info["env_reward"]
+                    if seed in self.performance_track.keys():
+                        self.performance_track["seed"] = deque(maxlen=10)
+                    self.performance_track["seed"].append(rew)
+        else:
+            #TODO: Implement for BoxWorld?
+            true_average_reward = np.nan
+        all_rewards = list(self.performance_track.values())
+        true_average_reward = np.mean([rew for rew_list in all_rewards for rew in rew_list])
+        return rew_batch, done_batch, true_average_reward
