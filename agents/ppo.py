@@ -200,7 +200,7 @@ class PPO(BaseAgent):
             if self.storage_valid is not None:
                 rew_batch_v, done_batch_v, true_average_reward_v = self.storage_valid.fetch_log_data()
             else:
-                rew_batch_v = done_batch_v = None
+                rew_batch_v = done_batch_v = true_average_reward_v = None
             self.logger.feed(rew_batch, done_batch, true_average_reward, rew_batch_v, done_batch_v, true_average_reward_v)
 
             self.logger.dump(summary)
