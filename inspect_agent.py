@@ -47,7 +47,8 @@ def predict(policy, obs, hidden_state, done, return_dist=False):
 
 
 def main(logdir, render=True, print_entropy=False):
-    action_names, done, env, hidden_state, obs, policy = load_policy(render, logdir, n_envs=2)
+    print(logdir)
+    action_names, done, env, hidden_state, obs, policy = load_policy(render, logdir, n_envs=2, start_level=431, num_levels=10)
     rewards = np.array([])
     while True:
         act, log_prob_act, value, next_hidden_state, pi = predict(policy, obs, hidden_state, done)

@@ -131,9 +131,9 @@ class Storage():
                 for info in completes:
                     seed = info["prev_level_seed"]
                     rew = info["env_reward"]
-                    if seed in self.performance_track.keys():
-                        self.performance_track["seed"] = deque(maxlen=10)
-                    self.performance_track["seed"].append(rew)
+                    if seed not in self.performance_track.keys():
+                        self.performance_track[seed] = deque(maxlen=10)
+                    self.performance_track[seed].append(rew)
         else:
             #TODO: Implement for BoxWorld?
             true_average_reward = np.nan
