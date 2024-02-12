@@ -57,7 +57,7 @@ if __name__ == '__main__':
     args.num_levels = 10
     args.start_level = 431
     args.use_wandb = True
-    args.wandb_tags = ["n_envs", "n_minibatches", "big_bottleneck", "better_info"]
+    args.wandb_tags = ["n_envs", "n_minibatches", "big_bottleneck", "better_info", "with_vel_info"]
     args.device = "gpu"
     args.use_valid_env = False
 

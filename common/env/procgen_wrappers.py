@@ -451,6 +451,7 @@ def create_rendered_env(args, hyperparameters, is_valid=False):
                 "env_name": val_env_name if is_valid else env_name,
                 "num_levels": 0 if is_valid else args.num_levels,
                 "start_level": start_level_val if is_valid else args.start_level,
+                "paint_vel_info": hyperparameters.get("paint_vel_info", True),
                 "distribution_mode": args.distribution_mode,
                 "num_threads": args.num_threads
                 }
