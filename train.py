@@ -1,5 +1,6 @@
-from boxworld.create_box_world import create_box_world_env, create_box_world_env_pre_vec
-from common.env.procgen_wrappers import *
+from boxworld.create_box_world import create_box_world_env_pre_vec
+from common.env.procgen_wrappers import VecExtractDictObs, VecNormalize, MirrorFrame, TransposeFrame, ScaledFloatFrame, \
+    EncoderWrapper, create_rendered_env
 from common.logger import Logger
 from common.storage import Storage
 from common.model import get_trained_vqvqae
@@ -69,6 +70,8 @@ def train_ppo(args):
         device = torch.device('cuda')
     elif args.device == 'cpu':
         device = torch.device('cpu')
+    else:
+        raise NotImplementedError(f"'device' should be one of 'cpu','gpu', not {args.device}")
     # For debugging nans:
     if args.detect_nan:
         torch.autograd.set_detect_anomaly(True)
@@ -78,8 +81,9 @@ def train_ppo(args):
     print('INITIALIZING ENVIRONMENTS...')
     # If Windows:
     if os.name == "nt":
-        hyperparameters["n_envs"] = 2
+        hyperparameters["n_envs"] = 16
         hyperparameters["use_wandb"] = False
+        device = torch.device("cpu")
     n_steps = hyperparameters.get('n_steps', 256)
     n_envs = hyperparameters.get('n_envs', 256)
     max_steps = hyperparameters.get("max_steps", 10 ** 3)
@@ -105,6 +109,7 @@ def train_ppo(args):
                               key_penalty=args.key_penalty,
                               rand_region=args.rand_region,
                               )
+
         venv = VecExtractDictObs(venv, "rgb")
 
         normalize_rew = hyperparameters.get('normalize_rew', True)
@@ -146,6 +151,8 @@ def train_ppo(args):
 
     if args.env_name == "boxworld":
         create_venv = create_bw_env
+    elif args.render:
+        create_venv = create_rendered_env
     env = create_venv(args, hyperparameters)
     env_valid = create_venv(args, hyperparameters, is_valid=True) if args.use_valid_env else None
 
@@ -219,10 +226,7 @@ def train_ppo(args):
     print('INTIALIZING AGENT...')
     algo = hyperparameters.get('algo', 'ppo')
     if algo == 'ppo':
-        if policy.has_vq:
-            from agents.ppo import PPO_VQ as AGENT
-        else:
-            from agents.ppo import PPO as AGENT
+        from agents.ppo import PPO as AGENT
     else:
         raise NotImplementedError
 
@@ -253,7 +257,7 @@ def train_ppo(args):
                   **hyperparameters)
     if args.model_file is not None:
         print("Loading agent from %s" % args.model_file)
-        checkpoint = torch.load(args.model_file)
+        checkpoint = torch.load(args.model_file, map_location=device)
         agent.policy.load_state_dict(checkpoint["model_state_dict"])
         agent.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
     ##############
@@ -290,6 +294,7 @@ if __name__ == '__main__':
     parser.add_argument('--detect_nan', action="store_true", default=False)
     parser.add_argument('--wandb_name', type=str, default=None)
     parser.add_argument('--use_valid_env', action="store_true", default=True)
+    parser.add_argument('--render', action="store_true", default=False)
 
 
 
@@ -309,15 +314,20 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    # args.exp_name = "test"
-    # args.env_name = "boxworld"
-    # # args.num_levels = 10
-    # # args.distribution_mode = "hard"
-    # # args.start_level = 431
-    # args.param_name = "boxworld-ribfsqmha-easy"
-    # args.num_timesteps = 2000000000
-    # args.num_checkpoints = 200
-    # args.seed = 6033
-    # # args.mirror_env = True
+    args.exp_name = "test"
+    args.env_name = "coinrun"
+    args.num_levels = 10
+    args.distribution_mode = "hard"
+    args.start_level = 431
+    args.param_name = "hard-500-impalafsqmha"
+    args.num_timesteps = 1000000
+    args.num_checkpoints = 1
+    args.seed = 6033
+    args.mirror_env = True
+    args.use_wandb = False
+    args.use_valid_env = False
+    args.render = True
 
+    # args.model_file = 'C:/Users/titus/PycharmProjects/train-procgen-pytorch/logs/train/coinrun/coinrun/2024-02-08__15-31-22__seed_6033/model_80019456.pth'
+    args.model_file = 'C:/Users/titus/PycharmProjects/train-procgen-pytorch/logs/train/coinrun/coinrun/2024-02-11__08-41-38__seed_6033/model_50003968.pth'
     train_ppo(args)

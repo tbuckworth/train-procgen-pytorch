@@ -1,5 +1,6 @@
 import contextlib
 import os
+import random
 import re
 from abc import ABC, abstractmethod
 import numpy as np
@@ -438,6 +439,24 @@ class EncoderWrapper(VecEnvWrapper):
     def reset(self):
         obs = self.venv.reset()
         return self.encode(obs)
+
+
+def create_rendered_env(args, hyperparameters, is_valid=False):
+    n_envs = hyperparameters.get('n_envs', 256)
+    val_env_name = args.val_env_name if args.val_env_name else args.env_name
+    env_name = args.env_name
+    start_level_val = random.randint(500, 9999)
+
+    env_args = {"num": n_envs,
+                "env_name": val_env_name if is_valid else env_name,
+                "num_levels": 0 if is_valid else args.num_levels,
+                "start_level": start_level_val if is_valid else args.start_level,
+                "distribution_mode": args.distribution_mode,
+                "num_threads": args.num_threads
+                }
+    return create_env(env_args, render=True, normalize_rew=hyperparameters.get('normalize_rew', True),
+                      mirror_some=hyperparameters.get('mirror_some', False))
+
 
 def create_env(env_args, render, normalize_rew=True, mirror_some=False, decoding_info={}):
     if render:

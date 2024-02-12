@@ -49,7 +49,7 @@ def predict(policy, obs, hidden_state, done, return_dist=False):
 
 def main(logdir, render=True, print_entropy=False):
     print(logdir)
-    action_names, done, env, hidden_state, obs, policy, storage = load_policy(render, logdir, n_envs=16, start_level=431, num_levels=10)
+    action_names, done, env, hidden_state, obs, policy, storage = load_policy(render, logdir, n_envs=2, start_level=431, num_levels=10)
     rewards = np.array([])
     performance_track = {}
     while True:
@@ -211,7 +211,7 @@ def swap_indexed_values_and_print(action_names, done, hidden_state, left_frame, 
 
 if __name__ == "__main__":
 
-    main(last_folder("logs/train/coinrun/coinrun"), False, False)
+    main(last_folder("logs/train/coinrun/coinrun"), True, False)
 
     # IMPALAFSQMHA:
     # main(logdir="logs/train/coinrun/coinrun/2023-12-08__17-11-08__seed_6033")
