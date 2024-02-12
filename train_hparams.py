@@ -28,6 +28,7 @@ if __name__ == '__main__':
     parser.add_argument('--n_minibatch', type=int, default=None)
     parser.add_argument('--detect_nan', action="store_true", default=False)
     parser.add_argument('--wandb_name', type=str, default=None)
+    parser.add_argument('--paint_vel_info', action="store_true", default=True)
 
     parser.add_argument('--minibatches', type=int, nargs='+')
 
