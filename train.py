@@ -56,6 +56,8 @@ def train_ppo(args):
         hyperparameters["n_steps"] = args.n_steps
     if args.n_minibatch is not None:
         hyperparameters["mini_batch_per_epoch"] = args.n_minibatch
+    if args.paint_vel_info is not None:
+        hyperparameters["paint_vel_info"] = args.paint_vel_info
 
     wandb_name = args.wandb_name
     if args.wandb_name is None:
@@ -81,7 +83,7 @@ def train_ppo(args):
     print('INITIALIZING ENVIRONMENTS...')
     # If Windows:
     if os.name == "nt":
-        hyperparameters["n_envs"] = 16
+        hyperparameters["n_envs"] = 2
         hyperparameters["use_wandb"] = False
         device = torch.device("cpu")
     n_steps = hyperparameters.get('n_steps', 256)
@@ -94,6 +96,7 @@ def train_ppo(args):
                               env_name=val_env_name if is_valid else env_name,
                               num_levels=0 if is_valid else args.num_levels,
                               start_level=start_level_val if is_valid else args.start_level,
+                              paint_vel_info=hyperparameters.get("paint_vel_info", True),
                               distribution_mode=args.distribution_mode,
                               num_threads=args.num_threads,
                               )
@@ -295,6 +298,7 @@ if __name__ == '__main__':
     parser.add_argument('--wandb_name', type=str, default=None)
     parser.add_argument('--use_valid_env', action="store_true", default=True)
     parser.add_argument('--render', action="store_true", default=False)
+    parser.add_argument('--paint_vel_info', action="store_true", default=True)
 
 
 
@@ -314,20 +318,21 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    args.exp_name = "test"
-    args.env_name = "coinrun"
-    args.num_levels = 10
-    args.distribution_mode = "hard"
-    args.start_level = 431
-    args.param_name = "hard-500-impalafsqmha"
-    args.num_timesteps = 1000000
-    args.num_checkpoints = 1
-    args.seed = 6033
-    args.mirror_env = True
-    args.use_wandb = False
-    args.use_valid_env = False
-    args.render = True
-
-    # args.model_file = 'C:/Users/titus/PycharmProjects/train-procgen-pytorch/logs/train/coinrun/coinrun/2024-02-08__15-31-22__seed_6033/model_80019456.pth'
-    args.model_file = 'C:/Users/titus/PycharmProjects/train-procgen-pytorch/logs/train/coinrun/coinrun/2024-02-11__08-41-38__seed_6033/model_50003968.pth'
+    # args.exp_name = "test"
+    # args.env_name = "coinrun"
+    # args.num_levels = 10
+    # args.distribution_mode = "hard"
+    # args.start_level = 431
+    # args.param_name = "hard-500-impalafsqmha"
+    # args.num_timesteps = 1000000
+    # args.num_checkpoints = 1
+    # args.seed = 6033
+    # args.mirror_env = True
+    # args.use_wandb = False
+    # args.use_valid_env = False
+    # args.render = False
+    # args.paint_vel_info = True
+    #
+    # # args.model_file = 'C:/Users/titus/PycharmProjects/train-procgen-pytorch/logs/train/coinrun/coinrun/2024-02-08__15-31-22__seed_6033/model_80019456.pth'
+    # args.model_file = 'C:/Users/titus/PycharmProjects/train-procgen-pytorch/logs/train/coinrun/coinrun/2024-02-11__08-41-38__seed_6033/model_50003968.pth'
     train_ppo(args)
