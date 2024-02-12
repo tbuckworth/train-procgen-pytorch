@@ -150,7 +150,9 @@ class BoxWorldTestModel(unittest.TestCase):
         policy.forward(self.obs, None, None)
 
     def test_RibFSQMHAModel(self):
-        model = RibFSQMHAModel(self.in_channels, 2, self.device, self.obs_shape, reduce='dim_wise')
+        # model = RibFSQMHAModel(self.in_channels, 2, self.device, self.obs_shape, reduce='dim_wise')
+        hyperparameters = get_hyperparams("boxworld-ribfsqmha-easy")
+        model, obs_shape, policy = initialize_model(self.device, self.env, hyperparameters)
         model.forward(self.obs)
         summary(model, self.obs.shape)
 
