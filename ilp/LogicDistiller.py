@@ -265,6 +265,7 @@ def train_logic_program():
     # load model
     device = torch.device('cpu')
     logdir = "logs/train/coinrun/coinrun/2024-02-12__09-20-18__seed_6033/"
+    # logdir = "logs/train/coinrun/coinrun/2024-02-12__09-20-09__seed_6033/"
     n_envs = 2
     action_names, done, env, hidden_state, obs, policy, storage = load_policy(False, logdir, n_envs=n_envs,
                                                                      hparams="hard-500-impalafsqmha", start_level=0, num_levels=500)

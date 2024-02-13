@@ -92,6 +92,10 @@ def load_policy(render, logdir, n_envs=None, decoding_info={}, start_level=0, re
         hp_file = os.path.join(GLOBAL_DIR, logdir, "hyperparameters.npy")
         if os.path.exists(hp_file):
             hyperparameters = np.load(hp_file, allow_pickle='TRUE').item()
+            # save over levels with 8, 5, 5, 5
+            # hyperparameters["levels"] = [8, 5, 5, 5]
+            # np.save(hp_file, hyperparameters)
+
     if n_envs is not None:
         hyperparameters["n_envs"] = n_envs
     env_args = {"num": hyperparameters["n_envs"],

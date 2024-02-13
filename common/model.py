@@ -525,7 +525,7 @@ class ribEncoder(nn.Module):
     def __init__(self, in_channels, mid_channels, embed_dim, n_blocks=None):
         super(ribEncoder, self).__init__()
         self.conv1 = nn.Conv2d(in_channels=in_channels, out_channels=mid_channels, kernel_size=2, stride=1, padding=0)
-        self.conv2 = nn.Conv2d(in_channels=mid_channels, out_channels=embed_dim, kernel_size=2, stride=1, padding=0)
+        self.conv2 = nn.Conv2d(in_channels=mid_channels, out_channels=embed_dim-2, kernel_size=2, stride=1, padding=0)
 
     def forward(self, x):
         x = self.conv1(x)
@@ -555,7 +555,7 @@ class ribMHA(nn.Module):
         embed_dim = 64
         output_dim = 256
 
-        encoder = ribEncoder(in_channels, mid_channels=12, embed_dim=embed_dim - 2)
+        encoder = ribEncoder(in_channels, mid_channels=12, embed_dim=embed_dim)
         n_latents = encoder.get_n_latents(ob_shape)
         quantizer = None
         if use_vq:
