@@ -354,10 +354,10 @@ class ImpalaCNN(nn.Module):
             if i == 0:
                 in_c = in_channels
                 out_c = mid_channels
-            elif i == n_impala_blocks-1:
+            elif i == n_impala_blocks - 1:
                 in_c = latent_dim
-                out_c = latent_dim-2
-            elif i == n_impala_blocks-2:
+                out_c = latent_dim - 2
+            elif i == n_impala_blocks - 2:
                 in_c = mid_channels
                 out_c = latent_dim
             blocks.append(
@@ -371,7 +371,6 @@ class ImpalaCNN(nn.Module):
 
     def get_n_latents(self, input_shape):
         return int(np.prod([halve_rounding_n_times(x, len(self.blocks)) for x in input_shape[1:]]))
-
 
     def forward(self, x):
         for block in self.blocks:
@@ -486,49 +485,44 @@ class ImpalaVQMHAModel(QuantizedMHAModel):
         if print_nans:
             print(f"{name}:{'nans' if x.isnan().any() else ''}\n{x}")
 
-class ImpalaFSQMHAModel(QuantizedMHAModel):
-    def __init__(self, in_channels, mha_layers, device, obs_shape, reduce, n_impala_blocks=3, levels=[8, 5, 5, 5], **kwargs):
-        hid_channels = 16
-        # self.output_dim = 256
-        input_shape = obs_shape
 
+class FSQMHAModel(QuantizedMHAModel):
+    def __init__(self, in_channels, hid_channels, mha_layers, device, obs_shape, reduce, encoder_constructor,
+                 levels=[8, 5, 5, 5], n_blocks=3, **kwargs):
+        input_shape = obs_shape
         self.device = device
         self.mha_layers = mha_layers
 
         levels = levels
         quantizer = FSQ(levels)
         latent_dim = len(levels) + 2
-        # Each impala block halves input height and width.
-        # These are flattened before VQ (hence prod)
-        encoder = ImpalaCNN(in_channels, hid_channels, latent_dim, n_impala_blocks)
+        encoder = encoder_constructor(in_channels, hid_channels, latent_dim, n_blocks)
         n_latents = encoder.get_n_latents(input_shape)
 
-
-        super(ImpalaFSQMHAModel, self).__init__(in_channels, device, input_shape, n_latents, encoder, quantizer,
-                                               mha_layers, num_heads=latent_dim, embed_dim=latent_dim, output_dim=256, reduce=reduce)
-
-class RibFSQMHAModel(QuantizedMHAModel):
-    def __init__(self, in_channels, mha_layers, device, obs_shape, reduce, **kwargs):
-        input_shape = obs_shape
-
-        self.device = device
-        self.mha_layers = mha_layers
-
-        levels = [8, 6, 5]
-        quantizer = FSQ(levels)
-        latent_dim = len(levels) + 2
-
-        encoder = ribEncoder(in_channels, mid_channels=12, embed_dim=latent_dim-2)
-        n_latents = encoder.get_n_latents(obs_shape)
+        super(FSQMHAModel, self).__init__(in_channels, device, input_shape, n_latents, encoder, quantizer,
+                                                mha_layers, num_heads=latent_dim, embed_dim=latent_dim, output_dim=256,
+                                                reduce=reduce)
 
 
-        super(RibFSQMHAModel, self).__init__(in_channels, device, input_shape, n_latents, encoder, quantizer,
-                                               mha_layers, num_heads=latent_dim, embed_dim=latent_dim, output_dim=256, reduce=reduce)
+class ImpalaFSQMHAModel(FSQMHAModel):
+    def __init__(self, in_channels, mha_layers, device, obs_shape, reduce, n_impala_blocks=3, levels=[8, 5, 5, 5],
+                 **kwargs):
+        hid_channels = 16
+        encoder_constructor = ImpalaCNN
+        super(ImpalaFSQMHAModel, self).__init__(in_channels, hid_channels, mha_layers, device, obs_shape, reduce,
+                                                encoder_constructor, levels, n_impala_blocks)
 
+
+class RibFSQMHAModel(FSQMHAModel):
+    def __init__(self, in_channels, mha_layers, device, obs_shape, reduce, levels=[8, 5, 5, 5], **kwargs):
+        hid_channels = 12
+        encoder_constructor = ribEncoder
+        super(RibFSQMHAModel, self).__init__(in_channels, hid_channels, mha_layers, device, obs_shape, reduce,
+                                             encoder_constructor, levels)
 
 
 class ribEncoder(nn.Module):
-    def __init__(self, in_channels, mid_channels, embed_dim):
+    def __init__(self, in_channels, mid_channels, embed_dim, n_blocks=None):
         super(ribEncoder, self).__init__()
         self.conv1 = nn.Conv2d(in_channels=in_channels, out_channels=mid_channels, kernel_size=2, stride=1, padding=0)
         self.conv2 = nn.Conv2d(in_channels=mid_channels, out_channels=embed_dim, kernel_size=2, stride=1, padding=0)
@@ -540,7 +534,8 @@ class ribEncoder(nn.Module):
         return x
 
     def get_n_latents(self, obs_shape):
-        return (obs_shape[-1]-2) ** 2
+        return (obs_shape[-1] - 2) ** 2
+
 
 class ribMHA(nn.Module):
     def __init__(self,
