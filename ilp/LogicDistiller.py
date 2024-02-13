@@ -219,7 +219,7 @@ class LogicDistiller:
     def run_clingo(self):
         filepath = os.path.join("/mnt/c/Users/titus/PycharmProjects/VAE/", re.sub("\\\\", "/", self.clingo_file))
         cmd = create_cmd(["clingo", filepath])
-        #TODO: try to get this working
+        # TODO: try to get this working
         # cmd = ["wsl", f'echo "{self.clingo_file_contents}" | clingo /dev/stdin']
         output = run_subprocess(cmd, "\\n")
         return output
@@ -268,7 +268,8 @@ def train_logic_program():
     # logdir = "logs/train/coinrun/coinrun/2024-02-12__09-20-09__seed_6033/"
     n_envs = 2
     action_names, done, env, hidden_state, obs, policy, storage = load_policy(False, logdir, n_envs=n_envs,
-                                                                     hparams="hard-500-impalafsqmha", start_level=0, num_levels=500)
+                                                                              hparams="hard-500-impalafsqmha",
+                                                                              start_level=0, num_levels=500)
 
     # create_logicdistiller
     ld = LogicDistiller(policy, device, probabilistic=False)
@@ -278,13 +279,13 @@ def train_logic_program():
     observation = env.reset()
     frames = np.expand_dims(observation, 0)
     done = np.array([False for _ in range(n_envs)])
-    while len(frames) < 100: #not done[0]:
+    while len(frames) < 100:  # not done[0]:
         act, act_probs, atn, feature_indices, value = ld.forward(observation)
         observation, reward, done, info = env.step(act)
         frames = np.append(frames, np.expand_dims(observation, 0), axis=0)
 
     (s, b, c, w, h) = frames.shape
-    new_frames = frames.reshape((s*b, c, w, h), order='F')
+    new_frames = frames.reshape((s * b, c, w, h), order='F')
     act, act_probs, atn, feature_indices, value = ld.forward(new_frames)
     q_diffs = np.diff(value)
     q_diffs = np.append(q_diffs, 0)
@@ -292,7 +293,7 @@ def train_logic_program():
     ld.extract_example(top_n)
     for n in range(5, 101, 5):
         ld.top_n = n
-        for i in range(1, 11):
+        for i in range(3, 11):
             act_thr = i / 10
             ld.reset_example_strings()
             ld.action_threshold = act_thr
@@ -300,7 +301,7 @@ def train_logic_program():
                 continue
             ld.write_strings_to_file()
             ld.generate_hypothesis()
-            data = {"top_n": [n], "action_threshold": [act_thr], "hypothesis": [ld.hypothesis]}
+            data = {"top_n": [n], "action_threshold": [act_thr], "hypothesis": [ld.hypothesis], "logdir": logdir}
             df = pd.DataFrame(data)
             append_to_csv_if_exists(df, "logic_examples/results.csv")
 
@@ -346,6 +347,7 @@ def play_logic():
         append_to_csv_if_exists(df2, "logic_examples/results_timings.csv")
     return
 
+
 def play_logic_record_gif():
     actor_path = "trained_models/coinrun_ppo_actor_episode_578_running_reward_9.60_n_epchs_10000_n_hdn_128_n_res_hdn_32_n_res_lyrs_2_reduction_factor_16_embedding_dim_64_num_embeddings_512_cc_0.25_vq_use_ema_True_decay_0.99_lr_0.0003_attn_hds_8_dff_256_n_levels_1%2E"
     critic_path = "trained_models/coinrun_ppo_critic_episode_578_running_reward_9.60_n_epchs_10000_n_hdn_128_n_res_hdn_32_n_res_lyrs_2_reduction_factor_16_embedding_dim_64_num_embeddings_512_cc_0.25_vq_use_ema_True_decay_0.99_lr_0.0003_attn_hds_8_dff_256_n_levels_1%2E"
@@ -355,7 +357,6 @@ def play_logic_record_gif():
     row = 6
     logicDistiller.action_threshold = df.action_threshold[row]
     logicDistiller.hypothesis = df.hypothesis[row]
-
 
     start_level = 2
     for start_level in range(10):
@@ -378,7 +379,8 @@ def play_logic_record_gif():
         # save a gif
         data = (frames.astype("float32") + 0.5) * 255
         random_actions = f"{logicDistiller.number_zero_actions_clingo}_of_{len(frames)}"
-        save_gif(data, filename=f"output_images/logic_player_top5_cuttoff_0.5_level{start_level}_random_acts_{random_actions}.gif")
+        save_gif(data,
+                 filename=f"output_images/logic_player_top5_cuttoff_0.5_level{start_level}_random_acts_{random_actions}.gif")
         print(f"Number of zero actions from clingo/frames: {random_actions})")
     return
     for i in range(2):
@@ -409,7 +411,8 @@ if __name__ == "__main__":
     # logdir = "logs/train/coinrun/coinrun/2024-02-04__17-32-32__seed_6033/"
     logdir = None
     logdir = "logs/train/coinrun/coinrun/2024-02-12__09-20-18__seed_6033/"
-    action_names, done, env, hidden_state, obs, policy, storage = load_policy(False, logdir, n_envs=2,hparams="hard-500-impalafsqmha")
+    action_names, done, env, hidden_state, obs, policy, storage = load_policy(False, logdir, n_envs=2,
+                                                                              hparams="hard-500-impalafsqmha")
 
     # create_logicdistiller
     ld = LogicDistiller(policy, device)
@@ -417,9 +420,6 @@ if __name__ == "__main__":
     ld.write_examples_to_strings()
     ld.write_strings_to_file()
     ld.run_clingo()
-
-
-
 
 # TODO: x and y coords can be moved to background knowledge
 #   add other take(an) as negative examples
