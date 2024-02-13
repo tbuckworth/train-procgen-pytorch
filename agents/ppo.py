@@ -18,7 +18,7 @@ class PPO(BaseAgent):
                  n_steps=128,
                  n_envs=8,
                  epoch=3,
-                 mini_batch_per_epoch=8,
+                 n_minibatch=8,
                  mini_batch_size=32 * 8,
                  gamma=0.99,
                  lmbda=0.95,
@@ -44,7 +44,7 @@ class PPO(BaseAgent):
         self.n_steps = n_steps
         self.n_envs = n_envs
         self.epoch = epoch
-        self.mini_batch_per_epoch = mini_batch_per_epoch
+        self.n_minibatch = n_minibatch
         self.mini_batch_size = mini_batch_size
         self.gamma = gamma
         self.lmbda = lmbda
@@ -91,7 +91,7 @@ class PPO(BaseAgent):
             self.entropy_multiplier = 1 - (self.t/self.total_timesteps)
 
         pi_loss_list, value_loss_list, entropy_loss_list, x_ent_loss_list, atn_entropy_list, total_loss_list = [], [], [], [], [], []
-        batch_size = self.n_steps * self.n_envs // self.mini_batch_per_epoch
+        batch_size = self.n_steps * self.n_envs // self.n_minibatch
         if batch_size < self.mini_batch_size:
             self.mini_batch_size = batch_size
         grad_accumulation_steps = batch_size / self.mini_batch_size

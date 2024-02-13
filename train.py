@@ -50,14 +50,9 @@ def train_ppo(args):
         hyperparameters["entropy_coef"] = ent_coef * alpha
         hyperparameters["x_entropy_coef"] = ent_coef * (1 - alpha)
 
-    if args.n_envs is not None:
-        hyperparameters["n_envs"] = args.n_envs
-    if args.n_steps is not None:
-        hyperparameters["n_steps"] = args.n_steps
-    if args.n_minibatch is not None:
-        hyperparameters["mini_batch_per_epoch"] = args.n_minibatch
-    if args.paint_vel_info is not None:
-        hyperparameters["paint_vel_info"] = args.paint_vel_info
+    for var_name in ["n_envs", "n_steps", "n_minibatch", "levels", "n_impala_blocks"]:
+        if args.__dict__[var_name] is not None:
+            hyperparameters[var_name] = args.__dict__[var_name]
 
     wandb_name = args.wandb_name
     if args.wandb_name is None:

@@ -3,7 +3,7 @@ debug:
     n_envs: 2
     n_steps: 64
     epoch: 1
-    mini_batch_per_epoch: 4
+    n_minibatch: 4
     mini_batch_size: 512
     gamma: 0.999
     lmbda: 0.95
@@ -23,7 +23,7 @@ easy:
     n_envs: 64
     n_steps: 256
     epoch: 3
-    mini_batch_per_epoch: 8
+    n_minibatch: 8
     mini_batch_size: 2048
     gamma: 0.999
     lmbda: 0.95
@@ -43,7 +43,7 @@ easy-200:
     n_envs: 128
     n_steps: 256
     epoch: 3
-    mini_batch_per_epoch: 8
+    n_minibatch: 8
     mini_batch_size: 2048
     gamma: 0.999
     lmbda: 0.95
@@ -63,7 +63,7 @@ hard:
     n_envs: 128
     n_steps: 256
     epoch: 3
-    mini_batch_per_epoch: 8
+    n_minibatch: 8
     mini_batch_size: 4096
     gamma: 0.999
     lmbda: 0.95
@@ -83,7 +83,7 @@ hard-500-impala:
     n_envs: 256 
     n_steps: 256
     epoch: 3
-    mini_batch_per_epoch: 8
+    n_minibatch: 8
     mini_batch_size: 8192
     gamma: 0.999
     lmbda: 0.95
@@ -103,7 +103,7 @@ hard-500-impalavq:
     n_envs: 256
     n_steps: 256
     epoch: 3
-    mini_batch_per_epoch: 8
+    n_minibatch: 8
     mini_batch_size: 8192
     gamma: 0.999
     lmbda: 0.95
@@ -124,7 +124,7 @@ hard-500-impalavqmha:
     n_envs: 256
     n_steps: 256
     epoch: 3
-    mini_batch_per_epoch: 8
+    n_minibatch: 8
     mini_batch_size: 8192
     gamma: 0.999
     lmbda: 0.95
@@ -147,7 +147,7 @@ hard-500-impalavqmha-rib:
     n_envs: 256
     n_steps: 256
     epoch: 3
-    mini_batch_per_epoch: 8
+    n_minibatch: 8
     mini_batch_size: 8192
     gamma: 0.99
     lmbda: 0.95
@@ -170,7 +170,7 @@ hard-500-impalamha:
     n_envs: 256
     n_steps: 256
     epoch: 3
-    mini_batch_per_epoch: 8
+    n_minibatch: 8
     mini_batch_size: 8192
     gamma: 0.999
     lmbda: 0.95
@@ -192,7 +192,7 @@ hard-500-impalafsq:
     n_envs: 256
     n_steps: 256
     epoch: 3
-    mini_batch_per_epoch: 8
+    n_minibatch: 8
     mini_batch_size: 8192
     gamma: 0.999
     lmbda: 0.95
@@ -212,7 +212,7 @@ hard-500-impalafsqmha:
     n_envs: 256
     n_steps: 256
     epoch: 3
-    mini_batch_per_epoch: 8
+    n_minibatch: 8
     mini_batch_size: 8192
     gamma: 0.99
     lmbda: 0.95
@@ -236,7 +236,7 @@ hard-500-impalafsqmha-valuetest:
     n_envs: 256
     n_steps: 256
     epoch: 3
-    mini_batch_per_epoch: 8
+    n_minibatch: 8
     mini_batch_size: 8192
     gamma: 0.999
     lmbda: 0.95
@@ -256,7 +256,7 @@ hard-500-vqmha:
     n_envs: 256
     n_steps: 256
     epoch: 3
-    mini_batch_per_epoch: 8
+    n_minibatch: 8
     mini_batch_size: 8192
     gamma: 0.999
     lmbda: 0.95
@@ -288,7 +288,7 @@ hard-500-mem:
     n_envs: 256
     n_steps: 256
     epoch: 3
-    mini_batch_per_epoch: 8
+    n_minibatch: 8
     mini_batch_size: 8192
     gamma: 0.999
     lmbda: 0.95
@@ -308,7 +308,7 @@ hard-rec:
     n_envs: 256
     n_steps: 256
     epoch: 3
-    mini_batch_per_epoch: 8
+    n_minibatch: 8
     mini_batch_size: 8192
     gamma: 0.999
     lmbda: 0.95
@@ -328,7 +328,7 @@ hard-local-dev:
     n_envs: 16
     n_steps: 256
     epoch: 3
-    mini_batch_per_epoch: 8
+    n_minibatch: 8
     mini_batch_size: 8192
     gamma: 0.999
     lmbda: 0.95
@@ -348,7 +348,7 @@ hard-local-dev-rec:
     n_envs: 16
     n_steps: 256
     epoch: 3
-    mini_batch_per_epoch: 8
+    n_minibatch: 8
     mini_batch_size: 8192
     gamma: 0.999
     lmbda: 0.95
@@ -368,7 +368,7 @@ A100:
     n_envs: 512
     n_steps: 256
     epoch: 3
-    mini_batch_per_epoch: 16
+    n_minibatch: 16
     mini_batch_size: 32768 # 32768  # this is just a maximum
     gamma: 0.999
     lmbda: 0.95
@@ -389,7 +389,7 @@ A100-large:  # for larger model (16x params)
     n_envs: 512
     n_steps: 256
     epoch: 3
-    mini_batch_per_epoch: 16
+    n_minibatch: 16
     mini_batch_size: 2048  # vary this param to adjust for memory
     gamma: 0.999
     lmbda: 0.95
@@ -410,7 +410,7 @@ boxworld-impala:
     n_envs: 256
     n_steps: 256
     epoch: 3
-    mini_batch_per_epoch: 8
+    n_minibatch: 8
     mini_batch_size: 8192
     gamma: 0.999
     lmbda: 0.95
@@ -438,7 +438,7 @@ boxworld-ribmha:
     n_envs: 32
     n_steps: 256
     epoch: 3
-    mini_batch_per_epoch: 8
+    n_minibatch: 8
     mini_batch_size: 8192
     gamma: 0.99
     lmbda: 0.95
@@ -467,7 +467,7 @@ boxworld-ribfsqmha-easy:
     n_envs: 48
     n_steps: 64
     epoch: 3
-    mini_batch_per_epoch: 8
+    n_minibatch: 8
     mini_batch_size: 8192
     gamma: 0.99
     lmbda: 0.95
@@ -504,7 +504,7 @@ boxworld-ribmha-easy:
     n_envs: 48
     n_steps: 64
     epoch: 3
-    mini_batch_per_epoch: 8
+    n_minibatch: 8
     mini_batch_size: 8192
     gamma: 0.99
     lmbda: 0.95
@@ -535,7 +535,7 @@ boxworld-ribvqmha-easy:
     n_envs: 8192
     n_steps: 256
     epoch: 3
-    mini_batch_per_epoch: 8
+    n_minibatch: 8
     mini_batch_size: 8192
     gamma: 0.99
     lmbda: 0.95
@@ -565,7 +565,7 @@ boxworld-ribmha-easy-100-steps:
     n_envs: 32
     n_steps: 256
     epoch: 3
-    mini_batch_per_epoch: 8
+    n_minibatch: 8
     mini_batch_size: 8192
     gamma: 0.99
     lmbda: 0.95
@@ -595,7 +595,7 @@ boxworld-ribmha-easy-100-steps-large-batch:
     n_envs: 1024
     n_steps: 256
     epoch: 3
-    mini_batch_per_epoch: 8
+    n_minibatch: 8
     mini_batch_size: 8192
     gamma: 0.99
     lmbda: 0.95
