@@ -4,6 +4,17 @@ import gym
 import torch
 import torch.nn as nn
 
+
+def attention_entropy(atn):
+    '''
+    Expected shape: (batch, heads, height, width)
+    each col should sum to 1
+    '''
+    p_log_p = torch.log(atn)*atn
+    entropy = -p_log_p.sum(3) / np.log(atn.shape[3])
+    normalized_mean_entropy = entropy.mean()
+    return normalized_mean_entropy
+
 def cross_batch_entropy(p):
     '''
     The idea here is to emulate torch.distributions.Categorical.entropy(), but instead of computing it per batch

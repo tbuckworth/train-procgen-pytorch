@@ -1,6 +1,8 @@
 import argparse
 import random
 
+import numpy as np
+
 from helper import add_training_args
 from train import train_ppo
 
@@ -13,34 +15,32 @@ if __name__ == '__main__':
     args.env_name = "coinrun"
     args.distribution_mode = "hard"
     args.param_name = "hard-500-impalafsqmha"
-    args.num_timesteps = 2 * 2 ** 20
+    args.num_timesteps = 2e7
     args.num_checkpoints = 1
     args.seed = 6033
     args.num_levels = 10
     args.start_level = 431
     args.use_wandb = True
-    args.wandb_tags = ["n_envs", "n_minibatches", "big_bottleneck", "better_info", "with_vel_info"]
+    args.wandb_tags = ["bottleneck_search"]
     args.device = "gpu"
     args.use_valid_env = False
 
-    n_envs_steps_minib = [[16, 256, 4],
-                          [16, 256, 2],
-                          [32, 64, 2],
-                          [32, 64, 2],
-                          [32, 256, 8],
-                          [64, 64, 2],
-                          [64, 128, 8],
-                          [64, 128, 2],
-                          [64, 256, 4],
-                          [256, 64, 2],
-                          [256, 256, 8],
-                          [64, 128, 8]]
+    hparams = [
+        [4, [8, 5, 5, 5]],
+        [3, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2]],
+        [4, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2]],
+        [3, [2, 2, 2, 2, 2, 2, 2, 2, 2]],
+        [4, [2, 2, 2, 2, 2, 2, 2, 2, 2]],
+        [5, [8, 5, 5, 5]],
+        [5, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2]],
+        [5, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2]],
+        [3, [8, 5, 5, 5]],
+    ]
 
-    for n_envs, n_steps, n_minibatch in n_envs_steps_minib:
-        args.n_envs = n_envs
-        args.n_steps = n_steps
-        args.n_minibatch = n_minibatch
-        args.wandb_name = f"{args.n_envs}x{args.n_steps}_{args.n_minibatch}"
+    for n_impala_blocks, levels in hparams:
+        args.n_impala_blocks = n_impala_blocks
+        args.levels = levels
+        args.wandb_name = f"{n_impala_blocks}x{np.prod(levels)}"
         train_ppo(args)
 
     # for n_envs in [256, 128, 64, 32, 16]:

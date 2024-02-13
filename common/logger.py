@@ -39,7 +39,7 @@ class Logger(object):
         self.episode_reward_buffer_v = deque(maxlen=40)
 
         time_metrics = ["timesteps", "wall_time", "num_episodes"]  # only collected once
-        loss_metrics = ["loss_pi", "loss_v", "loss_entropy", "loss_x_entropy", "loss_total"]
+        loss_metrics = ["loss_pi", "loss_v", "loss_entropy", "loss_x_entropy", "atn_entropy", "loss_total"]
         if has_vq:
             loss_metrics = ["loss_pi", "loss_v", "loss_entropy", "loss_x_entropy", "loss_commit", "loss_total"]
         # Make sure this is consistent with _get_episode_statistics:
