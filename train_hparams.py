@@ -26,10 +26,10 @@ if __name__ == '__main__':
     args.use_valid_env = False
 
     hparams = [
-        [4, [8, 5, 5, 5]],
         [3, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2]],
-        [4, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2]],
         [3, [2, 2, 2, 2, 2, 2, 2, 2, 2]],
+        [4, [8, 5, 5, 5]],
+        [4, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2]],
         [4, [2, 2, 2, 2, 2, 2, 2, 2, 2]],
         [5, [8, 5, 5, 5]],
         [5, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2]],
@@ -41,7 +41,12 @@ if __name__ == '__main__':
         args.n_impala_blocks = n_impala_blocks
         args.levels = levels
         args.wandb_name = f"{n_impala_blocks}x{np.prod(levels)}"
-        train_ppo(args)
+        try:
+            train_ppo(args)
+        except Exception as e:
+            print(f"Encountered error during run for {args.wandb_name}:")
+            print(e)
+            continue
 
     # for n_envs in [256, 128, 64, 32, 16]:
     #     for n_steps in [256, 128, 64]:
