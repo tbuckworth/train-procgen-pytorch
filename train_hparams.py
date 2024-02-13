@@ -24,8 +24,10 @@ if __name__ == '__main__':
     args.wandb_tags = ["bottleneck_search"]
     args.device = "gpu"
     args.use_valid_env = False
+    args.n_minibatch = 16
 
     hparams = [
+        [3, [8, 5, 5, 5]],
         [3, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2]],
         [3, [2, 2, 2, 2, 2, 2, 2, 2, 2]],
         [4, [8, 5, 5, 5]],
@@ -34,7 +36,6 @@ if __name__ == '__main__':
         [5, [8, 5, 5, 5]],
         [5, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2]],
         [5, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2]],
-        [3, [8, 5, 5, 5]],
     ]
 
     for n_impala_blocks, levels in hparams:
