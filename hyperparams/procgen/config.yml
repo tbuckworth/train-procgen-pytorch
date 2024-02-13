@@ -494,7 +494,7 @@ boxworld-ribfsqmha-easy:
     entropy_scaling: time_based
     mha_layers: 2
     pool_direction: dim_wise
-    levels: [ 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 ]
+    levels: [8, 5, 5, 5]
 
 
 

@@ -271,7 +271,7 @@ def train_logic_program():
                                                                      hparams="hard-500-impalafsqmha", start_level=0, num_levels=500)
 
     # create_logicdistiller
-    ld = LogicDistiller(policy, device)
+    ld = LogicDistiller(policy, device, probabilistic=False)
     reward = np.array([0. for _ in range(n_envs)])
     # This is so that we learn from an example where the agent succeeds:
     # while reward[0] == 0:
