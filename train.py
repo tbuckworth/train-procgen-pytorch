@@ -192,11 +192,13 @@ def train_ppo(args):
     # write hyperparameters to file
     np.save(os.path.join(logdir, "hyperparameters.npy"), hyperparameters)
     print(f'Logging to {logdir}')
+
+    cfg = vars(args)
+    cfg.update(hyperparameters)
+    np.save(os.path.join(logdir, "config.npy"), cfg)
+
     if args.use_wandb:
         wandb.login(key="cfc00eee102a1e9647b244a40066bfc5f1a96610")
-        cfg = vars(args)
-        cfg.update(hyperparameters)
-
         name = f"{hyperparameters['architecture']}-{wandb_name}"
         wb_resume = "allow" if args.model_file is None else "must"
         if env_name == "boxworld":
@@ -278,9 +280,9 @@ if __name__ == '__main__':
 
     # args.exp_name = "test"
     # args.env_name = "coinrun"
-    # args.num_levels = 10
+    # args.num_levels = 500
     # args.distribution_mode = "hard"
-    # args.start_level = 431
+    # args.start_level = 0
     # args.param_name = "hard-500-impalafsqmha"
     # args.num_timesteps = 1000000
     # args.num_checkpoints = 1
@@ -288,9 +290,10 @@ if __name__ == '__main__':
     # args.mirror_env = True
     # args.use_wandb = False
     # args.use_valid_env = False
-    # args.render = False
+    # args.render = True
     # args.paint_vel_info = True
-    #
-    # # args.model_file = 'C:/Users/titus/PycharmProjects/train-procgen-pytorch/logs/train/coinrun/coinrun/2024-02-08__15-31-22__seed_6033/model_80019456.pth'
-    # args.model_file = 'C:/Users/titus/PycharmProjects/train-procgen-pytorch/logs/train/coinrun/coinrun/2024-02-11__08-41-38__seed_6033/model_50003968.pth'
+    # #
+    # # # args.model_file = 'C:/Users/titus/PycharmProjects/train-procgen-pytorch/logs/train/coinrun/coinrun/2024-02-08__15-31-22__seed_6033/model_80019456.pth'
+    # # args.model_file = 'C:/Users/titus/PycharmProjects/train-procgen-pytorch/logs/train/coinrun/coinrun/2024-02-11__08-41-38__seed_6033/model_50003968.pth'
+    # args.model_file = "C:/Users/titus/PycharmProjects/train-procgen-pytorch/logs/train/coinrun/coinrun/2024-02-12__09-20-18__seed_6033/model_100007936.pth"
     train_ppo(args)
