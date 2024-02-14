@@ -11,6 +11,11 @@ def attention_entropy(atn):
     each col should sum to 1
     '''
     p_log_p = torch.log(atn)*atn
+    # ln(0)*0 = -inf*0 = nan, but can safely be replaced with 0
+    # other option is to clamp with min real number, and
+    # recalculate probs, but that is computationally more expensive
+    p_log_p[torch.isnan(p_log_p)] = 0.
+    # Normalizing as max entropy = ln(n) where n is number of variables
     entropy = -p_log_p.sum(3) / np.log(atn.shape[3])
     normalized_mean_entropy = entropy.mean()
     return normalized_mean_entropy

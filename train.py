@@ -51,7 +51,7 @@ def train_ppo(args):
         hyperparameters["x_entropy_coef"] = ent_coef * (1 - alpha)
 
     for var_name in ["n_envs", "n_steps", "n_minibatch", "levels", "n_impala_blocks"]:
-        if args.__dict__[var_name] is not None:
+        if var_name in args.__dict__.keys() and args.__dict__[var_name] is not None:
             hyperparameters[var_name] = args.__dict__[var_name]
 
     wandb_name = args.wandb_name
@@ -273,20 +273,20 @@ if __name__ == '__main__':
     parser = add_training_args(parser)
     args = parser.parse_args()
 
-    # args.exp_name = "test"
-    # args.env_name = "coinrun"
-    # args.num_levels = 500
-    # args.distribution_mode = "hard"
-    # args.start_level = 0
-    # args.param_name = "hard-500-impalafsqmha"
-    # args.num_timesteps = 1000000
-    # args.num_checkpoints = 1
-    # args.seed = 6033
-    # args.mirror_env = True
-    # args.use_wandb = False
-    # args.use_valid_env = False
-    # args.render = True
-    # args.paint_vel_info = True
+    args.exp_name = "test"
+    args.env_name = "coinrun"
+    args.num_levels = 500
+    args.distribution_mode = "hard"
+    args.start_level = 0
+    args.param_name = "hard-500-impalafsqmha"
+    args.num_timesteps = 1000000
+    args.num_checkpoints = 1
+    args.seed = 6033
+    args.mirror_env = True
+    args.use_wandb = False
+    args.use_valid_env = False
+    args.render = True
+    args.paint_vel_info = True
     # #
     # # # args.model_file = 'C:/Users/titus/PycharmProjects/train-procgen-pytorch/logs/train/coinrun/coinrun/2024-02-08__15-31-22__seed_6033/model_80019456.pth'
     # # args.model_file = 'C:/Users/titus/PycharmProjects/train-procgen-pytorch/logs/train/coinrun/coinrun/2024-02-11__08-41-38__seed_6033/model_50003968.pth'
