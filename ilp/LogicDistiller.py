@@ -7,6 +7,7 @@ import gym
 import numpy as np
 import pandas as pd
 import torch
+from matplotlib import pyplot as plt
 
 from helper import last_folder
 # from matplotlib import pyplot as plt
@@ -17,6 +18,15 @@ from helper import last_folder
 from ilp_helper import new_file, create_cmd, run_subprocess, append_to_csv_if_exists, write_string_to_file, \
     extract_clingo_solution, clean_path
 from inspect_agent import load_policy, latest_model_path
+
+
+def coords_to_image(atn_coor, atn_size, image_size):
+    # atn_coor, atn_size, image_size = arr[1], atn.shape[-1], observation.shape[-1]
+    x = atn_size ** 0.5
+    ratio = image_size / x
+    r = (atn_coor // x) * ratio + ratio / 2
+    c = (atn_coor % x) * ratio + ratio / 2
+    return r, c
 
 
 class LogicDistiller:
@@ -59,6 +69,16 @@ class LogicDistiller:
         feature_indices = feature_indices.detach().cpu().numpy()
         atn = atn.detach().cpu().numpy()
         return act, act_probs, atn, feature_indices, value
+
+    def draw_attention(self, observation, atn):
+        high_atn = atn[0] > 0.2
+        arrows = high_atn.argwhere().detach().numpy()
+        plt.imshow(observation.transpose((0, 2, 3, 1))[0])
+        for arr, weight in zip(arrows, atn[0][high_atn].detach().numpy()):
+            r, c = coords_to_image(arr[1], atn.shape[-1], observation.shape[-1])
+            rd, cd = coords_to_image(arr[2], atn.shape[-1], observation.shape[-1])
+            plt.arrow(c, r, cd-c, rd-r,  width=0.05, head_width=1.5, alpha=weight)
+        plt.show()
 
     def write_examples_to_strings(self, training=True):
         for example in self.example_list:
