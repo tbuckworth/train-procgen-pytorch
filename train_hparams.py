@@ -18,8 +18,8 @@ if __name__ == '__main__':
     args.num_timesteps = 2e7
     args.num_checkpoints = 1
     args.seed = 6033
-    args.num_levels = 10
-    args.start_level = 431
+    args.num_levels = 500
+    args.start_level = 0
     args.use_wandb = True
     args.wandb_tags = ["bottleneck_search"]
     args.device = "gpu"
@@ -28,26 +28,35 @@ if __name__ == '__main__':
 
     hparams = [
         [3, [8, 5, 5, 5]],
-        [3, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2]],
-        [3, [2, 2, 2, 2, 2, 2, 2, 2, 2]],
         [4, [8, 5, 5, 5]],
-        [4, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2]],
-        [4, [2, 2, 2, 2, 2, 2, 2, 2, 2]],
         [5, [8, 5, 5, 5]],
-        [5, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2]],
-        [5, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2]],
+        [3, [4, 5, 5, 5]],
+        [4, [4, 5, 5, 5]],
+        [5, [4, 5, 5, 5]],
+        [3, [10, 10, 10]],
+        [4, [10, 10, 10]],
+        [5, [10, 10, 10]],
     ]
 
-    for n_impala_blocks, levels in hparams:
-        args.n_impala_blocks = n_impala_blocks
-        args.levels = levels
-        args.wandb_name = f"{n_impala_blocks}x{np.prod(levels)}"
-        try:
-            train_ppo(args)
-        except Exception as e:
-            print(f"Encountered error during run for {args.wandb_name}:")
-            print(e)
-            continue
+    envs = [
+        [0, 500, ["bottleneck_search", "500 levs"]],
+        [431, 10, ["bottleneck_search", "10 levs"]],
+    ]
+
+    for start_level, num_levels, tags in envs:
+        args.start_level = start_level
+        args.num_levels = num_levels
+        args.wandb_tags = tags
+        for n_impala_blocks, levels in hparams:
+            args.n_impala_blocks = n_impala_blocks
+            args.levels = levels
+            args.wandb_name = f"{n_impala_blocks}x{','.join(levels)}"
+            try:
+                train_ppo(args)
+            except Exception as e:
+                print(f"Encountered error during run for {args.wandb_name}:")
+                print(e)
+                continue
 
     # for n_envs in [256, 128, 64, 32, 16]:
     #     for n_steps in [256, 128, 64]:

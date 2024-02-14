@@ -77,7 +77,7 @@ class LogicDistiller:
         for arr, weight in zip(arrows, atn[0][high_atn].detach().numpy()):
             r, c = coords_to_image(arr[1], atn.shape[-1], observation.shape[-1])
             rd, cd = coords_to_image(arr[2], atn.shape[-1], observation.shape[-1])
-            plt.arrow(c, r, cd-c, rd-r,  width=0.05, head_width=1.5, alpha=weight)
+            plt.arrow(c, r, cd-c, rd-r, width=0.05, head_width=1.5, alpha=weight)
         plt.show()
 
     def write_examples_to_strings(self, training=True):
