@@ -50,7 +50,7 @@ if __name__ == '__main__':
         for n_impala_blocks, levels in hparams:
             args.n_impala_blocks = n_impala_blocks
             args.levels = levels
-            args.wandb_name = f"{n_impala_blocks}x{','.join(levels)}"
+            args.wandb_name = f"{n_impala_blocks}x{','.join([str(x) for x in levels])}"
             try:
                 train_ppo(args)
             except Exception as e:
