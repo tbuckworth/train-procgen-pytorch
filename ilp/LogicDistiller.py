@@ -15,7 +15,7 @@ from helper import coords_to_image
 # from VQMHA import flatten_features
 # from coinrun import save_gif
 # from coinrun_ppo import input_to_state, sample_action
-from ilp_helper import create_cmd, run_subprocess, append_to_csv_if_exists, write_string_to_file, \
+from ilp.ilp_helper import create_cmd, run_subprocess, append_to_csv_if_exists, write_string_to_file, \
     extract_clingo_solution
 from inspect_agent import load_policy
 
@@ -273,49 +273,7 @@ def main():
     print(logicDistiller.example_strings[0])
 
 
-def train_logic_program():
-    # load model
-    device = torch.device('cpu')
-    logdir = "logs/train/coinrun/coinrun/2024-02-12__09-20-18__seed_6033/"
-    # logdir = "logs/train/coinrun/coinrun/2024-02-12__09-20-09__seed_6033/"
-    n_envs = 2
-    action_names, done, env, hidden_state, obs, policy, storage = load_policy(False, logdir, n_envs=n_envs,
-                                                                              hparams="hard-500-impalafsqmha",
-                                                                              start_level=0, num_levels=500)
 
-    # create_logicdistiller
-    ld = LogicDistiller(policy, device, probabilistic=False)
-    reward = np.array([0. for _ in range(n_envs)])
-    # This is so that we learn from an example where the agent succeeds:
-    # while reward[0] == 0:
-    observation = env.reset()
-    frames = np.expand_dims(observation, 0)
-    done = np.array([False for _ in range(n_envs)])
-    while len(frames) < 100:  # not done[0]:
-        act, act_probs, atn, feature_indices, value = ld.forward(observation)
-        observation, reward, done, info = env.step(act)
-        frames = np.append(frames, np.expand_dims(observation, 0), axis=0)
-
-    (s, b, c, w, h) = frames.shape
-    new_frames = frames.reshape((s * b, c, w, h), order='F')
-    act, act_probs, atn, feature_indices, value = ld.forward(new_frames)
-    q_diffs = np.diff(value)
-    q_diffs = np.append(q_diffs, 0)
-    top_n = new_frames[np.argsort(q_diffs)]
-    ld.extract_example(top_n)
-    for n in range(5, 101, 5):
-        ld.top_n = n
-        for i in range(3, 11):
-            act_thr = i / 10
-            ld.reset_example_strings()
-            ld.action_threshold = act_thr
-            if not ld.write_examples_to_strings():
-                continue
-            ld.write_strings_to_file()
-            ld.generate_hypothesis()
-            data = {"top_n": [n], "action_threshold": [act_thr], "hypothesis": [ld.hypothesis], "logdir": logdir}
-            df = pd.DataFrame(data)
-            append_to_csv_if_exists(df, "logic_examples/results.csv")
 
 
 def play_logic():
@@ -415,23 +373,23 @@ def play_logic_record_gif():
     # print(f"Number of zero actions from clingo/frames: {logicDistiller.number_zero_actions_clingo}/{len(frames)})")
 
 
-if __name__ == "__main__":
-    train_logic_program()
-    exit(0)
-    # load model
-    device = torch.device('cpu')
-    # logdir = "logs/train/coinrun/coinrun/2024-02-04__17-32-32__seed_6033/"
-    logdir = None
-    logdir = "logs/train/coinrun/coinrun/2024-02-12__09-20-18__seed_6033/"
-    action_names, done, env, hidden_state, obs, policy, storage = load_policy(False, logdir, n_envs=2,
-                                                                              hparams="hard-500-impalafsqmha")
-
-    # create_logicdistiller
-    ld = LogicDistiller(policy, device)
-    ld.extract_example(obs)
-    ld.write_examples_to_strings()
-    ld.write_strings_to_file()
-    ld.run_clingo()
+# if __name__ == "__main__":
+#     train_logic_program()
+#     exit(0)
+#     # load model
+#     device = torch.device('cpu')
+#     # logdir = "logs/train/coinrun/coinrun/2024-02-04__17-32-32__seed_6033/"
+#     logdir = None
+#     logdir = "logs/train/coinrun/coinrun/2024-02-12__09-20-18__seed_6033/"
+#     action_names, done, env, hidden_state, obs, policy, storage = load_policy(False, logdir, n_envs=2,
+#                                                                               hparams="hard-500-impalafsqmha")
+#
+#     # create_logicdistiller
+#     ld = LogicDistiller(policy, device)
+#     ld.extract_example(obs)
+#     ld.write_examples_to_strings()
+#     ld.write_strings_to_file()
+#     ld.run_clingo()
 
 # TODO: x and y coords can be moved to background knowledge
 #   add other take(an) as negative examples
