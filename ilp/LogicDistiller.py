@@ -9,24 +9,15 @@ import pandas as pd
 import torch
 from matplotlib import pyplot as plt
 
-from helper import last_folder
+from helper import coords_to_image
 # from matplotlib import pyplot as plt
 
 # from VQMHA import flatten_features
 # from coinrun import save_gif
 # from coinrun_ppo import input_to_state, sample_action
-from ilp_helper import new_file, create_cmd, run_subprocess, append_to_csv_if_exists, write_string_to_file, \
-    extract_clingo_solution, clean_path
-from inspect_agent import load_policy, latest_model_path
-
-
-def coords_to_image(atn_coor, atn_size, image_size):
-    # atn_coor, atn_size, image_size = arr[1], atn.shape[-1], observation.shape[-1]
-    x = atn_size ** 0.5
-    ratio = image_size / x
-    r = (atn_coor // x) * ratio + ratio / 2
-    c = (atn_coor % x) * ratio + ratio / 2
-    return r, c
+from ilp_helper import create_cmd, run_subprocess, append_to_csv_if_exists, write_string_to_file, \
+    extract_clingo_solution
+from inspect_agent import load_policy
 
 
 class LogicDistiller:

@@ -5,10 +5,13 @@ from collections import deque
 
 import numpy as np
 import torch
+from matplotlib import pyplot as plt
+import matplotlib.colors as colors
+import matplotlib.cm as cmx
 
 from common.storage import Storage
 from helper import get_hyperparams, initialize_model, print_values_actions, get_action_names, save_gif, GLOBAL_DIR, \
-    last_folder, print_action_entropy
+    last_folder, print_action_entropy, coords_to_image
 from common.env.procgen_wrappers import create_env
 
 
@@ -46,6 +49,34 @@ def predict(policy, obs, hidden_state, done, return_dist=False):
         return act.cpu().numpy(), log_prob_act.cpu().numpy(), value.cpu().numpy(), hidden_state.cpu().numpy(), pi.cpu().numpy(), dist
     return act.cpu().numpy(), log_prob_act.cpu().numpy(), value.cpu().numpy(), hidden_state.cpu().numpy(), pi.cpu().numpy()
 
+def plot_atn_arrows(policy, observation, logdir):
+    obs = torch.FloatTensor(observation).to(policy.device)
+    x, atn, feature_indices = policy.embedder.forward_with_attn_indices(obs, 2)
+    # high_atn = atn[0] > 0.4
+    found = False
+    for i in range(6):
+        atn_threshold = (9-i)/10
+        high_atn = atn[0] > atn_threshold
+        if high_atn.sum() > 0:
+            found = True
+            break
+    if not found:
+        return
+    arrows = high_atn.argwhere().detach().numpy()
+    plt.imshow(observation.transpose((0, 2, 3, 1))[0])
+    cmap = plt.cm.jet
+    cNorm = colors.Normalize(vmin=0, vmax=atn[0].shape[0])
+    scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=cmap)
+    for arr, weight in zip(arrows, atn[0][high_atn].detach().numpy()):
+        colour = scalarMap.to_rgba(arr[0])
+        r, c = coords_to_image(arr[1], atn.shape[-1], observation.shape[-1])
+        rd, cd = coords_to_image(arr[2], atn.shape[-1], observation.shape[-1])
+        plt.arrow(c, r, cd - c, rd - r, width=0.05, head_width=1.5, alpha=weight, color=colour, label=f"r{arr[0]}")
+    plt.show()
+    print("yes")
+    if False:
+        plt.savefig(os.path.join(logdir, "lots of attention to top right at beginning.png"))
+
 
 def main(logdir, render=True, print_entropy=False):
     print(logdir)
@@ -60,6 +91,10 @@ def main(logdir, render=True, print_entropy=False):
         else:
             print_values_actions(action_names, pi, value, rewards=rewards)
         next_obs, rew, done, info = env.step(act)
+        obs_tensor = torch.FloatTensor(next_obs).to(policy.device)
+        x, atn, feature_indices = policy.embedder.forward_with_attn_indices(obs_tensor, 2)
+        if (atn[0] > 0.2).any():
+            plot_atn_arrows(policy, next_obs, logdir)
         storage.store(obs, hidden_state, act, rew, done, info, log_prob_act, value)
         rewards = np.append(rewards, rew[done])
         obs = next_obs
@@ -216,7 +251,8 @@ def swap_indexed_values_and_print(action_names, done, hidden_state, left_frame, 
 if __name__ == "__main__":
     #338 is a cool, complex level
 
-    main(last_folder("logs/train/coinrun/coinrun", 2), True, False)
+    #TODO: fix with config.npy
+    main(last_folder("logs/train/coinrun/coinrun", 1), True, False)
 
     # IMPALAFSQMHA:
     # main(logdir="logs/train/coinrun/coinrun/2023-12-08__17-11-08__seed_6033")

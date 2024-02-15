@@ -304,3 +304,12 @@ def add_training_args(parser):
     # multi threading
     parser.add_argument('--num_threads', type=int, default=8)
     return parser
+
+
+def coords_to_image(atn_coor, atn_size, image_size):
+    # atn_coor, atn_size, image_size = arr[1], atn.shape[-1], observation.shape[-1]
+    x = atn_size ** 0.5
+    ratio = image_size / x
+    r = (atn_coor // x) * ratio + ratio / 2
+    c = (atn_coor % x) * ratio + ratio / 2
+    return r, c

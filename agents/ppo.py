@@ -107,6 +107,7 @@ class PPO(BaseAgent):
                     old_log_prob_act_batch, old_value_batch, return_batch, adv_batch = sample
                 mask_batch = (1 - done_batch)
                 # dist_batch, value_batch, _ = self.policy(obs_batch, hidden_state_batch, mask_batch)
+                # layer 2
                 feature_batch, atn_batch, feature_indices = self.policy.embedder.forward_with_attn_indices(obs_batch)
                 dist_batch, value_batch = self.policy.hidden_to_output(feature_batch)
 
