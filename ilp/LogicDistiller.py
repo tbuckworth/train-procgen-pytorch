@@ -182,8 +182,10 @@ class LogicDistiller:
     def generate_hypothesis(self):
 
         # This assumes my filepath and using WSL
-        filepath = os.path.join("/mnt/c/Users/titus/PycharmProjects/VAE/", re.sub("\\\\", "/", self.learning_file))
-
+        if os.name == "nt":
+            filepath = os.path.join("/mnt/c/Users/titus/PycharmProjects/train-procgen-pytorch/", re.sub("\\\\", "/", self.learning_file))
+        else:
+            filepath = os.path.join("ilp/logic_examples/", self.learning_file)
         # Now we generate hypotheses
         cmd = create_cmd(["FastLAS", "--nopl", "--force-safety", filepath])
         output = run_subprocess(cmd, "\\n")
