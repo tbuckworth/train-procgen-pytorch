@@ -25,9 +25,9 @@ class LogicDistiller:
         self.device = device
         self.clingo_file_contents = None
         self.number_zero_actions_clingo = 0
-        self.clingo_file = "logic_examples/clingo_learning.lp"
+        self.clingo_file = "ilp/logic_examples/clingo_learning.lp"
         self.top_n = int(1e9)
-        self.learning_file = "logic_examples/fastLAS_learning.las"
+        self.learning_file = "ilp/logic_examples/fastLAS_learning.las"
         self.hypothesis = None
         self.e_facts = np.ndarray([], dtype=np.int32)
         self.r_facts = None
@@ -287,8 +287,8 @@ def play_logic():
     env_name = "procgen:procgen-coinrun-v0"
     env = gym.make(env_name, start_level=0, num_levels=num_levels)
 
-    df = pd.read_csv("logic_examples/results.csv")
-    dft = pd.read_csv("logic_examples/results_timings.csv")
+    df = pd.read_csv("ilp/logic_examples/results.csv")
+    dft = pd.read_csv("ilp/logic_examples/results_timings.csv")
     df_code = df["top_n"].astype(str) + "_" + df["action_threshold"].astype(str)
     dft_code = dft["top_n"].astype(str) + "_" + dft["action_threshold"].astype(str)
     df = df[np.invert(np.isin(df_code, dft_code))]
@@ -316,7 +316,7 @@ def play_logic():
                 "av_reward": [np.mean(reward_history)],
                 "av_ep_length": [np.mean(ep_length)]}
         df2 = pd.DataFrame(data)
-        append_to_csv_if_exists(df2, "logic_examples/results_timings.csv")
+        append_to_csv_if_exists(df2, "ilp/logic_examples/results_timings.csv")
     return
 
 
@@ -325,7 +325,7 @@ def play_logic_record_gif():
     critic_path = "trained_models/coinrun_ppo_critic_episode_578_running_reward_9.60_n_epchs_10000_n_hdn_128_n_res_hdn_32_n_res_lyrs_2_reduction_factor_16_embedding_dim_64_num_embeddings_512_cc_0.25_vq_use_ema_True_decay_0.99_lr_0.0003_attn_hds_8_dff_256_n_levels_1%2E"
     logicDistiller = LogicDistiller(actor_path, critic_path, probabilistic=False, atn_threshold=.6,
                                     action_threshold=.5)
-    df = pd.read_csv("logic_examples/results.csv")
+    df = pd.read_csv("ilp/logic_examples/results.csv")
     row = 6
     logicDistiller.action_threshold = df.action_threshold[row]
     logicDistiller.hypothesis = df.hypothesis[row]
