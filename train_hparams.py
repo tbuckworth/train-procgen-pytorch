@@ -34,8 +34,8 @@ if __name__ == '__main__':
     #     [3, [10, 10]],
     #     [4, [10, 10]],
     # ]
-    level_list = [3, 4]
-    impala_blocks = [
+    impala_blocks = [3, 4]
+    level_list = [
         [4, 4, 4, 4],
         [3, 3, 3, 3],
         [9, 9, 9],
@@ -50,7 +50,7 @@ if __name__ == '__main__':
 
     envs = [
         [0, 500, ["bottleneck_search", "500 levs"]],
-        [431, 10, ["bottleneck_search", "10 levs"]],
+        # [431, 10, ["bottleneck_search", "10 levs"]],
     ]
 
     for start_level, num_levels, tags in envs:
