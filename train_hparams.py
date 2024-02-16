@@ -26,17 +26,27 @@ if __name__ == '__main__':
     args.use_valid_env = False
     args.n_minibatch = 16
 
-    hparams = [
-        # [3, [8, 5, 5, 5]],
-        # [4, [8, 5, 5, 5]],
-        # [5, [8, 5, 5, 5]],
-        [3, [4, 5, 5, 5]],
-        [4, [4, 5, 5, 5]],
-        [5, [4, 5, 5, 5]],
-        [3, [10, 10, 10]],
-        [4, [10, 10, 10]],
-        [5, [10, 10, 10]],
+    # hparams = [
+    #     [3, [8, 5, 5, 5]],
+    #     [4, [8, 5, 5, 5]],
+    #     [3, [4, 5, 5, 5]],
+    #     [4, [4, 5, 5, 5]],
+    #     [3, [10, 10]],
+    #     [4, [10, 10]],
+    # ]
+    level_list = [3, 4]
+    impala_blocks = [
+        [4, 4, 4, 4],
+        [3, 3, 3, 3],
+        [9, 9, 9],
+        [8, 8, 8],
+        [7, 7, 7],
+        [10, 10],
+        [12, 12],
+        [25, 25],
     ]
+
+
 
     envs = [
         [0, 500, ["bottleneck_search", "500 levs"]],
@@ -47,16 +57,19 @@ if __name__ == '__main__':
         args.start_level = start_level
         args.num_levels = num_levels
         args.wandb_tags = tags
-        for n_impala_blocks, levels in hparams:
-            args.n_impala_blocks = n_impala_blocks
-            args.levels = levels
-            args.wandb_name = f"{n_impala_blocks}x{','.join([str(x) for x in levels])}"
-            try:
-                train_ppo(args)
-            except Exception as e:
-                print(f"Encountered error during run for {args.wandb_name}:")
-                print(e)
-                continue
+        # for n_impala_blocks, levels in hparams:
+        for n_impala_blocks in impala_blocks:
+            for levels in level_list:
+                args.n_impala_blocks = n_impala_blocks
+                args.levels = levels
+                size = 64//2**n_impala_blocks
+                args.wandb_name = f"{n_impala_blocks}({size}x{size})x{','.join([str(x) for x in levels])}_({np.prod(levels)})"
+                try:
+                    train_ppo(args)
+                except Exception as e:
+                    print(f"Encountered error during run for {args.wandb_name}:")
+                    print(e)
+                    continue
 
     # for n_envs in [256, 128, 64, 32, 16]:
     #     for n_steps in [256, 128, 64]:

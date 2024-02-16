@@ -337,6 +337,18 @@ class GlobalSelfAttention(BaseAttention):
         )
         return attn_weight
 
+    def forward_plus_attn_weights(self, x):
+        attn_output, attn_weight = self.mha(
+            query=x,
+            value=x,
+            key=x,
+            need_weights=True,
+            average_attn_weights=False,
+        )
+        x = x.add(attn_output)
+        x = self.layernorm(x)
+        return x, attn_weight
+
 
 def halve_rounding_n_times(x, n_impala_blocks):
     for _ in range(n_impala_blocks):
@@ -414,10 +426,10 @@ class QuantizedMHAModel(nn.Module):
     def forward_with_attn_indices(self, x, mha_layer=1):
         x = self.encoder(x)
         x, indices = self.flatten_and_append_coor(x, True)
-        atn = self.MHA.attn_weights_at_layer(x, mha_layer)
+        atn_list = self.MHA.attn_weights_at_layer(x, mha_layer)
         x = self.MHA(x)
 
-        return x, atn, indices
+        return x, atn_list, indices
 
     def forward(self, x):
         x = self.encoder(x)
@@ -834,6 +846,9 @@ class MHAModel(nn.Module):
     def attn_weights_at_layer(self, x, n):
         if n > self.mha_layers:
             raise IndexError(f"n: {n} > mha_layers: {self.mha_layers}")
-        for _ in range(n-1):
-            x = self.mha(x)
-        return self.mha.get_attn_weights(x)
+        output = []
+        for _ in range(n):
+            x, atn = self.mha.forward_plus_attn_weights(x)
+            output.append(atn)
+        return output
+        # return self.mha.get_attn_weights(x)

@@ -90,7 +90,7 @@ class PPO(BaseAgent):
         elif self.entropy_scaling == "time_based":
             self.entropy_multiplier = 1 - (self.t/self.total_timesteps)
 
-        pi_loss_list, value_loss_list, entropy_loss_list, x_ent_loss_list, atn_entropy_list, total_loss_list = [], [], [], [], [], []
+        pi_loss_list, value_loss_list, entropy_loss_list, x_ent_loss_list, atn_entropy_list, atn_entropy_list2, total_loss_list = [], [], [], [], [], [], []
         batch_size = self.n_steps * self.n_envs // self.n_minibatch
         if batch_size < self.mini_batch_size:
             self.mini_batch_size = batch_size
@@ -108,7 +108,7 @@ class PPO(BaseAgent):
                 mask_batch = (1 - done_batch)
                 # dist_batch, value_batch, _ = self.policy(obs_batch, hidden_state_batch, mask_batch)
                 # layer 2
-                feature_batch, atn_batch, feature_indices = self.policy.embedder.forward_with_attn_indices(obs_batch)
+                feature_batch, atn_batch_list, feature_indices = self.policy.embedder.forward_with_attn_indices(obs_batch)
                 dist_batch, value_batch = self.policy.hidden_to_output(feature_batch)
 
                 # Clipped Surrogate Objective
@@ -130,7 +130,8 @@ class PPO(BaseAgent):
                 x_batch_ent_loss, entropy_loss, = cross_batch_entropy(dist_batch)
 
                 # Attention Entropy
-                atn_entropy = attention_entropy(atn_batch)
+                atn_ents = [attention_entropy(atn) for atn in atn_batch_list]
+                # atn_entropy = attention_entropy(atn_batch)
 
                 loss = pi_loss + self.value_coef * value_loss - self.entropy_coef * entropy_loss * \
                        self.entropy_multiplier - self.x_entropy_coef * x_batch_ent_loss
@@ -146,7 +147,10 @@ class PPO(BaseAgent):
                 value_loss_list.append(-value_loss.item())
                 entropy_loss_list.append(entropy_loss.item())
                 x_ent_loss_list.append(x_batch_ent_loss.item())
-                atn_entropy_list.append(atn_entropy.item())
+                #TODO: generalize this
+                atn_entropy_list.append(atn_ents[0].item())
+                atn_entropy_list2.append(atn_ents[1].item())
+
                 total_loss_list.append(loss.item())
 
         # Adjust common/Logger.__init__ if you add/remove from summary:
@@ -155,6 +159,7 @@ class PPO(BaseAgent):
                    'Loss/entropy': np.mean(entropy_loss_list),
                    'Loss/x_entropy': np.mean(x_ent_loss_list),
                    'Loss/atn_entropy': np.mean(atn_entropy_list),
+                   'Loss/atn_entropy2': np.mean(atn_entropy_list2),
                    'Loss/total': np.mean(total_loss_list)}
         return summary
 
