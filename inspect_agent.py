@@ -34,6 +34,7 @@ def inspect_latents(policy, obs, device):
     # atn = atn.detach().cpu().numpy()
     # return act, act_probs, atn, feature_indices, value
 
+
 def predict(policy, obs, hidden_state, done, return_dist=False):
     with torch.no_grad():
         obs = torch.FloatTensor(obs).to(device=policy.device)
@@ -49,13 +50,14 @@ def predict(policy, obs, hidden_state, done, return_dist=False):
         return act.cpu().numpy(), log_prob_act.cpu().numpy(), value.cpu().numpy(), hidden_state.cpu().numpy(), pi.cpu().numpy(), dist
     return act.cpu().numpy(), log_prob_act.cpu().numpy(), value.cpu().numpy(), hidden_state.cpu().numpy(), pi.cpu().numpy()
 
+
 def plot_atn_arrows(policy, observation, logdir):
     obs = torch.FloatTensor(observation).to(policy.device)
     x, atn, feature_indices = policy.embedder.forward_with_attn_indices(obs, 2)
     # high_atn = atn[0] > 0.4
     found = False
     for i in range(6):
-        atn_threshold = (9-i)/10
+        atn_threshold = (9 - i) / 10
         high_atn = atn[0] > atn_threshold
         if high_atn.sum() > 0:
             found = True
@@ -78,9 +80,10 @@ def plot_atn_arrows(policy, observation, logdir):
         plt.savefig(os.path.join(logdir, "lots of attention to top right at beginning.png"))
 
 
-def main(logdir, render=True, print_entropy=False):
+def main(logdir, render=True, print_entropy=False, draw_atn_arrows=False):
     print(logdir)
-    action_names, done, env, hidden_state, obs, policy, storage = load_policy(render, logdir, n_envs=2, start_level=0, num_levels=500)
+    action_names, done, env, hidden_state, obs, policy, storage = load_policy(render, logdir, n_envs=2, start_level=0,
+                                                                              num_levels=500)
     rewards = np.array([])
     performance_track = {}
     while True:
@@ -93,8 +96,9 @@ def main(logdir, render=True, print_entropy=False):
         next_obs, rew, done, info = env.step(act)
         obs_tensor = torch.FloatTensor(next_obs).to(policy.device)
         x, atn, feature_indices = policy.embedder.forward_with_attn_indices(obs_tensor, 2)
-        if (atn[0] > 0.2).any():
-            plot_atn_arrows(policy, next_obs, logdir)
+        if draw_atn_arrows:
+            if (atn[0] > 0.2).any():
+                plot_atn_arrows(policy, next_obs, logdir)
         storage.store(obs, hidden_state, act, rew, done, info, log_prob_act, value)
         rewards = np.append(rewards, rew[done])
         obs = next_obs
@@ -115,8 +119,8 @@ def main(logdir, render=True, print_entropy=False):
         print(true_average_reward)
 
 
-
-def load_policy(render, logdir, n_envs=None, decoding_info={}, start_level=0, repeat_level=False, num_levels=500, hparams="hard-500-impala"):
+def load_policy(render, logdir, n_envs=None, decoding_info={}, start_level=0, repeat_level=False, num_levels=500,
+                hparams="hard-500-impala"):
     # logdir = "logs/train/coinrun/coinrun/2023-10-31__10-49-30__seed_6033"
     # df = pd.read_csv(os.path.join(logdir, "log-append.csv"))
     device = torch.device('cpu')
@@ -135,7 +139,7 @@ def load_policy(render, logdir, n_envs=None, decoding_info={}, start_level=0, re
         hyperparameters["n_envs"] = n_envs
     env_args = {"num": hyperparameters["n_envs"],
                 "env_name": "coinrun",
-                "start_level": start_level,#325
+                "start_level": start_level,  # 325
                 "num_levels": 1 if repeat_level else num_levels,
                 "paint_vel_info": True,
                 "distribution_mode": "hard"}
@@ -249,18 +253,20 @@ def swap_indexed_values_and_print(action_names, done, hidden_state, left_frame, 
 
 
 if __name__ == "__main__":
-    #338 is a cool, complex level
+    # 338 is a cool, complex level
 
-    #TODO: fix with config.npy
-    main(last_folder("logs/train/coinrun/coinrun", 1), True, False)
+    # TODO: fix with config.npy
+    main(last_folder("logs/train/coinrun/coinrun", 1),
+         render=True,
+         print_entropy=False,
+         draw_atn_arrows=False)
 
     # IMPALAFSQMHA:
     # main(logdir="logs/train/coinrun/coinrun/2023-12-08__17-11-08__seed_6033")
 
-
     # main(logdir="logs/train/coinrun/coinrun/2023-11-23__10-31-05__seed_6033/")
 
-    #impalavqmha
+    # impalavqmha
     # main(logdir="logs/train/coinrun/coinrun/2023-11-28__11-37-25__seed_6033/")
 
     # #impala:
@@ -274,9 +280,8 @@ if __name__ == "__main__":
     # #impalavqmha - No x-entropy - mirror env. only
     # main(logdir="logs/train/coinrun/coinrun/2023-11-30__17-47-52__seed_6033")
 
-
     # #mut_info alpha=1/3 : (ignores inputs)
     # main(logdir="logs/train/coinrun/coinrun/2023-12-01__10-47-13__seed_6033")
 
-    #mut_info alpha=2/3
+    # mut_info alpha=2/3
     # main(logdir="logs/train/coinrun/coinrun/2023-12-01__10-47-20__seed_6033")
