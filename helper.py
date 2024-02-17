@@ -313,3 +313,7 @@ def coords_to_image(atn_coor, atn_size, image_size):
     r = (atn_coor // x) * ratio + ratio / 2
     c = (atn_coor % x) * ratio + ratio / 2
     return r, c
+
+
+def get_config(logdir):
+    return np.load(os.path.join(logdir, "config.npy"), allow_pickle='TRUE').item()

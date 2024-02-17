@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import torch
 
+from helper import get_config
 from ilp.LogicDistiller import LogicDistiller
 from ilp.ilp_helper import append_to_csv_if_exists
 from inspect_agent import load_policy
@@ -12,10 +13,12 @@ def train_logic_program():
     device = torch.device('cpu')
     logdir = "logs/train/coinrun/coinrun/2024-02-12__09-20-18__seed_6033/"
     # logdir = "logs/train/coinrun/coinrun/2024-02-12__09-20-09__seed_6033/"
+    cfg = get_config(logdir)
     n_envs = 2
     action_names, done, env, hidden_state, obs, policy, storage = load_policy(False, logdir, n_envs=n_envs,
                                                                               hparams="hard-500-impalafsqmha",
-                                                                              start_level=0, num_levels=500)
+                                                                              start_level=cfg["start_level"],
+                                                                              num_levels=cfg["num_levels"])
 
     # create_logicdistiller
     ld = LogicDistiller(policy, device, probabilistic=False)
@@ -51,7 +54,6 @@ def train_logic_program():
             df = pd.DataFrame(data)
             print(f"top {n}\taction_threshold:{act_thr}\n{ld.hypothesis}")
             append_to_csv_if_exists(df, "ilp/logic_examples/results.csv")
-
 
 
 if __name__ == "__main__":
