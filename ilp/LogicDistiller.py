@@ -52,7 +52,7 @@ class LogicDistiller:
     def forward(self, observation):
         obs = torch.FloatTensor(observation).to(self.device)
         # Investigate mha_layer 2 attention:
-        x, atn_list, feature_indices = self.policy.embedder.forward_with_attn_indices(obs, 2)
+        x, atn_list, feature_indices = self.policy.embedder.forward_with_attn_indices(obs)
         atn = atn_list[-1]
         dist, value = self.policy.hidden_to_output(x)
         act = dist.sample().cpu().numpy()

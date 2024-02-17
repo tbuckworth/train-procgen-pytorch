@@ -423,11 +423,11 @@ class QuantizedMHAModel(nn.Module):
         self.quantizer = quantizer
         self.MHA = MHAModel(n_latents, embed_dim, mha_layers, output_dim, num_heads, reduce)
 
-    def forward_with_attn_indices(self, x, mha_layer=1):
+    def forward_with_attn_indices(self, x):
         x = self.encoder(x)
         x, indices = self.flatten_and_append_coor(x, True)
-        atn_list = self.MHA.attn_weights_at_layer(x, mha_layer)
-        x = self.MHA(x)
+        x, atn_list = self.MHA.forward_plus_attn(x)
+        # x = self.MHA(x)
 
         return x, atn_list, indices
 
@@ -843,12 +843,12 @@ class MHAModel(nn.Module):
         x = nn.ReLU()(x)
         return x
 
-    def attn_weights_at_layer(self, x, n):
-        if n > self.mha_layers:
-            raise IndexError(f"n: {n} > mha_layers: {self.mha_layers}")
+    def forward_plus_attn(self, x):
+        # if n > self.mha_layers:
+        #     raise IndexError(f"n: {n} > mha_layers: {self.mha_layers}")
         output = []
-        for _ in range(n):
+        for _ in range(self.mha_layers):
             x, atn = self.mha.forward_plus_attn_weights(x)
             output.append(atn)
-        return output
+        return x, output
         # return self.mha.get_attn_weights(x)

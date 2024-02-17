@@ -108,7 +108,8 @@ class PPO(BaseAgent):
                 mask_batch = (1 - done_batch)
                 # dist_batch, value_batch, _ = self.policy(obs_batch, hidden_state_batch, mask_batch)
                 # layer 2
-                feature_batch, atn_batch_list, feature_indices = self.policy.embedder.forward_with_attn_indices(obs_batch)
+                feature_batch, atn_batch_list, feature_indices = self.policy.embedder.forward_with_attn_indices(
+                    obs_batch)
                 dist_batch, value_batch = self.policy.hidden_to_output(feature_batch)
 
                 # Clipped Surrogate Objective
