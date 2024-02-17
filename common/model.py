@@ -831,6 +831,10 @@ class MHAModel(nn.Module):
         # x = x.permute(0, 2, 1)
         for _ in range(self.mha_layers):
             x = self.mha(x)
+        x = self.pool_and_mlp(x)
+        return x
+
+    def pool_and_mlp(self, x):
         x = self.max_pool(x)
         x = x.squeeze()
         x = self.fc1(x)
@@ -850,5 +854,6 @@ class MHAModel(nn.Module):
         for _ in range(self.mha_layers):
             x, atn = self.mha.forward_plus_attn_weights(x)
             output.append(atn)
+        x = self.pool_and_mlp(x)
         return x, output
         # return self.mha.get_attn_weights(x)

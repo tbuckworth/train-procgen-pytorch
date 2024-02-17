@@ -61,8 +61,12 @@ class CoinrunTestModel(unittest.TestCase):
 
     def test_ImpalaFSQMHAModel(self):
         model = ImpalaFSQMHAModel(self.in_channels, 2, self.device, self.obs_shape, reduce='dim_wise')
-        model.forward(self.obs)
+        x1 = model.forward(self.obs)
         summary(model, self.obs.shape)
+
+        feature_batch, atn_batch_list, feature_indices = model.forward_with_attn_indices(
+            self.obs)
+        print("x")
 
     def test_ImpalaModel(self):
         model = ImpalaModel(self.in_channels)
