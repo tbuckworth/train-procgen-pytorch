@@ -228,8 +228,8 @@ hard-500-impalafsqmha:
     recurrent: False
     mha_layers: 2
     pool_direction: dim_wise
-    levels: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
-    n_impala_blocks: 3
+    levels: [9, 9, 9]
+    n_impala_blocks: 4
 
 hard-500-impalafsqmha-valuetest:
     algo: ppo
