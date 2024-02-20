@@ -34,16 +34,16 @@ if __name__ == '__main__':
     #     [3, [10, 10]],
     #     [4, [10, 10]],
     # ]
-    impala_blocks = [3, 4]
+    impala_blocks = [4, 3]
     level_list = [
-        [4, 4, 4, 4],
-        [3, 3, 3, 3],
-        [9, 9, 9],
-        [8, 8, 8],
-        [7, 7, 7],
-        [10, 10],
-        [12, 12],
-        [25, 25],
+        [1, 1],
+        [2, 2],
+        [4, 4],
+        [8, 8],
+        [1, 1, 1],
+        [2, 2, 2],
+        [3, 2, 2],
+        [3, 3, 2]
     ]
 
 
@@ -62,7 +62,9 @@ if __name__ == '__main__':
             for levels in level_list:
                 args.n_impala_blocks = n_impala_blocks
                 args.levels = levels
+                args.codebook_size = np.prod(levels)
                 size = 64//2**n_impala_blocks
+                args.latent_size = size
                 args.wandb_name = f"{n_impala_blocks}({size}x{size})x{','.join([str(x) for x in levels])}_({np.prod(levels)})"
                 train_ppo(args)
                 # try:
