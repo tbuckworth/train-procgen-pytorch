@@ -110,6 +110,7 @@ class PPO(BaseAgent):
                 # layer 2
                 feature_batch, atn_batch_list, feature_indices = self.policy.embedder.forward_with_attn_indices(
                     obs_batch)
+                # remove atn_batch_list from gpu?
                 dist_batch, value_batch = self.policy.hidden_to_output(feature_batch)
 
                 # Clipped Surrogate Objective
