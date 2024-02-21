@@ -1,5 +1,6 @@
 import argparse
 import random
+import traceback
 
 import numpy as np
 
@@ -43,7 +44,8 @@ if __name__ == '__main__':
         [1, 1, 1],
         [2, 2, 2],
         [3, 2, 2],
-        [3, 3, 2]
+        [3, 3, 2],
+        [2, 2, 2, 2]
     ]
 
 
@@ -66,13 +68,13 @@ if __name__ == '__main__':
                 size = 64//2**n_impala_blocks
                 args.latent_size = size
                 args.wandb_name = f"{n_impala_blocks}({size}x{size})x{','.join([str(x) for x in levels])}_({np.prod(levels)})"
-                train_ppo(args)
-                # try:
-                #     train_ppo(args)
-                # except Exception as e:
-                #     print(f"Encountered error during run for {args.wandb_name}:")
-                #     print(e)
-                #     continue
+                # train_ppo(args)
+                try:
+                    train_ppo(args)
+                except Exception as e:
+                    print(f"Encountered error during run for {args.wandb_name}:")
+                    print(traceback.format_exc())
+                    continue
 
     # for n_envs in [256, 128, 64, 32, 16]:
     #     for n_steps in [256, 128, 64]:
