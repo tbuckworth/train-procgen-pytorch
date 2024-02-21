@@ -11,8 +11,11 @@ from inspect_agent import load_policy
 def train_logic_program():
     # load model
     device = torch.device('cpu')
-    logdir = "logs/train/coinrun/coinrun/2024-02-12__09-20-18__seed_6033/"
+    # 500: 8x8_8,5,5,5:
+    # logdir = "logs/train/coinrun/coinrun/2024-02-12__09-20-18__seed_6033/"
     # logdir = "logs/train/coinrun/coinrun/2024-02-12__09-20-09__seed_6033/"
+    # 500: 4x4_10,10:
+    logdir = "logs/train/coinrun/coinrun/2024-02-20__18-02-16__seed_6033"
     cfg = get_config(logdir)
     n_envs = 2
     action_names, done, env, hidden_state, obs, policy, storage = load_policy(False, logdir, n_envs=n_envs,
