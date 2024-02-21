@@ -61,3 +61,6 @@ def train_logic_program():
 
 if __name__ == "__main__":
     train_logic_program()
+#TODO:
+# put the x, y coords into background knowledge;
+# find way to include intermediary/auxilary predicates
