@@ -22,6 +22,7 @@ from inspect_agent import load_policy
 
 class LogicDistiller:
     def __init__(self, policy, device, probabilistic=True, atn_threshold=0.6, action_threshold=0.6):
+        self.x_y_preds = None
         self.device = device
         self.clingo_file_contents = None
         self.number_zero_actions_clingo = 0
@@ -138,17 +139,17 @@ class LogicDistiller:
             return False
         n = int(np.sqrt(len(facts[0])))
         ind = np.cumsum(np.ones(facts[0].shape).astype(int)) - 1
+        x_str = concat_np_list(["x(f", ind, ",", ind % n, ").\n"], ind.shape)
+        y_str = concat_np_list(["y(f", ind, ",", ind // n, ").\n"], ind.shape)
+        self.x_y_preds = ''.join(x_str) + ''.join(y_str)
         # TODO: can it be done for many observations simultaneously?
         for i, _ in enumerate(preds):
-            x_str = concat_np_list(["x(f", ind, ",", ind % n, ").\n"], ind.shape)
-            y_str = concat_np_list(["y(f", ind, ",", ind // n, ").\n"], ind.shape)
-            coords = ''.join(x_str) + ''.join(y_str)
             feats = concat_np_list([facts[i], "(f", ind, ").\n"], shape=facts[i].shape)
             f_string = ''.join(feats)
             a_str = ', '.join(acts[i][acts[i] != ""])
             na_str = ', '.join(nacts[i][nacts[i] != ""])
             p_str = ''.join(preds[i])
-            example = ('\n\n'.join([f_string, coords, p_str]), a_str, na_str)
+            example = ('\n\n'.join([f_string, p_str]), a_str, na_str)
             self.example_strings.append(example)
         return True
 
@@ -174,6 +175,8 @@ class LogicDistiller:
         output = self.generate_mode_bias()
         output += ''.join(self.a_facts) + "\n\n"
         output += ''.join(self.f_facts) + "\n\n"
+        output += ''.join(self.coords) + "\n\n"
+        output += self.x_y_preds + "\n\n"
         for i, example in enumerate(self.example_strings):
             output += f"#pos(eg_{i}@1,{{{example[1]}}},{{{example[2]}}},{{\n"
             output += example[0]
