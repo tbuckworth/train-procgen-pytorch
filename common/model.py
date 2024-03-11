@@ -160,6 +160,10 @@ class ImpalaModel(nn.Module):
         x = nn.ReLU()(x)
         return x
 
+    def forward_with_attn_indices(self, x):
+        out = self.forward(x)
+        return out, [], None
+
 
 class GRU(nn.Module):
     def __init__(self, input_size, hidden_size):

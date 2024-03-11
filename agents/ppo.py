@@ -150,8 +150,11 @@ class PPO(BaseAgent):
                 entropy_loss_list.append(entropy_loss.item())
                 x_ent_loss_list.append(x_batch_ent_loss.item())
                 #TODO: generalize this
-                atn_entropy_list.append(atn_ents[0].item())
-                atn_entropy_list2.append(atn_ents[1].item())
+                try:
+                    atn_entropy_list.append(atn_ents[0].item())
+                    atn_entropy_list2.append(atn_ents[1].item())
+                except Exception:
+                    continue
 
                 total_loss_list.append(loss.item())
 
@@ -169,7 +172,7 @@ class PPO(BaseAgent):
         self.total_timesteps = num_timesteps
         save_every = num_timesteps // self.num_checkpoints
         checkpoint_cnt = 0
-        checkpoints = [1e6, 1.2e6, 1.35e6, 1.5e6, 2e6] + [(i + 1) * save_every for i in range(self.num_checkpoints)]
+        checkpoints = [(i + 1) * save_every for i in range(self.num_checkpoints)]
         checkpoints.sort()
         obs = self.env.reset()
         hidden_state = np.zeros((self.n_envs, self.storage.hidden_state_size))
