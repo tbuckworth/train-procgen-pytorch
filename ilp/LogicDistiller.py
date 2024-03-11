@@ -192,7 +192,7 @@ class LogicDistiller:
         else:
             filepath = os.path.join("ilp/logic_examples/", self.learning_file)
         # Now we generate hypotheses
-        cmd = create_cmd(["FastLAS", "--nopl", "--force-safety", filepath])
+        cmd = create_cmd(["FastLAS", "--nopl", "--force-safety", "--threads", "8", filepath])
         output = run_subprocess(cmd, "\\n")
         # if output == "b''":
         #     print("FastLAS Error")
@@ -205,8 +205,9 @@ class LogicDistiller:
         output = "#modeh(take(const(action))).\n"
         modeb_r = concat_np_list(["#modeb(r", self.r_facts, "(var(feature), var(feature))).\n"], self.r_facts.shape)
         output += ''.join(modeb_r)
-        output += "#modeb(x(var(feature), const(coord))).\n"
-        output += "#modeb(y(var(feature), const(coord))).\n"
+        # I'm removing x,y for tractability, but location in image is important.
+        output += "%#modeb(x(var(feature), const(coord))).\n"
+        output += "%#modeb(y(var(feature), const(coord))).\n"
         e_facts = np.unique(self.e_facts)
         modeb_r = concat_np_list(["#modeb(e", e_facts, "(var(feature))).\n"], e_facts.shape)
         output += ''.join(modeb_r)
