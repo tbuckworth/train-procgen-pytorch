@@ -55,12 +55,10 @@ def print_action_entropy(action_names, pi):
     val_names = [f"env{i}" for i in range(len(pi))]
     df = pd.DataFrame({**{"variables": action_names}, **{f"env{i}": x for i, x in enumerate(pi)}})
     df2 = df.pivot_table(values=val_names, index="variables", aggfunc="sum")
-    scaled_entropy = -(df2[val_names]*np.log(df2[val_names])).sum(0)/np.log(len(df2))
+    scaled_entropy = -(df2[val_names] * np.log(df2[val_names])).sum(0) / np.log(len(df2))
     df2.loc["Entropy(%)"] = scaled_entropy
     df2[val_names] = np.asarray(np.round(np.squeeze(df2[val_names]) * 100, 0), dtype=np.int32)
     print(df2)
-
-
 
 
 def match(a, b, dtype=np.int32):
@@ -148,7 +146,9 @@ def initialize_model(device, env, hyperparameters):
         mha_layers = hyperparameters.get("mha_layers", 2)
         reduce = hyperparameters.get('pool_direction', 'feature_wise')
         levels = hyperparameters.get('levels')
-        model = ImpalaFSQMHAModel(in_channels, mha_layers, device, observation_shape, reduce, levels=levels)
+        n_impala_blocks = hyperparameters.get("n_impala_blocks", 3)
+        model = ImpalaFSQMHAModel(in_channels, mha_layers, device, observation_shape, reduce,
+                                  n_impala_blocks=n_impala_blocks, levels=levels)
     elif architecture == 'ribmha':
         model = ribMHA(in_channels, device, observation_shape)
     elif architecture == 'ribfsqmha':
@@ -286,6 +286,7 @@ def add_training_args(parser):
     parser.add_argument('--n_minibatch', type=int, default=None)
     parser.add_argument('--detect_nan', action="store_true", default=False)
     parser.add_argument('--wandb_name', type=str, default=None)
+    parser.add_argument('--wandb_group', type=str, default=None)
     parser.add_argument('--use_valid_env', action="store_true", default=True)
     parser.add_argument('--render', action="store_true", default=False)
     parser.add_argument('--paint_vel_info', action="store_true", default=True)

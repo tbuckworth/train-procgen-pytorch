@@ -70,7 +70,7 @@ class LogicDistiller:
         for arr, weight in zip(arrows, atn[0][high_atn].detach().numpy()):
             r, c = coords_to_image(arr[1], atn.shape[-1], observation.shape[-1])
             rd, cd = coords_to_image(arr[2], atn.shape[-1], observation.shape[-1])
-            plt.arrow(c, r, cd-c, rd-r, width=0.05, head_width=1.5, alpha=weight)
+            plt.arrow(c, r, cd - c, rd - r, width=0.05, head_width=1.5, alpha=weight)
         plt.show()
 
     def write_examples_to_strings(self, training=True):
@@ -187,7 +187,8 @@ class LogicDistiller:
 
         # This assumes my filepath and using WSL
         if os.name == "nt":
-            filepath = os.path.join("/mnt/c/Users/titus/PycharmProjects/train-procgen-pytorch/", re.sub("\\\\", "/", self.learning_file))
+            filepath = os.path.join("/mnt/c/Users/titus/PycharmProjects/train-procgen-pytorch/",
+                                    re.sub("\\\\", "/", self.learning_file))
         else:
             filepath = os.path.join("ilp/logic_examples/", self.learning_file)
         # Now we generate hypotheses
@@ -277,9 +278,6 @@ def main():
     logicDistiller.extract_example(observation)
     logicDistiller.write_examples_to_strings()
     print(logicDistiller.example_strings[0])
-
-
-
 
 
 def play_logic():
@@ -377,7 +375,6 @@ def play_logic_record_gif():
     #     data = data[-300:]
     save_gif(data, filename="output_images/Neural_player2.gif")
     # print(f"Number of zero actions from clingo/frames: {logicDistiller.number_zero_actions_clingo}/{len(frames)})")
-
 
 # if __name__ == "__main__":
 #     train_logic_program()

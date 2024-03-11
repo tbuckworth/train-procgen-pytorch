@@ -204,8 +204,12 @@ def train_ppo(args):
             project = "Coinrun VQMHA"
         else:
             project = env_name
-        wandb.init(project=project, config=cfg, sync_tensorboard=True,
-                   tags=args.wandb_tags, resume=wb_resume, name=name)
+        if args.wandb_group is not None:
+            wandb.init(project=project, config=cfg, sync_tensorboard=True,
+                       tags=args.wandb_tags, resume=wb_resume, name=name, group=args.wandb_group)
+        else:
+            wandb.init(project=project, config=cfg, sync_tensorboard=True,
+                       tags=args.wandb_tags, resume=wb_resume, name=name)
     ###########
     ## MODEL ##
     ###########
@@ -219,7 +223,8 @@ def train_ppo(args):
     print('INITIALIZING STORAGE...')
     hidden_state_dim = model.output_dim
     storage = Storage(observation_shape, hidden_state_dim, n_steps, n_envs, device)
-    storage_valid = Storage(observation_shape, hidden_state_dim, n_steps, n_envs, device) if args.use_valid_env else None
+    storage_valid = Storage(observation_shape, hidden_state_dim, n_steps, n_envs,
+                            device) if args.use_valid_env else None
     ###########
     ## AGENT ##
     ###########
@@ -244,11 +249,9 @@ def train_ppo(args):
                     raise RuntimeError(f"Found NAN in output {i} at indices: ", nan_mask.nonzero(), "where:",
                                        out[nan_mask.nonzero()[:, 0].unique(sorted=True)])
 
-
     if args.detect_nan:
         for submodule in model.modules():
             submodule.register_forward_hook(nan_hook)
-
 
     agent = AGENT(env, policy, logger, storage, device,
                   num_checkpoints,
