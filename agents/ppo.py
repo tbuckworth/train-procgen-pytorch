@@ -1,5 +1,5 @@
 from .base_agent import BaseAgent
-from common.misc_util import adjust_lr, get_n_params, cross_batch_entropy, attention_entropy
+from common.misc_util import adjust_lr, get_n_params, cross_batch_entropy, attention_entropy, adjust_lr_grok
 import torch
 import torch.optim as optim
 import numpy as np
@@ -32,6 +32,7 @@ class PPO(BaseAgent):
                  normalize_rew=True,
                  use_gae=True,
                  entropy_scaling=None,
+                 increasing_lr=False,
                  **kwargs):
         super(PPO, self).__init__(env, policy, logger, storage, device,
                                   n_checkpoints, env_valid, storage_valid)
@@ -58,6 +59,10 @@ class PPO(BaseAgent):
         self.normalize_adv = normalize_adv
         self.normalize_rew = normalize_rew
         self.use_gae = use_gae
+        if increasing_lr:
+            self.adjust_lr = adjust_lr_grok
+        else:
+            self.adjust_lr = adjust_lr
 
     def predict(self, obs, hidden_state, done):
         with torch.no_grad():
@@ -225,7 +230,7 @@ class PPO(BaseAgent):
             self.logger.feed(rew_batch, done_batch, true_average_reward, rew_batch_v, done_batch_v, true_average_reward_v)
 
             self.logger.dump(summary)
-            self.optimizer = adjust_lr(self.optimizer, self.learning_rate, self.t, num_timesteps)
+            self.optimizer = self.adjust_lr(self.optimizer, self.learning_rate, self.t, num_timesteps)
             # Save the model
             # if self.t > ((checkpoint_cnt + 1) * save_every):
             if self.t > checkpoints[checkpoint_cnt]:
