@@ -2,6 +2,7 @@
 import copy
 import os.path
 import re
+import time
 
 import gym
 import numpy as np
@@ -80,7 +81,7 @@ class LogicDistiller:
             feature_indices = feature_indices[-self.top_n:]
             atn = atn[-self.top_n:]
             actions = actions[-self.top_n:]
-            q_value[-self.top_n:]
+            # q_value[-self.top_n:]
             #
             # self.e_facts.append(np.unique(feature_indices))
             self.e_facts = np.append(self.e_facts, np.unique(feature_indices))
@@ -184,7 +185,7 @@ class LogicDistiller:
         write_string_to_file(output, self.learning_file)
 
     def generate_hypothesis(self):
-
+        start = time.time()
         # This assumes my filepath and using WSL
         if os.name == "nt":
             filepath = os.path.join("/mnt/c/Users/titus/PycharmProjects/train-procgen-pytorch/",
@@ -199,7 +200,7 @@ class LogicDistiller:
         #     return False
         # TODO: how can this be a float?
         self.hypothesis = output
-        return True
+        return time.time() - start
 
     def generate_mode_bias(self):
         output = "#modeh(take(const(action))).\n"
@@ -237,7 +238,7 @@ class LogicDistiller:
         return int(re.search(r"take\(a(\d*)\)", action).group(1)) - 1
 
     def run_clingo(self):
-        filepath = os.path.join("/mnt/c/Users/titus/PycharmProjects/VAE/", re.sub("\\\\", "/", self.clingo_file))
+        filepath = os.path.join("/mnt/c/Users/titus/PycharmProjects/train-procgen-pytorch/", re.sub("\\\\", "/", self.clingo_file))
         cmd = create_cmd(["clingo", filepath])
         # TODO: try to get this working
         # cmd = ["wsl", f'echo "{self.clingo_file_contents}" | clingo /dev/stdin']
