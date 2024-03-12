@@ -239,10 +239,10 @@ class LogicDistiller:
 
     def run_clingo(self):
         filepath = os.path.join("/mnt/c/Users/titus/PycharmProjects/train-procgen-pytorch/", re.sub("\\\\", "/", self.clingo_file))
-        cmd = create_cmd(["clingo", filepath])
+        cmd = create_cmd(["clingo", "-t", "4", filepath])
         # TODO: try to get this working
         # cmd = ["wsl", f'echo "{self.clingo_file_contents}" | clingo /dev/stdin']
-        output = run_subprocess(cmd, "\\n")
+        output = run_subprocess(cmd, "\\n", suppress=True)
         return output
 
     def write_program(self):

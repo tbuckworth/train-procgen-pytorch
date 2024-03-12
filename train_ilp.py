@@ -1,3 +1,5 @@
+import os
+import time
 from collections import deque
 
 import numpy as np
@@ -7,8 +9,30 @@ import re
 
 from helper import get_config
 from ilp.LogicDistiller import LogicDistiller
-from ilp.ilp_helper import append_to_csv_if_exists
+from ilp.ilp_helper import append_to_csv_if_exists, create_cmd, run_subprocess
 from inspect_agent import load_policy
+
+def time_clingo():
+    # cmd = ["wsl", f'echo "{self.clingo_file_contents}" | clingo /dev/stdin']
+    filepath = "/mnt/c/Users/titus/PycharmProjects/train-procgen-pytorch/ilp/logic_examples/clingo_learning.lp"
+    n = 10
+    cmd = create_cmd(["clingo", filepath])
+    elapsed = time_cmd(cmd, n)
+    print(elapsed)
+    for i in range(1, 9):
+        cmd = create_cmd(["clingo", "-t", str(i), filepath])
+        elapsed = time_cmd(cmd, n)
+        print(f"{i}:{elapsed:.4f}")
+
+
+
+def time_cmd(cmd, n):
+    start = time.time()
+    for _ in range(n):
+        output = run_subprocess(cmd, "\\n", suppress=True)
+    elapsed = time.time() - start
+    # print(output)
+    return elapsed
 
 
 def test_ld():
@@ -18,16 +42,21 @@ def test_ld():
     df = pd.read_csv("ilp/logic_examples/results.csv")
     df = df[df.logdir == logdir]
 
-    n_unique_acts = [0 if pd.isna(df.hypothesis[i]) else len(np.unique(re.findall(r"take\(a(\d*)\)", df.hypothesis[i])))
-                     for i in range(len(df))]
+    new_cols = ["balanced_reward", "mean_reward", "pct_random_actions"]
+    df[new_cols] = np.nan
+    for row in range(len(df)):
+        df.loc[row, new_cols] = test_agent_in_env(df, env, ld, row)
+        append_to_csv_if_exists(df, "ilp/logic_examples/results_with_perf.csv")
 
-    row = np.argmax(n_unique_acts)
+
+def test_agent_in_env(df, env, ld, row):
     ld.action_threshold = df.action_threshold[row]
     ld.atn_threshold = df.atn_threshold[row]
     ld.hypothesis = df.hypothesis[row]
-
     frame_count = 0
     ep_length = 0
+    rand_acts = 0
+    all_acts = 0
     observation = env.reset()
     rewards = []
     performance_track = {}
@@ -44,6 +73,8 @@ def test_ld():
         if done[0]:
             r = reward[0][done[0]].item()
             print(f"Random Actions:{ld.number_zero_actions_clingo}/{ep_length}\tReward:{r}")
+            rand_acts += ld.number_zero_actions_clingo
+            all_acts += ep_length
             rewards.append(r)
             ep_length = 0
             ld.number_zero_actions_clingo = 0
@@ -58,7 +89,9 @@ def test_ld():
                 all_rewards = list(performance_track.values())
                 true_average_reward = np.mean([rew for rew_list in all_rewards for rew in rew_list])
                 mean_episode_reward = np.mean(rewards[-40:])
-                print(f"Episode:{len(rewards)}\tRewards - balanced:{true_average_reward:.2f}\tmean:{mean_episode_reward:.2f}")
+                print(
+                    f"Episode:{len(rewards)}\tRewards - balanced:{true_average_reward:.2f}\tmean:{mean_episode_reward:.2f}")
+                return true_average_reward, mean_episode_reward, rand_acts/all_acts
 
 
 def train_logic_program():
