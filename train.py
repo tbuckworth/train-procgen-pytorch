@@ -195,7 +195,7 @@ def train_ppo(args):
     if args.use_wandb:
         wandb.login(key="cfc00eee102a1e9647b244a40066bfc5f1a96610")
         name = f"{hyperparameters['architecture']}-{wandb_name}"
-        wb_resume = "allow" if args.model_file is None else "must"
+        wb_resume = "allow" #if args.model_file is None else "must"
         if env_name == "boxworld":
             project = "Box-World"
         elif exp_name == "coinrun-hparams":
