@@ -1,6 +1,6 @@
 import numpy as np
-import torch
 from pysr import PySRRegressor
+import torch
 
 from helper import get_config
 from inspect_agent import load_policy
@@ -38,6 +38,11 @@ def load_nn_policy(logdir):
     return policy, env, obs, storage
 
 
+def drop_first_dim(arr):
+    shp = np.array(arr.shape)
+    new_shape = tuple(np.concatenate(([np.prod(shp[:2])], shp[2:])))
+    return arr.reshape(new_shape)
+
 def generate_data(policy, env, observation, n):
     x, y, act = sample_latent_output(policy, observation)
     X = np.expand_dims(x, 0)
@@ -47,9 +52,7 @@ def generate_data(policy, env, observation, n):
         x, y, act = sample_latent_output(policy, observation)
         X = np.append(X, np.expand_dims(x, 0), axis=0)
         Y = np.append(Y, np.expand_dims(y, 0), axis=0)
-    #TODO: reduce dims 0 and 1 to just 0
-    X = reduce_dims(X,[0,1])
-    return X.reshape(), Y
+    return drop_first_dim(X), drop_first_dim(Y)
 
 
 def sample_latent_output(policy, observation):
@@ -64,5 +67,5 @@ def sample_latent_output(policy, observation):
 if __name__ == "__main__":
     logdir = "logs/train/coinrun/coinrun/2024-02-20__18-02-16__seed_6033"
     policy, env, obs, storage = load_nn_policy(logdir)
-    X, Y = generate_data(policy, env, obs)
+    X, Y = generate_data(policy, env, obs, n=int(1e5))
     find_model(X, Y)
