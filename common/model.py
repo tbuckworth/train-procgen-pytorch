@@ -444,6 +444,15 @@ class QuantizedMHAModel(nn.Module):
             return x, commit_loss
         return x
 
+    def forward_to_pool(self, x):
+        x = self.encoder(x)
+        x, commit_loss = self.flatten_and_append_coor(x)
+        return self.MHA.forward_to_pool(x)
+
+    def forward_from_pool(self, x):
+        self.MHA.mlp(x)
+
+
     def flatten_and_append_coor(self, x, return_indices=False):
         flat_coor, flattened_features = self.flatten_and_get_coor(x)
 
@@ -838,9 +847,13 @@ class MHAModel(nn.Module):
         x = self.pool_and_mlp(x)
         return x
 
-    def pool_and_mlp(self, x):
+    def forward_to_pool(self, x):
+        for _ in range(self.mha_layers):
+            x = self.mha(x)
         x = self.max_pool(x)
-        x = x.squeeze()
+        return x.squeeze()
+
+    def mlp(self, x):
         x = self.fc1(x)
         x = nn.ReLU()(x)
         x = self.fc2(x)
@@ -850,6 +863,11 @@ class MHAModel(nn.Module):
         x = self.fc4(x)
         x = nn.ReLU()(x)
         return x
+
+    def pool_and_mlp(self, x):
+        x = self.max_pool(x)
+        x = x.squeeze()
+        return self.mlp(x)
 
     def forward_plus_attn(self, x):
         # if n > self.mha_layers:

@@ -11,7 +11,7 @@ import matplotlib.cm as cmx
 
 from common.storage import Storage
 from helper import get_hyperparams, initialize_model, print_values_actions, get_action_names, save_gif, GLOBAL_DIR, \
-    last_folder, print_action_entropy, coords_to_image
+    last_folder, print_action_entropy, coords_to_image, get_config
 from common.env.procgen_wrappers import create_env
 
 
@@ -83,7 +83,7 @@ def plot_atn_arrows(policy, observation, logdir):
 
 def main(logdir, render=True, print_entropy=False, draw_atn_arrows=False):
     print(logdir)
-    cfg = get_
+    cfg = get_config(logdir)
     action_names, done, env, hidden_state, obs, policy, storage = load_policy(render, logdir, n_envs=2, start_level=0,
                                                                               num_levels=500)
     rewards = np.array([])
