@@ -3,6 +3,7 @@ import math
 import numpy as np
 from torch import jit
 
+from .intention import MultiHeadIntention
 from .misc_util import orthogonal_init, xavier_uniform_init
 import torch.nn as nn
 import torch
@@ -814,13 +815,16 @@ def get_trained_vqvqae(in_channels, hyperparameters, device):
 
 
 class MHAModel(nn.Module):
-    def __init__(self, n_latents, latent_dim, mha_layers, output_dim, num_heads=4, reduce='feature_wise'):
+    def __init__(self, n_latents, latent_dim, mha_layers, output_dim, num_heads=4, reduce='feature_wise', use_intention=False):
         super(MHAModel, self).__init__()
         self.mha_layers = mha_layers
         # self.vqvae = get_trained_vqvqae(in_channels, hyperparameters, model_path, device)
 
         # Maybe dropout should be 0.0 to make relations less entangled
-        self.mha = GlobalSelfAttention(shape=(n_latents, latent_dim), num_heads=num_heads, embed_dim=latent_dim,
+        if use_intention:
+            self.mha = MultiHeadIntention(latent_dim, num_heads)
+        else:
+            self.mha = GlobalSelfAttention(shape=(n_latents, latent_dim), num_heads=num_heads, embed_dim=latent_dim,
                                        dropout=0.1)
         if reduce == 'feature_wise':
             pool_reduction = 'w'
