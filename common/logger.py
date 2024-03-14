@@ -47,7 +47,7 @@ class Logger(object):
                            "max_episode_len", "mean_episode_len", "min_episode_len",
                            "mean_timeouts", "mean_episode_len_pos_reward", "balanced_mean_rewards"]  # collected for both train and val envs
         self.log = pd.DataFrame(
-            columns=time_metrics + episode_metrics + ["val_" + m for m in episode_metrics] + ["ema_rewards"] + loss_metrics)
+            columns=time_metrics + episode_metrics + ["val_" + m for m in episode_metrics] + ["ema_rewards"] + loss_metrics + ["learning_rate"])
 
         self.timesteps = 0
         self.num_episodes = 0
@@ -86,7 +86,7 @@ class Logger(object):
 
         self.timesteps += (self.n_envs * steps)
 
-    def dump(self, summary={}):
+    def dump(self, summary={}, lr=0.):
         wall_time = time.time() - self.start_time
         episode_statistics = self._get_episode_statistics() #14
         episode_statistics_list = list(episode_statistics.values()) #14
@@ -96,7 +96,7 @@ class Logger(object):
             smoothing = .99/(1+len(self.log))
             prev_ema = self.log["ema_rewards"].loc[len(self.log) - 1]
             ema_reward = ema_reward * smoothing + prev_ema * (1-smoothing)
-        log = [self.timesteps, wall_time, self.num_episodes] + episode_statistics_list + [ema_reward] + loss_statistics
+        log = [self.timesteps, wall_time, self.num_episodes] + episode_statistics_list + [ema_reward] + loss_statistics + [lr]
         self.log.loc[len(self.log)] = log
 
         with open(self.logdir + '/log-append.csv', 'a') as f:

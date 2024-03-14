@@ -87,13 +87,13 @@ def adjust_lr(optimizer, init_lr, timesteps, max_timesteps):
     lr = init_lr * (1 - (timesteps / max_timesteps))
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
-    return optimizer
+    return optimizer, lr
 
 def adjust_lr_grok(optimizer, init_lr, timesteps, max_timesteps):
-    lr = min(init_lr * (1.1**(timesteps / 1e6)), 1.)
+    lr = init_lr * (1.1**(timesteps / 1e6))
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
-    return optimizer
+    return optimizer, lr
 
 
 def get_n_params(model):

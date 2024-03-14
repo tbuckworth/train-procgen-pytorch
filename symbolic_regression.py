@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 from pysr import PySRRegressor
 import torch
@@ -5,6 +7,7 @@ import torch
 from helper import get_config
 from inspect_agent import load_policy
 
+os.environ["PYTHON_JULIACALL_BINDIR"] = r"C:\Users\titus\AppData\Local\Microsoft\WindowsApps"
 
 def find_model(X, Y):
     model = PySRRegressor(

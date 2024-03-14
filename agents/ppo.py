@@ -229,8 +229,8 @@ class PPO(BaseAgent):
                 rew_batch_v = done_batch_v = true_average_reward_v = None
             self.logger.feed(rew_batch, done_batch, true_average_reward, rew_batch_v, done_batch_v, true_average_reward_v)
 
-            self.logger.dump(summary)
-            self.optimizer = self.adjust_lr(self.optimizer, self.learning_rate, self.t, num_timesteps)
+            self.optimizer, lr = self.adjust_lr(self.optimizer, self.learning_rate, self.t, num_timesteps)
+            self.logger.dump(summary, lr)
             # Save the model
             # if self.t > ((checkpoint_cnt + 1) * save_every):
             if self.t > checkpoints[checkpoint_cnt]:
