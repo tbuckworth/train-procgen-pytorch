@@ -200,6 +200,8 @@ def train_ppo(args):
             project = "Box-World"
         elif exp_name == "coinrun-hparams":
             project = "Hparams Coinrun"
+        elif exp_name == "coinrun-grok":
+            project = "Coinrun Grok"
         elif env_name == "coinrun":
             project = "Coinrun VQMHA"
         else:
