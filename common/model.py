@@ -415,6 +415,7 @@ class QuantizedMHAModel(nn.Module):
                  embed_dim=64,
                  output_dim=256,
                  reduce='feature_wise',
+                 use_intention=False,
                  **kwargs):
         super(QuantizedMHAModel, self).__init__()
 
@@ -426,7 +427,7 @@ class QuantizedMHAModel(nn.Module):
 
         self.encoder = encoder
         self.quantizer = quantizer
-        self.MHA = MHAModel(n_latents, embed_dim, mha_layers, output_dim, num_heads, reduce)
+        self.MHA = MHAModel(n_latents, embed_dim, mha_layers, output_dim, num_heads, reduce, use_intention=use_intention)
 
     def forward_with_attn_indices(self, x):
         x = self.encoder(x)
@@ -514,7 +515,7 @@ class ImpalaVQMHAModel(QuantizedMHAModel):
 
 class FSQMHAModel(QuantizedMHAModel):
     def __init__(self, in_channels, hid_channels, mha_layers, device, obs_shape, reduce, encoder_constructor,
-                 levels=[8, 5, 5, 5], n_blocks=3, **kwargs):
+                 levels=[8, 5, 5, 5], n_blocks=3, use_intention=False, **kwargs):
         input_shape = obs_shape
         self.device = device
         self.mha_layers = mha_layers
@@ -527,16 +528,17 @@ class FSQMHAModel(QuantizedMHAModel):
 
         super(FSQMHAModel, self).__init__(in_channels, device, input_shape, n_latents, encoder, quantizer,
                                                 mha_layers, num_heads=latent_dim, embed_dim=latent_dim, output_dim=256,
-                                                reduce=reduce)
+                                                reduce=reduce, use_intention=use_intention)
 
 
 class ImpalaFSQMHAModel(FSQMHAModel):
     def __init__(self, in_channels, mha_layers, device, obs_shape, reduce, n_impala_blocks=3, levels=[8, 5, 5, 5],
+                 use_intention=False,
                  **kwargs):
         hid_channels = 16
         encoder_constructor = ImpalaCNN
         super(ImpalaFSQMHAModel, self).__init__(in_channels, hid_channels, mha_layers, device, obs_shape, reduce,
-                                                encoder_constructor, levels, n_impala_blocks)
+                                                encoder_constructor, levels, n_impala_blocks, use_intention)
 
 
 class RibFSQMHAModel(FSQMHAModel):

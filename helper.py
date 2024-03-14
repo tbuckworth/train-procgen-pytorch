@@ -149,6 +149,14 @@ def initialize_model(device, env, hyperparameters):
         n_impala_blocks = hyperparameters.get("n_impala_blocks", 3)
         model = ImpalaFSQMHAModel(in_channels, mha_layers, device, observation_shape, reduce,
                                   n_impala_blocks=n_impala_blocks, levels=levels)
+    elif architecture == 'impalafsqitn':
+        mha_layers = hyperparameters.get("mha_layers", 2)
+        reduce = hyperparameters.get('pool_direction', 'feature_wise')
+        levels = hyperparameters.get('levels')
+        n_impala_blocks = hyperparameters.get("n_impala_blocks", 3)
+        use_intention = hyperparameters.get("use_intention", True)
+        model = ImpalaFSQMHAModel(in_channels, mha_layers, device, observation_shape, reduce,
+                                  n_impala_blocks=n_impala_blocks, levels=levels, use_intention=use_intention)
     elif architecture == 'ribmha':
         model = ribMHA(in_channels, device, observation_shape)
     elif architecture == 'ribfsqmha':

@@ -231,6 +231,32 @@ hard-500-impalafsqmha:
     levels: [8, 5, 5, 5]
     n_impala_blocks: 3
 
+
+hard-500-impalafsqitn:
+    algo: ppo
+    n_envs: 256
+    n_steps: 256
+    epoch: 3
+    n_minibatch: 16
+    mini_batch_size: 8192
+    gamma: 0.99
+    lmbda: 0.95
+    learning_rate: 0.0005
+    grad_clip_norm: 0.5
+    eps_clip: 0.2
+    value_coef: 0.5
+    entropy_coef: 0.005
+    normalize_adv: True
+    normalize_rew: True
+    use_gae: True
+    architecture: impalafsqmha
+    recurrent: False
+    mha_layers: 2
+    pool_direction: dim_wise
+    levels: [8, 5, 5, 5]
+    n_impala_blocks: 3
+    use_intention: True
+
 hard-500-impalafsqmha-valuetest:
     algo: ppo
     n_envs: 256
