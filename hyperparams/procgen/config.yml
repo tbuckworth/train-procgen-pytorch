@@ -253,7 +253,7 @@ hard-500-impalafsqitn:
     recurrent: False
     mha_layers: 2
     pool_direction: dim_wise
-    levels: [8, 5, 5, 5]
+    levels: [9, 9, 9]
     n_impala_blocks: 3
     use_intention: True
 
