@@ -38,13 +38,15 @@ def time_cmd(cmd, n):
 def test_ld():
     logdir = "logs/train/coinrun/coinrun/2024-02-20__18-02-16__seed_6033"
     env, ld, n_envs = load_logic_distiller(logdir, .15)
-
+    print(f"Loaded LogicDistiller with {logdir}")
     df = pd.read_csv("ilp/logic_examples/results.csv")
     df = df[df.logdir == logdir]
-
+    print("Loaded DataFrame from results.csv")
     new_cols = ["balanced_reward", "mean_reward", "pct_random_actions"]
     df[new_cols] = np.nan
     for row in range(len(df)):
+        print(f"Testing row {row}:")
+        print(f"{df.hypothesis[row]}\n")
         df.loc[row, new_cols] = test_agent_in_env(df, env, ld, row)
         append_to_csv_if_exists(df, "ilp/logic_examples/results_with_perf.csv")
 
@@ -64,7 +66,8 @@ def test_agent_in_env(df, env, ld, row):
     i = 0
     while frame_count < int(1e6):  # not done[0]:
         # act0, act_probs, atn, feature_indices, value = ld.forward(observation)
-
+        if i % 50 == 0:
+            print(f"Frame count: {i}")
         act = ld.generate_action(observation)
 
         observation, reward, done, info = env.step(np.array([act, 0]))
