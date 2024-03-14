@@ -259,7 +259,6 @@ def train_ppo(args):
                   num_checkpoints,
                   env_valid=env_valid,
                   storage_valid=storage_valid,
-                  increasing_lr=hyperparameters.get("increasing_lr", False)
                   **hyperparameters)
     if args.model_file is not None:
         print("Loading agent from %s" % args.model_file)

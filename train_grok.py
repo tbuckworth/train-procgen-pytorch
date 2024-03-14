@@ -26,6 +26,7 @@ if __name__ == '__main__':
     args.wandb_tags = ["10_levs", "grok"]
     args.device = "gpu"
     args.n_impala_blocks = 3
+    args.increasing_lr = True
 
     args.model_file = latest_model_path("logs/train/coinrun/coinrun/2024-02-12__09-20-09__seed_6033")
     for eps_clip in [0.2, 0.01, 0.1, 0.025, 0.05]:
