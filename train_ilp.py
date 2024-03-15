@@ -172,7 +172,7 @@ def load_logic_distiller(logdir, atn_threshold):
 
 
 if __name__ == "__main__":
-    test_ld()
+    train_logic_program()
 # TODO:
 # put the x, y coords into background knowledge;
 # find way to include intermediary/auxilary predicates

@@ -29,7 +29,7 @@ if __name__ == '__main__':
     args.increasing_lr = True
 
     args.model_file = latest_model_path("logs/train/coinrun/coinrun/2024-02-12__09-20-09__seed_6033")
-    for eps_clip in [0.2, 0.01, 0.1, 0.025, 0.05]:
+    for eps_clip in [0.1, 0.05, 0.025]:
         args.eps_clip = eps_clip
         args.wandb_name = f"10lev_grok_clip:{eps_clip}"
         train_ppo(args)

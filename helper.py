@@ -7,6 +7,7 @@ import gym
 import numpy as np
 import pandas as pd
 import yaml
+import platform
 from matplotlib import pyplot as plt
 
 from common.model import NatureModel, ImpalaModel, MHAModel, ImpalaVQModel, ImpalaVQMHAModel, ImpalaFSQModel, ribMHA, \
@@ -15,9 +16,21 @@ from common.policy import CategoricalPolicy
 from moviepy.editor import ImageSequenceClip
 
 GLOBAL_DIR = "/vol/bitbucket/tfb115/train-procgen-pytorch"
+
+def is_wsl(v: str = platform.uname().release) -> int:
+    """
+    detects if Python is running in WSL
+    """
+    if v.endswith("-Microsoft"):
+        return 1
+    elif v.endswith("microsoft-standard-WSL2"):
+        return 2
+    return 0
+
 if os.name == "nt":
     GLOBAL_DIR = "C:/Users/titus/PycharmProjects/train-procgen-pytorch/"
-
+if is_wsl() == 2:
+    GLOBAL_DIR = "/mnt/c/Users/titus/PycharmProjects/train-procgen-pytorch/"
 
 def match(a, b):
     a = a.tolist()

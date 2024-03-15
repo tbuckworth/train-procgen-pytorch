@@ -455,7 +455,7 @@ class QuantizedMHAModel(nn.Module):
         return self.MHA.forward_to_pool(x)
 
     def forward_from_pool(self, x):
-        self.MHA.mlp(x)
+        return self.MHA.mlp(x)
 
 
     def flatten_and_append_coor(self, x, return_indices=False):

@@ -61,11 +61,13 @@ def generate_data(policy, env, observation, n):
 
 
 def sample_latent_output(policy, observation):
-    obs = torch.FloatTensor(observation).to(policy.device)
-    x = policy.embedder.forward_to_pool(obs)
-    dist, value = policy.hidden_to_output(x)
-    y = dist.logits.detach().cpu().numpy()
-    act = dist.sample()
+    with torch.no_grad():
+        obs = torch.FloatTensor(observation).to(policy.device)
+        x = policy.embedder.forward_to_pool(obs)
+        h = policy.embedder.forward_from_pool(x)
+        dist, value = policy.hidden_to_output(h)
+        y = dist.logits.detach().cpu().numpy()
+        act = dist.sample()
     return x.cpu().numpy(), y, act.cpu().numpy()
 
 

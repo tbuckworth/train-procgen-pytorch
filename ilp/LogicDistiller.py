@@ -174,6 +174,7 @@ class LogicDistiller:
 
     def write_strings_to_file(self):
         output = self.generate_mode_bias()
+        output += ''.join([f"aux_const({i}).\n" for i in range(2)]) + "\n\n"
         output += ''.join(self.a_facts) + "\n\n"
         output += ''.join(self.f_facts) + "\n\n"
         output += ''.join(self.coords) + "\n\n"
@@ -204,6 +205,8 @@ class LogicDistiller:
 
     def generate_mode_bias(self):
         output = "#modeh(take(const(action))).\n"
+        output += "#modeh(aux(const(aux_const))).\n"
+        output += "#modeb(aux(const(aux_const))).\n"
         modeb_r = concat_np_list(["#modeb(r", self.r_facts, "(var(feature), var(feature))).\n"], self.r_facts.shape)
         output += ''.join(modeb_r)
         # I'm removing x,y for tractability, but location in image is important.
