@@ -421,17 +421,20 @@ class QuantizedMHAModel(nn.Module):
 
         self.use_vq = True if isinstance(quantizer, VectorQuantize) else False
         self.use_fq = True if isinstance(quantizer, FSQ) else False
+        self.return_indices = True
         self.device = device
         self.ob_shape = ob_shape
         self.output_dim = output_dim
 
         self.encoder = encoder
         self.quantizer = quantizer
+        if self.quantizer is None:
+            self.return_indices = False
         self.MHA = MHAModel(n_latents, embed_dim, mha_layers, output_dim, num_heads, reduce, use_intention=use_intention)
 
     def forward_with_attn_indices(self, x):
         x = self.encoder(x)
-        x, indices = self.flatten_and_append_coor(x, True)
+        x, indices = self.flatten_and_append_coor(x, self.return_indices)
         x, atn_list = self.MHA.forward_plus_attn(x)
         # x = self.MHA(x)
 

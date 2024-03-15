@@ -47,7 +47,7 @@ class Intention(nn.Module):
     def forward_plus_itn(self, q, k, v):
         queries = self.query(q)
         itn = self.get_itn_weights(k, v)
-        h = einops.einsum(queries, itn, "b f d2, b d2 d1 -> b d1")
+        h = einops.einsum(queries, itn, "b f d2, b d2 d1 -> b f d1")
         return h, itn
 
 
@@ -95,9 +95,10 @@ class MultiHeadIntention(nn.Module):
 
     def forward_plus_attn_weights(self, x):
         w = [head.forward_plus_itn(x) for head in self.heads]
-        all_heads = torch.cat(w, dim=-1)
+        h, itn = list(zip(*w))
+        all_heads = torch.cat(h, dim=-1)
         out = self.w0(all_heads)
-        itn_weights = einops.rearrange(w, "n b d0 d1 -> b n d0 d1")
+        itn_weights = einops.rearrange(list(itn), "n b d0 d1 -> b n d0 d1")
         return out, itn_weights
 
 
