@@ -14,9 +14,9 @@ class Intention(nn.Module):
         self.key = nn.Linear(input_dim, input_dim)
         self.value = nn.Linear(input_dim, input_dim)
         self.softmax = nn.Softmax(dim=2)
-        self.alpha = alpha
         self.sigma = sigma
         self.device = device
+        self.alpha = torch.Tensor([alpha for i in range(self.input_dim)]).to(self.device)
 
     def forward(self, q, k, v):
         queries = self.query(q)
@@ -30,8 +30,8 @@ class Intention(nn.Module):
         # K*transpose(K)
         key_sym = einops.einsum(keys, keys, "b f d1, b f d2 -> b d1 d2")
         # + alpha*I
-        alpha = torch.Tensor([self.alpha for i in range(self.input_dim)]).to(self.device)
-        key_sym += torch.diag(alpha)
+
+        key_sym += torch.diag(self.alpha)
         # inverted
         key_sym_inv = torch.inverse(key_sym)
         # * transpose(K)
