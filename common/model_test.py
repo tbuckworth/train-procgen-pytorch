@@ -8,7 +8,7 @@ from torchinfo import summary
 from boxworld.create_box_world import create_box_world_env, create_box_world_env_pre_vec
 from common.model import ImpalaVQMHAModel, ImpalaFSQModel, ImpalaModel, Decoder, VQVAE, ImpalaFSQMHAModel, \
     RibFSQMHAModel
-from helper import initialize_model
+from helper import initialize_model, get_config
 from common.env.procgen_wrappers import create_env
 
 
@@ -100,6 +100,19 @@ class CoinrunTestModel(unittest.TestCase):
         decoder.forward(x)
         summary(decoder, x.shape)
 
+    def test_ImpalaMHA(self):
+        hyperparameters = get_hyperparams("hard-500-impalamha")
+        model, obs_shape, policy = initialize_model(self.device, self.env, hyperparameters)
+        model.forward(self.obs)
+        summary(model, self.obs.shape)
+        policy.forward(self.obs, None, None)
+
+    def test_ImpalaITN(self):
+        hyperparameters = get_hyperparams("hard-500-impalaitn")
+        model, obs_shape, policy = initialize_model(self.device, self.env, hyperparameters)
+        model.forward(self.obs)
+        summary(model, self.obs.shape)
+        policy.forward(self.obs, None, None)
 
 class BoxWorldTestModel(unittest.TestCase):
     @classmethod

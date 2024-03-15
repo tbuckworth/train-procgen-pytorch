@@ -20,7 +20,7 @@ class Intention(nn.Module):
     def forward(self, q, k, v):
         queries = self.query(q)
         itn = self.get_itn_weights(k, v)
-        h = einops.einsum(queries, itn, "b f d2, b d2 d1 -> b d1")
+        h = einops.einsum(queries, itn, "b f d2, b d2 d1 -> b f d1")
         return h
 
     def get_itn_weights(self, k, v):
@@ -68,6 +68,11 @@ class SelfIntention(nn.Module):
 
 class MultiHeadIntention(nn.Module):
     #TODO: technically we should reduce the dimensions for the individual attention heads
+    # e.g.:
+    # head_dim = self.embed_dim // self.num_heads
+    # assert head_dim * self.num_heads == self.embed_dim, "embed_dim must be divisible by num_heads"
+    # scaling = float(head_dim) ** -0.5
+
     def __init__(self, input_dim, num_heads, alpha=0.001, sigma=True):
         super().__init__()
         self.heads = nn.ModuleList(
@@ -78,7 +83,8 @@ class MultiHeadIntention(nn.Module):
         #TODO: what about skip connection and layernorm?
     def forward(self, x):
         all_heads = torch.cat([head(x) for head in self.heads], dim=-1)
-        return self.w0(all_heads)
+        y = self.w0(all_heads)
+        return y
 
     def get_itn_weights(self, x):
         w = [head.get_itn_weights(x) for head in self.heads]
@@ -104,8 +110,8 @@ if __name__ == "__main__":
     x = torch.randn(640 * 2).reshape((2, 64, 10))
 
     mhi = MultiHeadIntention(input_dim=10, num_heads=8)
-
-    y = mhi.get_itn_weights(x)
+    #
+    y = mhi(x)
     print(x.shape)
     print(y.shape)
 
@@ -113,4 +119,6 @@ if __name__ == "__main__":
     print(intention.get_itn_weights(x).shape)
     print(intention(x).shape)
 
-
+    # mha = nn.MultiheadAttention(embed_dim=10, num_heads=5)
+    # y2, _ = mha(x, x, x)
+    # print(y2.shape)
