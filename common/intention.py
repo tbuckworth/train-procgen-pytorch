@@ -7,7 +7,7 @@ from torch import jit
 class Intention(nn.Module):
     sigma: jit.Final[bool]
 
-    def __init__(self, input_dim, alpha=0.001, sigma=True):
+    def __init__(self, input_dim, device, alpha=0.001, sigma=True):
         super(Intention, self).__init__()
         self.input_dim = input_dim
         self.query = nn.Linear(input_dim, input_dim)
@@ -16,6 +16,7 @@ class Intention(nn.Module):
         self.softmax = nn.Softmax(dim=2)
         self.alpha = alpha
         self.sigma = sigma
+        self.device = device
 
     def forward(self, q, k, v):
         queries = self.query(q)
@@ -29,7 +30,7 @@ class Intention(nn.Module):
         # K*transpose(K)
         key_sym = einops.einsum(keys, keys, "b f d1, b f d2 -> b d1 d2")
         # + alpha*I
-        alpha = torch.Tensor([self.alpha for i in range(self.input_dim)])
+        alpha = torch.Tensor([self.alpha for i in range(self.input_dim)]).to(self.device)
         key_sym += torch.diag(alpha)
         # inverted
         key_sym_inv = torch.inverse(key_sym)
@@ -52,9 +53,9 @@ class Intention(nn.Module):
 
 
 class SelfIntention(nn.Module):
-    def __init__(self, input_dim, alpha=0.001, sigma=True):
+    def __init__(self, input_dim, device, alpha=0.001, sigma=True):
         super(SelfIntention, self).__init__()
-        self.intention = Intention(input_dim, alpha, sigma)
+        self.intention = Intention(input_dim, device, alpha, sigma)
 
     def forward(self, x):
         return self.intention.forward(x, x, x)
@@ -73,10 +74,10 @@ class MultiHeadIntention(nn.Module):
     # assert head_dim * self.num_heads == self.embed_dim, "embed_dim must be divisible by num_heads"
     # scaling = float(head_dim) ** -0.5
 
-    def __init__(self, input_dim, num_heads, alpha=0.001, sigma=True):
+    def __init__(self, input_dim, num_heads, device, alpha=0.001, sigma=True):
         super().__init__()
         self.heads = nn.ModuleList(
-            [SelfIntention(input_dim, alpha, sigma)
+            [SelfIntention(input_dim, device, alpha, sigma)
              for _ in range(num_heads)]
         )
         self.w0 = nn.Linear(input_dim*num_heads, input_dim)

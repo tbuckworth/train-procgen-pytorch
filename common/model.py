@@ -430,7 +430,7 @@ class QuantizedMHAModel(nn.Module):
         self.quantizer = quantizer
         if self.quantizer is None:
             self.return_indices = False
-        self.MHA = MHAModel(n_latents, embed_dim, mha_layers, output_dim, num_heads, reduce, use_intention=use_intention)
+        self.MHA = MHAModel(n_latents, embed_dim, mha_layers, output_dim, device, num_heads, reduce, use_intention=use_intention)
 
     def forward_with_attn_indices(self, x):
         x = self.encoder(x)
@@ -823,14 +823,14 @@ def get_trained_vqvqae(in_channels, hyperparameters, device):
 
 
 class MHAModel(nn.Module):
-    def __init__(self, n_latents, latent_dim, mha_layers, output_dim, num_heads=4, reduce='feature_wise', use_intention=False):
+    def __init__(self, n_latents, latent_dim, mha_layers, output_dim, device, num_heads=4, reduce='feature_wise', use_intention=False):
         super(MHAModel, self).__init__()
         self.mha_layers = mha_layers
         # self.vqvae = get_trained_vqvqae(in_channels, hyperparameters, model_path, device)
 
         # Maybe dropout should be 0.0 to make relations less entangled
         if use_intention:
-            self.mha = MultiHeadIntention(latent_dim, num_heads)
+            self.mha = MultiHeadIntention(latent_dim, num_heads, device)
         else:
             self.mha = GlobalSelfAttention(shape=(n_latents, latent_dim), num_heads=num_heads, embed_dim=latent_dim,
                                        dropout=0.1)
