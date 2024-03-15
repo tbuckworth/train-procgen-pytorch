@@ -262,7 +262,7 @@ hard-500-impalamha:
     n_envs: 256
     n_steps: 256
     epoch: 3
-    n_minibatch: 16
+    n_minibatch: 32
     mini_batch_size: 8192
     gamma: 0.99
     lmbda: 0.95
