@@ -220,7 +220,7 @@ hard-500-impalafsqmha:
     grad_clip_norm: 0.5
     eps_clip: 0.2
     value_coef: 0.5
-    entropy_coef: 0.005
+    entropy_coef: 0.01
     normalize_adv: True
     normalize_rew: True
     use_gae: True
@@ -228,7 +228,7 @@ hard-500-impalafsqmha:
     recurrent: False
     mha_layers: 2
     pool_direction: dim_wise
-    levels: [8, 5, 5, 5]
+    levels: [10, 10]
     n_impala_blocks: 3
 
 
