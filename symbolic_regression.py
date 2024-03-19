@@ -28,10 +28,10 @@ def find_model(X, Y, logdir, iterations):
             "cos",
             "exp",
             "sin",
-            #"inv(x) = 1/x",
+            "inv(x) = 1/x",
             # ^ Custom operator (julia syntax)
         ],
-        #extra_sympy_mappings={"inv": lambda x: 1 / x},
+        extra_sympy_mappings={"inv": lambda x: 1 / x},
         # ^ Define operator for SymPy as well
         elementwise_loss="loss(prediction, target) = (prediction - target)^2",
         # ^ Custom loss function (julia syntax)
@@ -44,9 +44,9 @@ def find_model(X, Y, logdir, iterations):
 
 
 
-def load_nn_policy(logdir):
+def load_nn_policy(logdir, n_envs = 2):
     cfg = get_config(logdir)
-    n_envs = 2
+
     action_names, done, env, hidden_state, obs, policy, storage = load_policy(False, logdir, n_envs=n_envs,
                                                                               hparams="hard-500-impalafsqmha",
                                                                               start_level=cfg["start_level"],
@@ -156,11 +156,12 @@ def get_test_env(logdir, n_envs):
     return env
 
 if __name__ == "__main__":
-    rounds = 2
-    iterations = 2
-    data_size = 10
+    iterations = 40
+    data_size = 10000
+    rounds = 16
+    n_envs = 8
     logdir = "logs/train/coinrun/coinrun/2024-02-20__18-02-16__seed_6033"
-    policy, env, obs, storage = load_nn_policy(logdir)
+    policy, env, obs, storage = load_nn_policy(logdir, n_envs)
     X, Y = generate_data(policy, env, obs, n=data_size)
     print("data generated")
     if os.name != "nt":
@@ -177,7 +178,7 @@ if __name__ == "__main__":
         ns_score_train = test_agent(ns_agent, env, obs, "NeuroSymb Train", rounds)
         nn_score_train = test_agent(nn_agent, env, obs, "Neural    Train", rounds)
 
-        test_env = get_test_env(logdir, n_envs=2)
+        test_env = get_test_env(logdir, n_envs)
 
         ns_score_test = test_agent(ns_agent, test_env, obs, "NeuroSymb  Test", rounds)
         nn_score_test = test_agent(nn_agent, test_env, obs, "Neural     Test", rounds)
