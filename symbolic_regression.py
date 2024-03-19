@@ -1,7 +1,10 @@
 import os
 
 import numpy as np
-import pandas as pd
+# import pandas as pd
+# from torch import nn
+import torch.nn.functional as F
+from torch.distributions import Categorical
 
 from common.env.procgen_wrappers import create_env
 
@@ -16,19 +19,19 @@ from inspect_agent import load_policy
 # os.environ["PYTHON_JULIACALL_BINDIR"] = r"C:\Users\titus\AppData\Local\Microsoft\WindowsApps"
 # os.environ["PYTHON_JULIACALL_BINDIR"] = r"C:\Users\titus\.julia\juliaup\julia-1.10.0+0.x64.w64.mingw32\bin"
 
-def find_model(X, Y, logdir):
+def find_model(X, Y, logdir, iterations):
     model = PySRRegressor(
         equation_file=get_path(logdir, "symb_reg.csv"),
-        niterations=10,  # < Increase me for better results
+        niterations=iterations,  # < Increase me for better results
         binary_operators=["+", "*"],
         unary_operators=[
             "cos",
             "exp",
             "sin",
-            "inv(x) = 1/x",
+            #"inv(x) = 1/x",
             # ^ Custom operator (julia syntax)
         ],
-        extra_sympy_mappings={"inv": lambda x: 1 / x},
+        #extra_sympy_mappings={"inv": lambda x: 1 / x},
         # ^ Define operator for SymPy as well
         elementwise_loss="loss(prediction, target) = (prediction - target)^2",
         # ^ Custom loss function (julia syntax)
@@ -89,7 +92,7 @@ def test_agent(agent, env, obs, print_name, n=40):
         true_average_reward = balanced_reward(done, info, performance_track)
         if np.any(done):
             episodes += np.sum(done)
-            print(f"{print_name}:\tEpisodes:{episodes}\tBalanced Reward:{true_average_reward:2.f}")
+            print(f"{print_name}:\tEpisodes:{episodes}\tBalanced Reward:{true_average_reward:.2f}")
     return true_average_reward
 
 def sample_policy_with_symb_model(model, policy, observation):
@@ -111,10 +114,11 @@ class NeuroSymbolicAgent:
         with torch.no_grad():
             obs = torch.FloatTensor(observation).to(self.policy.device)
             x = self.policy.embedder.forward_to_pool(obs)
-            h = self.model(x)
-            dist, value = self.policy.hidden_to_output(h)
-            # y = dist.logits.detach().cpu().numpy()
-            act = dist.sample()
+            h = self.model.predict(x)
+            logits = torch.FloatTensor(h).to(self.policy.device)
+            log_probs = F.log_softmax(logits, dim=1)
+            p = Categorical(logits=log_probs)
+            act = p.sample()
         return act.cpu().numpy()
 
 
@@ -153,12 +157,21 @@ def get_test_env(logdir, n_envs):
 
 if __name__ == "__main__":
     rounds = 2
+    iterations = 2
+    data_size = 10
     logdir = "logs/train/coinrun/coinrun/2024-02-20__18-02-16__seed_6033"
     policy, env, obs, storage = load_nn_policy(logdir)
-    X, Y = generate_data(policy, env, obs, n=int(1e2))
+    X, Y = generate_data(policy, env, obs, n=data_size)
     print("data generated")
     if os.name != "nt":
-        model = find_model(X, Y, logdir)
+        model = find_model(X, Y, logdir, iterations)
+        # for i in range(Y.shape[-1]):
+        #     print(i)
+        #     sm = model.pytorch([i])
+        #     print(sm)
+        # sm = model.pytorch([i for i in range(Y.shape[-1])])
+        # print(len(sm))
+        # print(sm)
         ns_agent = NeuroSymbolicAgent(model, policy)
         nn_agent = NeuralAgent(policy)
         ns_score_train = test_agent(ns_agent, env, obs, "NeuroSymb Train", rounds)
