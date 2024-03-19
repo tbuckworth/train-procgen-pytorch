@@ -1,7 +1,6 @@
 import copy
 import os
 import re
-from collections import deque
 
 import numpy as np
 import torch
@@ -11,7 +10,7 @@ import matplotlib.cm as cmx
 
 from common.storage import Storage
 from helper import get_hyperparams, initialize_model, print_values_actions, get_action_names, save_gif, GLOBAL_DIR, \
-    last_folder, print_action_entropy, coords_to_image, get_config
+    last_folder, print_action_entropy, coords_to_image, get_config, balanced_reward
 from common.env.procgen_wrappers import create_env
 
 
@@ -110,15 +109,7 @@ def main(logdir, render=True, print_entropy=False, draw_atn_arrows=False):
         hidden_state = next_hidden_state
         if done[0]:
             print(f"Level seed: {info[0]['level_seed']}")
-        completes = np.array(info)[done]
-        for info in completes:
-            seed = info["prev_level_seed"]
-            rew = info["env_reward"]
-            if seed not in performance_track.keys():
-                performance_track[seed] = deque(maxlen=10)
-            performance_track[seed].append(rew)
-        all_rewards = list(performance_track.values())
-        true_average_reward = np.mean([rew for rew_list in all_rewards for rew in rew_list])
+        true_average_reward = balanced_reward(done, info, performance_track)
         print(true_average_reward)
 
 
@@ -147,7 +138,12 @@ def load_policy(render, logdir, n_envs=None, decoding_info={}, start_level=0, re
                 "paint_vel_info": True,
                 "distribution_mode": "hard"}
     normalize_rew = hyperparameters.get('normalize_rew', True)
-    env = create_env(env_args, render, normalize_rew, mirror_some=True, decoding_info=decoding_info)
+    try:
+        cfg = get_config(logdir)
+        mirror_some = cfg["mirror_env"]
+    except Exception:
+        mirror_some = True
+    env = create_env(env_args, render, normalize_rew, mirror_some, decoding_info=decoding_info)
     model, observation_shape, policy = initialize_model(device, env, hyperparameters)
     if logdir is not None:
         policy.load_state_dict(torch.load(last_model, map_location=device)["model_state_dict"])

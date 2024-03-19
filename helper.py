@@ -2,6 +2,7 @@ import os
 import random
 import re
 import time
+from collections import deque
 
 import gym
 import numpy as np
@@ -43,6 +44,8 @@ def save_gif(frames, filename="test.gif", fps=20):
     clip = ImageSequenceClip(list(frames), fps=fps)
     clip.write_gif(filename, fps=fps)
 
+def get_path(dir, file):
+    return os.path.join(GLOBAL_DIR, dir, file)
 
 def print_values_actions(action_names, pi, value, i="", rewards=None):
     ap = np.squeeze(pi[0])
@@ -354,3 +357,16 @@ def coords_to_image(atn_coor, atn_size, image_size):
 
 def get_config(logdir):
     return np.load(os.path.join(logdir, "config.npy"), allow_pickle='TRUE').item()
+
+
+def balanced_reward(done, info, performance_track):
+    completes = np.array(info)[done]
+    for info in completes:
+        seed = info["prev_level_seed"]
+        rew = info["env_reward"]
+        if seed not in performance_track.keys():
+            performance_track[seed] = deque(maxlen=10)
+        performance_track[seed].append(rew)
+    all_rewards = list(performance_track.values())
+    true_average_reward = np.mean([rew for rew_list in all_rewards for rew in rew_list])
+    return true_average_reward
