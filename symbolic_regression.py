@@ -92,7 +92,7 @@ def test_agent(agent, env, obs, print_name, n=40):
         true_average_reward = balanced_reward(done, info, performance_track)
         if np.any(done):
             episodes += np.sum(done)
-            print(f"{print_name}:\tEpisodes:{episodes}\tBalanced Reward:{true_average_reward:.2f}")
+            print(f"{print_name}:\tEpisode:{episode}\tBalanced Reward:{true_average_reward:.2f}")
     return true_average_reward
 
 def sample_policy_with_symb_model(model, policy, observation):
@@ -175,9 +175,9 @@ if __name__ == "__main__":
         ns_agent = NeuroSymbolicAgent(model, policy)
         nn_agent = NeuralAgent(policy)
         ns_score_train = test_agent(ns_agent, env, obs, "NeuroSymb Train", rounds)
-        nn_score_train = test_agent(nn_agent, env, obs, "Neural Train", rounds)
+        nn_score_train = test_agent(nn_agent, env, obs, "Neural    Train", rounds)
 
         test_env = get_test_env(logdir, n_envs=2)
 
-        ns_score_test = test_agent(ns_agent, test_env, obs, "NeuroSymb Test", rounds)
-        nn_score_test = test_agent(nn_agent, test_env, obs, "Neural Test", rounds)
+        ns_score_test = test_agent(ns_agent, test_env, obs, "NeuroSymb  Test", rounds)
+        nn_score_test = test_agent(nn_agent, test_env, obs, "Neural     Test", rounds)
