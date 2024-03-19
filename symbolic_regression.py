@@ -92,7 +92,7 @@ def test_agent(agent, env, obs, print_name, n=40):
         true_average_reward = balanced_reward(done, info, performance_track)
         if np.any(done):
             episodes += np.sum(done)
-            print(f"{print_name}:\tEpisode:{episode}\tBalanced Reward:{true_average_reward:.2f}")
+            print(f"{print_name}:\tEpisode:{episodes}\tBalanced Reward:{true_average_reward:.2f}")
     return true_average_reward
 
 def sample_policy_with_symb_model(model, policy, observation):
