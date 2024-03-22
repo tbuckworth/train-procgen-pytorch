@@ -220,7 +220,7 @@ hard-500-impalafsqmha:
     grad_clip_norm: 0.5
     eps_clip: 0.2
     value_coef: 0.5
-    entropy_coef: 0.01
+    entropy_coef: 0.02
     normalize_adv: True
     normalize_rew: True
     use_gae: True
