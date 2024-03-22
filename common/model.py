@@ -163,7 +163,7 @@ class ImpalaModel(nn.Module):
 
     def forward_with_attn_indices(self, x):
         out = self.forward(x)
-        return out, [], None
+        return out, [], None, None
 
 
 class GRU(nn.Module):
@@ -433,12 +433,10 @@ class QuantizedMHAModel(nn.Module):
         self.MHA = MHAModel(n_latents, embed_dim, mha_layers, output_dim, device, num_heads, reduce, use_intention=use_intention)
 
     def forward_with_attn_indices(self, x):
-        x = self.encoder(x)
-        x, indices = self.flatten_and_append_coor(x, self.return_indices)
+        e = self.encoder(x)
+        x, indices = self.flatten_and_append_coor(e, self.return_indices)
         x, atn_list = self.MHA.forward_plus_attn(x)
-        # x = self.MHA(x)
-
-        return x, atn_list, indices
+        return x, atn_list, indices, e
 
     def forward(self, x):
         x = self.encoder(x)

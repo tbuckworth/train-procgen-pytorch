@@ -64,7 +64,7 @@ class CoinrunTestModel(unittest.TestCase):
         x1 = model.forward(self.obs)
         summary(model, self.obs.shape)
 
-        feature_batch, atn_batch_list, feature_indices = model.forward_with_attn_indices(
+        feature_batch, atn_batch_list, feature_indices, _ = model.forward_with_attn_indices(
             self.obs)
         print("x")
 
@@ -106,7 +106,7 @@ class CoinrunTestModel(unittest.TestCase):
         model.forward(self.obs)
         summary(model, self.obs.shape)
         policy.forward(self.obs, None, None)
-        feature_batch, atn_batch_list, feature_indices = model.forward_with_attn_indices(
+        feature_batch, atn_batch_list, feature_indices, _ = model.forward_with_attn_indices(
             self.obs)
 
     def test_ImpalaITN(self):
@@ -115,7 +115,7 @@ class CoinrunTestModel(unittest.TestCase):
         model.forward(self.obs)
         summary(model, self.obs.shape)
         policy.forward(self.obs, None, None)
-        feature_batch, atn_batch_list, feature_indices = model.forward_with_attn_indices(
+        feature_batch, atn_batch_list, feature_indices, _ = model.forward_with_attn_indices(
             self.obs)
 
 class BoxWorldTestModel(unittest.TestCase):

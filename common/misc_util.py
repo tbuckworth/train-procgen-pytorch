@@ -20,6 +20,13 @@ def attention_entropy(atn):
     normalized_mean_entropy = entropy.mean()
     return normalized_mean_entropy
 
+def sparsity_loss(x):
+    '''
+    Penalises vectors that are not all zero
+    Designed to work with FSQ: values between [-1,1]
+    '''
+    return torch.mean(torch.max(torch.tanh(torch.abs(x * 100)), 2)[0])
+
 def cross_batch_entropy(p):
     '''
     The idea here is to emulate torch.distributions.Categorical.entropy(), but instead of computing it per batch

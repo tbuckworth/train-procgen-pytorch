@@ -52,7 +52,7 @@ def predict(policy, obs, hidden_state, done, return_dist=False):
 
 def plot_atn_arrows(policy, observation, logdir):
     obs = torch.FloatTensor(observation).to(policy.device)
-    x, atn_list, feature_indices = policy.embedder.forward_with_attn_indices(obs)
+    x, atn_list, feature_indices, _ = policy.embedder.forward_with_attn_indices(obs)
     atn = atn_list[-1]
     # high_atn = atn[0] > 0.4
     found = False
@@ -96,7 +96,7 @@ def main(logdir, render=True, print_entropy=False, draw_atn_arrows=False):
             print_values_actions(action_names, pi, value, rewards=rewards)
         next_obs, rew, done, info = env.step(act)
         obs_tensor = torch.FloatTensor(next_obs).to(policy.device)
-        x, atn_list, feature_indices = policy.embedder.forward_with_attn_indices(obs_tensor)
+        x, atn_list, feature_indices, _ = policy.embedder.forward_with_attn_indices(obs_tensor)
         atn = atn_list[-1]
         if draw_atn_arrows:
             if (atn[0] > 0.2).any():

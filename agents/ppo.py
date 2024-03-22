@@ -1,5 +1,6 @@
 from .base_agent import BaseAgent
-from common.misc_util import adjust_lr, get_n_params, cross_batch_entropy, attention_entropy, adjust_lr_grok
+from common.misc_util import adjust_lr, get_n_params, cross_batch_entropy, attention_entropy, adjust_lr_grok, \
+    sparsity_loss
 import torch
 import torch.optim as optim
 import numpy as np
@@ -33,6 +34,7 @@ class PPO(BaseAgent):
                  use_gae=True,
                  entropy_scaling=None,
                  increasing_lr=False,
+                 sparsity_coef=0.,
                  **kwargs):
         super(PPO, self).__init__(env, policy, logger, storage, device,
                                   n_checkpoints, env_valid, storage_valid)
@@ -40,6 +42,7 @@ class PPO(BaseAgent):
         self.total_timesteps = 0
         self.entropy_scaling = entropy_scaling
         self.entropy_multiplier = 1.
+        self.s_loss_coef = sparsity_coef
         self.min_rew = -1.
         self.max_rew = 11.
         self.n_steps = n_steps
@@ -93,9 +96,9 @@ class PPO(BaseAgent):
         if self.entropy_scaling == "reward_based":
             self.entropy_multiplier = 1 - ((mean_rew - self.min_rew) / (self.max_rew - self.min_rew))
         elif self.entropy_scaling == "time_based":
-            self.entropy_multiplier = 1 - (self.t/self.total_timesteps)
+            self.entropy_multiplier = 1 - (self.t / self.total_timesteps)
 
-        pi_loss_list, value_loss_list, entropy_loss_list, x_ent_loss_list, atn_entropy_list, atn_entropy_list2, total_loss_list = [], [], [], [], [], [], []
+        pi_loss_list, value_loss_list, entropy_loss_list, x_ent_loss_list, atn_entropy_list, atn_entropy_list2, total_loss_list, s_loss_list = [], [], [], [], [], [], [], []
         batch_size = self.n_steps * self.n_envs // self.n_minibatch
         if batch_size < self.mini_batch_size:
             self.mini_batch_size = batch_size
@@ -113,7 +116,7 @@ class PPO(BaseAgent):
                 mask_batch = (1 - done_batch)
                 # dist_batch, value_batch, _ = self.policy(obs_batch, hidden_state_batch, mask_batch)
                 # layer 2
-                feature_batch, atn_batch_list, feature_indices = self.policy.embedder.forward_with_attn_indices(
+                feature_batch, atn_batch_list, feature_indices, codes = self.policy.embedder.forward_with_attn_indices(
                     obs_batch)
                 # remove atn_batch_list from gpu?
                 dist_batch, value_batch = self.policy.hidden_to_output(feature_batch)
@@ -136,12 +139,18 @@ class PPO(BaseAgent):
                 # entropy_loss = dist_batch.entropy().mean()
                 x_batch_ent_loss, entropy_loss, = cross_batch_entropy(dist_batch)
 
+                # Sparsity Loss (FSQ Codes)
+                if codes is not None:
+                    s_loss = sparsity_loss(codes)
+                else:
+                    s_loss = 0
+
                 # Attention Entropy
                 atn_ents = [attention_entropy(atn) for atn in atn_batch_list]
                 # atn_entropy = attention_entropy(atn_batch)
 
                 loss = pi_loss + self.value_coef * value_loss - self.entropy_coef * entropy_loss * \
-                       self.entropy_multiplier - self.x_entropy_coef * x_batch_ent_loss
+                       self.entropy_multiplier - self.x_entropy_coef * x_batch_ent_loss + self.s_loss_coef * s_loss
                 loss.backward()
 
                 # Let model to handle the large batch-size with small gpu-memory
@@ -154,10 +163,11 @@ class PPO(BaseAgent):
                 value_loss_list.append(-value_loss.item())
                 entropy_loss_list.append(entropy_loss.item())
                 x_ent_loss_list.append(x_batch_ent_loss.item())
-                #TODO: generalize this
+                # TODO: generalize this
                 try:
                     atn_entropy_list.append(atn_ents[0].item())
                     atn_entropy_list2.append(atn_ents[1].item())
+                    s_loss_list.append(s_loss.item())
                 except Exception:
                     continue
 
@@ -170,6 +180,7 @@ class PPO(BaseAgent):
                    'Loss/x_entropy': np.mean(x_ent_loss_list),
                    'Loss/atn_entropy': np.mean(atn_entropy_list),
                    'Loss/atn_entropy2': np.mean(atn_entropy_list2),
+                   'Loss/sparsity': np.mean(s_loss_list),
                    'Loss/total': np.mean(total_loss_list)}
         return summary
 
@@ -222,12 +233,13 @@ class PPO(BaseAgent):
             # Log the training-procedure
             self.t += self.n_steps * self.n_envs
             rew_batch, done_batch, true_average_reward = self.storage.fetch_log_data()
-            print(f"Mean Reward:{np.mean(rew_batch[done_batch>0]):.2f}")
+            print(f"Mean Reward:{np.mean(rew_batch[done_batch > 0]):.2f}")
             if self.storage_valid is not None:
                 rew_batch_v, done_batch_v, true_average_reward_v = self.storage_valid.fetch_log_data()
             else:
                 rew_batch_v = done_batch_v = true_average_reward_v = None
-            self.logger.feed(rew_batch, done_batch, true_average_reward, rew_batch_v, done_batch_v, true_average_reward_v)
+            self.logger.feed(rew_batch, done_batch, true_average_reward, rew_batch_v, done_batch_v,
+                             true_average_reward_v)
 
             self.optimizer, lr = self.adjust_lr(self.optimizer, self.learning_rate, self.t, num_timesteps)
             self.logger.dump(summary, lr)
