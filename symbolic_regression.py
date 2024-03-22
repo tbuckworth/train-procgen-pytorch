@@ -1,27 +1,24 @@
 import os
-
 import numpy as np
-# import pandas as pd
-# from torch import nn
-import torch.nn.functional as F
-from torch.distributions import Categorical
-
-from common.env.procgen_wrappers import create_env
+import pandas as pd
 
 if os.name != "nt":
     from pysr import PySRRegressor
+# Important! keep torch after pysr
 import torch
-
-from helper import get_config, get_path, balanced_reward, GLOBAL_DIR
+import torch.nn.functional as F
+from torch.distributions import Categorical
+from common.env.procgen_wrappers import create_env
+from helper import get_config, get_path, balanced_reward, GLOBAL_DIR, append_to_csv_if_exists
 from inspect_agent import load_policy
 
 # os.environ["PYTHON_JULIACALL_BINDIR"] = r"C:\Users\titus\PycharmProjects\train-procgen-pytorch\venv\julia_env\pyjuliapkg\install\bin"
 # os.environ["PYTHON_JULIACALL_BINDIR"] = r"C:\Users\titus\AppData\Local\Microsoft\WindowsApps"
 # os.environ["PYTHON_JULIACALL_BINDIR"] = r"C:\Users\titus\.julia\juliaup\julia-1.10.0+0.x64.w64.mingw32\bin"
 
-def find_model(X, Y, logdir, iterations):
+def find_model(X, Y, logdir, iterations, save_file):
     model = PySRRegressor(
-        equation_file=get_path(logdir, "symb_reg.csv"),
+        equation_file=get_path(logdir, save_file),
         niterations=iterations,  # < Increase me for better results
         binary_operators=["+", "*"],
         unary_operators=[
@@ -156,23 +153,17 @@ def get_test_env(logdir, n_envs):
     return env
 
 if __name__ == "__main__":
-    iterations = 40
-    data_size = 10000
+    iterations = 500
+    data_size = 100000
     rounds = 16
     n_envs = 8
+    save_file = "symb_reg.csv"
     logdir = "logs/train/coinrun/coinrun/2024-02-20__18-02-16__seed_6033"
     policy, env, obs, storage = load_nn_policy(logdir, n_envs)
-    X, Y = generate_data(policy, env, obs, n=data_size)
+    X, Y = generate_data(policy, env, obs, n=int(data_size))
     print("data generated")
     if os.name != "nt":
-        model = find_model(X, Y, logdir, iterations)
-        # for i in range(Y.shape[-1]):
-        #     print(i)
-        #     sm = model.pytorch([i])
-        #     print(sm)
-        # sm = model.pytorch([i for i in range(Y.shape[-1])])
-        # print(len(sm))
-        # print(sm)
+        model = find_model(X, Y, logdir, iterations, save_file)
         ns_agent = NeuroSymbolicAgent(model, policy)
         nn_agent = NeuralAgent(policy)
         ns_score_train = test_agent(ns_agent, env, obs, "NeuroSymb Train", rounds)
@@ -182,3 +173,8 @@ if __name__ == "__main__":
 
         ns_score_test = test_agent(ns_agent, test_env, obs, "NeuroSymb  Test", rounds)
         nn_score_test = test_agent(nn_agent, test_env, obs, "Neural     Test", rounds)
+
+        values = [iterations, data_size, rounds, nn_score_train, ns_score_train, nn_score_test, ns_score_test, logdir]
+        columns = ["iterations", "data_size", "rounds", "Neural_score_Train", "NeuroSymb_score_Train", "Neural_score_Test", "NeuroSymb_score_Test", logdir]
+        df = pd.DataFrame(values, columns=columns)
+        append_to_csv_if_exists(df, "symbreg/results.csv")

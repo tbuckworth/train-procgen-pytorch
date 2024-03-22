@@ -18,6 +18,7 @@ from moviepy.editor import ImageSequenceClip
 
 GLOBAL_DIR = "/vol/bitbucket/tfb115/train-procgen-pytorch"
 
+
 def is_wsl(v: str = platform.uname().release) -> int:
     """
     detects if Python is running in WSL
@@ -32,6 +33,8 @@ if os.name == "nt":
     GLOBAL_DIR = "C:/Users/titus/PycharmProjects/train-procgen-pytorch/"
 if is_wsl() == 2:
     GLOBAL_DIR = "/mnt/c/Users/titus/PycharmProjects/train-procgen-pytorch/"
+if os.getlogin() == "titus":
+    GLOBAL_DIR = "/home/titus/PycharmProjects/train-procgen-pytorch/"
 
 def match(a, b):
     a = a.tolist()
@@ -356,7 +359,7 @@ def coords_to_image(atn_coor, atn_size, image_size):
 
 
 def get_config(logdir):
-    return np.load(os.path.join(logdir, "config.npy"), allow_pickle='TRUE').item()
+    return np.load(os.path.join(GLOBAL_DIR, logdir, "config.npy"), allow_pickle='TRUE').item()
 
 
 def balanced_reward(done, info, performance_track):
@@ -370,3 +373,9 @@ def balanced_reward(done, info, performance_track):
     all_rewards = list(performance_track.values())
     true_average_reward = np.mean([rew for rew_list in all_rewards for rew in rew_list])
     return true_average_reward
+
+def append_to_csv_if_exists(df, filename):
+    if os.path.isfile(filename):
+        df.to_csv(filename, mode="a", header=False, index=False)
+    else:
+        df.to_csv(filename, mode="w", header=True, index=False)
