@@ -221,7 +221,7 @@ hard-500-impalafsqmha-sparse:
     eps_clip: 0.2
     value_coef: 0.5
     entropy_coef: 0.02
-    sparsity_coef: 0.0001
+    sparsity_coef: 0.001
     normalize_adv: True
     normalize_rew: True
     use_gae: True
