@@ -141,9 +141,12 @@ def load_policy(render, logdir, n_envs=None, decoding_info={}, start_level=0, re
     try:
         cfg = get_config(logdir)
         mirror_some = cfg["mirror_env"]
+        reduce_duplicate_actions = cfg["reduce_duplicate_actions"]
     except Exception:
         mirror_some = True
-    env = create_env(env_args, render, normalize_rew, mirror_some, decoding_info=decoding_info)
+        reduce_duplicate_actions = False
+    env = create_env(env_args, render, normalize_rew, mirror_some, decoding_info=decoding_info,
+                     reduce_duplicate_actions=reduce_duplicate_actions)
     model, observation_shape, policy = initialize_model(device, env, hyperparameters)
     if logdir is not None:
         policy.load_state_dict(torch.load(last_model, map_location=device)["model_state_dict"])

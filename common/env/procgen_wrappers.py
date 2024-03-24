@@ -481,7 +481,8 @@ def create_rendered_env(args, hyperparameters, is_valid=False):
                       mirror_some=hyperparameters.get('mirror_some', False))
 
 
-def create_env(env_args, render, normalize_rew=True, mirror_some=False, decoding_info={}):
+def create_env(env_args, render, normalize_rew=True, mirror_some=False, decoding_info={},
+               reduce_duplicate_actions=False):
     if render:
         env_args["render_mode"] = "rgb_array"
     venv = ProcgenGym3Env(**env_args)
@@ -501,5 +502,6 @@ def create_env(env_args, render, normalize_rew=True, mirror_some=False, decoding
 
     venv = TransposeFrame(venv)
     venv = ScaledFloatFrame(venv)
-
+    if reduce_duplicate_actions:
+        venv = ActionWrapper(venv)
     return venv
