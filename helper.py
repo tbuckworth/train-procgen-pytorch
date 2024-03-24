@@ -335,6 +335,7 @@ def add_training_args(parser):
     parser.add_argument('--use_valid_env', action="store_true", default=True)
     parser.add_argument('--render', action="store_true", default=False)
     parser.add_argument('--paint_vel_info', action="store_true", default=True)
+    parser.add_argument('--reduce_duplicate_actions', action="store_true", default=True)
     parser.add_argument('--wandb_tags', type=str, nargs='+')
     parser.add_argument('--minibatches', type=int, nargs='+')
     parser.add_argument('--levels', type=int, nargs='+', default=None)

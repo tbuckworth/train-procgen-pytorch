@@ -1,6 +1,6 @@
 from boxworld.create_box_world import create_box_world_env_pre_vec
 from common.env.procgen_wrappers import VecExtractDictObs, VecNormalize, MirrorFrame, TransposeFrame, ScaledFloatFrame, \
-    EncoderWrapper, create_rendered_env
+    EncoderWrapper, create_rendered_env, ActionWrapper
 from common.logger import Logger
 from common.storage import Storage
 from common.model import get_trained_vqvqae
@@ -123,6 +123,8 @@ def train_ppo(args):
             in_channels = get_in_channels(venv)
             vqvae = get_trained_vqvqae(in_channels, hyperparameters, device)
             venv = EncoderWrapper(venv, vqvae)
+        if args.reduce_duplicate_actions:
+            venv = ActionWrapper(venv)
         return venv
 
     def create_bw_env(args, hyperparameters, is_valid=False):
@@ -151,6 +153,8 @@ def train_ppo(args):
         create_venv = create_bw_env
     elif args.render:
         create_venv = create_rendered_env
+
+
     env = create_venv(args, hyperparameters)
     env_valid = create_venv(args, hyperparameters, is_valid=True) if args.use_valid_env else None
 
