@@ -13,7 +13,7 @@ from gym3 import ViewerWrapper, ToBaselinesVecEnv
 from procgen import ProcgenGym3Env
 
 from common.env.custom_viewer_wrapper import DecodedViewerWrapper
-from helper import get_action_names, match
+from helper import get_action_names, match, get_combos
 
 """
 Copy-pasted from OpenAI to obviate dependency on Baselines. Required for vectorized environments.
@@ -46,7 +46,7 @@ class VecEnv(ABC):
     """
     An abstract asynchronous, vectorized environment.
     Used to batch data from multiple copies of an environment, so that
-    each observation becomes an batch of observations, and expected action is a batch of actions to
+    each observation becomes a batch of observations, and expected action is a batch of actions to
     be applied per-environment.
     """
     closed = False
@@ -418,6 +418,28 @@ class ScaledFloatFrame(VecEnvWrapper):
         obs = self.venv.reset()
         return obs / 255.0
 
+class ActionWrapper(VecEnvWrapper):
+    '''
+    This wrapper reduces down duplicate actions
+    '''
+    def __init__(self, env):
+        self.venv = env
+        self.observation_space = self.venv.observation_space
+        action_names = get_action_names(env)
+        self.unique_actions = np.unique(action_names)
+        n = len(np.unique(action_names))
+        self.action_space = gym.spaces.Discrete(n)
+        self.action_mapping = match(self.unique_actions, action_names, dtype=self.venv.action_space.dtype)
+
+    def step_wait(self):
+        return self.venv.step_wait()
+
+    def reset(self):
+        return self.venv.reset()
+
+    def step_async(self, actions):
+        actions = self.action_mapping[actions]
+        return self.venv.step_async(actions)
 
 class EncoderWrapper(VecEnvWrapper):
     def __init__(self, env, encoder):
