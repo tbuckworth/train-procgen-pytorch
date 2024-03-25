@@ -6,8 +6,6 @@ from abc import ABC, abstractmethod
 import numpy as np
 import gym
 from gym import spaces
-import time
-from collections import deque
 import torch
 from gym3 import ViewerWrapper, ToBaselinesVecEnv
 from procgen import ProcgenGym3Env

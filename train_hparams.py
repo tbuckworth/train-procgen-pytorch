@@ -1,10 +1,23 @@
 import argparse
+import copy
+import subprocess
 import traceback
 
 from helper import add_training_args
 from train import train_ppo
 
+
+def format_args(arg):
+    output = ""
+    d = arg.__dict__
+    for var_name in d.keys():
+        output += f"--{var_name} {d[var_name]} "
+    return output
+
+
+
 if __name__ == '__main__':
+    use_subprocesses = True
     parser = argparse.ArgumentParser()
     parser = add_training_args(parser)
     args = parser.parse_args()
@@ -24,15 +37,23 @@ if __name__ == '__main__':
     args.use_valid_env = False
     args.n_minibatch = 32
 
-    sparsity = [0.04, 0.001]
-    sparsity = [0.02, 0.002, 0.01, 0.005, 0.0075]
-
-    for sparsity_coef in sparsity:
-        args.sparsity_coef = sparsity_coef
-        args.wandb_name = f"sparse_{sparsity_coef:.0E}"
-        try:
-            train_ppo(args)
-        except Exception as e:
-            print(f"Encountered error during run for {args.wandb_name}:")
-            print(traceback.format_exc())
-            continue
+    # sparsity = [0.04, 0.001]
+    sparsity = [0.002, 0.01, 0.005, 0.0075]
+    if not use_subprocesses:
+        for sparsity_coef in sparsity:
+            args.sparsity_coef = sparsity_coef
+            args.wandb_name = f"sparse_{sparsity_coef:.0E}"
+            try:
+                train_ppo(args)
+            except Exception as e:
+                print(f"Encountered error during run for {args.wandb_name}:")
+                print(traceback.format_exc())
+                continue
+    else:
+        arg_list = [copy.deepcopy(args) for _ in sparsity]
+        for arg, sc in zip(arg_list, sparsity):
+            arg.sparsity_coef = sc
+            arg.wandb_name = f"sparse_{sc:.1E}"
+            cmd = ["source", "run_scripts.sh", format_args(arg)]
+            p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True,
+                                 stderr=subprocess.DEVNULL)
