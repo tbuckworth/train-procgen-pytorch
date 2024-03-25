@@ -51,7 +51,7 @@ if __name__ == '__main__':
     args.n_minibatch = 32
 
     # sparsity = [0.04, 0.001]
-    sparsity = [0.002, 0.01, 0.005, 0.0075]
+    sparsity = [0.01, 0.005, 0.0075]
     if not use_subprocesses:
         for sparsity_coef in sparsity:
             args.sparsity_coef = sparsity_coef
