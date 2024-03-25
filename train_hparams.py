@@ -22,7 +22,7 @@ if __name__ == '__main__':
     args.wandb_tags = ["sparsity"]
     args.device = "gpu"
     args.use_valid_env = False
-    args.n_minibatch = 8
+    args.n_minibatch = 32
 
     sparsity = [0.04, 0.001]
     sparsity = [0.02, 0.002, 0.01, 0.005, 0.0075]
