@@ -16,7 +16,9 @@ def format_args(arg):
 
 
 def executable_train(hparams):
-    return '\n'.join(
+
+
+    return '; '.join(
         ["hn=$(hostname)",
          "echo ${hn} > ${hn}.txt",
          "export PATH=/vol/bitbucket/${USER}/train-procgen-pytorch/venvproc/bin/:/vol/cuda/12.2.0/bin/:$PATH",
