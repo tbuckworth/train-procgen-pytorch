@@ -21,7 +21,7 @@ def format_args(arg):
     return output
 
 
-def executable_train(hparams):
+def executable_train(hparams, name):
     # return f'"hn=$(hostname); echo ${{hn}} > ${{hn}}.txt; cd pyg/train-procgen-pytorch; source venvproc/bin/activate; train.py {hparams}"'
 
     return '\n'.join(
@@ -35,7 +35,7 @@ def executable_train(hparams):
          # "/usr/bin/nvidia-smi",
          # "export CUDA_DIR=/vol/cuda/12.2.0/:${CUDAPATH}",
          # "export XLA_FLAGS=--xla_gpu_cuda_data_dir=/vol/cuda/12.2.0/",
-         f"python3.8 /vol/bitbucket/${{USER}}/train-procgen-pytorch/train.py {hparams} 2>&1 | tee latest_train.out\n",
+         f"python3.8 /vol/bitbucket/${{USER}}/train-procgen-pytorch/train.py {hparams} 2>&1 | tee /vol/bitbucket/${{USER}}/train-procgen-pytorch/scripts/train_{name}.out\n",
          ])
 
 
@@ -77,9 +77,10 @@ if __name__ == '__main__':
         for arg, sc in zip(arg_list, sparsity):
             arg.sparsity_coef = sc
             arg.wandb_name = f"sparse_{sc:.1E}"
+            n = random.randint(0, 10000)
             hparams = format_args(arg)
-            exe = executable_train(hparams)
-            exe_file_name = f"scripts/tmp_file_{random.randint(0, 10000)}.sh"
+            exe = executable_train(hparams, n)
+            exe_file_name = f"scripts/tmp_file_{n}.sh"
             f = open(exe_file_name, 'w', newline='\n')
             f.write(exe)
             f.close()
