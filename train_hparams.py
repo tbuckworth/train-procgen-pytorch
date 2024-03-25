@@ -12,7 +12,7 @@ if __name__ == '__main__':
     args.exp_name = "coinrun-hparams"
     args.env_name = "coinrun"
     args.distribution_mode = "hard"
-    args.param_name = "hard-500-impalafsqmha"
+    args.param_name = "hard-500-impalafsqmha-sparse"
     args.num_timesteps = 2e7
     args.num_checkpoints = 1
     args.seed = 6033
@@ -22,7 +22,7 @@ if __name__ == '__main__':
     args.wandb_tags = ["sparsity"]
     args.device = "gpu"
     args.use_valid_env = False
-    args.n_minibatch = 16
+    args.n_minibatch = 8
 
     sparsity = [0.04, 0.001]
     sparsity = [0.02, 0.002, 0.01, 0.005, 0.0075]
