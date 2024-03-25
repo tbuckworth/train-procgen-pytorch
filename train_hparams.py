@@ -44,7 +44,7 @@ if __name__ == '__main__':
     args.env_name = "coinrun"
     args.distribution_mode = "hard"
     args.param_name = "hard-500-impalafsqmha-sparse"
-    args.num_timesteps = 2e7
+    args.num_timesteps = int(2e7)
     args.num_checkpoints = 1
     args.seed = 6033
     args.num_levels = 500
