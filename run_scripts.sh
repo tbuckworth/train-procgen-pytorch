@@ -1,7 +1,7 @@
 ./shh_gpu
+yes
 hn=$(hostname)
 echo ${hn} ${hn}.txt
-yes
 cd pyg/train-procgen-pytorch
 tmux
 #!/bin/bash
