@@ -1,5 +1,6 @@
 import argparse
 import copy
+import random
 import subprocess
 import traceback
 
@@ -16,9 +17,9 @@ def format_args(arg):
 
 
 def executable_train(hparams):
-    return f'"hn=$(hostname); echo ${{hn}} > ${{hn}}.txt; cd pyg/train-procgen-pytorch; source venvproc/bin/activate; train.py {hparams}"'
+    # return f'"hn=$(hostname); echo ${{hn}} > ${{hn}}.txt; cd pyg/train-procgen-pytorch; source venvproc/bin/activate; train.py {hparams}"'
 
-    return '; '.join(
+    return '\n'.join(
         ["hn=$(hostname)",
          "echo ${hn} > ${hn}.txt",
          "export PATH=/vol/bitbucket/${USER}/train-procgen-pytorch/venvproc/bin/:/vol/cuda/12.2.0/bin/:$PATH",
@@ -72,6 +73,11 @@ if __name__ == '__main__':
             arg.sparsity_coef = sc
             arg.wandb_name = f"sparse_{sc:.1E}"
             hparams = format_args(arg)
-            cmd = ["./test.sh", executable_train(hparams)]
+            exe = executable_train(hparams)
+            exe_file_name = f"scripts/tmp_file_{random.randint(0,10000)}.sh"
+            f = open(exe_file_name, 'w', newline='\n')
+            f.write(exe)
+            f.close()
+            cmd = ["./test.sh", exe_file_name]  # executable_train(hparams)]
             p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True,
                                  stderr=subprocess.DEVNULL)
