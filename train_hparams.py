@@ -12,7 +12,8 @@ def format_args(arg):
     output = ""
     d = arg.__dict__
     for var_name in d.keys():
-        output += f"--{var_name} {d[var_name]} "
+        if d[var_name] is not None:
+            output += f"--{var_name} {d[var_name]} "
     return output
 
 
