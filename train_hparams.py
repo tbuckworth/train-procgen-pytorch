@@ -16,7 +16,7 @@ def format_args(arg):
 
 
 def executable_train(hparams):
-    return f'"cd pyg/train-procgen-pytorch; source venvproc/bin/activate; train.py {hparams}'
+    return f'"cd pyg/train-procgen-pytorch; source venvproc/bin/activate; train.py {hparams}"'
 
     return '; '.join(
         ["hn=$(hostname)",
