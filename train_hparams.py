@@ -17,7 +17,9 @@ def format_args(arg):
 
 def executable_train(hparams):
     return '\n'.join(
-        ["export PATH=/vol/bitbucket/${USER}/train-procgen-pytorch/venvproc/bin/:/vol/cuda/12.2.0/bin/:$PATH",
+        ["hn=$(hostname)",
+         "echo ${hn} > ${hn}.txt",
+         "export PATH=/vol/bitbucket/${USER}/train-procgen-pytorch/venvproc/bin/:/vol/cuda/12.2.0/bin/:$PATH",
          "export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/vol/cuda/12.2.0/lib64:/vol/cuda/12.2.0/lib",
          "source /vol/bitbucket/${USER}/train-procgen-pytorch/venvproc/bin/activate",
          ". /vol/cuda/12.2.0/setup.sh",
