@@ -15,7 +15,6 @@ def format_args(arg):
     return output
 
 
-
 if __name__ == '__main__':
     use_subprocesses = True
     parser = argparse.ArgumentParser()
