@@ -13,7 +13,11 @@ def format_args(arg):
     d = arg.__dict__
     for var_name in d.keys():
         if d[var_name] is not None:
-            output += f"--{var_name} {d[var_name]} "
+            if type(d[var_name]) == bool:
+                if d[var_name]:
+                    output += f"--{var_name} "
+            else:
+                output += f"--{var_name} {d[var_name]} "
     return output
 
 
@@ -75,7 +79,7 @@ if __name__ == '__main__':
             arg.wandb_name = f"sparse_{sc:.1E}"
             hparams = format_args(arg)
             exe = executable_train(hparams)
-            exe_file_name = f"scripts/tmp_file_{random.randint(0,10000)}.sh"
+            exe_file_name = f"scripts/tmp_file_{random.randint(0, 10000)}.sh"
             f = open(exe_file_name, 'w', newline='\n')
             f.write(exe)
             f.close()
