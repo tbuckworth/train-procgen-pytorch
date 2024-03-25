@@ -339,6 +339,7 @@ def add_training_args(parser):
     parser.add_argument('--wandb_tags', type=str, nargs='+')
     parser.add_argument('--minibatches', type=int, nargs='+')
     parser.add_argument('--levels', type=int, nargs='+', default=None)
+    parser.add_argument('--sparsity_coef', type=float, default=0.)
 
     parser.add_argument('--random_percent', type=int, default=0,
                         help='COINRUN: percent of environments in which coin is randomized (only for coinrun)')
