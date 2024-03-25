@@ -1,5 +1,5 @@
 ./shh_gpu
-yes
+#yes
 hn=$(hostname)
 echo ${hn} ${hn}.txt
 cd pyg/train-procgen-pytorch
