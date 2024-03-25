@@ -68,6 +68,7 @@ if __name__ == '__main__':
                 print(traceback.format_exc())
                 continue
     else:
+        print("doing the multi-process")
         arg_list = [copy.deepcopy(args) for _ in sparsity]
         for arg, sc in zip(arg_list, sparsity):
             arg.sparsity_coef = sc
