@@ -15,6 +15,20 @@ def format_args(arg):
     return output
 
 
+def executable_train(hparams):
+    return '\n'.join(
+        ["export PATH=/vol/bitbucket/${USER}/train-procgen-pytorch/venvproc/bin/:/vol/cuda/12.2.0/bin/:$PATH",
+         "export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/vol/cuda/12.2.0/lib64:/vol/cuda/12.2.0/lib",
+         "source /vol/bitbucket/${USER}/train-procgen-pytorch/venvproc/bin/activate",
+         ". /vol/cuda/12.2.0/setup.sh",
+         "TERM=vt100",
+         "/usr/bin/nvidia-smi",
+         "export CUDA_DIR=/vol/cuda/12.2.0/:${CUDAPATH}",
+         "export XLA_FLAGS=--xla_gpu_cuda_data_dir=/vol/cuda/12.2.0/",
+         f"python3.8 /vol/bitbucket/${{USER}}/train-procgen-pytorch/train.py {hparams}",
+         ])
+
+
 if __name__ == '__main__':
     use_subprocesses = True
     parser = argparse.ArgumentParser()
@@ -53,6 +67,7 @@ if __name__ == '__main__':
         for arg, sc in zip(arg_list, sparsity):
             arg.sparsity_coef = sc
             arg.wandb_name = f"sparse_{sc:.1E}"
-            cmd = ["source", "run_scripts.sh", format_args(arg)]
+            hparams = format_args(arg)
+            cmd = ["./test.sh", executable_train(hparams)]
             p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True,
                                  stderr=subprocess.DEVNULL)
