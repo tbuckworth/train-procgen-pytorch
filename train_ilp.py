@@ -104,7 +104,10 @@ def train_logic_program():
     # logdir = "logs/train/coinrun/coinrun/2024-02-12__09-20-18__seed_6033/"
     # logdir = "logs/train/coinrun/coinrun/2024-02-12__09-20-09__seed_6033/"
     # 500: 4x4_10,10:
-    logdir = "logs/train/coinrun/coinrun/2024-02-20__18-02-16__seed_6033"
+    # logdir = "logs/train/coinrun/coinrun/2024-02-20__18-02-16__seed_6033"
+
+    #sparsity
+    logdir = "logs/train/coinrun/coinrun/2024-03-24__20-31-46__seed_6033"
 
     env, ld, n_envs = load_logic_distiller(logdir, atn_threshold=.15)
     reward = np.array([0. for _ in range(n_envs)])

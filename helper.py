@@ -31,13 +31,11 @@ def is_wsl(v: str = platform.uname().release) -> int:
 
 if os.name == "nt":
     GLOBAL_DIR = "C:/Users/titus/PycharmProjects/train-procgen-pytorch/"
+elif os.getlogin() == "titus":
+        GLOBAL_DIR = "/home/titus/PycharmProjects/train-procgen-pytorch/"
 if is_wsl() == 2:
     GLOBAL_DIR = "/mnt/c/Users/titus/PycharmProjects/train-procgen-pytorch/"
-try:
-    if os.getlogin() == "titus":
-        GLOBAL_DIR = "/home/titus/PycharmProjects/train-procgen-pytorch/"
-except Exception:
-    pass
+
 
 def match(a, b):
     a = a.tolist()

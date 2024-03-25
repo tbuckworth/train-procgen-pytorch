@@ -40,6 +40,9 @@ class LogicDistiller:
         self.atn_threshold = atn_threshold
         self.action_threshold = action_threshold
         self.policy = policy
+
+        z = (self.policy.embedder.quantizer.implicit_codebook == 0).all(1).argwhere().numpy()
+        self.zero_index = z.squeeze()
         self.example_list = []
         self.example_strings = []
 
@@ -84,8 +87,9 @@ class LogicDistiller:
             # q_value[-self.top_n:]
             #
             # self.e_facts.append(np.unique(feature_indices))
-            self.e_facts = np.append(self.e_facts, np.unique(feature_indices))
-            facts = self.features_to_string(feature_indices)
+            #TODO: remove zeros
+            self.e_facts = np.append(self.e_facts, np.unique(feature_indices[feature_indices != self.zero_index]))
+            facts = self.features_to_string(feature_indices)#[feature_indices != self.zero_index])
             ind = np.cumsum(np.ones(facts.shape).astype(int), axis=1) - 1
             preds = self.atn_to_string_fast(atn, ind)
             acts, nacts, a_facts = self.actions_to_string(actions)
@@ -144,11 +148,20 @@ class LogicDistiller:
         y_str = concat_np_list(["y(f", ind, ",", ind // n, ").\n"], ind.shape)
         self.x_y_preds = ''.join(x_str) + ''.join(y_str)
         # TODO: can it be done for many observations simultaneously?
+        inds = np.stack([ind for _ in range(5)])
+        feats_big = concat_np_list([facts, "(f", inds, ").\n"], shape=facts.shape)
         for i, _ in enumerate(preds):
-            feats = concat_np_list([facts[i], "(f", ind, ").\n"], shape=facts[i].shape)
-            f_string = ''.join(feats)
+            # feats = concat_np_list([facts[i], "(f", ind, ").\n"], shape=facts[i].shape)
+            feats = feats_big[i]
+            f_string = ''.join(feats[facts[i] != f"e{self.zero_index}"])
             a_str = ', '.join(acts[i][acts[i] != ""])
             na_str = ', '.join(nacts[i][nacts[i] != ""])
+
+            bad_fs = ind[facts[i] == f"e{self.zero_index}"]
+            bf = concat_np_list(["f", bad_fs], shape=bad_fs.shape)
+            #TODO: filter preds[i] for those not containing any bf's
+            # v_search = np.vectorize(lambda x: not bool(re.search(x, '|'.join(bf))))
+            # p_str = ''.join(preds[i][v_search(preds[i])])
             p_str = ''.join(preds[i])
             example = ('\n\n'.join([f_string, p_str]), a_str, na_str)
             self.example_strings.append(example)
