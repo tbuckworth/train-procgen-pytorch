@@ -16,6 +16,8 @@ def format_args(arg):
             if type(d[var_name]) == bool:
                 if d[var_name]:
                     output += f"--{var_name} "
+            elif type(d[var_name]) == list:
+                output += f"--{var_name} " + " ".join(d[var_name])
             else:
                 output += f"--{var_name} {d[var_name]} "
     return output
