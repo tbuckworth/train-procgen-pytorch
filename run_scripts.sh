@@ -4,6 +4,7 @@ hn=$(hostname)
 echo ${hn} ${hn}.txt
 cd pyg/train-procgen-pytorch
 tmux
+
 #!/bin/bash
 #SBATCH --gres=gpu:1
 #SBATCH --mail-type=ALL
