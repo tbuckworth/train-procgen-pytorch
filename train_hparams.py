@@ -40,11 +40,12 @@ def executable_train(hparams, name):
 
 
 if __name__ == '__main__':
-    use_subprocesses = True
     parser = argparse.ArgumentParser()
+    parser.add_argument('--single_process', action="store_true", default=False)
     parser = add_training_args(parser)
     args = parser.parse_args()
-
+    single_process = args.single_process
+    args.__delattr__("single_process")
     args.exp_name = "coinrun-hparams"
     args.env_name = "coinrun"
     args.distribution_mode = "hard"
@@ -62,7 +63,7 @@ if __name__ == '__main__':
 
     # sparsity = [0.04, 0.001]
     sparsity = [0.01, 0.005, 0.0075]
-    if not use_subprocesses:
+    if single_process:
         for sparsity_coef in sparsity:
             args.sparsity_coef = sparsity_coef
             args.wandb_name = f"sparse_{sparsity_coef:.0E}"
