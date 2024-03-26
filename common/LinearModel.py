@@ -1,4 +1,6 @@
 import os
+
+import numpy as np
 import torch.nn as nn
 import torch
 import wandb
@@ -11,6 +13,10 @@ def init_weights(m):
 class XSquaredApproximator(nn.Module):
     def __init__(self, epochs, learning_rate, depth, logdir, cfg, wandb_tags):
         super(XSquaredApproximator, self).__init__()
+        if not (os.path.exists(self.logdir)):
+            os.makedirs(self.logdir)
+        np.save(os.path.join(logdir, "config.npy"), cfg)
+
         self.wandb_group = None
         self.cfg = cfg
         self.wandb_tags = wandb_tags
@@ -87,8 +93,6 @@ class XSquaredApproximator(nn.Module):
                     self.results[epoch] = outputs.detach().numpy().squeeze()
                     self.test_loss.append(loss.item())
                 print("Saving model.")
-                if not (os.path.exists(self.logdir)):
-                    os.makedirs(self.logdir)
                 torch.save({'model_state_dict': self.model.state_dict(),
                             'optimizer_state_dict': self.optimizer.state_dict()},
                            f'{self.logdir}/model_{epoch}.pth')

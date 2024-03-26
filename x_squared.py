@@ -34,7 +34,6 @@ if __name__ == "__main__":
            "architecture": "MLP",
            "n_layers": n_layers,
            }
-    np.save(os.path.join(logdir, "config.npy"), cfg)
 
     x, y = generate_data(low, high, shape)
     x_test, y_test = generate_data(low_t, high_t, shape)
