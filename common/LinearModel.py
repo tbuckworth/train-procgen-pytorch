@@ -66,7 +66,6 @@ class XSquaredApproximator(nn.Module):
             else:
                 wandb.init(project=project, config=self.cfg, sync_tensorboard=True,
                            tags=self.wandb_tags, resume=wb_resume, name=name)
-        self.results = {}
         x = torch.from_numpy(x).to(self.device)
         y = torch.from_numpy(y).to(self.device)
         x_test = torch.from_numpy(x_test).to(self.device)
@@ -90,7 +89,7 @@ class XSquaredApproximator(nn.Module):
                 with torch.no_grad():
                     outputs = self.model(x_test)
                     loss = self.loss_fn(outputs, y_test)
-                    self.results[epoch] = outputs.detach().numpy().squeeze()
+                    # self.results[epoch] = outputs.detach().numpy().squeeze()
                     self.test_loss.append(loss.item())
                 print("Saving model.")
                 torch.save({'model_state_dict': self.model.state_dict(),
