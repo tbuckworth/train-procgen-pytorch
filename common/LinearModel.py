@@ -91,12 +91,15 @@ class XSquaredApproximator(nn.Module):
                     loss = self.loss_fn(outputs, y_test)
                     # self.results[epoch] = outputs.detach().numpy().squeeze()
                     self.test_loss.append(loss.item())
+                    outputs = self.model(x)
+                    loss = self.loss_fn(outputs, y)
+
                 print("Saving model.")
                 torch.save({'model_state_dict': self.model.state_dict(),
                             'optimizer_state_dict': self.optimizer.state_dict()},
                            f'{self.logdir}/model_{epoch}.pth')
                 if self.use_wandb:
-                    log = [epoch, self.losses[-1], self.test_loss[-1]]
+                    log = [epoch, loss.item(), self.test_loss[-1]]
                     wandb.log({k: v for k, v in zip(self.columns, log)})
             # if epoch % 100 == 0 and epoch > 0:
             #     generate_results_gif(x_test, y_test, self.results, gif_info)
