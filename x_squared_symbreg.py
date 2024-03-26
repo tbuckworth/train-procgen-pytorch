@@ -27,8 +27,7 @@ def load_model(logdir):
 
 def generate_data_from_oracle(xsa, low, high, shape):
     arr = np.random.uniform(low, high, size=np.prod(shape)).reshape(shape)
-    x = torch.from_numpy(arr).to(xsa.device)
-    return arr, xsa.model(x)
+    return arr, xsa.forward_np(arr)
 
 
 def plot_x_squared(x_test, y_test, y_symb, y_nn, cfg, file_out):
@@ -62,8 +61,7 @@ if __name__ == "__main__":
 
     x_test, y_test = generate_data(low_t, high_t, shape)
     y_symb = symb_model.predict(x_test)
-    y_nn_torch = xsa.model(torch.from_numpy(x_test).to(xsa.device))
-    y_nn = y_nn_torch.detach().cpu().numpy()
+    y_nn = xsa.forward_np(x_test)
 
     plot_x_squared(x_test, y_test, y_symb, y_nn, cfg, image_file)
 
