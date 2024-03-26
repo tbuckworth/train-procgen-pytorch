@@ -24,7 +24,7 @@ class XSquaredApproximator(nn.Module):
         self.results = {}
         self.losses = []
         self.test_loss = []
-        self.device = torch.device("gpu" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.batch_size = 256
         self.checkpoint = 1000
         self.nb_epoch = epochs
