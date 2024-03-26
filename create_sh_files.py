@@ -5,6 +5,7 @@ import subprocess
 import traceback
 
 from helper import add_training_args
+from inspect_agent import latest_model_path
 from train import train_ppo
 
 
@@ -27,21 +28,26 @@ def executable_train(hparams, name):
     # return f'"hn=$(hostname); echo ${{hn}} > ${{hn}}.txt; cd pyg/train-procgen-pytorch; source venvproc/bin/activate; train.py {hparams}"'
 
     return '\n'.join(
-        ["hn=$(hostname)",
-         "echo ${hn} > ${hn}.txt",
+        ["#!/bin/bash",
+         "#SBATCH --gres=gpu:1",
+         "#SBATCH --mail-type=ALL",
+         "#SBATCH --mail-user=tfb115",
+         "export PATH=/vol/bitbucket/${USER}/train-procgen-pytorch/venvproc/bin/:/vol/cuda/12.2.0/bin/:$PATH",
+         "export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/vol/cuda/12.2.0/lib64:/vol/cuda/12.2.0/lib",
          "source /vol/bitbucket/${USER}/train-procgen-pytorch/venvproc/bin/activate",
-         f"nohup python3.8 /vol/bitbucket/${{USER}}/train-procgen-pytorch/train.py {hparams} &\n",
-         # f"2>&1 | tee /vol/bitbucket/${{USER}}/train-procgen-pytorch/scripts/train_{name}.out\n",
+         ". /vol/cuda/12.2.0/setup.sh",
+         "TERM=vt100",
+         "/usr/bin/nvidia-smi",
+         "export CUDA_DIR=/vol/cuda/12.2.0/:${CUDAPATH}",
+         "export XLA_FLAGS=--xla_gpu_cuda_data_dir=/vol/cuda/12.2.0/",
+         f"python3.8 /vol/bitbucket/${{USER}}/train-procgen-pytorch/train.py {hparams} 2>&1 | tee /vol/bitbucket/${{USER}}/train-procgen-pytorch/scripts/train_{name}.out\n",
          ])
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--single_process', action="store_true", default=False)
     parser = add_training_args(parser)
     args = parser.parse_args()
     single_process = args.single_process
-    args.__delattr__("single_process")
     args.exp_name = "coinrun-hparams"
     args.env_name = "coinrun"
     args.distribution_mode = "hard"
@@ -56,32 +62,16 @@ if __name__ == '__main__':
     args.device = "gpu"
     args.use_valid_env = False
     args.n_minibatch = 32
+    args.model_file = latest_model_path("logs/train/coinrun/coinrun/2024-02-20__18-02-16__seed_6033")
 
-    # sparsity = [0.04, 0.001]
     sparsity = [0.02, 0.01, 0.05, 0.0075, 0.002]
-    if single_process:
-        for sparsity_coef in sparsity:
-            args.sparsity_coef = sparsity_coef
-            args.wandb_name = f"sparse_{sparsity_coef:.0E}"
-            try:
-                train_ppo(args)
-            except Exception as e:
-                print(f"Encountered error during run for {args.wandb_name}:")
-                print(traceback.format_exc())
-                continue
-    else:
-        print("doing the multi-process")
-        arg_list = [copy.deepcopy(args) for _ in sparsity]
-        for arg, sc in zip(arg_list, sparsity):
-            arg.sparsity_coef = sc
-            arg.wandb_name = f"sparse_{sc:.1E}"
-            n = random.randint(0, 10000)
-            hparams = format_args(arg)
-            exe = executable_train(hparams, n)
-            exe_file_name = f"scripts/tmp_file_{n}.sh"
-            f = open(exe_file_name, 'w', newline='\n')
-            f.write(exe)
-            f.close()
-            cmd = ["./test.sh", exe_file_name]  # executable_train(hparams)]
-            p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True,
-                                 stderr=subprocess.DEVNULL)
+    arg_list = [copy.deepcopy(args) for _ in sparsity]
+    for arg, sc in zip(arg_list, sparsity):
+        arg.sparsity_coef = sc
+        arg.wandb_name = f"ft_sparse_{sc:.1E}"
+        hparams = format_args(arg)
+        exe = executable_train(hparams, arg.wandb_name)
+        exe_file_name = f"scripts/tmp_file_{arg.wandb_name}.sh"
+        f = open(exe_file_name, 'w', newline='\n')
+        f.write(exe)
+        f.close()
