@@ -47,7 +47,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser = add_training_args(parser)
     args = parser.parse_args()
-    single_process = args.single_process
     args.exp_name = "coinrun-hparams"
     args.env_name = "coinrun"
     args.distribution_mode = "hard"
