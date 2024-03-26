@@ -84,10 +84,7 @@ class LogicDistiller:
             feature_indices = feature_indices[-self.top_n:]
             atn = atn[-self.top_n:]
             actions = actions[-self.top_n:]
-            # q_value[-self.top_n:]
-            #
-            # self.e_facts.append(np.unique(feature_indices))
-            #TODO: remove zeros
+
             self.e_facts = np.append(self.e_facts, np.unique(feature_indices[feature_indices != self.zero_index]))
             facts = self.features_to_string(feature_indices)#[feature_indices != self.zero_index])
             ind = np.cumsum(np.ones(facts.shape).astype(int), axis=1) - 1
@@ -159,10 +156,9 @@ class LogicDistiller:
 
             bad_fs = ind[facts[i] == f"e{self.zero_index}"]
             bf = concat_np_list(["f", bad_fs], shape=bad_fs.shape)
-            #TODO: filter preds[i] for those not containing any bf's
-            # v_search = np.vectorize(lambda x: not bool(re.search(x, '|'.join(bf))))
-            # p_str = ''.join(preds[i][v_search(preds[i])])
-            p_str = ''.join(preds[i])
+            #Remove any relations that contain the zero feature vector (usually there are none, perhaps always).
+            v_search = np.vectorize(lambda x: not bool(re.search("$b" + '$b|$b'.join(bf) + "$b", x)))
+            p_str = ''.join(preds[i][v_search(preds[i])])
             example = ('\n\n'.join([f_string, p_str]), a_str, na_str)
             self.example_strings.append(example)
         return True
