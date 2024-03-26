@@ -16,7 +16,7 @@ class XSquaredApproximator(nn.Module):
         if not (os.path.exists(logdir)):
             os.makedirs(logdir)
         np.save(os.path.join(logdir, "config.npy"), cfg)
-
+        self.use_wandb = True
         self.wandb_group = None
         self.cfg = cfg
         self.wandb_tags = wandb_tags
