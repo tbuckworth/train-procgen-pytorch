@@ -26,7 +26,7 @@ class XSquaredApproximator(nn.Module):
         self.test_loss = []
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.batch_size = 256
-        self.checkpoint = 1000
+        self.checkpoint = 100
         self.nb_epoch = epochs
         self.input_size = 1
         self.mid_weight = 64
@@ -85,7 +85,7 @@ class XSquaredApproximator(nn.Module):
             print(f"{loss:.2f}: loss at epoch {epoch}")
 
             # test section
-            if epoch % self.checkpoint == 0:
+            if epoch % self.checkpoint == 0 or (epoch < 100 and epoch % 10 == 0):
                 with torch.no_grad():
                     outputs = self.model(x_test)
                     loss = self.loss_fn(outputs, y_test)
