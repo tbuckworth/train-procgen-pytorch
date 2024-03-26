@@ -1,4 +1,5 @@
 import os
+from datetime import time
 
 import numpy as np
 
@@ -10,7 +11,12 @@ def generate_data(low, high, shape):
     return arr, arr ** 2
 
 
+# def symb_reg():
+#     model = find_model(X, Y, logdir, iterations, save_file)
+
+
 if __name__ == "__main__":
+    seed = 2063
     low = -10.
     high = +10.
     low_t = -50.
@@ -18,12 +24,13 @@ if __name__ == "__main__":
     n = 10000
     shape = (n, 1)
     epochs = 10000
-    learning_rate = 1e-4
+    learning_rate = 1e-5
     n_layers = 4
     wandb_tags = ["MLP", "4 Layer", "ReLU"]
 
     logdir = os.path.join('logs', 'train', 'x_squared', 'x_squared')
-
+    run_name = time.strftime("%Y-%m-%d__%H-%M-%S") + f'__seed_{seed}'
+    logdir = os.path.join(logdir, run_name)
     cfg = {"low": low,
            "high": high,
            "low_t": low_t,
@@ -39,3 +46,5 @@ if __name__ == "__main__":
     x_test, y_test = generate_data(low_t, high_t, shape)
     model = XSquaredApproximator(epochs, learning_rate, n_layers, logdir, cfg, wandb_tags)
     model.fit(x, y, x_test, y_test)
+
+
