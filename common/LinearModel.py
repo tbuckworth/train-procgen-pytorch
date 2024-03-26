@@ -13,8 +13,8 @@ def init_weights(m):
 class XSquaredApproximator(nn.Module):
     def __init__(self, epochs, learning_rate, depth, logdir, cfg, wandb_tags):
         super(XSquaredApproximator, self).__init__()
-        if not (os.path.exists(self.logdir)):
-            os.makedirs(self.logdir)
+        if not (os.path.exists(logdir)):
+            os.makedirs(logdir)
         np.save(os.path.join(logdir, "config.npy"), cfg)
 
         self.wandb_group = None
