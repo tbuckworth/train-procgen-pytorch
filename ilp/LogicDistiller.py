@@ -10,7 +10,7 @@ import pandas as pd
 import torch
 from matplotlib import pyplot as plt
 
-from helper import coords_to_image
+from helper import coords_to_image, GLOBAL_DIR
 # from matplotlib import pyplot as plt
 
 # from VQMHA import flatten_features
@@ -145,7 +145,7 @@ class LogicDistiller:
         y_str = concat_np_list(["y(f", ind, ",", ind // n, ").\n"], ind.shape)
         self.x_y_preds = ''.join(x_str) + ''.join(y_str)
         # TODO: can it be done for many observations simultaneously?
-        inds = np.stack([ind for _ in range(5)])
+        inds = np.stack([ind for _ in range(len(facts))])
         feats_big = concat_np_list([facts, "(f", inds, ").\n"], shape=facts.shape)
         for i, _ in enumerate(preds):
             # feats = concat_np_list([facts[i], "(f", ind, ").\n"], shape=facts[i].shape)
@@ -197,11 +197,11 @@ class LogicDistiller:
     def generate_hypothesis(self):
         start = time.time()
         # This assumes my filepath and using WSL
-        if os.name == "nt":
-            filepath = os.path.join("/mnt/c/Users/titus/PycharmProjects/train-procgen-pytorch/",
-                                    re.sub("\\\\", "/", self.learning_file))
-        else:
-            filepath = os.path.join("ilp/logic_examples/", self.learning_file)
+        # if os.name == "nt":
+        #     filepath = os.path.join("/mnt/c/Users/titus/PycharmProjects/train-procgen-pytorch/",
+        #                             re.sub("\\\\", "/", self.learning_file))
+        # else:
+        filepath = os.path.join(GLOBAL_DIR, self.learning_file)
         # Now we generate hypotheses
         cmd = create_cmd(["FastLAS", "--nopl", "--force-safety", "--threads", "8", filepath])
         output = run_subprocess(cmd, "\\n")

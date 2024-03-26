@@ -12,6 +12,7 @@ from ilp.LogicDistiller import LogicDistiller
 from ilp.ilp_helper import append_to_csv_if_exists, create_cmd, run_subprocess
 from inspect_agent import load_policy
 
+
 def time_clingo():
     # cmd = ["wsl", f'echo "{self.clingo_file_contents}" | clingo /dev/stdin']
     filepath = "/mnt/c/Users/titus/PycharmProjects/train-procgen-pytorch/ilp/logic_examples/clingo_learning.lp"
@@ -25,7 +26,6 @@ def time_clingo():
         print(f"{i}:{elapsed:.4f}")
 
 
-
 def time_cmd(cmd, n):
     start = time.time()
     for _ in range(n):
@@ -35,8 +35,7 @@ def time_cmd(cmd, n):
     return elapsed
 
 
-def test_ld():
-    logdir = "logs/train/coinrun/coinrun/2024-02-20__18-02-16__seed_6033"
+def test_ld(logdir="logs/train/coinrun/coinrun/2024-02-20__18-02-16__seed_6033"):
     env, ld, n_envs = load_logic_distiller(logdir, .15)
     print(f"Loaded LogicDistiller with {logdir}")
     df = pd.read_csv("ilp/logic_examples/results.csv")
@@ -94,10 +93,10 @@ def test_agent_in_env(df, env, ld, row):
                 mean_episode_reward = np.mean(rewards[-40:])
                 print(
                     f"Episode:{len(rewards)}\tRewards - balanced:{true_average_reward:.2f}\tmean:{mean_episode_reward:.2f}")
-                return true_average_reward, mean_episode_reward, rand_acts/all_acts
+                return true_average_reward, mean_episode_reward, rand_acts / all_acts
 
 
-def train_logic_program():
+def train_logic_program(logdir="logs/train/coinrun/coinrun/2024-03-24__20-31-46__seed_6033"):
     # load model
 
     # 500: 8x8_8,5,5,5:
@@ -106,8 +105,8 @@ def train_logic_program():
     # 500: 4x4_10,10:
     # logdir = "logs/train/coinrun/coinrun/2024-02-20__18-02-16__seed_6033"
 
-    #sparsity
-    logdir = "logs/train/coinrun/coinrun/2024-03-24__20-31-46__seed_6033"
+    # sparsity
+    # logdir = "logs/train/coinrun/coinrun/2024-03-24__20-31-46__seed_6033"
 
     env, ld, n_envs = load_logic_distiller(logdir, atn_threshold=.15)
     reward = np.array([0. for _ in range(n_envs)])
@@ -175,7 +174,10 @@ def load_logic_distiller(logdir, atn_threshold):
 
 
 if __name__ == "__main__":
-    train_logic_program()
+    # sparsity
+    logdir = "logs/train/coinrun/coinrun/2024-03-24__20-31-46__seed_6033"
+    train_logic_program(logdir)
+    test_ld(logdir)
 # TODO:
 # put the x, y coords into background knowledge;
 # find way to include intermediary/auxilary predicates

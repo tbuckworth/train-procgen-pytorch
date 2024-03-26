@@ -6,6 +6,8 @@ from sys import platform
 import numpy as np
 import pandas as pd
 
+from helper import OS_IS
+
 PREFIX = "coinrun_ppo_actor_checkpoint"
 
 SETUP_DICT = {'wsl': True,
@@ -38,6 +40,13 @@ def new_file(folder, name, suffix=""):
 
 
 def create_cmd(param):
+    cmd = create_cmd_list(param)
+    if OS_IS == "Linux":
+        return ' '.join(cmd)
+    return cmd
+
+
+def create_cmd_list(param):
     cmd = []
     if SETUP_DICT['wsl']:
         cmd.append('wsl')
