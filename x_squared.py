@@ -11,8 +11,8 @@ def generate_data(low, high, shape):
     return arr, arr ** 2
 
 
-# def symb_reg():
-#     model = find_model(X, Y, logdir, iterations, save_file)
+def symb_reg():
+    model = find_model(X, Y, logdir, iterations, save_file)
 
 
 if __name__ == "__main__":
