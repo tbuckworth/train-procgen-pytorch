@@ -87,7 +87,7 @@ class XSquaredApproximator(nn.Module):
 
             # test section
             if epoch % self.checkpoint == 0:
-                with torch.no_grad:
+                with torch.no_grad():
                     outputs = self.model(x_test)
                     loss = self.loss_fn(outputs, y_test)
                     self.results[epoch] = outputs.detach().numpy().squeeze()
