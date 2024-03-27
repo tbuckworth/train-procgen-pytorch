@@ -1,7 +1,7 @@
 from gym3 import ViewerWrapper, ToBaselinesVecEnv
 from gym3.interop import _space2vt
 
-from cartpole_pre_vec import CartPoleVecEnv
+from cartpole.cartpole_pre_vec import CartPoleVecEnv
 from common.env.procgen_wrappers import VecNormalize
 def create_cartpole_env_pre_vec(env_args_in, render, normalize_rew=True):
     env_args = env_args_in.copy()
@@ -23,5 +23,3 @@ def make_cartpole_vec(env_args, n_envs):
     return venv
 
 
-if __name__ == "__main__":
-    pass

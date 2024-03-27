@@ -892,6 +892,7 @@ class MHAModel(nn.Module):
 
 class MLPModel(nn.Module):
     def __init__(self, in_channels, depth, mid_weight, latent_size):
+        super(MLPModel, self).__init__()
         self.input_size = in_channels
         self.depth = depth
         self.mid_weight = mid_weight

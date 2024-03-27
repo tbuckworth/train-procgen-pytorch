@@ -1,14 +1,14 @@
 import unittest
 
-import numpy as np
 import torch
 import yaml
 from torchinfo import summary
 
-from boxworld.create_box_world import create_box_world_env, create_box_world_env_pre_vec
+from boxworld.create_box_world import create_box_world_env_pre_vec
+from cartpole.create_cartpole import create_cartpole_env_pre_vec
 from common.model import ImpalaVQMHAModel, ImpalaFSQModel, ImpalaModel, Decoder, VQVAE, ImpalaFSQMHAModel, \
     RibFSQMHAModel
-from helper import initialize_model, get_config
+from helper import initialize_model
 from common.env.procgen_wrappers import create_env
 
 
@@ -176,6 +176,26 @@ class BoxWorldTestModel(unittest.TestCase):
         model, obs_shape, policy = initialize_model(self.device, self.env, hyperparameters)
         model.forward(self.obs)
         summary(model, self.obs.shape)
+
+class CartPoleTestModel(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.device = torch.device('cpu')
+        env_args = {"n_envs": 10}
+        cls.env = create_cartpole_env_pre_vec(env_args, render=False, normalize_rew=True)
+        cls.in_channels = cls.env.observation_space.shape[0]
+        cls.obs = torch.FloatTensor(cls.env.reset())
+        cls.obs_shape = cls.env.observation_space.shape
+
+    def test_MLPModel(self):
+        # model = RibFSQMHAModel(self.in_channels, 2, self.device, self.obs_shape, reduce='dim_wise')
+        hyperparameters = get_hyperparams("cartpole")
+        model, obs_shape, policy = initialize_model(self.device, self.env, hyperparameters)
+        model.forward(self.obs)
+        summary(model, self.obs.shape)
+
+
+
 
 if __name__ == '__main__':
     unittest.main()
