@@ -5,6 +5,7 @@ import subprocess
 import traceback
 
 from helper import add_training_args
+from inspect_agent import latest_model_path
 from train import train_ppo
 
 
@@ -47,7 +48,7 @@ if __name__ == '__main__':
     args.distribution_mode = "hard"
     args.param_name = "hard-500-impalafsqmha-sparse"
     args.num_timesteps = int(1e8)
-    args.num_checkpoints = 1
+    args.num_checkpoints = 10
     args.seed = 6033
     args.num_levels = 500
     args.start_level = 0
@@ -55,10 +56,11 @@ if __name__ == '__main__':
     args.wandb_tags = ["sparsity", "fine-tune"]
     args.device = "gpu"
     args.use_valid_env = False
-    args.n_minibatch = 32
+    args.n_minibatch = 16
+    # args.model_file = latest_model_path("logs/train/coinrun/coinrun/2024-03-26__09-11-40__seed_6033")
 
     # sparsity = [0.04, 0.001]
-    sparsity = [0.02, 0.01, 0.05, 0.0075, 0.002]
+    sparsity = [0.02, 0.01, 0.05, 0.0075, 0.005, 0.002]
     if single_process:
         for sparsity_coef in sparsity:
             args.sparsity_coef = sparsity_coef
