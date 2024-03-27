@@ -94,6 +94,7 @@ class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
         self.num_envs = n_envs
         self.terminated = np.full(self.num_envs, True)
         self.reward = np.ones((self.num_envs))
+        self.info = [{"env_reward": self.reward[i]} for i in range(len(self.reward))]
         self.gravity = 9.8
         self.masscart = 1.0
         self.masspole = 0.1
@@ -198,7 +199,7 @@ class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
 
         if self.render_mode == "human":
             self.render()
-        return self.state, self.reward, self.terminated, {}
+        return self.state, self.reward, self.terminated, self.info
 
     def reset(
             self,
@@ -335,8 +336,7 @@ class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
             self.isopen = False
 
     def get_info(self):
-        return {}
-
+        return self.info
     def observe(self):
         return self.reward, self.state, self.terminated
 
