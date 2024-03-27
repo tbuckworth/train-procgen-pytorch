@@ -25,16 +25,16 @@ def format_args(arg):
 
 
 def executable_train(hparams, name):
-    # return f'"hn=$(hostname); echo ${{hn}} > ${{hn}}.txt; cd pyg/train-procgen-pytorch; source venvproc/bin/activate; train.py {hparams}"'
+    # return f'"hn=$(hostname); echo ${{hn}} > ${{hn}}.txt; cd pyg/train-procgen-pytorch; source venvcartpole/bin/activate; train.py {hparams}"'
 
     return '\n'.join(
         ["#!/bin/bash",
          "#SBATCH --gres=gpu:1",
          "#SBATCH --mail-type=ALL",
          "#SBATCH --mail-user=tfb115",
-         "export PATH=/vol/bitbucket/${USER}/train-procgen-pytorch/venvproc/bin/:/vol/cuda/12.2.0/bin/:$PATH",
+         "export PATH=/vol/bitbucket/${USER}/train-procgen-pytorch/venvcartpole/bin/:/vol/cuda/12.2.0/bin/:$PATH",
          "export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/vol/cuda/12.2.0/lib64:/vol/cuda/12.2.0/lib",
-         "source /vol/bitbucket/${USER}/train-procgen-pytorch/venvproc/bin/activate",
+         "source /vol/bitbucket/${USER}/train-procgen-pytorch/venvcartpole/bin/activate",
          ". /vol/cuda/12.2.0/setup.sh",
          "TERM=vt100",
          "/usr/bin/nvidia-smi",
