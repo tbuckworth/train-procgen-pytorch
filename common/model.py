@@ -914,4 +914,4 @@ class MLPModel(nn.Module):
         return self.model(x)
 
     def forward_with_attn_indices(self, x):
-        return self.model(x), None, None, None
+        return self.model(x), [], None, None
