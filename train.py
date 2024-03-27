@@ -1,4 +1,5 @@
 from boxworld.create_box_world import create_box_world_env_pre_vec
+from common.env.gym_env_wrappers import create_env_gym
 from common.env.procgen_wrappers import VecExtractDictObs, VecNormalize, MirrorFrame, TransposeFrame, ScaledFloatFrame, \
     EncoderWrapper, create_rendered_env, ActionWrapper
 from common.logger import Logger
@@ -149,10 +150,23 @@ def train_ppo(args):
             env_args["n_levels"] = 0
         return create_box_world_env_pre_vec(env_args, render=False, normalize_rew=normalize_rew)
 
+    def create_cartpole(args, hyperparameters, is_valid=False):
+        env_args = {"n_envs": n_envs,
+                    "env_name": args.env_name
+                    }
+        if is_valid:
+            pass
+        normalize_rew = hyperparameters.get('normalize_rew', True)
+        return create_env_gym(env_args, render=False, normalize_rew=normalize_rew)
+
+
     if args.env_name == "boxworld":
         create_venv = create_bw_env
     elif args.render:
         create_venv = create_rendered_env
+
+    if args.env_name == "cartpole":
+        create_venv = create_cartpole
 
 
     env = create_venv(args, hyperparameters)

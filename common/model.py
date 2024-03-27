@@ -137,7 +137,6 @@ class ImpalaBlock(nn.Module):
 
 scale = 1
 
-
 class ImpalaModel(nn.Module):
     def __init__(self,
                  in_channels,
@@ -889,3 +888,29 @@ class MHAModel(nn.Module):
         x = self.pool_and_mlp(x)
         return x, output
         # return self.mha.get_attn_weights(x)
+
+
+class MLPModel(nn.Module):
+    def __init__(self, in_channels, depth, mid_weight, latent_size):
+        self.input_size = in_channels
+        self.depth = depth
+        self.mid_weight = mid_weight
+        self.output_dim = latent_size
+        mid_layers = []
+        for _ in range(depth - 2):
+            mid_layers.append(nn.Linear(self.mid_weight, self.mid_weight))
+            mid_layers.append(nn.ReLU())
+
+        self.model = nn.Sequential(
+            nn.Linear(self.input_size, self.mid_weight),
+            nn.ReLU(),
+            nn.Sequential(*mid_layers),
+            nn.Linear(self.mid_weight, self.output_dim),
+        )
+        self.apply(xavier_uniform_init)
+
+    def forward(self, x):
+        return self.model(x)
+
+    def forward_with_attn_indices(self, x):
+        return self.model(x), None, None, None
