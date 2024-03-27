@@ -88,10 +88,11 @@ class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
         "render_fps": 50,
     }
 
-    def __init__(self, n_envs, render_mode: Optional[str] = None):
+    def __init__(self, n_envs, max_steps=500, render_mode: Optional[str] = None):
         self.np_random_seed = None
         self._np_random = None
         self.num_envs = n_envs
+        self.max_steps = max_steps
         self.terminated = np.full(self.num_envs, True)
         self.reward = np.ones((self.num_envs))
         self.info = [{"env_reward": self.reward[i]} for i in range(len(self.reward))]
@@ -132,11 +133,10 @@ class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
         self.clock = None
         self.isopen = True
         self.state = np.zeros((self.num_envs, 4))
-
-        self.steps_beyond_terminated = -np.ones((self.num_envs))
+        self.n_steps = np.zeros((self.num_envs))
 
     def step(self, action):
-        assert self.state is not None, "Call reset before using step method."
+        assert not np.all(self.state == 0), "Call reset before using step method."
         x, x_dot, theta, theta_dot = [np.squeeze(a) for a in np.hsplit(self.state, self.state.shape[-1])]
 
         force = np.ones((self.num_envs))
@@ -172,11 +172,15 @@ class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
         oob = np.bitwise_or(x < -self.x_threshold,
                             x > self.x_threshold)
         theta_oob = np.bitwise_or(theta < -self.theta_threshold_radians,
-                             theta > self.theta_threshold_radians)
+                                  theta > self.theta_threshold_radians)
         self.terminated = np.bitwise_or(oob, theta_oob)
 
+        self.n_steps += 1
+        truncated = self.n_steps >= 500.
+        self.terminated[truncated] = True
+
         if np.any(self.terminated):
-            self.reset()
+            self.set()
 
         # self.steps_beyond_terminated[terminated] += np.ones((self.num_envs))[terminated]
 
@@ -207,6 +211,16 @@ class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
             seed: Optional[int] = 0,
             options: Optional[dict] = None,
     ):
+        self.terminated = np.full(self.num_envs, True)
+        self.n_steps = np.zeros((self.num_envs))
+        return self.set(seed=seed, options=options)
+
+
+    def set(self,
+            *,
+            seed: Optional[int] = 0,
+            options: Optional[dict] = None,
+            ):
         self.seed(seed)
         # super().reset(seed=seed)
         if self.np_random_seed is not None:
@@ -222,11 +236,11 @@ class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
         if self.render_mode == "human":
             self.render()
         return self.state
-    
+
     def seed(self, seed=None):
         self.np_random_seed = seed
         return [seed]
-    
+
     def save(self):
         np.save('cartpole.npy', self.world)
 
@@ -337,6 +351,7 @@ class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
 
     def get_info(self):
         return self.info
+
     def observe(self):
         return self.reward, self.state, self.terminated
 
