@@ -134,9 +134,9 @@ class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
         self.isopen = True
         self.state = np.zeros((self.num_envs, 4))
         self.n_steps = np.zeros((self.num_envs))
+        self.reset()
 
     def step(self, action):
-        assert not np.all(self.state == 0), "Call reset before using step method."
         x, x_dot, theta, theta_dot = [np.squeeze(a) for a in np.hsplit(self.state, self.state.shape[-1])]
 
         force = np.ones((self.num_envs))
