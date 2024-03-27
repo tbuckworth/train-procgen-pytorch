@@ -60,10 +60,10 @@ if __name__ == '__main__':
     args.wandb_tags = ["sparsity", "fine-tune"]
     args.device = "gpu"
     args.use_valid_env = False
-    args.n_minibatch = 32
-    args.model_file = latest_model_path("logs/train/coinrun/coinrun/2024-02-20__18-02-16__seed_6033")
+    args.n_minibatch = 16
+    args.model_file = latest_model_path("logs/train/coinrun/coinrun/2024-03-26__09-11-40__seed_6033")
 
-    sparsity = [0.02, 0.01, 0.05, 0.0075, 0.002]
+    sparsity = [0.02, 0.01, 0.05, 0.0075, 0.005, 0.002]
     arg_list = [copy.deepcopy(args) for _ in sparsity]
     for arg, sc in zip(arg_list, sparsity):
         arg.sparsity_coef = sc
