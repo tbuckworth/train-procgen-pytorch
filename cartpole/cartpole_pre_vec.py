@@ -4,12 +4,12 @@ Copied from http://incompleteideas.net/sutton/book/code/pole.c
 permalink: https://perma.cc/C9ZM-652R
 """
 import math
-from typing import Optional, Union
+from typing import Optional
 
 import numpy as np
 
 import gym
-from gym import logger, spaces
+from gym import spaces
 from gym.envs.classic_control import utils
 from gym.error import DependencyNotInstalled
 from gym3.env import Env
