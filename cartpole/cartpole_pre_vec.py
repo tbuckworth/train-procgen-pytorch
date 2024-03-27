@@ -13,6 +13,7 @@ from gym import logger, spaces
 from gym.envs.classic_control import utils
 from gym.error import DependencyNotInstalled
 from gym3.env import Env
+from gym.utils import seeding
 
 
 class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
@@ -88,7 +89,11 @@ class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
     }
 
     def __init__(self, n_envs, render_mode: Optional[str] = None):
+        self.np_random_seed = None
+        self._np_random = None
         self.num_envs = n_envs
+        self.terminated = np.full(self.num_envs, True)
+        self.reward = np.ones((self.num_envs))
         self.gravity = 9.8
         self.masscart = 1.0
         self.masspole = 0.1
@@ -125,22 +130,20 @@ class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
         self.screen = None
         self.clock = None
         self.isopen = True
-        self.state = None
+        self.state = np.zeros((self.num_envs, 4))
 
-        self.steps_beyond_terminated = None
+        self.steps_beyond_terminated = -np.ones((self.num_envs))
 
     def step(self, action):
-        err_msg = f"{action!r} ({type(action)}) invalid"
-        assert self.action_space.contains(action), err_msg
         assert self.state is not None, "Call reset before using step method."
-        x, x_dot, theta, theta_dot = self.state
+        x, x_dot, theta, theta_dot = [np.squeeze(a) for a in np.hsplit(self.state, self.state.shape[-1])]
 
         force = np.ones((self.num_envs))
         force[action == 0] = -1
         force *= self.force_mag
         # force = self.force_mag if action == 1 else -self.force_mag
-        costheta = math.cos(theta)
-        sintheta = math.sin(theta)
+        costheta = np.cos(theta)
+        sintheta = np.sin(theta)
 
         # For the interested reader:
         # https://coneural.org/florian/papers/05_cart_pole.pdf
@@ -163,54 +166,68 @@ class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
             theta_dot = theta_dot + self.tau * thetaacc
             theta = theta + self.tau * theta_dot
 
-        self.state = (x, x_dot, theta, theta_dot)
+        self.state = np.vstack((x, x_dot, theta, theta_dot)).T
 
-        terminated = bool(
-            x < -self.x_threshold
-            or x > self.x_threshold
-            or theta < -self.theta_threshold_radians
-            or theta > self.theta_threshold_radians
-        )
+        oob = np.bitwise_or(x < -self.x_threshold,
+                            x > self.x_threshold)
+        theta_oob = np.bitwise_or(theta < -self.theta_threshold_radians,
+                             theta > self.theta_threshold_radians)
+        self.terminated = np.bitwise_or(oob, theta_oob)
 
-        if not terminated:
-            reward = 1.0
-        elif self.steps_beyond_terminated is None:
-            # Pole just fell!
-            self.steps_beyond_terminated = 0
-            reward = 1.0
-        else:
-            if self.steps_beyond_terminated == 0:
-                logger.warn(
-                    "You are calling 'step()' even though this "
-                    "environment has already returned terminated = True. You "
-                    "should always call 'reset()' once you receive 'terminated = "
-                    "True' -- any further steps are undefined behavior."
-                )
-            self.steps_beyond_terminated += 1
-            reward = 0.0
+        if np.any(self.terminated):
+            self.reset()
+
+        # self.steps_beyond_terminated[terminated] += np.ones((self.num_envs))[terminated]
+
+        # if not terminated:
+        #     reward = 1.0
+        # elif self.steps_beyond_terminated is None:
+        #     # Pole just fell!
+        #     self.steps_beyond_terminated = 0
+        #     reward = 1.0
+        # else:
+        #     if self.steps_beyond_terminated == 0:
+        #         logger.warn(
+        #             "You are calling 'step()' even though this "
+        #             "environment has already returned terminated = True. You "
+        #             "should always call 'reset()' once you receive 'terminated = "
+        #             "True' -- any further steps are undefined behavior."
+        #         )
+        #     self.steps_beyond_terminated += 1
+        #     reward = 0.0
 
         if self.render_mode == "human":
             self.render()
-        return np.array(self.state, dtype=np.float32), reward, terminated, False, {}
+        return self.state, self.reward, self.terminated, {}
 
     def reset(
             self,
             *,
-            seed: Optional[int] = None,
+            seed: Optional[int] = 0,
             options: Optional[dict] = None,
     ):
-        super().reset(seed=seed)
+        self.seed(seed)
+        # super().reset(seed=seed)
+        if self.np_random_seed is not None:
+            self._np_random, self.np_random_seed = seeding.np_random(seed)
         # Note that if you use custom reset bounds, it may lead to out-of-bound
         # state/observations.
         low, high = utils.maybe_parse_reset_bounds(
             options, -0.05, 0.05  # default low
         )  # default high
-        self.state = self.np_random.uniform(low=low, high=high, size=(self.num_envs, 4))
-        self.steps_beyond_terminated = None
+        state = self._np_random.uniform(low=low, high=high, size=(self.num_envs, 4))
+        self.state[self.terminated] = state[self.terminated]
 
         if self.render_mode == "human":
             self.render()
-        return np.array(self.state, dtype=np.float32), {}
+        return self.state
+    
+    def seed(self, seed=None):
+        self.np_random_seed = seed
+        return [seed]
+    
+    def save(self):
+        np.save('cartpole.npy', self.world)
 
     def render(self):
         if self.render_mode is None:
@@ -251,7 +268,7 @@ class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
         if self.state is None:
             return None
 
-        x = self.state
+        x = self.state[0]
 
         self.surf = pygame.Surface((self.screen_width, self.screen_height))
         self.surf.fill((255, 255, 255))
@@ -316,3 +333,12 @@ class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
             pygame.display.quit()
             pygame.quit()
             self.isopen = False
+
+    def get_info(self):
+        return {}
+
+    def observe(self):
+        return self.reward, self.state, self.terminated
+
+    def act(self, ac) -> None:
+        self.step(ac)
