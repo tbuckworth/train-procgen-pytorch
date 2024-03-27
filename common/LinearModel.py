@@ -104,6 +104,12 @@ class XSquaredApproximator(nn.Module):
             # if epoch % 100 == 0 and epoch > 0:
             #     generate_results_gif(x_test, y_test, self.results, gif_info)
 
+    def forward_np(self, x):
+        with torch.no_grad():
+            x = torch.from_numpy(x).to(self.device)
+            y = self.model(x)
+        return y.cpu().numpy()
+
     # def forward(self, batch_x):
     #     batch_x = batch_x.reshape(batch_x.shape[0], 1)
     #     return self.model(batch_x)

@@ -5,15 +5,9 @@ import numpy as np
 
 from common.LinearModel import XSquaredApproximator
 
-
 def generate_data(low, high, shape):
     arr = np.random.uniform(low, high, size=np.prod(shape)).reshape(shape)
     return arr, arr ** 2
-
-
-def symb_reg():
-    model = find_model(X, Y, logdir, iterations, save_file)
-
 
 if __name__ == "__main__":
     seed = 2063
@@ -23,7 +17,7 @@ if __name__ == "__main__":
     high_t = 50.
     n = 10000
     shape = (n, 1)
-    epochs = 10000
+    epochs = 100000
     learning_rate = 1e-5
     n_layers = 4
     wandb_tags = ["MLP", "4 Layer", "ReLU"]
