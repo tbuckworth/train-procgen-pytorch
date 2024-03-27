@@ -1,5 +1,5 @@
 einops==0.7.0
-gym==0.26.2
+gym==0.25.2
 gym3==0.3.3
 imageio==2.31.6
 matplotlib==3.7.3
