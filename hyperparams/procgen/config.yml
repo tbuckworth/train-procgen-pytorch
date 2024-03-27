@@ -747,7 +747,7 @@ cartpole:
     value_coef: 0.5
     entropy_coef: 0.02
     normalize_adv: True
-    normalize_rew: True
+    normalize_rew: False
     use_gae: True
     architecture: mlpmodel
     recurrent: False

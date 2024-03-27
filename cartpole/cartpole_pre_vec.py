@@ -232,7 +232,7 @@ class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
         )  # default high
         state = self._np_random.uniform(low=low, high=high, size=(self.num_envs, 4))
         self.state[self.terminated] = state[self.terminated]
-
+        self.n_steps[self.terminated] = 0
         if self.render_mode == "human":
             self.render()
         return self.state
