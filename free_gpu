@@ -4,13 +4,15 @@ import argparse
 import subprocess
 import random
 import json
-
+import re
 
 # nov2022: lab machine regexp
 # aug2023: temporarily remove edge, vertex & arc - for Summer 2023 lab overhaul
 # sep2023: update to reflec lab 2023/2024 set-up
-LABCOMPS = "^(gpu|ray)[0-9]{2}\.doc"
+LABCOMPS = "^(ash|beech|cedar|curve|gpu|line|oak|pixel|ray|texel|vertex|willow)[0-9]{2}\.doc"
+#LABCOMPS = "^(gpu|ray|erebus)[0-9]{2}\.doc"
 #LABCOMPS = "^(edge)[0-9]{2}\.doc"
+#LABCOMPS = "[0-9]{2}\.doc"
 
 
 # Arguments
@@ -30,7 +32,7 @@ condor_status = subprocess.run(
         "/usr/local/condor/release/bin/condor_status",
         "-long",
         "-attributes",
-        "Machine,LoadAvg,State",
+        "Machine,LoadAvg,State,GPUsMemoryUsage,AssignedGPUs,CUDADeviceName,CUDAGlobalMemoryMb,CUDACoresPerCU",
         "-json",
         "-constraint",
         ARGS.constraint,
@@ -39,8 +41,35 @@ condor_status = subprocess.run(
     check=True,  # Raises exception if subprocess fails
 )
 
+
 # Collect machine information,
 machines = json.loads(condor_status.stdout)
+#x = {m["Machine"]:m["CUDADeviceName"] for m in machines if re.search("RTX 40",m["CUDADeviceName"])}
+#y =  {m["Machine"]:m["CUDADeviceName"] for m in machines if m["CUDAGlobalMemoryMb"]>15000}
+#all_cuda = {m["Machine"]:m["CUDADeviceName"] for m in machines if "CUDADeviceName" in m.keys()}
+#x = {m:all_cuda[m] for m in all_cuda.keys() if re.search("RTX 40",all_cuda[m])}
+
+#CUDACapability
+#CUDAClockMhz
+#CUDAComputeUnits
+#CUDACoresPerCU
+#CUDADeviceName
+#CUDADevicePciBusId
+#CUDADeviceUuid
+#CUDADriverVersion
+#CUDAECCEnabled
+#CUDAGlobalMemoryMb
+
+machines = list(filter(lambda m: "CUDAGlobalMemoryMb" in m.keys() and "CUDADeviceName" in m.keys(), machines))
+
+# Rule 0: Pick an RTX 4080 if free
+rtx40 = filter(lambda m: re.search("RTX 40", m["CUDADeviceName"]) and m["State"] == "Unclaimed" and m["LoadAvg"] < 0.1, machines)
+
+# else pick an RTX with > 10GB memory (RTX 2080 Ti is typical)
+rtx = filter(lambda m: re.search("RTX", m["CUDADeviceName"]) and m["CUDAGlobalMemoryMb"]>10000 and m["State"] == "Unclaimed" and m["LoadAvg"] < 0.1, machines)
+
+# else pick a machine with > 10GB GPU memory
+g10 = filter(lambda m: m["CUDAGlobalMemoryMb"]>10000 and m["State"] == "Unclaimed" and m["LoadAvg"] < 0.1, machines)
 
 # Rule 1: Pick a random unclaimed machine with less than 0.1 load average
 # We set less than 0.1 load average to avoid any other process such as root
@@ -60,7 +89,7 @@ low_usage = filter(lambda m: m["LoadAvg"] < 0.1, machines)
 all_machines = machines
 
 # Select a machine, yielding from rules in order
-for ms in [unclaimed, claimed, low_usage, all_machines]:
+for ms in [rtx40, rtx, g10, unclaimed, claimed, low_usage, all_machines]:
     ms = list(ms)
     if ms:
         labm = random.choice(ms)["Machine"]
