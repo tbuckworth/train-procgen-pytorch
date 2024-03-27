@@ -152,7 +152,7 @@ def train_ppo(args):
 
     def create_cartpole(args, hyperparameters, is_valid=False):
         env_args = {"n_envs": n_envs,
-                    "env_name": args.env_name
+                    "env_name": "CartPole-v1"
                     }
         if is_valid:
             pass
@@ -222,6 +222,8 @@ def train_ppo(args):
             project = "Coinrun Grok"
         elif env_name == "coinrun":
             project = "Coinrun VQMHA"
+        elif env_name == "cartpole":
+            project = "CartPole"
         else:
             project = env_name
         if args.wandb_group is not None:
