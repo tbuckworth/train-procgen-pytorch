@@ -30,7 +30,7 @@ def create_env_gym(env_args, render, normalize_rew=True):
     venv = create_baselines_vec_from_gym(env_name=env_args["env_name"], num=n_envs)
     if render:
         venv = ViewerWrapper(venv, info_key="rgb")
-    venv = ToBaselinesVecEnv(venv)
+    # venv = ToBaselinesVecEnv(venv)
     # TODO: check if we need this:
     # venv = VecExtractDictObs(venv, "rgb")
     if normalize_rew:
