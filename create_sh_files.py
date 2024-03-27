@@ -51,7 +51,7 @@ if __name__ == '__main__':
     args.env_name = "coinrun"
     args.distribution_mode = "hard"
     args.param_name = "hard-500-impalafsqmha-sparse"
-    args.num_timesteps = int(1e8)
+    args.num_timesteps = int(1e9)
     args.num_checkpoints = 1
     args.seed = 6033
     args.num_levels = 500
@@ -63,7 +63,7 @@ if __name__ == '__main__':
     args.n_minibatch = 16
     args.model_file = latest_model_path("logs/train/coinrun/coinrun/2024-03-26__09-11-40__seed_6033")
 
-    sparsity = [0.02, 0.01, 0.05, 0.0075, 0.005, 0.002]
+    sparsity = [0.05, 0.075, 0.1, 0.2]
     arg_list = [copy.deepcopy(args) for _ in sparsity]
     for arg, sc in zip(arg_list, sparsity):
         arg.sparsity_coef = sc
