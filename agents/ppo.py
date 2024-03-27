@@ -163,6 +163,7 @@ class PPO(BaseAgent):
                 value_loss_list.append(-value_loss.item())
                 entropy_loss_list.append(entropy_loss.item())
                 x_ent_loss_list.append(x_batch_ent_loss.item())
+                total_loss_list.append(loss.item())
                 # TODO: generalize this
                 try:
                     atn_entropy_list.append(atn_ents[0].item())
@@ -171,7 +172,6 @@ class PPO(BaseAgent):
                 except Exception:
                     continue
 
-                total_loss_list.append(loss.item())
 
         # Adjust common/Logger.__init__ if you add/remove from summary:
         summary = {'Loss/pi': np.mean(pi_loss_list),
