@@ -17,7 +17,7 @@ def create_cartpole_env_pre_vec(env_args_in, render, normalize_rew=True):
 
 
 def make_cartpole_vec(env_args, n_envs):
-    venv = CartPoleVecEnv(n_envs, degrees=env_args["degrees"], range=env_args["range"])
+    venv = CartPoleVecEnv(n_envs, degrees=env_args["degrees"], h_range=env_args["h_range"])
     venv.ob_space = _space2vt(venv.observation_space)
     venv.ac_space = _space2vt(venv.action_space)
     return venv
