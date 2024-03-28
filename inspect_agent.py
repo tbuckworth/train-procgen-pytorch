@@ -8,9 +8,9 @@ from matplotlib import pyplot as plt
 import matplotlib.colors as colors
 import matplotlib.cm as cmx
 
-from common.storage import Storage
-from helper import get_hyperparams, initialize_model, print_values_actions, get_action_names, save_gif, GLOBAL_DIR, \
-    last_folder, print_action_entropy, coords_to_image, get_config, balanced_reward
+from helper import print_values_actions, save_gif, GLOBAL_DIR, \
+    last_folder, print_action_entropy, coords_to_image, get_config, balanced_reward, load_storage_and_policy, \
+    load_hparams_for_model
 from common.env.procgen_wrappers import create_env
 
 
@@ -118,19 +118,7 @@ def load_policy(render, logdir, n_envs=None, decoding_info={}, start_level=0, re
     # logdir = "logs/train/coinrun/coinrun/2023-10-31__10-49-30__seed_6033"
     # df = pd.read_csv(os.path.join(logdir, "log-append.csv"))
     device = torch.device('cpu')
-    hyperparameters = get_hyperparams(hparams)
-    if logdir is not None:
-        last_model = latest_model_path(logdir)
-        print(last_model)
-        hp_file = os.path.join(GLOBAL_DIR, logdir, "hyperparameters.npy")
-        if os.path.exists(hp_file):
-            hyperparameters = np.load(hp_file, allow_pickle='TRUE').item()
-            # save over levels with 8, 5, 5, 5
-            # hyperparameters["levels"] = [8, 5, 5, 5]
-            # np.save(hp_file, hyperparameters)
-
-    if n_envs is not None:
-        hyperparameters["n_envs"] = n_envs
+    hyperparameters, last_model = load_hparams_for_model(hparams, logdir, n_envs)
     env_args = {"num": hyperparameters["n_envs"],
                 "env_name": "coinrun",
                 "start_level": start_level,  # 325
@@ -147,18 +135,8 @@ def load_policy(render, logdir, n_envs=None, decoding_info={}, start_level=0, re
         reduce_duplicate_actions = False
     env = create_env(env_args, render, normalize_rew, mirror_some, decoding_info=decoding_info,
                      reduce_duplicate_actions=reduce_duplicate_actions)
-    model, observation_shape, policy = initialize_model(device, env, hyperparameters)
-    if logdir is not None:
-        policy.load_state_dict(torch.load(last_model, map_location=device)["model_state_dict"])
-    # Test if necessary:
-    policy.device = device
-    storage = Storage(observation_shape, model.output_dim, hyperparameters["n_steps"], n_envs, device)
-    action_names = get_action_names(env)
-    obs = env.reset()
-    hidden_state = np.zeros((n_envs, storage.hidden_state_size))
-    done = np.zeros(n_envs)
-    # frames = obs
-    policy.eval()
+    action_names, done, hidden_state, obs, policy, storage = load_storage_and_policy(device, env, hyperparameters,
+                                                                                     last_model, logdir, n_envs)
     return action_names, done, env, hidden_state, obs, policy, storage
 
 

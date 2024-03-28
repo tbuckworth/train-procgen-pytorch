@@ -7,6 +7,7 @@ from collections import deque
 import gym
 import numpy as np
 import pandas as pd
+import torch
 import yaml
 import platform
 from matplotlib import pyplot as plt
@@ -15,6 +16,9 @@ from common.model import NatureModel, ImpalaModel, MHAModel, ImpalaVQModel, Impa
     ImpalaFSQMHAModel, RibFSQMHAModel, MLPModel
 from common.policy import CategoricalPolicy
 from moviepy.editor import ImageSequenceClip
+
+from common.storage import Storage
+from inspect_agent import latest_model_path
 
 GLOBAL_DIR = "/vol/bitbucket/tfb115/train-procgen-pytorch/"
 OS_IS = "Linux"
@@ -389,4 +393,38 @@ def append_to_csv_if_exists(df, filename):
     if os.path.isfile(filename):
         df.to_csv(filename, mode="a", header=False, index=False)
     else:
+        if not os.path.exists(os.path.dirname(filename)):
+            os.mkdir(os.path.dirname(filename))
         df.to_csv(filename, mode="w", header=True, index=False)
+
+
+def load_storage_and_policy(device, env, hyperparameters, last_model, logdir, n_envs):
+    model, observation_shape, policy = initialize_model(device, env, hyperparameters)
+    if logdir is not None:
+        policy.load_state_dict(torch.load(last_model, map_location=device)["model_state_dict"])
+    # Test if necessary:
+    policy.device = device
+    storage = Storage(observation_shape, model.output_dim, hyperparameters["n_steps"], n_envs, device)
+    action_names = get_action_names(env)
+    obs = env.reset()
+    hidden_state = np.zeros((n_envs, storage.hidden_state_size))
+    done = np.zeros(n_envs)
+    # frames = obs
+    policy.eval()
+    return action_names, done, hidden_state, obs, policy, storage
+
+
+def load_hparams_for_model(hparams, logdir, n_envs):
+    hyperparameters = get_hyperparams(hparams)
+    if logdir is not None:
+        last_model = latest_model_path(logdir)
+        print(last_model)
+        hp_file = os.path.join(GLOBAL_DIR, logdir, "hyperparameters.npy")
+        if os.path.exists(hp_file):
+            hyperparameters = np.load(hp_file, allow_pickle='TRUE').item()
+            # save over levels with 8, 5, 5, 5
+            # hyperparameters["levels"] = [8, 5, 5, 5]
+            # np.save(hp_file, hyperparameters)
+    if n_envs is not None:
+        hyperparameters["n_envs"] = n_envs
+    return hyperparameters, last_model
