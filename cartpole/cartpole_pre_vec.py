@@ -15,6 +15,8 @@ from gym.error import DependencyNotInstalled
 from gym3.env import Env
 from gym.utils import seeding
 
+# Analytic Solution:
+# 3 * angle + angle_velocity > 0
 
 class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
     """
