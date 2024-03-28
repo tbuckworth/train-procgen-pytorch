@@ -117,7 +117,7 @@ def test_cartpole_agent(agent, env, print_name, n=40):
     act = agent.forward(obs)
     episode_rewards = []
     while episodes < n:
-        ep_reward = env.n_steps
+        ep_reward = env.env.n_steps.copy()
         obs, rew, done, new_info = env.step(act)
         act = agent.forward(obs)
         if np.any(done):
