@@ -404,7 +404,10 @@ def load_storage_and_policy(device, env, hyperparameters, last_model, logdir, n_
     # Test if necessary:
     policy.device = device
     storage = Storage(observation_shape, model.output_dim, hyperparameters["n_steps"], n_envs, device)
-    action_names = get_action_names(env)
+    try:
+        action_names = get_action_names(env)
+    except Exception:
+        action_names = None
     obs = env.reset()
     hidden_state = np.zeros((n_envs, storage.hidden_state_size))
     done = np.zeros(n_envs)

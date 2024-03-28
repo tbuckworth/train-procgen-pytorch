@@ -24,13 +24,12 @@ def find_model(X, Y, symbdir, iterations, save_file):
     model = PySRRegressor(
         equation_file=get_path(symbdir, save_file),
         niterations=iterations,  # < Increase me for better results
-        binary_operators=["+", "*"],
+        binary_operators=["+", "*", "greater"],
         unary_operators=[
-            "cos",
-            "exp",
-            "sin",
-            "greater",
-            "inv(x) = 1/x",
+            # "cos",
+            # "exp",
+            # "sin",
+            # "inv(x) = 1/x",
             # ^ Custom operator (julia syntax)
         ],
         extra_sympy_mappings={"inv": lambda x: 1 / x},
@@ -58,7 +57,7 @@ def load_nn_policy(logdir, n_envs=2):
         symbolic_agent_constructor = NeuroSymbolicAgent
         test_env = get_coinrun_test_env(logdir, n_envs)
     if cfg["env_name"] == "cartpole":
-        device = torch.devide("cuda" if torch.cuda.is_available() else "cpu")
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         hyperparameters, last_model = load_hparams_for_model(cfg["param_name"], logdir, n_envs)
         env = create_cartpole(n_envs, hyperparameters, is_valid=False)
 
@@ -105,11 +104,24 @@ def sample_latent_output_mlpmodel(policy, observation):
         h = policy.embedder(x)
         dist, value = policy.hidden_to_output(h)
         y = dist.logits.detach().cpu().numpy()
-        act = dist.sample()
-    return observation, y, act.cpu().numpy()
+        act = dist.sample().cpu().numpy()
+
+    return observation, act, act
+
+def test_cartpole_agent(agent, env, obs, print_name, n=40):
+    episodes = 0
+    act = agent.forward(obs)
+    while episodes < n:
+        obs, rew, done, old_info = env.step(act)
+        act = agent.forward(obs)
+        true_average_reward = balanced_reward(done, info, performance_track)
+        if np.any(done):
+            episodes += np.sum(done)
+            print(f"{print_name}:\tEpisode:{episodes}\tBalanced Reward:{true_average_reward:.2f}")
+    return true_average_reward
 
 
-def test_agent(agent, env, obs, print_name, n=40):
+def test_coinrun_agent(agent, env, obs, print_name, n=40):
     performance_track = {}
     episodes = 0
     act = agent.forward(obs)
@@ -160,6 +172,7 @@ class SymbolicAgent:
         with torch.no_grad():
             # obs = torch.FloatTensor(observation).to(self.policy.device)
             h = self.model.predict(observation)
+            return np.round(h,0)
             # TODO: do this with numpy instead of torch
             logits = torch.FloatTensor(h).to(self.policy.device)
             log_probs = F.log_softmax(logits, dim=1)
@@ -206,7 +219,7 @@ def create_symb_dir_if_exists(logdir):
     save_file = "symb_reg.csv"
     symbdir = os.path.join(logdir, "symbreg")
     if not os.path.exists(symbdir):
-        os.mkdir(os.path.dirname(symbdir))
+        os.mkdir(symbdir)
     return symbdir, save_file
 
 
