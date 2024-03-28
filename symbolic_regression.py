@@ -56,6 +56,7 @@ def load_nn_policy(logdir, n_envs=2):
         sampler = sample_latent_output_fsqmha
         symbolic_agent_constructor = NeuroSymbolicAgent
         test_env = get_coinrun_test_env(logdir, n_envs)
+        test_agent = test_coinrun_agent
     if cfg["env_name"] == "cartpole":
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         hyperparameters, last_model = load_hparams_for_model(cfg["param_name"], logdir, n_envs)
@@ -66,7 +67,8 @@ def load_nn_policy(logdir, n_envs=2):
         sampler = sample_latent_output_mlpmodel
         symbolic_agent_constructor = SymbolicAgent
         test_env = create_cartpole(n_envs, hyperparameters, is_valid=True)
-    return policy, env, obs, storage, sampler, symbolic_agent_constructor, test_env
+        test_agent = test_cartpole_agent
+    return policy, env, sampler, symbolic_agent_constructor, test_env, test_agent
 
 
 def drop_first_dim(arr):
@@ -75,7 +77,8 @@ def drop_first_dim(arr):
     return arr.reshape(new_shape)
 
 
-def generate_data(policy, sampler, env, observation, n):
+def generate_data(policy, sampler, env, n):
+    observation = env.reset()
     x, y, act = sampler(policy, observation)
     X = x
     Y = y
@@ -108,22 +111,26 @@ def sample_latent_output_mlpmodel(policy, observation):
 
     return observation, act, act
 
-def test_cartpole_agent(agent, env, obs, print_name, n=40):
+def test_cartpole_agent(agent, env, print_name, n=40):
     episodes = 0
+    obs = env.reset()
     act = agent.forward(obs)
+    episode_rewards = []
     while episodes < n:
-        obs, rew, done, old_info = env.step(act)
+        ep_reward = env.n_steps
+        obs, rew, done, new_info = env.step(act)
         act = agent.forward(obs)
-        true_average_reward = balanced_reward(done, info, performance_track)
         if np.any(done):
             episodes += np.sum(done)
-            print(f"{print_name}:\tEpisode:{episodes}\tBalanced Reward:{true_average_reward:.2f}")
-    return true_average_reward
+            episode_rewards += list(ep_reward[done])
+            print(f"{print_name}:\tEpisode:{episodes}\tMean Reward:{np.mean(episode_rewards):.2f}")
+    return np.mean(episode_rewards)
 
 
-def test_coinrun_agent(agent, env, obs, print_name, n=40):
+def test_coinrun_agent(agent, env, print_name, n=40):
     performance_track = {}
     episodes = 0
+    obs = env.reset()
     act = agent.forward(obs)
     while episodes < n:
         obs, rew, done, info = env.step(act)
@@ -231,18 +238,18 @@ if __name__ == "__main__":
     # logdir = "logs/train/coinrun/coinrun/2024-02-20__18-02-16__seed_6033"
     logdir = "logs/train/cartpole/cartpole/2024-03-28__11-27-12__seed_6033"
     symbdir, save_file = create_symb_dir_if_exists(logdir)
-    policy, env, obs, storage, sampler, symbolic_agent_constructor, test_env = load_nn_policy(logdir, n_envs)
-    X, Y = generate_data(policy, sampler, env, obs, n=int(data_size))
+    policy, env, sampler, symbolic_agent_constructor, test_env, test_agent = load_nn_policy(logdir, n_envs)
+    X, Y = generate_data(policy, sampler, env, n=int(data_size))
     print("data generated")
     if os.name != "nt":
         model = find_model(X, Y, symbdir, iterations, save_file)
         ns_agent = symbolic_agent_constructor(model, policy)
         nn_agent = NeuralAgent(policy)
-        ns_score_train = test_agent(ns_agent, env, obs, "NeuroSymb Train", rounds)
-        nn_score_train = test_agent(nn_agent, env, obs, "Neural    Train", rounds)
+        ns_score_train = test_agent(ns_agent, env, "NeuroSymb Train", rounds)
+        nn_score_train = test_agent(nn_agent, env, "Neural    Train", rounds)
 
-        ns_score_test = test_agent(ns_agent, test_env, obs, "NeuroSymb  Test", rounds)
-        nn_score_test = test_agent(nn_agent, test_env, obs, "Neural     Test", rounds)
+        ns_score_test = test_agent(ns_agent, test_env, "NeuroSymb  Test", rounds)
+        nn_score_test = test_agent(nn_agent, test_env, "Neural     Test", rounds)
 
         values = [iterations, data_size, rounds, nn_score_train, ns_score_train, nn_score_test, ns_score_test, logdir]
         columns = ["iterations", "data_size", "rounds", "Neural_score_Train", "NeuroSymb_score_Train",
