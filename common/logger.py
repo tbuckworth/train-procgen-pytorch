@@ -43,7 +43,7 @@ class Logger(object):
         if has_vq:
             loss_metrics = ["loss_pi", "loss_v", "loss_entropy", "loss_x_entropy", "loss_commit", "loss_total"]
         # Make sure this is consistent with _get_episode_statistics:
-        episode_metrics = ["max_episode_rewards", "mean_episode_rewards", "min_episode_rewards",
+        episode_metrics = ["max_episode_rewards", "mean_episode_rewards", "median_episode_rewards", "min_episode_rewards",
                            "max_episode_len", "mean_episode_len", "min_episode_len",
                            "mean_timeouts", "mean_episode_len_pos_reward", "balanced_mean_rewards"]  # collected for both train and val envs
         self.log = pd.DataFrame(
@@ -114,6 +114,7 @@ class Logger(object):
         episode_statistics = {}
         episode_statistics['Rewards/max_episodes'] = np.max(self.episode_reward_buffer, initial=0)
         episode_statistics['Rewards/mean_episodes'] = np.mean(self.episode_reward_buffer)
+        episode_statistics['Rewards/median_episodes'] = np.median(self.episode_reward_buffer)
         episode_statistics['Rewards/min_episodes'] = np.min(self.episode_reward_buffer, initial=0)
         episode_statistics['Len/max_episodes'] = np.max(self.episode_len_buffer, initial=0)
         episode_statistics['Len/mean_episodes'] = np.mean(self.episode_len_buffer)
@@ -124,6 +125,7 @@ class Logger(object):
         # valid
         episode_statistics['[Valid] Rewards/max_episodes'] = np.max(self.episode_reward_buffer_v, initial=0)
         episode_statistics['[Valid] Rewards/mean_episodes'] = np.mean(self.episode_reward_buffer_v)
+        episode_statistics['[Valid] Rewards/median_episodes'] = np.median(self.episode_reward_buffer_v)
         episode_statistics['[Valid] Rewards/min_episodes'] = np.min(self.episode_reward_buffer_v, initial=0)
         episode_statistics['[Valid] Len/max_episodes'] = np.max(self.episode_len_buffer_v, initial=0)
         episode_statistics['[Valid] Len/mean_episodes'] = np.mean(self.episode_len_buffer_v)

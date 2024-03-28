@@ -153,10 +153,13 @@ def train_ppo(args):
 
     def create_cartpole(args, hyperparameters, is_valid=False):
         env_args = {"n_envs": n_envs,
-                    "env_name": "CartPole-v1"
+                    "env_name": "CartPole-v1",
+                    "degrees": 12,
+                    "range": 2.4,
                     }
         if is_valid:
-            pass
+            env_args["degrees"] = 18
+            env_args["range"] = 3.6
         normalize_rew = hyperparameters.get('normalize_rew', True)
         return create_cartpole_env_pre_vec(env_args, render=False, normalize_rew=normalize_rew)
 
