@@ -1,4 +1,5 @@
 import numpy as np
+import sympy
 from pysr import PySRRegressor
 
 if __name__ == "__main__":
@@ -9,5 +10,7 @@ if __name__ == "__main__":
         niterations=1,
         binary_operators=["greater"],
         elementwise_loss="loss(prediction, target) = (prediction - target)^2",
+        extra_sympy_mappings={"greater": lambda x, y: sympy.Piecewise((1.0, x > y), (0.0, True))}
     )
     model.fit(x, y)
+    print(model)

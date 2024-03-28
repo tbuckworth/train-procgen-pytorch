@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import pandas as pd
+import sympy
 
 from cartpole.create_cartpole import create_cartpole
 
@@ -32,10 +33,10 @@ def find_model(X, Y, symbdir, iterations, save_file):
             # "inv(x) = 1/x",
             # ^ Custom operator (julia syntax)
         ],
-        extra_sympy_mappings={"inv": lambda x: 1 / x},
-        # ^ Define operator for SymPy as well
-        elementwise_loss="loss(prediction, target) = (prediction - target)^2",
-        # ^ Custom loss function (julia syntax)
+        denoise=True,
+        elementwise_loss="L2MarginLoss()",
+        extra_sympy_mappings={"greater": lambda x, y: sympy.Piecewise((1.0, x > y), (0.0, True))}
+        # elementwise_loss="loss(prediction, target) = (prediction - target)^2",
     )
     print("fitting model")
     model.fit(X, Y)
@@ -123,7 +124,7 @@ def test_cartpole_agent(agent, env, print_name, n=40):
         if np.any(done):
             episodes += np.sum(done)
             episode_rewards += list(ep_reward[done])
-            print(f"{print_name}:\tEpisode:{episodes}\tMean Reward:{np.mean(episode_rewards):.2f}")
+    print(f"{print_name}:\tEpisode:{episodes}\tMean Reward:{np.mean(episode_rewards):.2f}")
     return np.mean(episode_rewards)
 
 
@@ -231,7 +232,7 @@ def create_symb_dir_if_exists(logdir):
 
 
 if __name__ == "__main__":
-    iterations = 40
+    iterations = 100
     data_size = 10000
     rounds = 300
     n_envs = 128
