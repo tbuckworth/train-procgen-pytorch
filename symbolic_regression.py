@@ -29,6 +29,8 @@ def find_model(X, Y, symbdir, iterations, save_file):
             "cos",
             "exp",
             "sin",
+            "cond",
+            "greater",
             "inv(x) = 1/x",
             # ^ Custom operator (julia syntax)
         ],
