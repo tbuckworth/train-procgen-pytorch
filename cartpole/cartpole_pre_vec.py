@@ -88,7 +88,7 @@ class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
         "render_fps": 50,
     }
 
-    def __init__(self, n_envs, degrees=12, range=2.4, max_steps=500, render_mode: Optional[str] = None):
+    def __init__(self, n_envs, degrees=12, h_range=2.4, max_steps=500, render_mode: Optional[str] = None):
         self.np_random_seed = None
         self._np_random = None
         self.num_envs = n_envs
@@ -108,7 +108,7 @@ class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
 
         # Angle at which to fail the episode
         self.theta_threshold_radians = degrees * 2 * math.pi / 360
-        self.x_threshold = range
+        self.x_threshold = h_range
 
         # Angle limit set to 2 * theta_threshold_radians so failing observation
         # is still within bounds.
