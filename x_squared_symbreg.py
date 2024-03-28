@@ -5,8 +5,7 @@ import torch
 from matplotlib import pyplot as plt
 
 from common.LinearModel import XSquaredApproximator
-from helper import get_config
-from inspect_agent import latest_model_path
+from helper import get_config, latest_model_path
 from symbolic_regression import find_model
 from x_squared import generate_data
 

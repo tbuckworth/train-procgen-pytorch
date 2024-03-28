@@ -4,8 +4,8 @@ import re
 import numpy as np
 from matplotlib import pyplot as plt
 
-from helper import print_values_actions, add_encoder_to_env, last_folder, save_gif
-from inspect_agent import load_policy, latest_model_path, predict
+from helper import print_values_actions, add_encoder_to_env, last_folder, save_gif, latest_model_path
+from inspect_agent import load_policy, predict
 import torch
 from common.model import Decoder
 from train_decoder import retrieve_coinrun_data, send_reconstruction_update, get_decoder_details

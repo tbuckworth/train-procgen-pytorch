@@ -18,7 +18,6 @@ from common.policy import CategoricalPolicy
 from moviepy.editor import ImageSequenceClip
 
 from common.storage import Storage
-from inspect_agent import latest_model_path
 
 GLOBAL_DIR = "/vol/bitbucket/tfb115/train-procgen-pytorch/"
 OS_IS = "Linux"
@@ -428,3 +427,12 @@ def load_hparams_for_model(hparams, logdir, n_envs):
     if n_envs is not None:
         hyperparameters["n_envs"] = n_envs
     return hyperparameters, last_model
+
+
+def latest_model_path(logdir):
+    logdir = os.path.join(GLOBAL_DIR, logdir)
+    files = os.listdir(logdir)
+    pattern = r"model_(\d*)\.pth"
+    checkpoints = [int(re.search(pattern, x).group(1)) for x in files if re.search(pattern, x)]
+    last_model = os.path.join(logdir, f"model_{max(checkpoints)}.pth")
+    return last_model

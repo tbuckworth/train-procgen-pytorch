@@ -1,6 +1,5 @@
 import copy
 import os
-import re
 
 import numpy as np
 import torch
@@ -8,8 +7,7 @@ from matplotlib import pyplot as plt
 import matplotlib.colors as colors
 import matplotlib.cm as cmx
 
-from helper import print_values_actions, save_gif, GLOBAL_DIR, \
-    last_folder, print_action_entropy, coords_to_image, get_config, balanced_reward, load_storage_and_policy, \
+from helper import print_values_actions, save_gif, last_folder, print_action_entropy, coords_to_image, get_config, balanced_reward, load_storage_and_policy, \
     load_hparams_for_model
 from common.env.procgen_wrappers import create_env
 
@@ -138,15 +136,6 @@ def load_policy(render, logdir, n_envs=None, decoding_info={}, start_level=0, re
     action_names, done, hidden_state, obs, policy, storage = load_storage_and_policy(device, env, hyperparameters,
                                                                                      last_model, logdir, n_envs)
     return action_names, done, env, hidden_state, obs, policy, storage
-
-
-def latest_model_path(logdir):
-    logdir = os.path.join(GLOBAL_DIR, logdir)
-    files = os.listdir(logdir)
-    pattern = r"model_(\d*)\.pth"
-    checkpoints = [int(re.search(pattern, x).group(1)) for x in files if re.search(pattern, x)]
-    last_model = os.path.join(logdir, f"model_{max(checkpoints)}.pth")
-    return last_model
 
 
 def inspect_frames():

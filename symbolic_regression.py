@@ -29,7 +29,6 @@ def find_model(X, Y, symbdir, iterations, save_file):
             "cos",
             "exp",
             "sin",
-            "cond",
             "greater",
             "inv(x) = 1/x",
             # ^ Custom operator (julia syntax)
@@ -216,7 +215,8 @@ if __name__ == "__main__":
     data_size = 10000
     rounds = 300
     n_envs = 128
-    logdir = "logs/train/coinrun/coinrun/2024-02-20__18-02-16__seed_6033"
+    # logdir = "logs/train/coinrun/coinrun/2024-02-20__18-02-16__seed_6033"
+    logdir = "logs/train/cartpole/cartpole/2024-03-28__11-27-12__seed_6033"
     symbdir, save_file = create_symb_dir_if_exists(logdir)
     policy, env, obs, storage, sampler, symbolic_agent_constructor, test_env = load_nn_policy(logdir, n_envs)
     X, Y = generate_data(policy, sampler, env, obs, n=int(data_size))

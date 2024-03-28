@@ -1,12 +1,7 @@
 import argparse
 import copy
-import random
-import subprocess
-import traceback
 
-from helper import add_training_args
-from inspect_agent import latest_model_path
-from train import train_ppo
+from helper import add_training_args, latest_model_path
 
 
 def format_args(arg):
