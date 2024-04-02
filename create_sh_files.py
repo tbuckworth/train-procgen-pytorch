@@ -2,6 +2,8 @@ import argparse
 import copy
 import itertools
 
+import numpy as np
+
 from helper import add_training_args, latest_model_path
 
 
@@ -98,6 +100,8 @@ if __name__ == '__main__':
     # h_dict = [v for v in itertools.product(*hparams.values())]
     keys, values = zip(*hparams.items())
     h_dict_list = [dict(zip(keys, v)) for v in itertools.product(*values)]
+
+    h_dict_list = np.random.permutation(h_dict_list)
 
     arg_list = [copy.deepcopy(args) for _ in h_dict_list]
     n = len(arg_list) // n_gpu
