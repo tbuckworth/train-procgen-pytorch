@@ -9,14 +9,15 @@ def format_args(arg):
     output = ""
     d = arg.__dict__
     for var_name in d.keys():
-        if d[var_name] is not None:
-            if type(d[var_name]) == bool:
-                if d[var_name]:
+        v = d[var_name]
+        if v is not None:
+            if type(v) == bool:
+                if v:
                     output += f"--{var_name} "
-            elif type(d[var_name]) == list:
-                output += f"--{var_name} {' '.join(d[var_name])} "
+            elif type(v) == list:
+                output += f"--{var_name} {' '.join(str(v))} "
             else:
-                output += f"--{var_name} {d[var_name]} "
+                output += f"--{var_name} {v} "
     return output
 
 def executable_python(hparams, name):
