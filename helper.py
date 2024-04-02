@@ -342,6 +342,7 @@ def add_training_args(parser):
     parser.add_argument('--wandb_name', type=str, default=None)
     parser.add_argument('--wandb_group', type=str, default=None)
     parser.add_argument('--use_valid_env', action="store_true", default=True)
+    parser.add_argument('--normalize_rew', action="store_true", default=True)
     parser.add_argument('--render', action="store_true", default=False)
     parser.add_argument('--paint_vel_info', action="store_true", default=True)
     parser.add_argument('--reduce_duplicate_actions', action="store_true", default=True)
