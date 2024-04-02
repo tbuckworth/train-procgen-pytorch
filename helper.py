@@ -335,6 +335,7 @@ def add_training_args(parser):
     parser.add_argument('--real_procgen', action="store_true", default=True)
     parser.add_argument('--mirror_env', action="store_true", default=False)
     parser.add_argument('--mut_info_alpha', type=float, default=None)
+    parser.add_argument('--gamma', type=float, default=None)
     parser.add_argument('--n_envs', type=int, default=None)
     parser.add_argument('--n_steps', type=int, default=None)
     parser.add_argument('--n_minibatch', type=int, default=None)
