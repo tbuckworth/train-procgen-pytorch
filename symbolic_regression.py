@@ -25,7 +25,7 @@ def find_model(X, Y, symbdir, iterations, save_file):
     model = PySRRegressor(
         equation_file=get_path(symbdir, save_file),
         niterations=iterations,  # < Increase me for better results
-        binary_operators=["+", "*", "greater"],
+        binary_operators=["actual(x,y) = (3 * x) + y > 0 ? convert(typeof(x), 1.0) : convert(typeof(x), 0.0)"],#"+", "*", "greater", ],
         unary_operators=[
             # "cos",
             # "exp",
@@ -33,9 +33,12 @@ def find_model(X, Y, symbdir, iterations, save_file):
             # "inv(x) = 1/x",
             # ^ Custom operator (julia syntax)
         ],
+        select_k_features=2,
         denoise=True,
         elementwise_loss="L2MarginLoss()",
-        extra_sympy_mappings={"greater": lambda x, y: sympy.Piecewise((1.0, x > y), (0.0, True))}
+        extra_sympy_mappings={#"greater": lambda x, y: sympy.Piecewise((1.0, x > y), (0.0, True)),
+                              "actual": lambda x, y: sympy.Piecewise((1.0, 3 * x + y > 0), (0.0, True)),
+                              }
         # elementwise_loss="loss(prediction, target) = (prediction - target)^2",
     )
     print("fitting model")
@@ -108,8 +111,8 @@ def sample_latent_output_mlpmodel(policy, observation):
         h = policy.embedder(x)
         dist, value = policy.hidden_to_output(h)
         y = dist.logits.detach().cpu().numpy()
-        act = dist.sample().cpu().numpy()
-
+        # act = dist.sample().cpu().numpy()
+        act = y.argmax(axis=1)
     return observation, act, act
 
 def test_cartpole_agent(agent, env, print_name, n=40):
@@ -169,6 +172,20 @@ class NeuroSymbolicAgent:
             p = Categorical(logits=log_probs)
             act = p.sample()
         return act.cpu().numpy()
+
+class AnalyticModel:
+    def __init__(self, model, policy):
+        self.model = model
+        self.policy = policy
+
+    def forward(self, observation):
+        out = np.ones((observation.shape[0],))
+        term = 3 * observation[:,2] + observation[:, 3]
+        out[term <= 0] = 0
+        return out
+
+    def predict(self, observation):
+        return self.forward(observation)
 
 
 class SymbolicAgent:
@@ -232,10 +249,10 @@ def create_symb_dir_if_exists(logdir):
 
 
 if __name__ == "__main__":
-    iterations = 100
-    data_size = 10000
+    iterations = 1
+    data_size = 1000
     rounds = 300
-    n_envs = 128
+    n_envs = 32
     # logdir = "logs/train/coinrun/coinrun/2024-02-20__18-02-16__seed_6033"
     logdir = "logs/train/cartpole/cartpole/2024-03-28__11-27-12__seed_6033"
     symbdir, save_file = create_symb_dir_if_exists(logdir)
@@ -243,7 +260,8 @@ if __name__ == "__main__":
     X, Y = generate_data(policy, sampler, env, n=int(data_size))
     print("data generated")
     if os.name != "nt":
-        model = find_model(X, Y, symbdir, iterations, save_file)
+        model = AnalyticModel(None, None)
+        # model = find_model(X, Y, symbdir, iterations, save_file)
         ns_agent = symbolic_agent_constructor(model, policy)
         nn_agent = NeuralAgent(policy)
         ns_score_train = test_agent(ns_agent, env, "NeuroSymb Train", rounds)
