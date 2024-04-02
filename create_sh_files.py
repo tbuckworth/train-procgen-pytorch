@@ -15,10 +15,13 @@ def format_args(arg):
                 if v:
                     output += f"--{var_name} "
             elif type(v) == list:
-                output += f"--{var_name} {' '.join(str(v))} "
+                if len(v) > 0 and type(v[0]) == int:
+                    v = [str(x) for x in v]
+                output += f"--{var_name} {' '.join(v)} "
             else:
                 output += f"--{var_name} {v} "
     return output
+
 
 def executable_python(hparams, name):
     return f"python3.8 /vol/bitbucket/${{USER}}/train-procgen-pytorch/train.py {hparams} 2>&1 | tee /vol/bitbucket/${{USER}}/train-procgen-pytorch/scripts/train_{name}.out\n"
@@ -92,27 +95,29 @@ if __name__ == '__main__':
         "normalize_rew": [True, False],
         "levels": [[10, 10], [8, 5, 5, 5], [9, 9, 9]],
     }
-    hparam_list = [v for v in itertools.product(*hparams.values())]
+    # h_dict = [v for v in itertools.product(*hparams.values())]
     keys, values = zip(*hparams.items())
-    permutations_dicts = [dict(zip(keys, v)) for v in itertools.product(*values)]
+    h_dict_list = [dict(zip(keys, v)) for v in itertools.product(*values)]
 
-    arg_list = [copy.deepcopy(args) for _ in hparam_list]
-    n = len(arg_list)//n_gpu
+    arg_list = [copy.deepcopy(args) for _ in h_dict_list]
+    n = len(arg_list) // n_gpu
     for gpu in range(n_gpu):
         python_execs = []
-        for arg in arg_list[gpu*n:(gpu+1)*n]:
-            for hparam_list in permutations_dicts:
-                nme = ""
-                for key in hparam_list.keys():
-                    v = hparam_list[key]
-                    v_str = v
-                    if type(v) == list:
-                        v_str = ','.join(str(v))
-                    nme += f"{key}_{v_str}"
-                    arg.__dict__[key] = v
-                arg.wandb_name = nme
-                hparams = format_args(arg)
-                python_execs += executable_python(hparams, arg.wandb_name)
+        start = gpu*n
+        end = (gpu+1)*n
+        for arg, h_dict in zip(arg_list[start:end], h_dict_list[start:end]):
+            # for hparam_list in permutations_dicts[gpu * n:(gpu + 1) * n]:
+            nme = ""
+            for key in h_dict.keys():
+                v = h_dict[key]
+                v_str = v
+                if type(v) == list:
+                    v_str = ','.join([str(x) for x in v])
+                nme += f"_{key}_{v_str}"
+                arg.__dict__[key] = v
+            arg.wandb_name = nme
+            hparams = format_args(arg)
+            python_execs += [executable_python(hparams, arg.wandb_name)]
         exe = executable_train(hparams, arg.wandb_name, python_execs)
         exe_file_name = f"scripts/tmp_file_{arg.wandb_name}.sh"
         f = open(exe_file_name, 'w', newline='\n')
