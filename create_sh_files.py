@@ -106,7 +106,7 @@ if __name__ == '__main__':
                     v = hparam_list[key]
                     v_str = v
                     if type(v) == list:
-                        v_str = ','.join(v)
+                        v_str = ','.join(str(v))
                     nme += f"{key}_{v_str}"
                     arg.__dict__[key] = v
                 arg.wandb_name = nme
