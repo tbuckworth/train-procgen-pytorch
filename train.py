@@ -63,6 +63,7 @@ def train_ppo(args):
                      "normalize_rew",
                      "gamma",
                      "learning_rate",
+                     "entropy_coef",
                      ]:
         if var_name in args.__dict__.keys() and args.__dict__[var_name] is not None:
             hyperparameters[var_name] = args.__dict__[var_name]
