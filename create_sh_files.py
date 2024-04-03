@@ -94,11 +94,11 @@ if __name__ == '__main__':
 
     hparams = {
         "n_envs": [1024, 2048],
-        "gamma": [0.95],
-        "n_minibatch": [16],
-        "mini_batch_size": [4096],
-        "normalize_rew": [True],
-        "levels": [[10, 10]],#, [8, 5, 5, 5], [9, 9, 9]],
+        # "gamma": [0.95],
+        # "n_minibatch": [32],
+        # "mini_batch_size": [2048],
+        # "normalize_rew": [True],
+        # "levels": [[10, 10]],#, [8, 5, 5, 5], [9, 9, 9]],
         "learning_rate": [0.0025, 0.001, 0.0005],
         "entropy_coef": [0.001, 0.01, 0.02, 0.005, 0.0005]
     }

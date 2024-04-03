@@ -603,8 +603,8 @@ boxworld-ribfsqmha:
     n_envs: 1024
     n_steps: 64
     epoch: 3
-    n_minibatch: 8
-    mini_batch_size: 8192
+    n_minibatch: 32
+    mini_batch_size: 2048
     gamma: 0.95
     lmbda: 0.95
     learning_rate: 0.0025
@@ -613,7 +613,7 @@ boxworld-ribfsqmha:
     value_coef: 0.5
     entropy_coef: 0.001
     normalize_adv: True
-    normalize_rew: False
+    normalize_rew: True
     use_gae: True
     architecture: ribfsqmha
     recurrent: False
