@@ -43,9 +43,9 @@ def test_ld(logdir="logs/train/coinrun/coinrun/2024-02-20__18-02-16__seed_6033")
     print("Loaded DataFrame from results.csv")
     new_cols = ["balanced_reward", "mean_reward", "pct_random_actions"]
     df[new_cols] = np.nan
-    for row in range(len(df)):
+    for row in df.index:
         print(f"Testing row {row}:")
-        print(f"{df.iloc[row].hypothesis}\n")
+        print(f"{df.loc[row].hypothesis}\n")
         df.loc[row, new_cols] = test_agent_in_env(df, env, ld, row)
         append_to_csv_if_exists(df, "ilp/logic_examples/results_with_perf.csv")
 
