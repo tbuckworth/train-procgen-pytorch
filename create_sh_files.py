@@ -83,9 +83,11 @@ def add_boxworld_params(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('--n_gpu', type=int, default=6)
     parser = add_training_args(parser)
     args = parser.parse_args()
-    n_gpu = 6
+    n_gpu = args.n_gpu
+    args.__delattr__("n_gpu")
 
     # args = add_coinrun_sparsity_params(args)
     args = add_boxworld_params(args)
