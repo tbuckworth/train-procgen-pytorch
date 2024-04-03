@@ -62,6 +62,7 @@ def train_ppo(args):
                      "sparsity_coef",
                      "normalize_rew",
                      "gamma",
+                     "learning_rate",
                      ]:
         if var_name in args.__dict__.keys() and args.__dict__[var_name] is not None:
             hyperparameters[var_name] = args.__dict__[var_name]
@@ -173,7 +174,6 @@ def train_ppo(args):
         normalize_rew = hyperparameters.get('normalize_rew', True)
         return create_cartpole_env_pre_vec(env_args, render=False, normalize_rew=normalize_rew)
 
-
     if args.env_name == "boxworld":
         create_venv = create_bw_env
     elif args.render:
@@ -181,7 +181,6 @@ def train_ppo(args):
 
     if args.env_name == "cartpole":
         create_venv = create_cartpole
-
 
     env = create_venv(args, hyperparameters)
     env_valid = create_venv(args, hyperparameters, is_valid=True) if args.use_valid_env else None
@@ -227,7 +226,7 @@ def train_ppo(args):
     if args.use_wandb:
         wandb.login(key="cfc00eee102a1e9647b244a40066bfc5f1a96610")
         name = f"{hyperparameters['architecture']}-{wandb_name}"
-        wb_resume = "allow" #if args.model_file is None else "must"
+        wb_resume = "allow"  # if args.model_file is None else "must"
         if env_name == "boxworld":
             project = "Box-World"
         elif exp_name == "coinrun-hparams":

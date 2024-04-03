@@ -71,7 +71,7 @@ def add_boxworld_params(args):
     args.exp_name = "boxworld"
     args.env_name = "boxworld"
     args.param_name = "boxworld-ribfsqmha-easy"
-    args.num_timesteps = int(1e7)
+    args.num_timesteps = int(5e7)
     args.num_checkpoints = 1
     args.seed = 6033
     args.use_wandb = True
@@ -91,11 +91,12 @@ if __name__ == '__main__':
     args = add_boxworld_params(args)
 
     hparams = {
-        "n_envs": [32, 64, 256],
-        "gamma": [0.99, 0.95, 0.999],
-        "n_minibatch": [8, 16, 32],
+        "n_envs": [256, 512, 1024],
+        "gamma": [0.95],
+        "n_minibatch": [8, 16],
         "normalize_rew": [True, False],
-        "levels": [[10, 10], [8, 5, 5, 5], [9, 9, 9]],
+        "levels": [[10, 10]],#, [8, 5, 5, 5], [9, 9, 9]],
+        "learning_rate": [0.005, 0.01, 0.0025],
     }
     # h_dict = [v for v in itertools.product(*hparams.values())]
     keys, values = zip(*hparams.items())

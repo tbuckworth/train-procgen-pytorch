@@ -579,7 +579,7 @@ boxworld-ribfsqmha-easy:
     value_coef: 0.5
     entropy_coef: 0.001
     normalize_adv: True
-    normalize_rew: True
+    normalize_rew: False
     use_gae: True
     architecture: ribfsqmha
     recurrent: False
