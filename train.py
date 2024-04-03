@@ -55,6 +55,7 @@ def train_ppo(args):
     for var_name in ["n_envs",
                      "n_steps",
                      "n_minibatch",
+                     "mini_batch_size",
                      "levels",
                      "n_impala_blocks",
                      "eps_clip",
