@@ -70,12 +70,12 @@ def add_coinrun_sparsity_params(args):
 def add_boxworld_params(args):
     args.exp_name = "boxworld"
     args.env_name = "boxworld"
-    args.param_name = "boxworld-ribfsqmha-easy"
-    args.num_timesteps = int(5e7)
+    args.param_name = "boxworld-ribfsqmha"
+    args.num_timesteps = int(2e8)
     args.num_checkpoints = 1
     args.seed = 6033
     args.use_wandb = True
-    args.wandb_tags = ["h-param", "easy", "gamma", "n_envs", "normalize_rew", "levels", "n_minibatch"]
+    args.wandb_tags = ["h-param", "hard", "n_envs", "n_minibatch"]
     args.device = "gpu"
     args.use_valid_env = False
     return args
@@ -91,12 +91,13 @@ if __name__ == '__main__':
     args = add_boxworld_params(args)
 
     hparams = {
-        "n_envs": [256, 512, 1024],
+        "n_envs": [1024, 2048],
         "gamma": [0.95],
-        "n_minibatch": [8, 16],
-        "normalize_rew": [True, False],
+        "n_minibatch": [16],
+        "normalize_rew": [True],
         "levels": [[10, 10]],#, [8, 5, 5, 5], [9, 9, 9]],
-        "learning_rate": [0.005, 0.01, 0.0025],
+        "learning_rate": [0.0025, 0.001, 0.0005],
+        "entropy_coef": [0.001, 0.01, 0.02, 0.005, 0.0005]
     }
     # h_dict = [v for v in itertools.product(*hparams.values())]
     keys, values = zip(*hparams.items())

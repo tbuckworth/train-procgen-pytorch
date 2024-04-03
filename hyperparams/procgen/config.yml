@@ -598,6 +598,39 @@ boxworld-ribfsqmha-easy:
     pool_direction: dim_wise
     levels: [10, 10]
 
+boxworld-ribfsqmha:
+    algo: ppo
+    n_envs: 1024
+    n_steps: 64
+    epoch: 3
+    n_minibatch: 8
+    mini_batch_size: 8192
+    gamma: 0.95
+    lmbda: 0.95
+    learning_rate: 0.0025
+    grad_clip_norm: 0.5
+    eps_clip: 0.2
+    value_coef: 0.5
+    entropy_coef: 0.001
+    normalize_adv: True
+    normalize_rew: False
+    use_gae: True
+    architecture: ribfsqmha
+    recurrent: False
+    max_steps: 1000
+    grid_size: 12
+    goal_length: 4
+    num_distractor: 2
+    distractor_length: 2
+    grid_size_v: 12
+    goal_length_v: 5
+    num_distractor_v: 3
+    distractor_length_v: 3
+    use_vq: False
+    mha_layers: 2
+    pool_direction: dim_wise
+    levels: [10, 10]
+
 
 
 
