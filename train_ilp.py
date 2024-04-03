@@ -45,7 +45,7 @@ def test_ld(logdir="logs/train/coinrun/coinrun/2024-02-20__18-02-16__seed_6033")
     df[new_cols] = np.nan
     for row in range(len(df)):
         print(f"Testing row {row}:")
-        print(f"{df.hypothesis[row]}\n")
+        print(f"{df.iloc[row].hypothesis}\n")
         df.loc[row, new_cols] = test_agent_in_env(df, env, ld, row)
         append_to_csv_if_exists(df, "ilp/logic_examples/results_with_perf.csv")
 
@@ -179,5 +179,5 @@ if __name__ == "__main__":
 
     # very sparse (0.2) 1bn fine-tune:
     logdir = "logs/train/coinrun/coinrun-hparams/2024-03-27__18-20-55__seed_6033"
-    train_logic_program(logdir)
+    # train_logic_program(logdir)
     test_ld(logdir)
