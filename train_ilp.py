@@ -174,10 +174,10 @@ def load_logic_distiller(logdir, atn_threshold):
 
 
 if __name__ == "__main__":
-    # sparsity
-    logdir = "logs/train/coinrun/coinrun/2024-03-24__20-31-46__seed_6033"
+    # # sparsity
+    # logdir = "logs/train/coinrun/coinrun/2024-03-24__20-31-46__seed_6033"
+
+    # very sparse (0.2) 1bn fine-tune:
+    logdir = "logs/train/coinrun/coinrun-hparams/2024-03-27__18-20-55__seed_6033"
     train_logic_program(logdir)
     test_ld(logdir)
-# TODO:
-# put the x, y coords into background knowledge;
-# find way to include intermediary/auxilary predicates
