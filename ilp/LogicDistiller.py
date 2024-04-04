@@ -250,7 +250,7 @@ class LogicDistiller:
         return int(re.search(r"take\(a(\d*)\)", action).group(1)) - 1
 
     def run_clingo(self):
-        filepath = os.path.join("/mnt/c/Users/titus/PycharmProjects/train-procgen-pytorch/", re.sub("\\\\", "/", self.clingo_file))
+        filepath = os.path.join(GLOBAL_DIR, re.sub("\\\\", "/", self.clingo_file))
         cmd = create_cmd(["clingo", "-t", "4", filepath])
         # TODO: try to get this working
         # cmd = ["wsl", f'echo "{self.clingo_file_contents}" | clingo /dev/stdin']

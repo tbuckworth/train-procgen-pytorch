@@ -95,6 +95,8 @@ def write_string_to_file(output, filename):
 def extract_clingo_solution(output):
     lines = output.split("\n")
     answer = [lines[i - 1] for i, line in enumerate(lines) if line == "SATISFIABLE"]
+    if len(answer) == 0:
+        return answer
     return answer[0].split(" ")
 
 

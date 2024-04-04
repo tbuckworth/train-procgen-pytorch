@@ -7,7 +7,7 @@ import pandas as pd
 import torch
 import re
 
-from helper import get_config
+from helper import get_config, GLOBAL_DIR
 from ilp.LogicDistiller import LogicDistiller
 from ilp.ilp_helper import append_to_csv_if_exists, create_cmd, run_subprocess
 from inspect_agent import load_policy
@@ -15,7 +15,7 @@ from inspect_agent import load_policy
 
 def time_clingo():
     # cmd = ["wsl", f'echo "{self.clingo_file_contents}" | clingo /dev/stdin']
-    filepath = "/mnt/c/Users/titus/PycharmProjects/train-procgen-pytorch/ilp/logic_examples/clingo_learning.lp"
+    filepath = os.path.join(GLOBAL_DIR,"ilp/logic_examples/clingo_learning.lp")
     n = 10
     cmd = create_cmd(["clingo", filepath])
     elapsed = time_cmd(cmd, n)
@@ -65,12 +65,12 @@ def test_agent_in_env(df, env, ld, row):
     i = 0
     while frame_count < int(1e6):  # not done[0]:
         # act0, act_probs, atn, feature_indices, value = ld.forward(observation)
-        if i % 50 == 0:
-            print(f"Frame count: {i}")
+        if frame_count % 50 == 0:
+            print(f"Frame count: {frame_count}\n")
         act = ld.generate_action(observation)
 
         observation, reward, done, info = env.step(np.array([act, 0]))
-        frame_count += 0
+        frame_count += 1
         ep_length += 1
         if done[0]:
             r = reward[0][done[0]].item()
