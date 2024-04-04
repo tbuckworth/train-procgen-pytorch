@@ -26,7 +26,7 @@ def find_model(X, Y, symbdir, iterations, save_file, weights):
         equation_file=get_path(symbdir, save_file),
         niterations=iterations,  # < Increase me for better results
         binary_operators=["+", "*", "greater"],
-            #"actual(x,y) = (3 * x) + y > 0 ? convert(typeof(x), 1.0) : convert(typeof(x), 0.0)"],#"+", "*", "greater", ],
+        # "actual(x,y) = (3 * x) + y > 0 ? convert(typeof(x), 1.0) : convert(typeof(x), 0.0)"],#"+", "*", "greater", ],
         unary_operators=[
             # "cos",
             # "exp",
@@ -35,17 +35,21 @@ def find_model(X, Y, symbdir, iterations, save_file, weights):
             # ^ Custom operator (julia syntax)
         ],
         weights=weights,
-        #select_k_features=2,
+        # select_k_features=2,
         denoise=True,
         # elementwise_loss="L2MarginLoss()",
         extra_sympy_mappings={"greater": lambda x, y: sympy.Piecewise((1.0, x > y), (0.0, True)),
-                              #"actual": lambda x, y: sympy.Piecewise((1.0, 3 * x + y > 0), (0.0, True)),
+                              # "actual": lambda x, y: sympy.Piecewise((1.0, 3 * x + y > 0), (0.0, True)),
                               },
         elementwise_loss="loss(prediction, target) = (prediction - target)^2",
     )
     print("fitting model")
     model.fit(X, Y)
-    print(model.get_best().equation)
+    best = model.get_best()
+    if type(best) == list:
+        [print(x.equation) for x in model.get_best()]
+    else:
+        print(model.get_best().equation)
     return model
 
 
@@ -118,6 +122,7 @@ def sample_latent_output_mlpmodel(policy, observation):
         act = y.argmax(axis=1)
     return observation, act, act, value.cpu().numpy()
 
+
 def test_cartpole_agent(agent, env, print_name, n=40):
     episodes = 0
     obs = env.reset()
@@ -176,10 +181,11 @@ class NeuroSymbolicAgent:
             act = p.sample()
         return act.cpu().numpy()
 
+
 class AnalyticModel:
     def forward(self, observation):
         out = np.ones((observation.shape[0],))
-        term = 3 * observation[:,2] + observation[:, 3]
+        term = 3 * observation[:, 2] + observation[:, 3]
         out[term <= 0] = 0
         return out
 
@@ -196,7 +202,7 @@ class SymbolicAgent:
         with torch.no_grad():
             # obs = torch.FloatTensor(observation).to(self.policy.device)
             h = self.model.predict(observation)
-            return np.round(h,0)
+            return np.round(h, 0)
             # TODO: do this with numpy instead of torch
             logits = torch.FloatTensor(h).to(self.policy.device)
             log_probs = F.log_softmax(logits, dim=1)
@@ -246,15 +252,54 @@ def create_symb_dir_if_exists(logdir):
         os.mkdir(symbdir)
     return symbdir, save_file
 
+
+def send_full_report(df, logdir, model):
+    pass
+    # load log csv
+    dfl = pd.read_csv(os.path.join(logdir, "log-append.csv"))
+    # create graph
+    from matplotlib import pyplot as plt
+    roll_window = 100
+    dfl2 = pd.DataFrame({"Neural Training Reward - Rolling Avg.": dfl["mean_episode_rewards"].rolling(window=roll_window).mean(),
+                         "Neural Test Reward - Rolling Avg.": dfl["val_mean_episode_rewards"].rolling(window=roll_window).mean()
+                         })#,
+    dfl2.index = dfl["timesteps"]
+
+    dfl2.plot()
+    plt.hlines(y=df.NeuroSymb_score_Train[0],
+               xmin=0,
+               xmax=dfl2.index.max(),
+               label="NeuroSymbolic Training Reward",
+               linestyles="dashed")
+    plt.hlines(y=df.NeuroSymb_score_Test[0],
+               xmin=0,
+               xmax=dfl2.index.max(),
+               label="NeuroSymbolic Test Reward",
+               linestyles="dashed")
+    plt.ylim(ymin=0)  # this line
+    plt.legend()
+    plt.show()
+    # create table
+
+    # send email
+
+
 def run_neuro_symbolic_search():
-    iterations = 10
-    data_size = 1000
-    rounds = 300
-    n_envs = 32
+    iterations = 1
+    data_size = 100
+    rounds = 1
+    n_envs = 2
+    # Coinrun:
     # logdir = "logs/train/coinrun/coinrun/2024-02-20__18-02-16__seed_6033"
-    logdir = "logs/train/cartpole/cartpole/2024-03-28__11-27-12__seed_6033"
-    # 10bn timestep cartpole:
-    logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
+
+    # Very Sparse Coinrun:
+    logdir = "logs/train/coinrun/coinrun-hparams/2024-03-27__18-20-55__seed_6033"
+
+    # # cartpole that didn't work:
+    # logdir = "logs/train/cartpole/cartpole/2024-03-28__11-27-12__seed_6033"
+    #
+    # # 10bn timestep cartpole (works!):
+    # logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
     symbdir, save_file = create_symb_dir_if_exists(logdir)
     policy, env, sampler, symbolic_agent_constructor, test_env, test_agent = load_nn_policy(logdir, n_envs)
     X, Y, V = generate_data(policy, sampler, env, n=int(data_size))
@@ -277,9 +322,9 @@ def run_neuro_symbolic_search():
                    "Neural_score_Test", "NeuroSymb_score_Test", "logdir"]
         df = pd.DataFrame(columns=columns)
         df.loc[0] = values
-        append_to_csv_if_exists(df, os.path.join(symbdir, "results.csv"))
+        # append_to_csv_if_exists(df, os.path.join(symbdir, "results.csv"))
+        send_full_report(df, logdir, model.get_best())
 
 
 if __name__ == "__main__":
     run_neuro_symbolic_search()
-
