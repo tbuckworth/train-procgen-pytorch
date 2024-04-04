@@ -444,3 +444,14 @@ def latest_model_path(logdir):
     checkpoints = [int(re.search(pattern, x).group(1)) for x in files if re.search(pattern, x)]
     last_model = os.path.join(logdir, f"model_{max(checkpoints)}.pth")
     return last_model
+
+
+def floats_to_dp(s, decimals=2):
+    replace_code = "REPLACE_CODE"
+
+    flts = re.findall("(\d+\.\d+)", s)
+    flts = [f"{float(flt):.{decimals}f}" for flt in flts]
+    s = re.sub("(\d+\.\d+)", replace_code, s)
+    for flt in flts:
+        s = re.sub(replace_code, flt, s, 1)
+    return s

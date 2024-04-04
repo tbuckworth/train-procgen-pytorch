@@ -4,6 +4,7 @@ import pandas as pd
 import sympy
 
 from cartpole.create_cartpole import create_cartpole
+from email_results import send_image
 
 if os.name != "nt":
     from pysr import PySRRegressor
@@ -12,9 +13,10 @@ import torch
 import torch.nn.functional as F
 from torch.distributions import Categorical
 from common.env.procgen_wrappers import create_env
-from helper import get_config, get_path, balanced_reward, GLOBAL_DIR, append_to_csv_if_exists, load_storage_and_policy, \
-    load_hparams_for_model
+from helper import get_config, get_path, balanced_reward, GLOBAL_DIR, load_storage_and_policy, \
+    load_hparams_for_model, floats_to_dp, append_to_csv_if_exists
 from inspect_agent import load_policy
+from matplotlib import pyplot as plt
 
 
 # os.environ["PYTHON_JULIACALL_BINDIR"] = r"C:\Users\titus\PycharmProjects\train-procgen-pytorch\venv\julia_env\pyjuliapkg\install\bin"
@@ -45,12 +47,16 @@ def find_model(X, Y, symbdir, iterations, save_file, weights):
     )
     print("fitting model")
     model.fit(X, Y)
+    eqn_str = get_best_str(model)
+    print(eqn_str)
+    return model
+
+
+def get_best_str(model, split='\n'):
     best = model.get_best()
     if type(best) == list:
-        [print(x.equation) for x in model.get_best()]
-    else:
-        print(model.get_best().equation)
-    return model
+        return split.join([x.equation for x in model.get_best()])
+    return model.get_best().equation
 
 
 def load_nn_policy(logdir, n_envs=2):
@@ -253,35 +259,61 @@ def create_symb_dir_if_exists(logdir):
     return symbdir, save_file
 
 
-def send_full_report(df, logdir, model):
+def send_pysr_email(plot_file, tab_code, eqn_str):
     pass
+
+
+def send_full_report(df, logdir, model):
     # load log csv
     dfl = pd.read_csv(os.path.join(logdir, "log-append.csv"))
     # create graph
-    from matplotlib import pyplot as plt
     roll_window = 100
-    dfl2 = pd.DataFrame({"Neural Training Reward - Rolling Avg.": dfl["mean_episode_rewards"].rolling(window=roll_window).mean(),
-                         "Neural Test Reward - Rolling Avg.": dfl["val_mean_episode_rewards"].rolling(window=roll_window).mean()
-                         })#,
+    dfl2 = pd.DataFrame(
+        {"Neural Training Reward - Rolling Avg.": dfl["mean_episode_rewards"].rolling(window=roll_window).mean(),
+         "Neural Test Reward - Rolling Avg.": dfl["val_mean_episode_rewards"].rolling(window=roll_window).mean()
+         })  # ,
     dfl2.index = dfl["timesteps"]
 
     dfl2.plot()
-    plt.hlines(y=df.NeuroSymb_score_Train[0],
+    ns_train = df.NeuroSymb_score_Train[0]
+    plt.hlines(y=ns_train,
                xmin=0,
                xmax=dfl2.index.max(),
                label="NeuroSymbolic Training Reward",
                linestyles="dashed")
-    plt.hlines(y=df.NeuroSymb_score_Test[0],
+    ns_test = df.NeuroSymb_score_Test[0]
+    plt.hlines(y=ns_test,
                xmin=0,
                xmax=dfl2.index.max(),
                label="NeuroSymbolic Test Reward",
                linestyles="dashed")
     plt.ylim(ymin=0)  # this line
     plt.legend()
-    plt.show()
+    plot_file = os.path.join(logdir, "training_plot.png")
+    plt.savefig(plot_file)
     # create table
-
+    dfv = df.T
+    dfv.columns = ["Value"]
+    tab_code = dfv.to_html()  # df.T.to_html(columns=False)
+    eqn_str = get_best_str(model, split="<br/>")
     # send email
+    eqn_str = floats_to_dp(eqn_str)
+
+    nn_test = df.Neural_score_Test[0]
+    nn_train = df.Neural_score_Train[0]
+    test_improved = ns_test > nn_test
+    train_improved = ns_train > nn_train
+
+    statement = "Failed"
+    if test_improved and train_improved:
+        statement = "Complete Success"
+    if not test_improved and train_improved:
+        statement = "Improved Training Reward"
+    if test_improved and not train_improved:
+        statement = "Improved Generalization"
+
+    body_text = f"<b>{statement}</b><br>{tab_code}<br><b>Learned Formula:</b><br><p>{eqn_str}</p>"
+    send_image(plot_file, "PySR Results", body_text=body_text)
 
 
 def run_neuro_symbolic_search():
@@ -322,8 +354,8 @@ def run_neuro_symbolic_search():
                    "Neural_score_Test", "NeuroSymb_score_Test", "logdir"]
         df = pd.DataFrame(columns=columns)
         df.loc[0] = values
-        # append_to_csv_if_exists(df, os.path.join(symbdir, "results.csv"))
-        send_full_report(df, logdir, model.get_best())
+        append_to_csv_if_exists(df, os.path.join(symbdir, "results.csv"))
+        send_full_report(df, logdir, model)
 
 
 if __name__ == "__main__":
