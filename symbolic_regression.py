@@ -1,4 +1,7 @@
+import argparse
 import os
+import parser
+
 import numpy as np
 import pandas as pd
 import sympy
@@ -23,26 +26,15 @@ from matplotlib import pyplot as plt
 # os.environ["PYTHON_JULIACALL_BINDIR"] = r"C:\Users\titus\AppData\Local\Microsoft\WindowsApps"
 # os.environ["PYTHON_JULIACALL_BINDIR"] = r"C:\Users\titus\.julia\juliaup\julia-1.10.0+0.x64.w64.mingw32\bin"
 
-def find_model(X, Y, symbdir, iterations, save_file, weights):
+def find_model(X, Y, symbdir, iterations, save_file, weights, args):
     model = PySRRegressor(
         equation_file=get_path(symbdir, save_file),
         niterations=iterations,  # < Increase me for better results
-        binary_operators=["+", "*", "greater"],
-        # "actual(x,y) = (3 * x) + y > 0 ? convert(typeof(x), 1.0) : convert(typeof(x), 0.0)"],#"+", "*", "greater", ],
-        unary_operators=[
-            # "cos",
-            # "exp",
-            # "sin",
-            # "inv(x) = 1/x",
-            # ^ Custom operator (julia syntax)
-        ],
+        binary_operators=args.binary_operators,
+        unary_operators=args.unary_operators,
         weights=weights,
-        # select_k_features=2,
         denoise=True,
-        # elementwise_loss="L2MarginLoss()",
-        extra_sympy_mappings={"greater": lambda x, y: sympy.Piecewise((1.0, x > y), (0.0, True)),
-                              # "actual": lambda x, y: sympy.Piecewise((1.0, 3 * x + y > 0), (0.0, True)),
-                              },
+        extra_sympy_mappings={"greater": lambda x, y: sympy.Piecewise((1.0, x > y), (0.0, True))},
         elementwise_loss="loss(prediction, target) = (prediction - target)^2",
     )
     print("fitting model")
@@ -259,9 +251,6 @@ def create_symb_dir_if_exists(logdir):
     return symbdir, save_file
 
 
-def send_pysr_email(plot_file, tab_code, eqn_str):
-    pass
-
 
 def send_full_report(df, logdir, model):
     # load log csv
@@ -294,7 +283,7 @@ def send_full_report(df, logdir, model):
     # create table
     dfv = df.T
     dfv.columns = ["Value"]
-    #TODO: make dfv formatted to two dps
+    # TODO: make dfv formatted to two dps
     tab_code = dfv.to_html()  # df.T.to_html(columns=False)
     eqn_str = get_best_str(model, split="<br/>")
     # send email
@@ -317,7 +306,7 @@ def send_full_report(df, logdir, model):
     send_image(plot_file, "PySR Results", body_text=body_text)
 
 
-def run_neuro_symbolic_search():
+def temp_func():
     iterations = 10
     data_size = 1000
     rounds = 300
@@ -333,15 +322,21 @@ def run_neuro_symbolic_search():
     #
     # # 10bn timestep cartpole (works!):
     logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
+    run_neurosymbolic_search(data_size, iterations, logdir, n_envs, rounds)
+
+
+def run_neurosymbolic_search(args):  # data_size, iterations, logdir, n_envs, rounds):
+    data_size = args.data_size
+    iterations = args.iterations
+    logdir = args.logdir
+    n_envs = args.n_envs
+    rounds = args.rounds
     symbdir, save_file = create_symb_dir_if_exists(logdir)
     policy, env, sampler, symbolic_agent_constructor, test_env, test_agent = load_nn_policy(logdir, n_envs)
     X, Y, V = generate_data(policy, sampler, env, n=int(data_size))
-    # oracle = AnalyticModel()
-    # Y = oracle.predict(X)
     print("data generated")
     if os.name != "nt":
-        # model = AnalyticModel()
-        model = find_model(X, Y, symbdir, iterations, save_file, weights=V)
+        model = find_model(X, Y, symbdir, iterations, save_file, V, args)
         ns_agent = symbolic_agent_constructor(model, policy)
         nn_agent = NeuralAgent(policy)
         ns_score_train = test_agent(ns_agent, env, "NeuroSymb Train", rounds)
@@ -360,4 +355,18 @@ def run_neuro_symbolic_search():
 
 
 if __name__ == "__main__":
-    run_neuro_symbolic_search()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--data_size', type=int, default=1000, help='How much data to train on')
+    parser.add_argument('--iterations', type=int, default=10, help='How many genetic algorithm iterations')
+    parser.add_argument('--logdir', type=str, default=None, help='Dir of model to imitate')
+    parser.add_argument('--n_envs', type=int, default=int(0),
+                        help='Number of parallel environments to use to generate data and test models')
+    parser.add_argument('--rounds', type=int, default=int(500), help='Number of episodes to test models for')
+    parser.add_argument('--binary_operators', type=str, nargs='+', default=["+", "-", "greater"],
+                        help="Binary operators to use in search")
+    parser.add_argument('--unary_operators', type=str, nargs='+', default=[], help="Unary operators to use in search")
+    parser.add_argument('--denoise', action="store_true", default=False)
+
+    args = parser.parse_args()
+
+    run_neurosymbolic_search(args)
