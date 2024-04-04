@@ -21,11 +21,12 @@ from inspect_agent import load_policy
 # os.environ["PYTHON_JULIACALL_BINDIR"] = r"C:\Users\titus\AppData\Local\Microsoft\WindowsApps"
 # os.environ["PYTHON_JULIACALL_BINDIR"] = r"C:\Users\titus\.julia\juliaup\julia-1.10.0+0.x64.w64.mingw32\bin"
 
-def find_model(X, Y, symbdir, iterations, save_file):
+def find_model(X, Y, symbdir, iterations, save_file, weights):
     model = PySRRegressor(
         equation_file=get_path(symbdir, save_file),
         niterations=iterations,  # < Increase me for better results
-        binary_operators=["actual(x,y) = (3 * x) + y > 0 ? convert(typeof(x), 1.0) : convert(typeof(x), 0.0)"],#"+", "*", "greater", ],
+        binary_operators=["+", "*", "greater"],
+            #"actual(x,y) = (3 * x) + y > 0 ? convert(typeof(x), 1.0) : convert(typeof(x), 0.0)"],#"+", "*", "greater", ],
         unary_operators=[
             # "cos",
             # "exp",
@@ -33,18 +34,18 @@ def find_model(X, Y, symbdir, iterations, save_file):
             # "inv(x) = 1/x",
             # ^ Custom operator (julia syntax)
         ],
-        select_k_features=2,
+        weights=weights,
+        #select_k_features=2,
         denoise=True,
-        elementwise_loss="L2MarginLoss()",
-        extra_sympy_mappings={#"greater": lambda x, y: sympy.Piecewise((1.0, x > y), (0.0, True)),
-                              "actual": lambda x, y: sympy.Piecewise((1.0, 3 * x + y > 0), (0.0, True)),
-                              }
-        # elementwise_loss="loss(prediction, target) = (prediction - target)^2",
+        # elementwise_loss="L2MarginLoss()",
+        extra_sympy_mappings={"greater": lambda x, y: sympy.Piecewise((1.0, x > y), (0.0, True)),
+                              #"actual": lambda x, y: sympy.Piecewise((1.0, 3 * x + y > 0), (0.0, True)),
+                              },
+        elementwise_loss="loss(prediction, target) = (prediction - target)^2",
     )
     print("fitting model")
     model.fit(X, Y)
-    print("fitted")
-    print(model)
+    print(model.get_best().equation)
     return model
 
 
@@ -83,15 +84,17 @@ def drop_first_dim(arr):
 
 def generate_data(policy, sampler, env, n):
     observation = env.reset()
-    x, y, act = sampler(policy, observation)
+    x, y, act, value = sampler(policy, observation)
     X = x
     Y = y
+    V = value
     while len(X) < n:
         observation, rew, done, info = env.step(act)
-        x, y, act = sampler(policy, observation)
+        x, y, act, v = sampler(policy, observation)
         X = np.append(X, x, axis=0)
         Y = np.append(Y, y, axis=0)
-    return X, Y
+        V = np.append(V, v, axis=0)
+    return X, Y, V
 
 
 def sample_latent_output_fsqmha(policy, observation):
@@ -102,7 +105,7 @@ def sample_latent_output_fsqmha(policy, observation):
         dist, value = policy.hidden_to_output(h)
         y = dist.logits.detach().cpu().numpy()
         act = dist.sample()
-    return x.cpu().numpy(), y, act.cpu().numpy()
+    return x.cpu().numpy(), y, act.cpu().numpy(), value.cpu().numpy()
 
 
 def sample_latent_output_mlpmodel(policy, observation):
@@ -113,7 +116,7 @@ def sample_latent_output_mlpmodel(policy, observation):
         y = dist.logits.detach().cpu().numpy()
         # act = dist.sample().cpu().numpy()
         act = y.argmax(axis=1)
-    return observation, act, act
+    return observation, act, act, value.cpu().numpy()
 
 def test_cartpole_agent(agent, env, print_name, n=40):
     episodes = 0
@@ -174,10 +177,6 @@ class NeuroSymbolicAgent:
         return act.cpu().numpy()
 
 class AnalyticModel:
-    def __init__(self, model, policy):
-        self.model = model
-        self.policy = policy
-
     def forward(self, observation):
         out = np.ones((observation.shape[0],))
         term = 3 * observation[:,2] + observation[:, 3]
@@ -247,21 +246,24 @@ def create_symb_dir_if_exists(logdir):
         os.mkdir(symbdir)
     return symbdir, save_file
 
-
-if __name__ == "__main__":
-    iterations = 1
+def run_neuro_symbolic_search():
+    iterations = 10
     data_size = 1000
     rounds = 300
     n_envs = 32
     # logdir = "logs/train/coinrun/coinrun/2024-02-20__18-02-16__seed_6033"
     logdir = "logs/train/cartpole/cartpole/2024-03-28__11-27-12__seed_6033"
+    # 10bn timestep cartpole:
+    logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
     symbdir, save_file = create_symb_dir_if_exists(logdir)
     policy, env, sampler, symbolic_agent_constructor, test_env, test_agent = load_nn_policy(logdir, n_envs)
-    X, Y = generate_data(policy, sampler, env, n=int(data_size))
+    X, Y, V = generate_data(policy, sampler, env, n=int(data_size))
+    # oracle = AnalyticModel()
+    # Y = oracle.predict(X)
     print("data generated")
     if os.name != "nt":
-        model = AnalyticModel(None, None)
-        # model = find_model(X, Y, symbdir, iterations, save_file)
+        # model = AnalyticModel()
+        model = find_model(X, Y, symbdir, iterations, save_file, weights=V)
         ns_agent = symbolic_agent_constructor(model, policy)
         nn_agent = NeuralAgent(policy)
         ns_score_train = test_agent(ns_agent, env, "NeuroSymb Train", rounds)
@@ -276,3 +278,8 @@ if __name__ == "__main__":
         df = pd.DataFrame(columns=columns)
         df.loc[0] = values
         append_to_csv_if_exists(df, os.path.join(symbdir, "results.csv"))
+
+
+if __name__ == "__main__":
+    run_neuro_symbolic_search()
+
