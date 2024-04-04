@@ -91,6 +91,8 @@ class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
     }
 
     def __init__(self, n_envs, degrees=12, h_range=2.4, max_steps=500, render_mode: Optional[str] = None):
+        if n_envs < 2:
+            raise Exception("n_envs must be greater than or equal to 2")
         self.np_random_seed = None
         self._np_random = None
         self.num_envs = n_envs

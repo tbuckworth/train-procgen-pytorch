@@ -1,5 +1,9 @@
 import numpy as np
 
+from cartpole.cartpole import CartPoleEnv
+from cartpole.cartpole_pre_vec import CartPoleVecEnv
+from cartpole.create_cartpole import create_cartpole_env_pre_vec
+
 
 def compute_pairwise_affinities(X, perplexity=30.0, epsilon=1e-8):
     # Compute pairwise Euclidean distances
@@ -47,7 +51,8 @@ def t_sne(X, n_components=2, perplexity=30.0, learning_rate=200.0, n_iter=1000):
 
     return Y
 
-if __name__ == "__main__":
+
+def tsne_thing():
     # Example usage
     np.random.seed(42)
     X = np.random.rand(100, 10)
@@ -61,3 +66,30 @@ if __name__ == "__main__":
     plt.scatter(X_tsne_custom[:, 0], X_tsne_custom[:, 1])
     plt.title('Custom t-SNE Visualization')
     plt.show()
+
+
+def symbolic_regression_function(obs):
+    x0, x1, x2, x3 = obs[0]
+    if x0 > -1.62 * (3 * x2 + x3 + x1):
+        return np.ones(len(obs))
+    return np.zeros(len(obs))
+
+
+if __name__ == "__main__":
+    is_valid = False
+    n_envs = 2
+    env_args = {"n_envs": n_envs,
+                "env_name": "CartPole-v1",
+                "degrees": 12,
+                "h_range": 2.4,
+                }
+    if is_valid:
+        env_args["degrees"] = 9
+        env_args["h_range"] = 1.8
+    # env = create_cartpole_env_pre_vec(env_args, render=True, normalize_rew=False)
+
+    env = CartPoleVecEnv(n_envs, degrees=9, h_range=1.8, max_steps=500, render_mode="human")
+    obs = env.reset()
+    while True:
+        act = symbolic_regression_function(obs)
+        obs, rew, done, info = env.step(act)

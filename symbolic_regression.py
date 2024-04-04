@@ -294,6 +294,7 @@ def send_full_report(df, logdir, model):
     # create table
     dfv = df.T
     dfv.columns = ["Value"]
+    #TODO: make dfv formatted to two dps
     tab_code = dfv.to_html()  # df.T.to_html(columns=False)
     eqn_str = get_best_str(model, split="<br/>")
     # send email
@@ -317,21 +318,21 @@ def send_full_report(df, logdir, model):
 
 
 def run_neuro_symbolic_search():
-    iterations = 1
-    data_size = 100
-    rounds = 1
-    n_envs = 2
+    iterations = 10
+    data_size = 1000
+    rounds = 300
+    n_envs = 32
     # Coinrun:
     # logdir = "logs/train/coinrun/coinrun/2024-02-20__18-02-16__seed_6033"
 
     # Very Sparse Coinrun:
-    logdir = "logs/train/coinrun/coinrun-hparams/2024-03-27__18-20-55__seed_6033"
+    # logdir = "logs/train/coinrun/coinrun-hparams/2024-03-27__18-20-55__seed_6033"
 
     # # cartpole that didn't work:
     # logdir = "logs/train/cartpole/cartpole/2024-03-28__11-27-12__seed_6033"
     #
     # # 10bn timestep cartpole (works!):
-    # logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
+    logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
     symbdir, save_file = create_symb_dir_if_exists(logdir)
     policy, env, sampler, symbolic_agent_constructor, test_env, test_agent = load_nn_policy(logdir, n_envs)
     X, Y, V = generate_data(policy, sampler, env, n=int(data_size))
