@@ -70,12 +70,12 @@ def add_coinrun_sparsity_params(args):
 def add_boxworld_params(args):
     args.exp_name = "boxworld"
     args.env_name = "boxworld"
-    args.param_name = "boxworld-ribfsqmha"
+    args.param_name = "boxworld-ribfsqmha-easy"
     args.num_timesteps = int(2e8)
     args.num_checkpoints = 1
     args.seed = 6033
     args.use_wandb = True
-    args.wandb_tags = ["h-param", "hard", "n_envs", "n_minibatch"]
+    args.wandb_tags = ["h-param", "easy", "n_envs", "n_minibatch"]
     args.device = "gpu"
     args.use_valid_env = False
     return args

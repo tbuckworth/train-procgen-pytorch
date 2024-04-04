@@ -566,20 +566,20 @@ boxworld-ribmha:
 
 boxworld-ribfsqmha-easy:
     algo: ppo
-    n_envs: 48
+    n_envs: 1024
     n_steps: 64
     epoch: 3
     n_minibatch: 8
     mini_batch_size: 8192
-    gamma: 0.99
+    gamma: 0.95
     lmbda: 0.95
-    learning_rate: 0.005
+    learning_rate: 0.0025
     grad_clip_norm: 0.5
     eps_clip: 0.2
     value_coef: 0.5
     entropy_coef: 0.001
     normalize_adv: True
-    normalize_rew: False
+    normalize_rew: True
     use_gae: True
     architecture: ribfsqmha
     recurrent: False
@@ -593,7 +593,6 @@ boxworld-ribfsqmha-easy:
     num_distractor_v: 1
     distractor_length_v: 1
     use_vq: False
-    entropy_scaling: time_based
     mha_layers: 2
     pool_direction: dim_wise
     levels: [10, 10]
