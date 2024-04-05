@@ -63,7 +63,6 @@ def load_nn_policy(logdir, n_envs=2):
         sampler = sample_latent_output_fsqmha
         symbolic_agent_constructor = NeuroSymbolicAgent
         test_env = get_coinrun_test_env(logdir, n_envs)
-        test_agent = test_coinrun_agent
     if cfg["env_name"] == "cartpole":
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         hyperparameters, last_model = load_hparams_for_model(cfg["param_name"], logdir, n_envs)
@@ -74,8 +73,7 @@ def load_nn_policy(logdir, n_envs=2):
         sampler = sample_latent_output_mlpmodel
         symbolic_agent_constructor = SymbolicAgent
         test_env = create_cartpole(n_envs, hyperparameters, is_valid=True)
-        test_agent = test_cartpole_agent
-    return policy, env, sampler, symbolic_agent_constructor, test_env, test_agent
+    return policy, env, sampler, symbolic_agent_constructor, test_env, test_agent_mean_reward
 
 
 def drop_first_dim(arr):
@@ -121,7 +119,7 @@ def sample_latent_output_mlpmodel(policy, observation):
     return observation, act, act, value.cpu().numpy()
 
 
-def test_cartpole_agent(agent, env, print_name, n=40):
+def test_agent_mean_reward(agent, env, print_name, n=40):
     episodes = 0
     obs = env.reset()
     act = agent.forward(obs)
@@ -137,7 +135,7 @@ def test_cartpole_agent(agent, env, print_name, n=40):
     return np.mean(episode_rewards)
 
 
-def test_coinrun_agent(agent, env, print_name, n=40):
+def test_agent_balanced_reward(agent, env, print_name, n=40):
     performance_track = {}
     episodes = 0
     obs = env.reset()
@@ -148,7 +146,7 @@ def test_coinrun_agent(agent, env, print_name, n=40):
         true_average_reward = balanced_reward(done, info, performance_track)
         if np.any(done):
             episodes += np.sum(done)
-            print(f"{print_name}:\tEpisode:{episodes}\tBalanced Reward:{true_average_reward:.2f}")
+    print(f"{print_name}:\tEpisode:{episodes}\tBalanced Reward:{true_average_reward:.2f}")
     return true_average_reward
 
 
@@ -359,14 +357,15 @@ if __name__ == "__main__":
     parser.add_argument('--data_size', type=int, default=1000, help='How much data to train on')
     parser.add_argument('--iterations', type=int, default=10, help='How many genetic algorithm iterations')
     parser.add_argument('--logdir', type=str, default=None, help='Dir of model to imitate')
-    parser.add_argument('--n_envs', type=int, default=int(0),
+    parser.add_argument('--n_envs', type=int, default=int(8),
                         help='Number of parallel environments to use to generate data and test models')
-    parser.add_argument('--rounds', type=int, default=int(500), help='Number of episodes to test models for')
+    parser.add_argument('--rounds', type=int, default=int(40), help='Number of episodes to test models for')
     parser.add_argument('--binary_operators', type=str, nargs='+', default=["+", "-", "greater"],
                         help="Binary operators to use in search")
     parser.add_argument('--unary_operators', type=str, nargs='+', default=[], help="Unary operators to use in search")
     parser.add_argument('--denoise', action="store_true", default=False)
 
     args = parser.parse_args()
+    # args.logdir = "logs/train/coinrun/coinrun-hparams/2024-03-27__18-20-55__seed_6033"
 
     run_neurosymbolic_search(args)
