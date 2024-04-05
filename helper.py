@@ -222,6 +222,11 @@ def initialize_model(device, env, hyperparameters):
     policy.to(device)
     return model, observation_shape, policy
 
+def dict_to_html_table(name_deets):
+    specs = {"metric": list(name_deets.keys()), "value": list(name_deets.values())}
+    df2 = pd.DataFrame(specs)
+    text = df2.to_html(index=False)
+    return text
 
 def create_name_from_dict(prefix, suffix, specifications, exclusions=[]):
     if type(specifications) == str:

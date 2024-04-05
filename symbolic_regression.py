@@ -1,6 +1,7 @@
 import argparse
 import os
 import parser
+import time
 
 import numpy as np
 import pandas as pd
@@ -17,7 +18,7 @@ import torch.nn.functional as F
 from torch.distributions import Categorical
 from common.env.procgen_wrappers import create_env
 from helper import get_config, get_path, balanced_reward, GLOBAL_DIR, load_storage_and_policy, \
-    load_hparams_for_model, floats_to_dp, append_to_csv_if_exists
+    load_hparams_for_model, floats_to_dp, append_to_csv_if_exists, dict_to_html_table
 from inspect_agent import load_policy
 from matplotlib import pyplot as plt
 
@@ -220,6 +221,14 @@ class NeuralAgent:
         return act.cpu().numpy()
 
 
+class RandomAgent:
+    def __init__(self, n_actions):
+        self.actions = np.arange(n_actions)
+
+    def forward(self, observation):
+        return np.random.choice(self.actions, size=len(observation))
+
+
 def get_coinrun_test_env(logdir, n_envs):
     cfg = get_config(logdir)
     hp_file = os.path.join(GLOBAL_DIR, logdir, "hyperparameters.npy")
@@ -246,43 +255,71 @@ def create_symb_dir_if_exists(logdir):
     symbdir = os.path.join(logdir, "symbreg")
     if not os.path.exists(symbdir):
         os.mkdir(symbdir)
+    symbdir = os.path.join(symbdir, time.strftime("%Y-%m-%d__%H-%M-%S"))
+    if not os.path.exists(symbdir):
+        os.mkdir(symbdir)
     return symbdir, save_file
 
 
-
-def send_full_report(df, logdir, model):
+def send_full_report(df, logdir, model, args):
     # load log csv
     dfl = pd.read_csv(os.path.join(logdir, "log-append.csv"))
+
+    cfg = get_config(logdir)
+    if cfg["model_file"] is not None:
+        df0 = pd.read_csv(os.path.join(cfg["model_file"], "log-append.csv"))
+        dfl.timesteps += df0.timesteps.max()
+        # join df0 and dfl:
+        dfl = pd.concat([df0, dfl], ignore_index=True)
+
     # create graph
     roll_window = 100
     dfl2 = pd.DataFrame(
-        {"Neural Training Reward - Rolling Avg.": dfl["mean_episode_rewards"].rolling(window=roll_window).mean(),
-         "Neural Test Reward - Rolling Avg.": dfl["val_mean_episode_rewards"].rolling(window=roll_window).mean()
+        {"Neural Train": dfl["mean_episode_rewards"].rolling(window=roll_window).mean(),
+         "Neural Test": dfl["val_mean_episode_rewards"].rolling(window=roll_window).mean()
          })  # ,
     dfl2.index = dfl["timesteps"]
 
-    dfl2.plot()
+    ax = dfl2.plot()
     ns_train = df.NeuroSymb_score_Train[0]
-    plt.hlines(y=ns_train,
-               xmin=0,
-               xmax=dfl2.index.max(),
-               label="NeuroSymbolic Training Reward",
-               linestyles="dashed")
     ns_test = df.NeuroSymb_score_Test[0]
-    plt.hlines(y=ns_test,
-               xmin=0,
-               xmax=dfl2.index.max(),
-               label="NeuroSymbolic Test Reward",
-               linestyles="dashed")
-    plt.ylim(ymin=0)  # this line
-    plt.legend()
+    rn_train = df.Random_score_Train[0]
+    rn_test = df.Random_score_Test[0]
+
+    hline_dict = {"NeuroSymb Train": [ns_train, "black"],
+                  "NeuroSymb Test": [ns_test, "green"],
+                  "Random Train": [rn_train, "darkred"],
+                  "Random Test": [rn_test, "red"], }
+    for key in hline_dict.keys():
+        plt_hline(dfl2, key, hline_dict[key][0], hline_dict[key][1])
+
+    plt.ylim(ymin=min(0, dfl["mean_episode_rewards"].min(), dfl["val_mean_episode_rewards"].min()))
+    plt.title("Rolling Average Reward")
+
+    # Shrink current axis's height by 10% on the bottom
+    box = ax.get_position()
+    ax.set_position([box.x0, box.y0 + box.height * 0.15,
+                     box.width, box.height * 0.85])
+
+    # Put a legend below current axis
+    ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15),
+              fancybox=True, shadow=True, ncol=3)
+
     plot_file = os.path.join(logdir, "training_plot.png")
     plt.savefig(plot_file)
     # create table
-    dfv = df.T
-    dfv.columns = ["Value"]
-    # TODO: make dfv formatted to two dps
-    tab_code = dfv.to_html()  # df.T.to_html(columns=False)
+    dfv = df.filter(regex="_score_").T
+
+    dfv2 = pd.Series(dfv.index).str.split("_score_", expand=True)
+    dfv2.columns = ["Model", "Environment"]
+    dfv2["mean_reward"] = dfv[0].values.round(decimals=2)
+
+    dfw = dfv2.pivot(columns="Environment", index="Model", values="mean_reward")
+
+    tab_code = dfw.to_html(index=True)
+
+    params = dict_to_html_table(args.__dict__)
+
     eqn_str = get_best_str(model, split="<br/>")
     # send email
     eqn_str = floats_to_dp(eqn_str)
@@ -300,8 +337,18 @@ def send_full_report(df, logdir, model):
     if test_improved and not train_improved:
         statement = "Improved Generalization"
 
-    body_text = f"<b>{statement}</b><br>{tab_code}<br><b>Learned Formula:</b><br><p>{eqn_str}</p>"
+    body_text = f"<b>{statement}</b><br>{tab_code}<br><b>Learned Formula:</b><br><p>{eqn_str}</p><br>{params}"
     send_image(plot_file, "PySR Results", body_text=body_text)
+    print("done")
+
+
+def plt_hline(dfl2, label, ns_train, colour):
+    plt.hlines(y=ns_train,
+               xmin=0,
+               xmax=dfl2.index.max(),
+               label=label,
+               linestyles="dashed",
+               color=colour)
 
 
 def temp_func():
@@ -330,6 +377,9 @@ def run_neurosymbolic_search(args):  # data_size, iterations, logdir, n_envs, ro
     n_envs = args.n_envs
     rounds = args.rounds
     symbdir, save_file = create_symb_dir_if_exists(logdir)
+    cfg = vars(args)
+    np.save(os.path.join(symbdir, "config.npy"), cfg)
+
     policy, env, sampler, symbolic_agent_constructor, test_env, test_agent = load_nn_policy(logdir, n_envs)
     X, Y, V = generate_data(policy, sampler, env, n=int(data_size))
     print("data generated")
@@ -337,35 +387,55 @@ def run_neurosymbolic_search(args):  # data_size, iterations, logdir, n_envs, ro
         model = find_model(X, Y, symbdir, iterations, save_file, V, args)
         ns_agent = symbolic_agent_constructor(model, policy)
         nn_agent = NeuralAgent(policy)
+        rn_agent = RandomAgent(env.action_space.n)
+
         ns_score_train = test_agent(ns_agent, env, "NeuroSymb Train", rounds)
         nn_score_train = test_agent(nn_agent, env, "Neural    Train", rounds)
+        rn_score_train = test_agent(rn_agent, env, "Random    Train", rounds)
 
         ns_score_test = test_agent(ns_agent, test_env, "NeuroSymb  Test", rounds)
         nn_score_test = test_agent(nn_agent, test_env, "Neural     Test", rounds)
+        rn_score_test = test_agent(rn_agent, test_env, "Random     Test", rounds)
 
-        values = [iterations, data_size, rounds, nn_score_train, ns_score_train, nn_score_test, ns_score_test, logdir]
-        columns = ["iterations", "data_size", "rounds", "Neural_score_Train", "NeuroSymb_score_Train",
-                   "Neural_score_Test", "NeuroSymb_score_Test", "logdir"]
-        df = pd.DataFrame(columns=columns)
-        df.loc[0] = values
-        append_to_csv_if_exists(df, os.path.join(symbdir, "results.csv"))
-        send_full_report(df, logdir, model)
+        # values = [iterations, data_size, rounds, nn_score_train, ns_score_train, nn_score_test, ns_score_test, logdir]
+        # columns = ["iterations", "data_size", "rounds", "Neural_score_Train", "NeuroSymb_score_Train",
+        #            "Neural_score_Test", "NeuroSymb_score_Test", "logdir"]
+        df_values = {
+            "Random_score_Train": [rn_score_train],
+            "Neural_score_Train": [ns_score_train],
+            "NeuroSymb_score_Train": [nn_score_train],
+            "Neural_score_Test": [ns_score_test],
+            "Random_score_Test": [rn_score_test],
+            "NeuroSymb_score_Test": [nn_score_test],
+            "logdir": [logdir],
+            "iterations": [iterations],
+            "data_size": [data_size],
+            "rounds": [rounds],
+        }
+        df = pd.DataFrame(df_values)
+        df.to_csv(os.path.join(symbdir, "results.csv"), mode="w", header=True, index=False)
+        send_full_report(df, logdir, model, args)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_size', type=int, default=1000, help='How much data to train on')
-    parser.add_argument('--iterations', type=int, default=10, help='How many genetic algorithm iterations')
+    parser.add_argument('--data_size', type=int, default=100, help='How much data to train on')
+    parser.add_argument('--iterations', type=int, default=1, help='How many genetic algorithm iterations')
     parser.add_argument('--logdir', type=str, default=None, help='Dir of model to imitate')
-    parser.add_argument('--n_envs', type=int, default=int(8),
+    parser.add_argument('--n_envs', type=int, default=int(32),
                         help='Number of parallel environments to use to generate data and test models')
-    parser.add_argument('--rounds', type=int, default=int(40), help='Number of episodes to test models for')
+    parser.add_argument('--rounds', type=int, default=int(300), help='Number of episodes to test models for')
     parser.add_argument('--binary_operators', type=str, nargs='+', default=["+", "-", "greater"],
                         help="Binary operators to use in search")
     parser.add_argument('--unary_operators', type=str, nargs='+', default=[], help="Unary operators to use in search")
     parser.add_argument('--denoise', action="store_true", default=False)
 
     args = parser.parse_args()
-    # args.logdir = "logs/train/coinrun/coinrun-hparams/2024-03-27__18-20-55__seed_6033"
 
+    if args.logdir is None:
+        # Sparse coinrun:
+        args.logdir = "logs/train/coinrun/coinrun-hparams/2024-03-27__18-20-55__seed_6033"
+        # 10bn cartpole:
+        args.logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
+        print(f"No oracle provided.\nUsing Logdir: {args.logdir}")
     run_neurosymbolic_search(args)
