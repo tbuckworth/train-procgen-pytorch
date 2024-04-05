@@ -1,6 +1,7 @@
 import argparse
 import os
 import parser
+import re
 import time
 
 import numpy as np
@@ -153,6 +154,7 @@ def test_agent_balanced_reward(agent, env, print_name, n=40):
     print(f"{print_name}:\tEpisode:{episodes}\tBalanced Reward:{true_average_reward:.2f}")
     return true_average_reward
 
+
 def test_agent_mean_reward(agent, env, print_name, n=40):
     episodes = 0
     obs = env.reset()
@@ -281,13 +283,16 @@ def create_symb_dir_if_exists(logdir):
 def send_full_report(df, logdir, model, args):
     # load log csv
     dfl = pd.read_csv(os.path.join(logdir, "log-append.csv"))
-
     cfg = get_config(logdir)
+    fine_tune_moment = None
     if cfg["model_file"] is not None:
-        df0 = pd.read_csv(os.path.join(cfg["model_file"], "log-append.csv"))
-        dfl.timesteps += df0.timesteps.max()
-        # join df0 and dfl:
-        dfl = pd.concat([df0, dfl], ignore_index=True)
+        model_dir = re.search(f".*(logs.*)model_\d*.pth", cfg["model_file"]).group(1)
+        if os.path.exists(model_dir):
+            df0 = pd.read_csv(os.path.join(model_dir, "log-append.csv"))
+            fine_tune_moment = df0.timesteps.max()
+            dfl.timesteps += fine_tune_moment
+            # join df0 and dfl:
+            dfl = pd.concat([df0, dfl], ignore_index=True)
 
     # create graph
     roll_window = 100
@@ -310,8 +315,13 @@ def send_full_report(df, logdir, model, args):
     for key in hline_dict.keys():
         plt_hline(dfl2, key, hline_dict[key][0], hline_dict[key][1])
 
-    plt.ylim(ymin=min(0, dfl["mean_episode_rewards"].min(), dfl["val_mean_episode_rewards"].min()))
+    min_y = min(0, dfl["mean_episode_rewards"].min(), dfl["val_mean_episode_rewards"].min())
+    max_y = max(0, dfl["mean_episode_rewards"].max(), dfl["val_mean_episode_rewards"].max())
+    plt.ylim(ymin=min_y)
     plt.title("Rolling Average Reward")
+
+    if fine_tune_moment is not None:
+        plt.vlines(x=fine_tune_moment, ymin=min_y, ymax=max_y, linestyles='--')
 
     # Shrink current axis's height by 10% on the bottom
     box = ax.get_position()
@@ -335,8 +345,8 @@ def send_full_report(df, logdir, model, args):
     nn_train = df.Neural_score_Train[0]
 
     tab_code = pd.DataFrame({"Train": [nn_train, ns_train, rn_train],
-                  "Test": [nn_test, ns_test, rn_test]},
-                 index=["Neural", "NeuroSymbolic", "Random"], ).round(2).to_html()
+                             "Test": [nn_test, ns_test, rn_test]},
+                            index=["Neural", "NeuroSymbolic", "Random"], ).round(2).to_html()
 
     test_improved = ns_test > nn_test
     train_improved = ns_train > nn_train
@@ -351,7 +361,7 @@ def send_full_report(df, logdir, model, args):
 
     body_text = f"<br><b>{statement}</b><br>{tab_code}<br><b>Learned Formula:</b><br><p>{eqn_str}</p><br>{params}"
     send_image(plot_file, "PySR Results", body_text=body_text)
-    print("done")
+    print("")
 
 
 def split_df_by_index_and_pivot(df):
@@ -443,9 +453,9 @@ if __name__ == "__main__":
     parser.add_argument('--data_size', type=int, default=100, help='How much data to train on')
     parser.add_argument('--iterations', type=int, default=1, help='How many genetic algorithm iterations')
     parser.add_argument('--logdir', type=str, default=None, help='Dir of model to imitate')
-    parser.add_argument('--n_envs', type=int, default=int(32),
+    parser.add_argument('--n_envs', type=int, default=int(8),
                         help='Number of parallel environments to use to generate data and test models')
-    parser.add_argument('--rounds', type=int, default=int(100), help='Number of episodes to test models for')
+    parser.add_argument('--rounds', type=int, default=int(10), help='Number of episodes to test models for')
     parser.add_argument('--binary_operators', type=str, nargs='+', default=["+", "-", "greater"],
                         help="Binary operators to use in search")
     parser.add_argument('--unary_operators', type=str, nargs='+', default=[], help="Unary operators to use in search")
@@ -456,7 +466,7 @@ if __name__ == "__main__":
     if args.logdir is None:
         # Sparse coinrun:
         args.logdir = "logs/train/coinrun/coinrun-hparams/2024-03-27__18-20-55__seed_6033"
-        # 10bn cartpole:
-        args.logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
+        # # 10bn cartpole:
+        # args.logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
         print(f"No oracle provided.\nUsing Logdir: {args.logdir}")
     run_neurosymbolic_search(args)
