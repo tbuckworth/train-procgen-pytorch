@@ -64,6 +64,7 @@ def load_nn_policy(logdir, n_envs=2):
         sampler = sample_latent_output_fsqmha
         symbolic_agent_constructor = NeuroSymbolicAgent
         test_env = get_coinrun_test_env(logdir, n_envs)
+        test_agent = test_agent_balanced_reward
     if cfg["env_name"] == "cartpole":
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         hyperparameters, last_model = load_hparams_for_model(cfg["param_name"], logdir, n_envs)
@@ -74,7 +75,8 @@ def load_nn_policy(logdir, n_envs=2):
         sampler = sample_latent_output_mlpmodel
         symbolic_agent_constructor = SymbolicAgent
         test_env = create_cartpole(n_envs, hyperparameters, is_valid=True)
-    return policy, env, sampler, symbolic_agent_constructor, test_env, test_agent_mean_reward
+        test_agent = test_cartpole_agent
+    return policy, env, sampler, symbolic_agent_constructor, test_env, test_agent
 
 
 def drop_first_dim(arr):
@@ -120,12 +122,13 @@ def sample_latent_output_mlpmodel(policy, observation):
     return observation, act, act, value.cpu().numpy()
 
 
-def test_agent_mean_reward(agent, env, print_name, n=40):
+def test_cartpole_agent(agent, env, print_name, n=40):
     episodes = 0
     obs = env.reset()
     act = agent.forward(obs)
     episode_rewards = []
     while episodes < n:
+        # This is for cartpole only!
         ep_reward = env.env.n_steps.copy()
         obs, rew, done, new_info = env.step(act)
         act = agent.forward(obs)
@@ -149,6 +152,20 @@ def test_agent_balanced_reward(agent, env, print_name, n=40):
             episodes += np.sum(done)
     print(f"{print_name}:\tEpisode:{episodes}\tBalanced Reward:{true_average_reward:.2f}")
     return true_average_reward
+
+def test_agent_mean_reward(agent, env, print_name, n=40):
+    episodes = 0
+    obs = env.reset()
+    act = agent.forward(obs)
+    episode_rewards = []
+    while episodes < n:
+        obs, rew, done, info = env.step(act)
+        act = agent.forward(obs)
+        if np.any(done):
+            episodes += np.sum(done)
+            episode_rewards += list(rew[done])
+    print(f"{print_name}:\tEpisode:{episodes}\tMean Reward:{np.mean(episode_rewards):.2f}")
+    return np.mean(episode_rewards)
 
 
 def sample_policy_with_symb_model(model, policy, observation):
@@ -307,16 +324,6 @@ def send_full_report(df, logdir, model, args):
 
     plot_file = os.path.join(logdir, "training_plot.png")
     plt.savefig(plot_file)
-    # create table
-    dfv = df.filter(regex="_score_").T
-
-    dfv2 = pd.Series(dfv.index).str.split("_score_", expand=True)
-    dfv2.columns = ["Model", "Environment"]
-    dfv2["mean_reward"] = dfv[0].values.round(decimals=2)
-
-    dfw = dfv2.pivot(columns="Environment", index="Model", values="mean_reward")
-
-    tab_code = dfw.to_html(index=True)
 
     params = dict_to_html_table(args.__dict__)
 
@@ -326,6 +333,11 @@ def send_full_report(df, logdir, model, args):
 
     nn_test = df.Neural_score_Test[0]
     nn_train = df.Neural_score_Train[0]
+
+    tab_code = pd.DataFrame({"Train": [nn_train, ns_train, rn_train],
+                  "Test": [nn_test, ns_test, rn_test]},
+                 index=["Neural", "NeuroSymbolic", "Random"], ).round(2).to_html()
+
     test_improved = ns_test > nn_test
     train_improved = ns_train > nn_train
 
@@ -337,9 +349,18 @@ def send_full_report(df, logdir, model, args):
     if test_improved and not train_improved:
         statement = "Improved Generalization"
 
-    body_text = f"<b>{statement}</b><br>{tab_code}<br><b>Learned Formula:</b><br><p>{eqn_str}</p><br>{params}"
+    body_text = f"<br><b>{statement}</b><br>{tab_code}<br><b>Learned Formula:</b><br><p>{eqn_str}</p><br>{params}"
     send_image(plot_file, "PySR Results", body_text=body_text)
     print("done")
+
+
+def split_df_by_index_and_pivot(df):
+    dfv = df.filter(regex="_score_").T
+    dfv2 = pd.Series(dfv.index).str.split("_score_", expand=True)
+    dfv2.columns = ["Model", "Environment"]
+    dfv2["mean_reward"] = dfv[0].values.round(decimals=2)
+    dfw = dfv2.pivot(columns="Environment", index="Model", values="mean_reward")
+    tab_code = dfw.to_html(index=True)
 
 
 def plt_hline(dfl2, label, ns_train, colour):
@@ -384,8 +405,8 @@ def run_neurosymbolic_search(args):  # data_size, iterations, logdir, n_envs, ro
     X, Y, V = generate_data(policy, sampler, env, n=int(data_size))
     print("data generated")
     if os.name != "nt":
-        model = find_model(X, Y, symbdir, iterations, save_file, V, args)
-        ns_agent = symbolic_agent_constructor(model, policy)
+        pysr_model = find_model(X, Y, symbdir, iterations, save_file, V, args)
+        ns_agent = symbolic_agent_constructor(pysr_model, policy)
         nn_agent = NeuralAgent(policy)
         rn_agent = RandomAgent(env.action_space.n)
 
@@ -402,11 +423,11 @@ def run_neurosymbolic_search(args):  # data_size, iterations, logdir, n_envs, ro
         #            "Neural_score_Test", "NeuroSymb_score_Test", "logdir"]
         df_values = {
             "Random_score_Train": [rn_score_train],
-            "Neural_score_Train": [ns_score_train],
-            "NeuroSymb_score_Train": [nn_score_train],
-            "Neural_score_Test": [ns_score_test],
+            "Neural_score_Train": [nn_score_train],
+            "NeuroSymb_score_Train": [ns_score_train],
+            "Neural_score_Test": [nn_score_test],
             "Random_score_Test": [rn_score_test],
-            "NeuroSymb_score_Test": [nn_score_test],
+            "NeuroSymb_score_Test": [ns_score_test],
             "logdir": [logdir],
             "iterations": [iterations],
             "data_size": [data_size],
@@ -414,7 +435,7 @@ def run_neurosymbolic_search(args):  # data_size, iterations, logdir, n_envs, ro
         }
         df = pd.DataFrame(df_values)
         df.to_csv(os.path.join(symbdir, "results.csv"), mode="w", header=True, index=False)
-        send_full_report(df, logdir, model, args)
+        send_full_report(df, logdir, pysr_model, args)
 
 
 if __name__ == "__main__":
@@ -424,7 +445,7 @@ if __name__ == "__main__":
     parser.add_argument('--logdir', type=str, default=None, help='Dir of model to imitate')
     parser.add_argument('--n_envs', type=int, default=int(32),
                         help='Number of parallel environments to use to generate data and test models')
-    parser.add_argument('--rounds', type=int, default=int(300), help='Number of episodes to test models for')
+    parser.add_argument('--rounds', type=int, default=int(100), help='Number of episodes to test models for')
     parser.add_argument('--binary_operators', type=str, nargs='+', default=["+", "-", "greater"],
                         help="Binary operators to use in search")
     parser.add_argument('--unary_operators', type=str, nargs='+', default=[], help="Unary operators to use in search")
