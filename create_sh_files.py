@@ -93,13 +93,14 @@ def write_sh_files(hparams, n_gpu, args):
         end = (gpu + 1) * n
         for arg, h_dict in zip(arg_list[start:end], h_dict_list[start:end]):
             # for hparam_list in permutations_dicts[gpu * n:(gpu + 1) * n]:
-            nme = ""
+            nme = np.random.randint(0, 10000)
+            # nme = ""
             for key in h_dict.keys():
                 v = h_dict[key]
                 v_str = v
                 if type(v) == list:
                     v_str = ','.join([str(x) for x in v])
-                nme += f"_{key}_{v_str}"
+                # nme += f"_{key}_{v_str}"
                 arg.__dict__[key] = v
             arg.wandb_name = nme
             hparams = format_args(arg)
