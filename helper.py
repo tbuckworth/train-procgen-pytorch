@@ -19,7 +19,6 @@ from common.policy import CategoricalPolicy
 from moviepy.editor import ImageSequenceClip
 
 from common.storage import Storage
-from symbolic_regression import parser
 
 GLOBAL_DIR = "/vol/bitbucket/tfb115/train-procgen-pytorch/"
 OS_IS = "Linux"
@@ -478,8 +477,8 @@ def add_symbreg_args(parser):
     parser.add_argument('--binary_operators', type=str, nargs='+', default=["+", "-", "greater"],
                         help="Binary operators to use in search")
     parser.add_argument('--unary_operators', type=str, nargs='+', default=[], help="Unary operators to use in search")
-    parser.add_argument('--denoise', action="store_true", default=False)
-    parser.add_argument('--use_wandb', action="store_true", default=False)
+    parser.add_argument('--denoise', type=bool, default=False)
+    parser.add_argument('--use_wandb', type=bool, default=False)
     parser.add_argument('--wandb_tags', type=str, nargs='+', default=[], help="Tags for Weights & Biases")
     parser.add_argument('--wandb_name', type=str, default=None, help='Experiment Name for Weights & Biases')
     parser.add_argument('--wandb_group', type=str, default=None)

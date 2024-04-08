@@ -4,7 +4,7 @@ import itertools
 
 import numpy as np
 
-from helper import add_training_args, latest_model_path
+from helper import add_training_args, latest_model_path, add_symbreg_args
 
 
 def format_args(arg):
@@ -81,40 +81,16 @@ def add_boxworld_params(args):
     return args
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--n_gpu', type=int, default=6)
-    parser = add_training_args(parser)
-    args = parser.parse_args()
-    n_gpu = args.n_gpu
-    args.__delattr__("n_gpu")
-
-    # args = add_coinrun_sparsity_params(args)
-    args = add_boxworld_params(args)
-
-    hparams = {
-        # "n_envs": [1024],
-        # "gamma": [0.95],
-        # "n_minibatch": [32],
-        # "mini_batch_size": [2048],
-        # "normalize_rew": [True],
-        # "levels": [[10, 10]],#, [8, 5, 5, 5], [9, 9, 9]],
-        # "learning_rate": [0.0025],
-        "entropy_coef": [0.02],
-        # "sparsity_coef": [0],
-    }
-    # h_dict = [v for v in itertools.product(*hparams.values())]
+def write_sh_files(hparams, n_gpu, args):
     keys, values = zip(*hparams.items())
     h_dict_list = [dict(zip(keys, v)) for v in itertools.product(*values)]
-
     h_dict_list = np.random.permutation(h_dict_list)
-
     arg_list = [copy.deepcopy(args) for _ in h_dict_list]
     n = len(arg_list) // n_gpu
     for gpu in range(n_gpu):
         python_execs = []
-        start = gpu*n
-        end = (gpu+1)*n
+        start = gpu * n
+        end = (gpu + 1) * n
         for arg, h_dict in zip(arg_list[start:end], h_dict_list[start:end]):
             # for hparam_list in permutations_dicts[gpu * n:(gpu + 1) * n]:
             nme = ""
@@ -133,3 +109,41 @@ if __name__ == '__main__':
         f = open(exe_file_name, 'w', newline='\n')
         f.write(exe)
         f.close()
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--n_gpu', type=int, default=6)
+    # parser = add_training_args(parser)
+    parser = add_symbreg_args(parser)
+
+    args = parser.parse_args()
+    n_gpu = args.n_gpu
+    args.__delattr__("n_gpu")
+
+    # args = add_coinrun_sparsity_params(args)
+    # args = add_boxworld_params(args)
+
+    hparams = {
+        "data_size": [100, 1000, 5000],
+        "iterations": [1, 5, 10, 20, 40],
+        "n_envs": [32],
+        "rounds": [300],
+        "denoise": [True, False],
+        "procs": [15, 20, 30],
+        "batching": [True, False],
+        "warmupMaxsize": [True, False],
+        "binary_operators": [["+", "-", "greater"],
+                             ["+", "-", "greater", "*"],
+                             ["+", "-", "greater", "cond"],
+                             ["+", "-", "greater", "cond", "*"]
+                             ],
+        "unary_operators": [[],
+                            ["cos", "sin"],
+                            ["log", "exp"],
+                            ["relu"],
+                            ["log", "exp", "relu"]
+                            ],
+
+    }
+    write_sh_files(hparams, n_gpu, args)

@@ -19,7 +19,7 @@ import torch.nn.functional as F
 from torch.distributions import Categorical
 from common.env.procgen_wrappers import create_env
 from helper import get_config, get_path, balanced_reward, GLOBAL_DIR, load_storage_and_policy, \
-    load_hparams_for_model, floats_to_dp, dict_to_html_table, wandb_login
+    load_hparams_for_model, floats_to_dp, dict_to_html_table, wandb_login, add_symbreg_args
 from inspect_agent import load_policy
 from matplotlib import pyplot as plt
 
@@ -467,19 +467,7 @@ def run_neurosymbolic_search(args):  # data_size, iterations, logdir, n_envs, ro
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_size', type=int, default=100, help='How much data to train on')
-    parser.add_argument('--iterations', type=int, default=1, help='How many genetic algorithm iterations')
-    parser.add_argument('--logdir', type=str, default=None, help='Dir of model to imitate')
-    parser.add_argument('--n_envs', type=int, default=int(8),
-                        help='Number of parallel environments to use to generate data and test models')
-    parser.add_argument('--rounds', type=int, default=int(10), help='Number of episodes to test models for')
-    parser.add_argument('--binary_operators', type=str, nargs='+', default=["+", "-", "greater"],
-                        help="Binary operators to use in search")
-    parser.add_argument('--unary_operators', type=str, nargs='+', default=[], help="Unary operators to use in search")
-    parser.add_argument('--denoise', action="store_true", default=False)
-    parser.add_argument('--use_wandb', action="store_true", default=False)
-    parser.add_argument('--wandb_tags', type=str, nargs='+', default=[], help="Tags for Weights & Biases")
-    parser.add_argument('--wandb_name', type=str, default=None, help='Experiment Name for Weights & Biases')
+    parser = add_symbreg_args(parser)
 
     args = parser.parse_args()
 
