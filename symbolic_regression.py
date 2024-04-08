@@ -1,12 +1,12 @@
 import argparse
 import os
-import parser
 import re
 import time
 
 import numpy as np
 import pandas as pd
 import sympy
+import wandb
 
 from cartpole.create_cartpole import create_cartpole
 from email_results import send_image
@@ -19,7 +19,7 @@ import torch.nn.functional as F
 from torch.distributions import Categorical
 from common.env.procgen_wrappers import create_env
 from helper import get_config, get_path, balanced_reward, GLOBAL_DIR, load_storage_and_policy, \
-    load_hparams_for_model, floats_to_dp, append_to_csv_if_exists, dict_to_html_table
+    load_hparams_for_model, floats_to_dp, dict_to_html_table, wandb_login
 from inspect_agent import load_policy
 from matplotlib import pyplot as plt
 
@@ -411,6 +411,25 @@ def run_neurosymbolic_search(args):  # data_size, iterations, logdir, n_envs, ro
     cfg = vars(args)
     np.save(os.path.join(symbdir, "config.npy"), cfg)
 
+    wandb_name = args.wandb_name
+    if args.wandb_name is None:
+        wandb_name = np.random.randint(1e5)
+
+    if args.use_wandb:
+        wandb_login()
+        name = wandb_name
+        wb_resume = "allow"  # if args.model_file is None else "must"
+        project = "Symb Reg"
+        if args.wandb_group is not None:
+            wandb.init(project=project, config=cfg, sync_tensorboard=True,
+                       tags=args.wandb_tags, resume=wb_resume, name=name, group=args.wandb_group)
+        else:
+            wandb.init(project=project, config=cfg, sync_tensorboard=True,
+                       tags=args.wandb_tags, resume=wb_resume, name=name)
+
+
+
+
     policy, env, sampler, symbolic_agent_constructor, test_env, test_agent = load_nn_policy(logdir, n_envs)
     X, Y, V = generate_data(policy, sampler, env, n=int(data_size))
     print("data generated")
@@ -438,11 +457,9 @@ def run_neurosymbolic_search(args):  # data_size, iterations, logdir, n_envs, ro
             "Neural_score_Test": [nn_score_test],
             "Random_score_Test": [rn_score_test],
             "NeuroSymb_score_Test": [ns_score_test],
-            "logdir": [logdir],
-            "iterations": [iterations],
-            "data_size": [data_size],
-            "rounds": [rounds],
         }
+        if args.use_wandb:
+            wandb.log(df_values)
         df = pd.DataFrame(df_values)
         df.to_csv(os.path.join(symbdir, "results.csv"), mode="w", header=True, index=False)
         send_full_report(df, logdir, pysr_model, args)
@@ -460,13 +477,16 @@ if __name__ == "__main__":
                         help="Binary operators to use in search")
     parser.add_argument('--unary_operators', type=str, nargs='+', default=[], help="Unary operators to use in search")
     parser.add_argument('--denoise', action="store_true", default=False)
+    parser.add_argument('--use_wandb', action="store_true", default=False)
+    parser.add_argument('--wandb_tags', type=str, nargs='+', default=[], help="Tags for Weights & Biases")
+    parser.add_argument('--wandb_name', type=str, default=None, help='Experiment Name for Weights & Biases')
 
     args = parser.parse_args()
 
     if args.logdir is None:
         # Sparse coinrun:
-        args.logdir = "logs/train/coinrun/coinrun-hparams/2024-03-27__18-20-55__seed_6033"
+        # args.logdir = "logs/train/coinrun/coinrun-hparams/2024-03-27__18-20-55__seed_6033"
         # # 10bn cartpole:
-        # args.logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
+        args.logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
         print(f"No oracle provided.\nUsing Logdir: {args.logdir}")
     run_neurosymbolic_search(args)

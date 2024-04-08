@@ -14,7 +14,7 @@ import random
 import torch
 import numpy as np
 
-from helper import get_hyperparams, initialize_model, get_in_channels, add_training_args
+from helper import get_hyperparams, initialize_model, get_in_channels, add_training_args, wandb_login
 
 try:
     import wandb
@@ -226,7 +226,7 @@ def train_ppo(args):
     np.save(os.path.join(logdir, "config.npy"), cfg)
 
     if args.use_wandb:
-        wandb.login(key="cfc00eee102a1e9647b244a40066bfc5f1a96610")
+        wandb_login()
         name = f"{hyperparameters['architecture']}-{wandb_name}"
         wb_resume = "allow"  # if args.model_file is None else "must"
         if env_name == "boxworld":

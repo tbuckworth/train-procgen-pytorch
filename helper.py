@@ -8,6 +8,7 @@ import gym
 import numpy as np
 import pandas as pd
 import torch
+import wandb
 import yaml
 import platform
 from matplotlib import pyplot as plt
@@ -460,3 +461,7 @@ def floats_to_dp(s, decimals=2):
     for flt in flts:
         s = re.sub(replace_code, flt, s, 1)
     return s
+
+
+def wandb_login():
+    wandb.login(key="cfc00eee102a1e9647b244a40066bfc5f1a96610")
