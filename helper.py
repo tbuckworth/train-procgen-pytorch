@@ -19,6 +19,7 @@ from common.policy import CategoricalPolicy
 from moviepy.editor import ImageSequenceClip
 
 from common.storage import Storage
+from symbolic_regression import parser
 
 GLOBAL_DIR = "/vol/bitbucket/tfb115/train-procgen-pytorch/"
 OS_IS = "Linux"
@@ -465,3 +466,21 @@ def floats_to_dp(s, decimals=2):
 
 def wandb_login():
     wandb.login(key="cfc00eee102a1e9647b244a40066bfc5f1a96610")
+
+
+def add_symbreg_args(parser):
+    parser.add_argument('--data_size', type=int, default=100, help='How much data to train on')
+    parser.add_argument('--iterations', type=int, default=1, help='How many genetic algorithm iterations')
+    parser.add_argument('--logdir', type=str, default=None, help='Dir of model to imitate')
+    parser.add_argument('--n_envs', type=int, default=int(8),
+                        help='Number of parallel environments to use to generate data and test models')
+    parser.add_argument('--rounds', type=int, default=int(10), help='Number of episodes to test models for')
+    parser.add_argument('--binary_operators', type=str, nargs='+', default=["+", "-", "greater"],
+                        help="Binary operators to use in search")
+    parser.add_argument('--unary_operators', type=str, nargs='+', default=[], help="Unary operators to use in search")
+    parser.add_argument('--denoise', action="store_true", default=False)
+    parser.add_argument('--use_wandb', action="store_true", default=False)
+    parser.add_argument('--wandb_tags', type=str, nargs='+', default=[], help="Tags for Weights & Biases")
+    parser.add_argument('--wandb_name', type=str, default=None, help='Experiment Name for Weights & Biases')
+    parser.add_argument('--wandb_group', type=str, default=None)
+    return parser
