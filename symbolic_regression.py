@@ -456,6 +456,10 @@ def run_neurosymbolic_search(args):  # data_size, iterations, logdir, n_envs, ro
         # values = [iterations, data_size, rounds, nn_score_train, ns_score_train, nn_score_test, ns_score_test, logdir]
         # columns = ["iterations", "data_size", "rounds", "Neural_score_Train", "NeuroSymb_score_Train",
         #            "Neural_score_Test", "NeuroSymb_score_Test", "logdir"]
+        best_loss = pysr_model.get_best().loss
+        best_complexity = pysr_model.get_best().complexity
+        problem_name = re.search("logs/train/([^/]*)/", logdir).group(1)
+
         df_values = {
             "Random_score_Train": [rn_score_train],
             "Neural_score_Train": [nn_score_train],
@@ -464,9 +468,19 @@ def run_neurosymbolic_search(args):  # data_size, iterations, logdir, n_envs, ro
             "Random_score_Test": [rn_score_test],
             "NeuroSymb_score_Test": [ns_score_test],
             "Elapsed_Seconds": [elapsed],
+            "Best_Loss": [best_loss],
+            "Complexity": [best_complexity],
+            "Problem_name": [problem_name]
         }
+
         if args.use_wandb:
             wandb.log(df_values)
+            wandb_table = wandb.Table(
+                dataframe=pysr_model.equations_[["equation", "score", "loss", "complexity"]]
+            )
+            wandb.log(
+                {f"equations": wandb_table},
+            )
         df = pd.DataFrame(df_values)
         df.to_csv(os.path.join(symbdir, "results.csv"), mode="w", header=True, index=False)
         send_full_report(df, logdir, pysr_model, args)
