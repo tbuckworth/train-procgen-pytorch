@@ -25,8 +25,8 @@ def format_args(arg):
     return output
 
 
-def executable_python(hparams, name):
-    return f"python3.8 /vol/bitbucket/${{USER}}/train-procgen-pytorch/train.py {hparams} 2>&1 | tee /vol/bitbucket/${{USER}}/train-procgen-pytorch/scripts/train_{name}.out\n"
+def executable_python(hparams, name, script="train"):
+    return f"python3.8 /vol/bitbucket/${{USER}}/train-procgen-pytorch/{script}.py {hparams} 2>&1 | tee /vol/bitbucket/${{USER}}/train-procgen-pytorch/scripts/train_{name}.out\n"
 
 
 def executable_train(hparams, name, python_execs=[]):
@@ -104,7 +104,7 @@ def write_sh_files(hparams, n_gpu, args):
                 arg.__dict__[key] = v
             arg.wandb_name = nme
             hparams = format_args(arg)
-            python_execs += [executable_python(hparams, arg.wandb_name)]
+            python_execs += [executable_python(hparams, arg.wandb_name, "symbolic_regression")]
         exe = executable_train(hparams, arg.wandb_name, python_execs)
         exe_file_name = f"scripts/tmp_file_{arg.wandb_name}.sh"
         f = open(exe_file_name, 'w', newline='\n')
