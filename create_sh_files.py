@@ -125,25 +125,25 @@ if __name__ == '__main__':
     # args = add_boxworld_params(args)
 
     hparams = {
-        "data_size": [100, 1000, 5000],
-        "iterations": [1, 5, 10, 20, 40],
+        "timeout_in_seconds": [3600 * 10],
+        "data_size": [1000, 5000],
+        "iterations": [5, 10, 40],
         "n_envs": [32],
         "rounds": [300],
         "denoise": [True, False],
-        "procs": [15, 20, 30],
-        "batching": [True, False],
-        "warmupMaxsize": [True, False],
+        "populations": [15, 24],
+        "procs": [8, 16],
+        "ncycles_per_iteration": [550, 1000],
+        "bumper": [True, False],
         "binary_operators": [["+", "-", "greater"],
-                             ["+", "-", "greater", "*"],
-                             ["+", "-", "greater", "cond"],
-                             ["+", "-", "greater", "cond", "*"]
+                             # ["+", "-", "greater", "cond", "*"]
                              ],
         "unary_operators": [[],
-                            ["cos", "sin"],
-                            ["log", "exp"],
-                            ["relu"],
-                            ["log", "exp", "relu"]
+                            ["sin", "relu"],
+                            # ["log", "exp", "relu"],
                             ],
-
+        "logdir": ["logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"]
     }
+    n_experiments = np.prod([len(hparams[x]) for x in hparams.keys()])
+    print(f"Creating {n_experiments} experiments across {n_gpu} workers.")
     write_sh_files(hparams, n_gpu, args)

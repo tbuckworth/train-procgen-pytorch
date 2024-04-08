@@ -482,4 +482,11 @@ def add_symbreg_args(parser):
     parser.add_argument('--wandb_tags', type=str, nargs='+', default=[], help="Tags for Weights & Biases")
     parser.add_argument('--wandb_name', type=str, default=None, help='Experiment Name for Weights & Biases')
     parser.add_argument('--wandb_group', type=str, default=None)
+
+    parser.add_argument('--timeout_in_seconds', type=int, default=36000)
+    parser.add_argument('--populations', type=int, default=24)
+    parser.add_argument('--procs', type=int, default=8)
+    parser.add_argument('--ncycles_per_iteration', type=int, default=550)
+    parser.add_argument('--bumper', type=bool, default=False)
+
     return parser

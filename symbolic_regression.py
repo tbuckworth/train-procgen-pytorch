@@ -31,19 +31,28 @@ from matplotlib import pyplot as plt
 def find_model(X, Y, symbdir, iterations, save_file, weights, args):
     model = PySRRegressor(
         equation_file=get_path(symbdir, save_file),
-        niterations=iterations,  # < Increase me for better results
+        niterations=args.iterations,  # < Increase me for better results
         binary_operators=args.binary_operators,
         unary_operators=args.unary_operators,
         weights=weights,
-        denoise=True,
+        denoise=args.denoise,
         extra_sympy_mappings={"greater": lambda x, y: sympy.Piecewise((1.0, x > y), (0.0, True))},
         elementwise_loss="loss(prediction, target) = (prediction - target)^2",
+        timeout_in_seconds=args.timeout_in_seconds,
+        populations=args.populations,
+        procs=args.procs,
+        batching=args.data_size > 1000,
+        weight_optimize=0.001 if args.ncycles_per_iteration > 550 else 0.0,
+        ncycles_per_iteration=args.ncycles_per_iteration,
+        bumper=args.bumper,
     )
     print("fitting model")
+    start = time.time()
     model.fit(X, Y)
+    elapsed = time.time() - start
     eqn_str = get_best_str(model)
     print(eqn_str)
-    return model
+    return model, elapsed
 
 
 def get_best_str(model, split='\n'):
@@ -427,14 +436,11 @@ def run_neurosymbolic_search(args):  # data_size, iterations, logdir, n_envs, ro
             wandb.init(project=project, config=cfg, sync_tensorboard=True,
                        tags=args.wandb_tags, resume=wb_resume, name=name)
 
-
-
-
     policy, env, sampler, symbolic_agent_constructor, test_env, test_agent = load_nn_policy(logdir, n_envs)
     X, Y, V = generate_data(policy, sampler, env, n=int(data_size))
     print("data generated")
     if os.name != "nt":
-        pysr_model = find_model(X, Y, symbdir, iterations, save_file, V, args)
+        pysr_model, elapsed = find_model(X, Y, symbdir, iterations, save_file, V, args)
         ns_agent = symbolic_agent_constructor(pysr_model, policy)
         nn_agent = NeuralAgent(policy)
         rn_agent = RandomAgent(env.action_space.n)
@@ -457,6 +463,7 @@ def run_neurosymbolic_search(args):  # data_size, iterations, logdir, n_envs, ro
             "Neural_score_Test": [nn_score_test],
             "Random_score_Test": [rn_score_test],
             "NeuroSymb_score_Test": [ns_score_test],
+            "Elapsed_Seconds": [elapsed],
         }
         if args.use_wandb:
             wandb.log(df_values)
