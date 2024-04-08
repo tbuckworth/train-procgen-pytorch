@@ -93,14 +93,15 @@ if __name__ == '__main__':
     args = add_boxworld_params(args)
 
     hparams = {
-        "n_envs": [1024, 2048],
+        # "n_envs": [1024],
         # "gamma": [0.95],
         # "n_minibatch": [32],
         # "mini_batch_size": [2048],
         # "normalize_rew": [True],
         # "levels": [[10, 10]],#, [8, 5, 5, 5], [9, 9, 9]],
-        "learning_rate": [0.0025, 0.001, 0.0005],
-        "entropy_coef": [0.001, 0.01, 0.02, 0.005, 0.0005]
+        # "learning_rate": [0.0025],
+        "entropy_coef": [0.02, 0.05, 0.1, 0.5],
+        "sparsity_coef": [0.005, 0.01, 0.1, 0.2],
     }
     # h_dict = [v for v in itertools.product(*hparams.values())]
     keys, values = zip(*hparams.items())
