@@ -1,6 +1,3 @@
 #!/bin/bash
-pwd
-/homes/tfb115/pyg/train-procgen-pytorch/shh_gpu
-hn=$(hostname)
-echo ${hn}
-echo ${hn} ${hn}.txt
+cat $1 | ssh -tt -o StrictHostKeyChecking=no $(./free_gpu)
+
