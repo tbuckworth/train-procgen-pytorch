@@ -78,19 +78,19 @@ def load_nn_policy(logdir, n_envs=2):
         sampler = sample_latent_output_fsqmha
         symbolic_agent_constructor = NeuroSymbolicAgent
         # test_env = get_coinrun_test_env(logdir, n_envs)
-        test_agent = test_agent_balanced_reward
+        # test_agent = test_agent_balanced_reward
         create_venv = create_procgen_env
     if cfg["env_name"] == "cartpole":
         sampler = sample_latent_output_mlpmodel
         symbolic_agent_constructor = SymbolicAgent
-        test_agent = test_cartpole_agent
+        # test_agent = test_cartpole_agent
         create_venv = create_cartpole
     if cfg["env_name"] == "boxworld":
         sampler = sample_latent_output_fsqmha
         symbolic_agent_constructor = NeuroSymbolicAgent
-        test_agent = test_boxworld_agent
         create_venv = create_bw_env
 
+    test_agent = test_agent_mean_reward
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     hyperparameters, last_model = load_hparams_for_model(cfg["param_name"], logdir, n_envs)
     hyperparameters["n_envs"] = n_envs
@@ -205,13 +205,12 @@ def test_agent_mean_reward(agent, env, print_name, n=40):
     episode_rewards = []
     while episodes < n:
         obs, rew, done, info = env.step(act)
-        cum_rew = np.concatenate((cum_rew, rew))
+        cum_rew += rew
         act = agent.forward(obs)
         if np.any(done):
             episodes += np.sum(done)
-            total_rewards = np.sum(cum_rew[done], axis=1)
+            episode_rewards += list(cum_rew[done])
             cum_rew[done] = 0
-            episode_rewards += list(total_rewards)
     print(f"{print_name}:\tEpisode:{episodes}\tMean Reward:{np.mean(episode_rewards):.2f}")
     return np.mean(episode_rewards)
 
@@ -524,10 +523,6 @@ def run_neurosymbolic_search(args):  # data_size, iterations, logdir, n_envs, ro
 
 
 if __name__ == "__main__":
-    agent = RandomAgent
-    env = create_cartpole(None, {})
-    test_agent_mean_reward(agent, env, print_name="test")
-
     parser = argparse.ArgumentParser()
     parser = add_symbreg_args(parser)
 
