@@ -8,10 +8,11 @@ import gym
 from gym import spaces
 import torch
 from gym3 import ViewerWrapper, ToBaselinesVecEnv
-from procgen import ProcgenGym3Env
+from procgen import ProcgenGym3Env, ProcgenEnv
 
 from common.env.custom_viewer_wrapper import DecodedViewerWrapper
-from helper import get_action_names, match, get_combos
+from common.model import get_trained_vqvqae
+from helper import get_action_names, match, get_combos, get_in_channels
 
 """
 Copy-pasted from OpenAI to obviate dependency on Baselines. Required for vectorized environments.
@@ -501,5 +502,57 @@ def create_env(env_args, render, normalize_rew=True, mirror_some=False, decoding
     venv = TransposeFrame(venv)
     venv = ScaledFloatFrame(venv)
     if reduce_duplicate_actions:
+        venv = ActionWrapper(venv)
+    return venv
+
+
+def create_procgen_env(args, hyperparameters, is_valid=False):
+    if args.device == 'gpu':
+        device = torch.device('cuda')
+    elif args.device == 'cpu':
+        device = torch.device('cpu')
+    n_envs = hyperparameters.get('n_envs', 256)
+    val_env_name = args.val_env_name if args.val_env_name else args.env_name
+    start_level_val = random.randint(500, 9999)
+    if args.start_level == start_level_val:
+        raise ValueError("Seeds for training and validation envs are equal.")
+    if args.real_procgen:
+        venv = ProcgenEnv(num_envs=n_envs,
+                          env_name=val_env_name if is_valid else args.env_name,
+                          num_levels=0 if is_valid else args.num_levels,
+                          start_level=start_level_val if is_valid else args.start_level,
+                          paint_vel_info=hyperparameters.get("paint_vel_info", True),
+                          distribution_mode=args.distribution_mode,
+                          num_threads=args.num_threads,
+                          )
+    else:
+        venv = ProcgenEnv(num_envs=n_envs,
+                          env_name=val_env_name if is_valid else args.env_name,
+                          num_levels=0 if is_valid else args.num_levels,
+                          start_level=start_level_val if is_valid else args.start_level,
+                          distribution_mode=args.distribution_mode,
+                          num_threads=args.num_threads,
+                          random_percent=args.random_percent,
+                          step_penalty=args.step_penalty,
+                          key_penalty=args.key_penalty,
+                          rand_region=args.rand_region,
+                          )
+
+    venv = VecExtractDictObs(venv, "rgb")
+
+    normalize_rew = hyperparameters.get('normalize_rew', True)
+    mirror_some = hyperparameters.get('mirror_env', False)
+    if normalize_rew:
+        venv = VecNormalize(venv, ob=False)  # normalizing returns, but not
+        # the img frames
+    if mirror_some:
+        venv = MirrorFrame(venv)
+    venv = TransposeFrame(venv)
+    venv = ScaledFloatFrame(venv)
+    if hyperparameters.get('architecture', "impala") == "vqmha":
+        in_channels = get_in_channels(venv)
+        vqvae = get_trained_vqvqae(in_channels, hyperparameters, device)
+        venv = EncoderWrapper(venv, vqvae)
+    if args.reduce_duplicate_actions:
         venv = ActionWrapper(venv)
     return venv

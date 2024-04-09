@@ -7,8 +7,9 @@ import numpy as np
 import pandas as pd
 import sympy
 import wandb
+from common.logger import Logger
 
-from cartpole.create_cartpole import create_cartpole
+# from cartpole.create_cartpole import create_cartpole
 from email_results import send_image
 
 if os.name != "nt":
@@ -17,9 +18,11 @@ if os.name != "nt":
 import torch
 import torch.nn.functional as F
 from torch.distributions import Categorical
-from common.env.procgen_wrappers import create_env
+from common.env.procgen_wrappers import create_env, create_procgen_env
 from helper import get_config, get_path, balanced_reward, GLOBAL_DIR, load_storage_and_policy, \
-    load_hparams_for_model, floats_to_dp, dict_to_html_table, wandb_login, add_symbreg_args
+    load_hparams_for_model, floats_to_dp, dict_to_html_table, wandb_login, add_symbreg_args, DictToArgs
+from cartpole.create_cartpole import create_cartpole
+from boxworld.create_box_world import create_bw_env
 from inspect_agent import load_policy
 from matplotlib import pyplot as plt
 
@@ -64,28 +67,42 @@ def get_best_str(model, split='\n'):
 
 def load_nn_policy(logdir, n_envs=2):
     cfg = get_config(logdir)
-
+    cfg["n_envs"] = n_envs
     if cfg["env_name"] == "coinrun":
-        action_names, done, env, hidden_state, obs, policy, storage = load_policy(False, logdir,
-                                                                                  n_envs=n_envs,
-                                                                                  hparams=cfg["param_name"],
-                                                                                  start_level=cfg["start_level"],
-                                                                                  num_levels=cfg["num_levels"])
+        # action_names, done, env, hidden_state, obs, policy, storage = load_policy(False, logdir,
+        #                                                                           n_envs=n_envs,
+        #                                                                           hparams=cfg["param_name"],
+        #                                                                           start_level=cfg["start_level"],
+        #                                                                           num_levels=cfg["num_levels"])
+
         sampler = sample_latent_output_fsqmha
         symbolic_agent_constructor = NeuroSymbolicAgent
-        test_env = get_coinrun_test_env(logdir, n_envs)
+        # test_env = get_coinrun_test_env(logdir, n_envs)
         test_agent = test_agent_balanced_reward
+        create_venv = create_procgen_env
     if cfg["env_name"] == "cartpole":
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        hyperparameters, last_model = load_hparams_for_model(cfg["param_name"], logdir, n_envs)
-        env = create_cartpole(n_envs, hyperparameters, is_valid=False)
-
-        action_names, done, hidden_state, obs, policy, storage = load_storage_and_policy(device, env, hyperparameters,
-                                                                                         last_model, logdir, n_envs)
         sampler = sample_latent_output_mlpmodel
         symbolic_agent_constructor = SymbolicAgent
-        test_env = create_cartpole(n_envs, hyperparameters, is_valid=True)
         test_agent = test_cartpole_agent
+        create_venv = create_cartpole
+    if cfg["env_name"] == "boxworld":
+        sampler = sample_latent_output_fsqmha
+        symbolic_agent_constructor = NeuroSymbolicAgent
+        test_agent = test_boxworld_agent
+        create_venv = create_bw_env
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    hyperparameters, last_model = load_hparams_for_model(cfg["param_name"], logdir, n_envs)
+    hyperparameters["n_envs"] = n_envs
+
+    tmp_args = DictToArgs(cfg)
+
+    env = create_venv(tmp_args, hyperparameters, is_valid=False)
+    test_env = create_venv(tmp_args, hyperparameters, is_valid=True)
+
+    action_names, done, hidden_state, obs, policy, storage = load_storage_and_policy(device, env, hyperparameters,
+                                                                                     last_model, logdir, n_envs)
+
     return policy, env, sampler, symbolic_agent_constructor, test_env, test_agent
 
 
@@ -148,6 +165,22 @@ def test_cartpole_agent(agent, env, print_name, n=40):
     print(f"{print_name}:\tEpisode:{episodes}\tMean Reward:{np.mean(episode_rewards):.2f}")
     return np.mean(episode_rewards)
 
+def test_boxworld_agent(agent, env, print_name, n=40):
+    episodes = 0
+    obs = env.reset()
+    act = agent.forward(obs)
+    episode_rewards = []
+    while episodes < n:
+        # This is for cartpole only!
+        # ep_reward = env.env.n_steps.copy()
+        obs, rew, done, new_info = env.step(act)
+        act = agent.forward(obs)
+        if np.any(done):
+            episodes += np.sum(done)
+            episode_rewards += list(ep_reward[done])
+    print(f"{print_name}:\tEpisode:{episodes}\tMean Reward:{np.mean(episode_rewards):.2f}")
+    return np.mean(episode_rewards)
+
 
 def test_agent_balanced_reward(agent, env, print_name, n=40):
     performance_track = {}
@@ -168,13 +201,17 @@ def test_agent_mean_reward(agent, env, print_name, n=40):
     episodes = 0
     obs = env.reset()
     act = agent.forward(obs)
+    cum_rew = np.zeros(len(act))
     episode_rewards = []
     while episodes < n:
         obs, rew, done, info = env.step(act)
+        cum_rew = np.concatenate((cum_rew, rew))
         act = agent.forward(obs)
         if np.any(done):
             episodes += np.sum(done)
-            episode_rewards += list(rew[done])
+            total_rewards = np.sum(cum_rew[done], axis=1)
+            cum_rew[done] = 0
+            episode_rewards += list(total_rewards)
     print(f"{print_name}:\tEpisode:{episodes}\tMean Reward:{np.mean(episode_rewards):.2f}")
     return np.mean(episode_rewards)
 
@@ -487,31 +524,36 @@ def run_neurosymbolic_search(args):  # data_size, iterations, logdir, n_envs, ro
 
 
 if __name__ == "__main__":
+    agent = RandomAgent
+    env = create_cartpole(None, {})
+    test_agent_mean_reward(agent, env, print_name="test")
+
     parser = argparse.ArgumentParser()
     parser = add_symbreg_args(parser)
 
     args = parser.parse_args()
 
-    # args.data_size = 1000
-    # args.iterations = 5
-    # args.logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
-    # args.n_envs = 32
-    # args.rounds = 300
-    # args.binary_operators = ["+", "-", "greater"]
-    # args.unary_operators = ["sin", "relu"]
-    # args.denoise = True
-    # args.wandb_tags = True
-    # args.wandb_name = 8284
-    # args.timeout_in_seconds = 36000
-    # args.populations = 24
-    # args.procs = 8
-    # args.ncycles_per_iteration = 550
-    print(args.bumper)
+    args.data_size = 1000
+    args.iterations = 1
+    args.logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
+    args.n_envs = 32
+    args.rounds = 300
+    args.binary_operators = ["+", "-", "greater"]
+    args.unary_operators = []
+    args.denoise = True
+    args.use_wandb = False
+    args.wandb_tags = ["test"]
+    args.wandb_name = "test"
+    args.populations = 24
 
     if args.logdir is None:
         # Sparse coinrun:
         # args.logdir = "logs/train/coinrun/coinrun-hparams/2024-03-27__18-20-55__seed_6033"
-        # # 10bn cartpole:
-        args.logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
+
+        # 10bn cartpole:
+        # args.logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
+
+        # Sparse Boxworld, overfit:
+        args.logdir = "logs/train/boxworld/boxworld/2024-04-08__12-29-17__seed_6033"
         print(f"No oracle provided.\nUsing Logdir: {args.logdir}")
     run_neurosymbolic_search(args)

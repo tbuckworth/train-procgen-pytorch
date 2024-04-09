@@ -23,7 +23,8 @@ def make_cartpole_vec(env_args, n_envs):
     return venv
 
 
-def create_cartpole(n_envs, hyperparameters, is_valid=False):
+def create_cartpole(args, hyperparameters, is_valid=False):
+    n_envs = hyperparameters.get('n_envs', 32)
     env_args = {"n_envs": n_envs,
                 "env_name": "CartPole-v1",
                 "degrees": 12,

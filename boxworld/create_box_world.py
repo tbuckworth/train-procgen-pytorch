@@ -99,3 +99,27 @@ if __name__ == "__main__":
         next_obs, rew, done, info = env.step(actions)
         if np.any(done):
             print("done")
+
+
+def create_bw_env(args, hyperparameters, is_valid=False):
+    n_envs = hyperparameters.get('n_envs', 32)
+    max_steps = hyperparameters.get("max_steps", 10 ** 3)
+    env_args = {"n_envs": n_envs,
+                "n": hyperparameters.get('grid_size', 12),
+                "goal_length": hyperparameters.get('goal_length', 5),
+                "num_distractor": hyperparameters.get('num_distractor', 0),
+                "distractor_length": hyperparameters.get('distractor_length', 0),
+                "max_steps": max_steps,
+                "n_levels": args.num_levels,
+                "seed": args.seed,
+                }
+    normalize_rew = hyperparameters.get('normalize_rew', True)
+    if is_valid:
+        env_args["n"] = hyperparameters.get('grid_size_v', 12)
+        env_args["goal_length"] = hyperparameters.get('goal_length_v', 5)
+        env_args["num_distractor"] = hyperparameters.get('num_distractor_v', 0)
+        env_args["distractor_length"] = hyperparameters.get('distractor_length_v', 0)
+        env_args["seed"] = args.seed + np.random.randint(1e6, 1e7) if env_args["n_levels"] == 0 else env_args[
+                                                                                                         "n_levels"] + 1
+        env_args["n_levels"] = 0
+    return create_box_world_env_pre_vec(env_args, render=False, normalize_rew=normalize_rew)

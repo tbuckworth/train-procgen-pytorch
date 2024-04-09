@@ -1,20 +1,15 @@
-from boxworld.create_box_world import create_box_world_env_pre_vec
-from cartpole.create_cartpole import create_cartpole_env_pre_vec
-from common.env.gym_env_wrappers import create_env_gym
-from common.env.procgen_wrappers import VecExtractDictObs, VecNormalize, MirrorFrame, TransposeFrame, ScaledFloatFrame, \
-    EncoderWrapper, create_rendered_env, ActionWrapper
+from common.env.procgen_wrappers import create_rendered_env, create_procgen_env
 from common.logger import Logger
 from common.storage import Storage
-from common.model import get_trained_vqvqae
 from common import set_global_seeds, set_global_log_levels
 
 import os, time, argparse
-from procgen import ProcgenEnv
-import random
 import torch
 import numpy as np
 
-from helper import get_hyperparams, initialize_model, get_in_channels, add_training_args, wandb_login
+from helper import get_hyperparams, initialize_model, add_training_args, wandb_login
+from cartpole.create_cartpole import create_cartpole
+from boxworld.create_box_world import create_bw_env
 
 try:
     import wandb
@@ -26,9 +21,7 @@ def train_ppo(args):
     # exp_name, env_name, val_env_name, start_level, start_level_val, num_levels, distribution_mode, param_name, gpu_device, num_timesteps, seed, log_level, num_checkpoints, alpha, key, value, device, n_envs, env, listdir, logdir, d, filename, args
     exp_name = args.exp_name
     env_name = args.env_name
-    val_env_name = args.val_env_name if args.val_env_name else args.env_name
     start_level = args.start_level
-    start_level_val = random.randint(500, 9999)
     num_levels = args.num_levels
     distribution_mode = args.distribution_mode
     param_name = args.param_name
@@ -39,8 +32,7 @@ def train_ppo(args):
     num_checkpoints = args.num_checkpoints
     set_global_seeds(seed)
     set_global_log_levels(log_level)
-    if args.start_level == start_level_val:
-        raise ValueError("Seeds for training and validation envs are equal.")
+
     ####################
     ## HYPERPARAMETERS #
     ####################
@@ -100,82 +92,8 @@ def train_ppo(args):
     n_envs = hyperparameters.get('n_envs', 256)
     max_steps = hyperparameters.get("max_steps", 10 ** 3)
 
-    def create_venv(args, hyperparameters, is_valid=False):
-        if args.real_procgen:
-            venv = ProcgenEnv(num_envs=n_envs,
-                              env_name=val_env_name if is_valid else env_name,
-                              num_levels=0 if is_valid else args.num_levels,
-                              start_level=start_level_val if is_valid else args.start_level,
-                              paint_vel_info=hyperparameters.get("paint_vel_info", True),
-                              distribution_mode=args.distribution_mode,
-                              num_threads=args.num_threads,
-                              )
-        else:
-            venv = ProcgenEnv(num_envs=n_envs,
-                              env_name=val_env_name if is_valid else env_name,
-                              num_levels=0 if is_valid else args.num_levels,
-                              start_level=start_level_val if is_valid else args.start_level,
-                              distribution_mode=args.distribution_mode,
-                              num_threads=args.num_threads,
-                              random_percent=args.random_percent,
-                              step_penalty=args.step_penalty,
-                              key_penalty=args.key_penalty,
-                              rand_region=args.rand_region,
-                              )
-
-        venv = VecExtractDictObs(venv, "rgb")
-
-        normalize_rew = hyperparameters.get('normalize_rew', True)
-        mirror_some = hyperparameters.get('mirror_env', False)
-        if normalize_rew:
-            venv = VecNormalize(venv, ob=False)  # normalizing returns, but not
-            # the img frames
-        if mirror_some:
-            venv = MirrorFrame(venv)
-        venv = TransposeFrame(venv)
-        venv = ScaledFloatFrame(venv)
-        if hyperparameters.get('architecture', "impala") == "vqmha":
-            in_channels = get_in_channels(venv)
-            vqvae = get_trained_vqvqae(in_channels, hyperparameters, device)
-            venv = EncoderWrapper(venv, vqvae)
-        if args.reduce_duplicate_actions:
-            venv = ActionWrapper(venv)
-        return venv
-
-    def create_bw_env(args, hyperparameters, is_valid=False):
-        # n, goal_length, num_distractor, distractor_length, max_steps = 10 ** 6, collect_key = True, world = None, render_mode = None, seed = None
-        env_args = {"n_envs": n_envs,
-                    "n": hyperparameters.get('grid_size', 12),
-                    "goal_length": hyperparameters.get('goal_length', 5),
-                    "num_distractor": hyperparameters.get('num_distractor', 0),
-                    "distractor_length": hyperparameters.get('distractor_length', 0),
-                    "max_steps": max_steps,
-                    "n_levels": num_levels,
-                    "seed": args.seed,
-                    }
-        normalize_rew = hyperparameters.get('normalize_rew', True)
-        if is_valid:
-            env_args["n"] = hyperparameters.get('grid_size_v', 12)
-            env_args["goal_length"] = hyperparameters.get('goal_length_v', 5)
-            env_args["num_distractor"] = hyperparameters.get('num_distractor_v', 0)
-            env_args["distractor_length"] = hyperparameters.get('distractor_length_v', 0)
-            env_args["seed"] = args.seed + np.random.randint(1e6, 1e7) if env_args["n_levels"] == 0 else env_args[
-                                                                                                             "n_levels"] + 1
-            env_args["n_levels"] = 0
-        return create_box_world_env_pre_vec(env_args, render=False, normalize_rew=normalize_rew)
-
-    def create_cartpole(args, hyperparameters, is_valid=False):
-        env_args = {"n_envs": n_envs,
-                    "env_name": "CartPole-v1",
-                    "degrees": 12,
-                    "h_range": 2.4,
-                    }
-        if is_valid:
-            env_args["degrees"] = 9
-            env_args["h_range"] = 1.8
-        normalize_rew = hyperparameters.get('normalize_rew', True)
-        return create_cartpole_env_pre_vec(env_args, render=False, normalize_rew=normalize_rew)
-
+    create_venv = create_procgen_env
+    
     if args.env_name == "boxworld":
         create_venv = create_bw_env
     elif args.render:

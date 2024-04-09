@@ -8,6 +8,7 @@ import gym
 import numpy as np
 import pandas as pd
 import torch
+
 import wandb
 import yaml
 import platform
@@ -415,6 +416,7 @@ def load_storage_and_policy(device, env, hyperparameters, last_model, logdir, n_
     # Test if necessary:
     policy.device = device
     storage = Storage(observation_shape, model.output_dim, hyperparameters["n_steps"], n_envs, device)
+
     try:
         action_names = get_action_names(env)
     except Exception:
@@ -435,9 +437,6 @@ def load_hparams_for_model(hparams, logdir, n_envs):
         hp_file = os.path.join(GLOBAL_DIR, logdir, "hyperparameters.npy")
         if os.path.exists(hp_file):
             hyperparameters = np.load(hp_file, allow_pickle='TRUE').item()
-            # save over levels with 8, 5, 5, 5
-            # hyperparameters["levels"] = [8, 5, 5, 5]
-            # np.save(hp_file, hyperparameters)
     if n_envs is not None:
         hyperparameters["n_envs"] = n_envs
     return hyperparameters, last_model
@@ -466,6 +465,11 @@ def floats_to_dp(s, decimals=2):
 def wandb_login():
     wandb.login(key="cfc00eee102a1e9647b244a40066bfc5f1a96610")
 
+class DictToArgs:
+    def __init__(self, input_dict):
+        for key in input_dict.keys():
+            setattr(self, key, input_dict[key])
+
 
 def add_symbreg_args(parser):
     parser.add_argument('--data_size', type=int, default=100, help='How much data to train on')
@@ -490,3 +494,5 @@ def add_symbreg_args(parser):
     parser.add_argument('--bumper', type=bool, default=False)
 
     return parser
+
+
