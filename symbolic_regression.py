@@ -7,7 +7,6 @@ import numpy as np
 import pandas as pd
 import sympy
 import wandb
-from common.logger import Logger
 
 # from cartpole.create_cartpole import create_cartpole
 from email_results import send_image
@@ -23,7 +22,6 @@ from helper import get_config, get_path, balanced_reward, GLOBAL_DIR, load_stora
     load_hparams_for_model, floats_to_dp, dict_to_html_table, wandb_login, add_symbreg_args, DictToArgs
 from cartpole.create_cartpole import create_cartpole
 from boxworld.create_box_world import create_bw_env
-from inspect_agent import load_policy
 from matplotlib import pyplot as plt
 
 
@@ -493,8 +491,11 @@ def run_neurosymbolic_search(args):  # data_size, iterations, logdir, n_envs, ro
         # values = [iterations, data_size, rounds, nn_score_train, ns_score_train, nn_score_test, ns_score_test, logdir]
         # columns = ["iterations", "data_size", "rounds", "Neural_score_Train", "NeuroSymb_score_Train",
         #            "Neural_score_Test", "NeuroSymb_score_Test", "logdir"]
-        best_loss = pysr_model.get_best().loss
-        best_complexity = pysr_model.get_best().complexity
+        best = pysr_model.get_best()
+        if type(best) != list:
+            best = [best]
+        best_loss = np.mean([x.loss for x in best])
+        best_complexity = np.mean([x.complexity for x in best])
         problem_name = re.search("logs/train/([^/]*)/", logdir).group(1)
 
         df_values = {
@@ -505,8 +506,8 @@ def run_neurosymbolic_search(args):  # data_size, iterations, logdir, n_envs, ro
             "Random_score_Test": [rn_score_test],
             "NeuroSymb_score_Test": [ns_score_test],
             "Elapsed_Seconds": [elapsed],
-            "Best_Loss": [best_loss],
-            "Complexity": [best_complexity],
+            "Mean_Best_Loss": [best_loss],
+            "Mean_Complexity_of_Best": [best_complexity],
             "Problem_name": [problem_name]
         }
 
@@ -529,18 +530,18 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    args.data_size = 1000
-    args.iterations = 1
-    args.logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
-    args.n_envs = 32
-    args.rounds = 300
-    args.binary_operators = ["+", "-", "greater"]
-    args.unary_operators = []
-    args.denoise = True
-    args.use_wandb = False
-    args.wandb_tags = ["test"]
-    args.wandb_name = "test"
-    args.populations = 24
+    # args.data_size = 1000
+    # args.iterations = 1
+    # args.logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
+    # args.n_envs = 32
+    # args.rounds = 300
+    # args.binary_operators = ["+", "-", "greater"]
+    # args.unary_operators = []
+    # args.denoise = True
+    # args.use_wandb = False
+    # args.wandb_tags = ["test"]
+    # args.wandb_name = "test"
+    # args.populations = 24
 
     if args.logdir is None:
         # Sparse coinrun:

@@ -9,7 +9,7 @@ optuna==3.4.0
 pandas==2.0.3
 Pillow==10.0.1
 procgen==0.10.7
-pysr==0.17.2
+pysr==0.18.1
 PyYAML==6.0.1
 torch==2.1.0
 torchinfo==1.8.0
