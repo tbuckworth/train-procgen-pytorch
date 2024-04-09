@@ -165,6 +165,7 @@ def test_cartpole_agent(agent, env, print_name, n=40):
     print(f"{print_name}:\tEpisode:{episodes}\tMean Reward:{np.mean(episode_rewards):.2f}")
     return np.mean(episode_rewards)
 
+
 def test_boxworld_agent(agent, env, print_name, n=40):
     episodes = 0
     obs = env.reset()
@@ -510,7 +511,7 @@ def run_neurosymbolic_search(args):  # data_size, iterations, logdir, n_envs, ro
         }
 
         if args.use_wandb:
-            wandb.log(df_values)
+            wandb.log({k: df_values[k][0] for k in df_values.keys()})
             wandb_table = wandb.Table(
                 dataframe=pysr_model.equations_[["equation", "score", "loss", "complexity"]]
             )
