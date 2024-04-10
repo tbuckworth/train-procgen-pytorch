@@ -8,7 +8,6 @@ import pandas as pd
 import sympy
 import wandb
 
-# from cartpole.create_cartpole import create_cartpole
 from email_results import send_image
 
 if os.name != "nt":
@@ -392,8 +391,8 @@ def send_full_report(df, logdir, model, args):
                              "Test": [nn_test, ns_test, rn_test]},
                             index=["Neural", "NeuroSymbolic", "Random"], ).round(2).to_html()
 
-    test_improved = ns_test > nn_test
-    train_improved = ns_train > nn_train
+    test_improved = (ns_test > nn_test) and (ns_test > rn_test)
+    train_improved = ns_train > nn_train and (ns_train > rn_train)
 
     statement = "Failed"
     if test_improved and train_improved:
@@ -402,6 +401,7 @@ def send_full_report(df, logdir, model, args):
         statement = "Improved Training Reward"
     if test_improved and not train_improved:
         statement = "Improved Generalization"
+
 
     body_text = f"<br><b>{statement}</b><br>{tab_code}<br><b>Learned Formula:</b><br><p>{eqn_str}</p><br>{params}"
     send_image(plot_file, "PySR Results", body_text=body_text)
@@ -514,6 +514,7 @@ def run_neurosymbolic_search(args):  # data_size, iterations, logdir, n_envs, ro
         if args.use_wandb:
             wandb.log({k: df_values[k][0] for k in df_values.keys()})
             wandb_table = wandb.Table(
+                # make this work for multiple equations:
                 dataframe=pysr_model.equations_[["equation", "score", "loss", "complexity"]]
             )
             wandb.log(
@@ -530,17 +531,17 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # args.data_size = 1000
-    # args.iterations = 1
-    # args.logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
-    # args.n_envs = 32
-    # args.rounds = 300
-    # args.binary_operators = ["+", "-", "greater"]
-    # args.unary_operators = []
-    # args.denoise = True
-    # args.use_wandb = False
-    # args.wandb_tags = ["test"]
-    # args.wandb_name = "test"
+    args.data_size = 1000
+    args.iterations = 1
+    args.logdir = "logs/train/boxworld/boxworld/2024-04-08__12-29-17__seed_6033"
+    args.n_envs = 32
+    args.rounds = 300
+    args.binary_operators = ["+", "-", "greater"]
+    args.unary_operators = []
+    args.denoise = True
+    args.use_wandb = False
+    args.wandb_tags = ["test"]
+    args.wandb_name = "test"
     # args.populations = 24
 
     if args.logdir is None:
