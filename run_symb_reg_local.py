@@ -11,8 +11,8 @@ if __name__ == "__main__":
 
     args.data_size = 1000
     args.iterations = 1
-    # args.logdir = "logs/train/boxworld/boxworld/2024-04-08__12-29-17__seed_6033"
-    args.logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
+    args.logdir = "logs/train/boxworld/boxworld/2024-04-08__12-29-17__seed_6033"
+    # args.logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
     args.n_envs = 32
     args.rounds = 300
     args.binary_operators = ["+", "-", "greater"]

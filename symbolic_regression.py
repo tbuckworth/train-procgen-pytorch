@@ -46,6 +46,7 @@ def find_model(X, Y, symbdir, iterations, save_file, weights, args):
         weight_optimize=0.001 if args.ncycles_per_iteration > 550 else 0.0,
         ncycles_per_iteration=args.ncycles_per_iteration,
         bumper=args.bumper,
+        model_selection=args.model_selection,
     )
     print("fitting model")
     start = time.time()

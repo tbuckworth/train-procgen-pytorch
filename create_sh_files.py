@@ -171,6 +171,7 @@ if __name__ == '__main__':
                             ["log", "exp", "relu"],
                             ],
         "wandb_tags": ["stochastic", "cartpole"],
+        "model_selection": ["best", "accuracy"],
         "logdir": ["logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"],
         # "logdir": ["logs/train/boxworld/boxworld/2024-04-08__12-29-17__seed_6033"],
     }

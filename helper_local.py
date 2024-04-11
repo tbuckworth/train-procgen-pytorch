@@ -493,6 +493,7 @@ def add_symbreg_args(parser):
     parser.add_argument('--procs', type=int, default=8)
     parser.add_argument('--ncycles_per_iteration', type=int, default=550)
     parser.add_argument('--bumper', type=bool, default=False)
+    parser.add_argument('--model_selection', type=str, default="best")
 
     return parser
 
