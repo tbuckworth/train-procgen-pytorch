@@ -141,46 +141,14 @@ def sample_latent_output_mlpmodel(policy, observation):
         x = torch.FloatTensor(observation).to(policy.device)
         h = policy.embedder(x)
         dist, value = policy.hidden_to_output(h)
-        y = dist.logits.detach().cpu().numpy()
-        # p = dist.probs.detach().cpu().numpy()
+        # y = dist.logits.detach().cpu().numpy()
+        p = dist.probs.detach().cpu().numpy()
+        # inverse sigmoid enables prediction of single logit:
+        z = np.log(p/(1-p))
 
         act = dist.sample().cpu().numpy()
         # act = y.argmax(axis=1)
-    return observation, y, act, value.cpu().numpy()
-
-
-def test_cartpole_agent(agent, env, print_name, n=40):
-    episodes = 0
-    obs = env.reset()
-    act = agent.forward(obs)
-    episode_rewards = []
-    while episodes < n:
-        # This is for cartpole only!
-        ep_reward = env.env.n_steps.copy()
-        obs, rew, done, new_info = env.step(act)
-        act = agent.forward(obs)
-        if np.any(done):
-            episodes += np.sum(done)
-            episode_rewards += list(ep_reward[done])
-    print(f"{print_name}:\tEpisode:{episodes}\tMean Reward:{np.mean(episode_rewards):.2f}")
-    return np.mean(episode_rewards)
-
-
-def test_boxworld_agent(agent, env, print_name, n=40):
-    episodes = 0
-    obs = env.reset()
-    act = agent.forward(obs)
-    episode_rewards = []
-    while episodes < n:
-        # This is for cartpole only!
-        # ep_reward = env.env.n_steps.copy()
-        obs, rew, done, new_info = env.step(act)
-        act = agent.forward(obs)
-        if np.any(done):
-            episodes += np.sum(done)
-            episode_rewards += list(ep_reward[done])
-    print(f"{print_name}:\tEpisode:{episodes}\tMean Reward:{np.mean(episode_rewards):.2f}")
-    return np.mean(episode_rewards)
+    return observation, z[:, 1], act, value.cpu().numpy()
 
 
 def test_agent_balanced_reward(agent, env, print_name, n=40):
@@ -216,15 +184,15 @@ def test_agent_mean_reward(agent, env, print_name, n=40):
     return np.mean(episode_rewards)
 
 
-def sample_policy_with_symb_model(model, policy, observation):
-    with torch.no_grad():
-        obs = torch.FloatTensor(observation).to(policy.device)
-        x = policy.embedder.forward_to_pool(obs)
-        h = model(x)
-        dist, value = policy.hidden_to_output(h)
-        # y = dist.logits.detach().cpu().numpy()
-        act = dist.sample()
-    return act.cpu().numpy()
+# def sample_policy_with_symb_model(model, policy, observation):
+#     with torch.no_grad():
+#         obs = torch.FloatTensor(observation).to(policy.device)
+#         x = policy.embedder.forward_to_pool(obs)
+#         h = model(x)
+#         dist, value = policy.hidden_to_output(h)
+#         # y = dist.logits.detach().cpu().numpy()
+#         act = dist.sample()
+#     return act.cpu().numpy()
 
 
 class NeuroSymbolicAgent:
@@ -264,7 +232,9 @@ class SymbolicAgent:
         with torch.no_grad():
             # obs = torch.FloatTensor(observation).to(self.policy.device)
             h = self.model.predict(observation)
-            return np.round(h, 0)
+            p = 1/(1+np.exp(-h))
+            return np.int32(np.random.random(len(h)) < p)
+            # return np.round(h, 0)
             # TODO: do this with numpy instead of torch
             logits = torch.FloatTensor(h).to(self.policy.device)
             log_probs = F.log_softmax(logits, dim=1)
@@ -535,7 +505,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     args.data_size = 1000
-    args.iterations = 5
+    args.iterations = 1
     # args.logdir = "logs/train/boxworld/boxworld/2024-04-08__12-29-17__seed_6033"
     args.logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
     args.n_envs = 32
