@@ -17,7 +17,7 @@ import torch
 import torch.nn.functional as F
 from torch.distributions import Categorical
 from common.env.procgen_wrappers import create_env, create_procgen_env
-from helper import get_config, get_path, balanced_reward, GLOBAL_DIR, load_storage_and_policy, \
+from helper_local import get_config, get_path, balanced_reward, GLOBAL_DIR, load_storage_and_policy, \
     load_hparams_for_model, floats_to_dp, dict_to_html_table, wandb_login, add_symbreg_args, DictToArgs, \
     inverse_sigmoid, sigmoid
 from cartpole.create_cartpole import create_cartpole

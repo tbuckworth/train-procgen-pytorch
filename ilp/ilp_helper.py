@@ -1,12 +1,11 @@
 import os
 import re
-import subprocess
 from sys import platform
 
 import numpy as np
 import pandas as pd
 
-from helper import OS_IS
+from helper_local import OS_IS
 
 PREFIX = "coinrun_ppo_actor_checkpoint"
 
@@ -55,28 +54,6 @@ def create_cmd_list(param):
         return cmd
     cmd += param[1:]
     return cmd
-
-
-def run_subprocess(cmd, newline, suppress=False, timeout=-1):
-    # timed = timeout > 0
-
-    if suppress:
-        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True,
-                             stderr=subprocess.DEVNULL)  # , start_new_session=timed)
-    else:
-        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True)  # , start_new_session=timed)
-    # if timed:
-    #     try:
-    #         p.wait(timeout=timeout)
-    #     except subprocess.TimeoutExpired:
-    #         print("Subprocess Timeout")
-    #         os.kill(p.pid, signal.CTRL_C_EVENT)
-    #         subprocess.call(['taskkill', '/F', '/T', '/PID', str(p.pid)])
-    #         return "Timeout"
-    output = p.communicate()[0]
-
-    output = '\n'.join(output.decode("utf-8").split(newline))
-    return output
 
 
 def append_to_csv_if_exists(df, filename):

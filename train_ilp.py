@@ -7,9 +7,9 @@ import pandas as pd
 import torch
 import re
 
-from helper import get_config, GLOBAL_DIR
+from helper_local import get_config, GLOBAL_DIR, run_subprocess
 from ilp.LogicDistiller import LogicDistiller
-from ilp.ilp_helper import append_to_csv_if_exists, create_cmd, run_subprocess
+from ilp.ilp_helper import append_to_csv_if_exists, create_cmd
 from inspect_agent import load_policy
 
 

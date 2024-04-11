@@ -1,6 +1,7 @@
 import os
 import random
 import re
+import subprocess
 import time
 from collections import deque
 
@@ -508,3 +509,25 @@ def inverse_sigmoid(p):
 def sigmoid(h):
     p = 1 / (1 + np.exp(-h))
     return p
+
+
+def run_subprocess(cmd, newline, suppress=False, timeout=-1):
+    # timed = timeout > 0
+
+    if suppress:
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True,
+                             stderr=subprocess.DEVNULL)  # , start_new_session=timed)
+    else:
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True)  # , start_new_session=timed)
+    # if timed:
+    #     try:
+    #         p.wait(timeout=timeout)
+    #     except subprocess.TimeoutExpired:
+    #         print("Subprocess Timeout")
+    #         os.kill(p.pid, signal.CTRL_C_EVENT)
+    #         subprocess.call(['taskkill', '/F', '/T', '/PID', str(p.pid)])
+    #         return "Timeout"
+    output = p.communicate()[0]
+
+    output = '\n'.join(output.decode("utf-8").split(newline))
+    return output

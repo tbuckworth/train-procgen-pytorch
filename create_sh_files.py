@@ -4,8 +4,7 @@ import itertools
 
 import numpy as np
 import re
-from helper import add_training_args, latest_model_path, add_symbreg_args
-from ilp.ilp_helper import run_subprocess
+from helper_local import add_training_args, latest_model_path, add_symbreg_args, run_subprocess
 
 
 def format_args(arg):
@@ -119,8 +118,8 @@ def write_sh_files(hparams, n_gpu, args, execute, cuda):
                 script = "~/free_gpu"
             free_machine = run_subprocess(script, "\\n", suppress=True)
             host = re.search(r"(.*).doc.ic.ac.uk", free_machine).group(1)
-            command = f"'source {exe_file_name}'"
-            session_name = "tmpSession"
+            command = f"'source pyg/train-procgen-pytorch/{exe_file_name}'"
+            session_name = f"tmpSession{np.random.randint(0, 100)}"
 
             print(f"Host:{host}\tSessionName:{session_name}")
 

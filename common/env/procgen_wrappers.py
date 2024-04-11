@@ -12,7 +12,7 @@ from procgen import ProcgenGym3Env, ProcgenEnv
 
 from common.env.custom_viewer_wrapper import DecodedViewerWrapper
 from common.model import get_trained_vqvqae
-from helper import get_action_names, match, get_combos, get_in_channels
+from helper_local import get_action_names, match, get_combos, get_in_channels
 
 """
 Copy-pasted from OpenAI to obviate dependency on Baselines. Required for vectorized environments.

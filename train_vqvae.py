@@ -10,7 +10,7 @@ import torch
 from common import orthogonal_init
 from common.model import VQVAE
 from email_results import send_image
-from helper import create_logdir, plot_reconstructions, get_hyperparams
+from helper_local import create_logdir, plot_reconstructions, get_hyperparams
 from torch import nn as nn
 
 try:

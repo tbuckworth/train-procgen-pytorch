@@ -13,7 +13,7 @@ import torchvision as tv
 
 from gym3 import ViewerWrapper, VideoRecorderWrapper, ToBaselinesVecEnv
 
-from helper import get_hyperparams, initialize_model
+from helper_local import get_hyperparams, initialize_model
 
 
 def main():

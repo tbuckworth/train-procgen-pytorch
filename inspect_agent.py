@@ -7,7 +7,7 @@ from matplotlib import pyplot as plt
 import matplotlib.colors as colors
 import matplotlib.cm as cmx
 
-from helper import print_values_actions, save_gif, last_folder, print_action_entropy, coords_to_image, get_config, balanced_reward, load_storage_and_policy, \
+from helper_local import print_values_actions, save_gif, last_folder, print_action_entropy, coords_to_image, get_config, balanced_reward, load_storage_and_policy, \
     load_hparams_for_model
 from common.env.procgen_wrappers import create_env
 

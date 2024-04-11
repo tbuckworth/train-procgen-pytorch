@@ -11,7 +11,7 @@ from gym3.internal.renderer import Renderer
 from gym3.wrapper import Wrapper
 
 from common.model import Flatten
-from helper import impala_latents
+from helper_local import impala_latents
 
 HELP_TEXT = """\
 p: (p)ause

@@ -10,7 +10,7 @@ import torch
 
 from common.env.procgen_wrappers import create_env
 from common.storage import Storage
-from helper import initialize_model, get_hyperparams, create_logdir
+from helper_local import initialize_model, get_hyperparams, create_logdir
 from contextlib import nullcontext
 
 try:

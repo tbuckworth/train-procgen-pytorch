@@ -10,15 +10,15 @@ import pandas as pd
 import torch
 from matplotlib import pyplot as plt
 
-from helper import coords_to_image, GLOBAL_DIR
+from helper_local import coords_to_image, GLOBAL_DIR, run_subprocess
 # from matplotlib import pyplot as plt
 
 # from VQMHA import flatten_features
 # from coinrun import save_gif
 # from coinrun_ppo import input_to_state, sample_action
-from ilp.ilp_helper import create_cmd, run_subprocess, append_to_csv_if_exists, write_string_to_file, \
+from ilp.ilp_helper import create_cmd, append_to_csv_if_exists, write_string_to_file, \
     extract_clingo_solution
-from inspect_agent import load_policy
+# from inspect_agent import load_policy
 
 
 class LogicDistiller:

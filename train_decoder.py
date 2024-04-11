@@ -10,7 +10,7 @@ import torch
 from common import orthogonal_init
 from common.model import Decoder
 from email_results import send_image
-from helper import create_logdir, plot_reconstructions
+from helper_local import create_logdir, plot_reconstructions
 from inspect_agent import load_policy
 from torch import nn as nn
 

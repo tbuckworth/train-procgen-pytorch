@@ -6,7 +6,7 @@ import torch
 from boxworld.create_box_world import create_box_world_env, create_box_world_env_pre_vec
 from common import cross_batch_entropy
 from common.storage import Storage
-from helper import initialize_model, last_folder, print_values_actions, print_action_entropy, latest_model_path
+from helper_local import initialize_model, last_folder, print_values_actions, print_action_entropy, latest_model_path
 from inspect_agent import predict
 
 

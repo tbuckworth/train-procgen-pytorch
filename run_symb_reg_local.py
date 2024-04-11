@@ -1,6 +1,6 @@
 import argparse
 
-from helper import add_symbreg_args
+from helper_local import add_symbreg_args
 from symbolic_regression import run_neurosymbolic_search
 
 if __name__ == "__main__":

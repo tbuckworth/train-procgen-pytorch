@@ -4,7 +4,7 @@ import torch
 import yaml
 
 from common.env.procgen_wrappers import create_env, ActionWrapper
-from helper import initialize_model
+from helper_local import initialize_model
 
 def get_hyperparams(param_name):
     with open('../../hyperparams/procgen/config.yml', 'r') as f:

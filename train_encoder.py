@@ -2,7 +2,7 @@ import os
 
 import numpy as np
 
-from helper import create_name_from_dict
+from helper_local import create_name_from_dict
 from common.env.procgen_wrappers import create_env
 
 

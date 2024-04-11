@@ -7,7 +7,7 @@ import os, time, argparse
 import torch
 import numpy as np
 
-from helper import get_hyperparams, initialize_model, add_training_args, wandb_login
+from helper_local import get_hyperparams, initialize_model, add_training_args, wandb_login
 from cartpole.create_cartpole import create_cartpole
 from boxworld.create_box_world import create_bw_env
 

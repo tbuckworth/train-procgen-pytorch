@@ -4,7 +4,7 @@ import re
 import numpy as np
 from matplotlib import pyplot as plt
 
-from helper import print_values_actions, add_encoder_to_env, last_folder, save_gif, latest_model_path
+from helper_local import print_values_actions, add_encoder_to_env, last_folder, save_gif, latest_model_path
 from inspect_agent import load_policy, predict
 import torch
 from common.model import Decoder

@@ -10,7 +10,7 @@ from cartpole.create_cartpole import create_cartpole_env_pre_vec
 from common.model import ImpalaVQMHAModel, ImpalaFSQModel, ImpalaModel, Decoder, VQVAE, ImpalaFSQMHAModel, \
     RibFSQMHAModel
 from common.storage import Storage
-from helper import initialize_model
+from helper_local import initialize_model
 from common.env.procgen_wrappers import create_env
 from inspect_agent import predict
 
