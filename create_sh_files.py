@@ -118,7 +118,7 @@ def write_sh_files(hparams, n_gpu, args, execute, cuda):
                 script = "~/free_gpu"
             free_machine = run_subprocess(script, "\\n", suppress=True)
             host = re.search(r"(.*).doc.ic.ac.uk", free_machine).group(1)
-            command = f"'source pyg/train-procgen-pytorch/{exe_file_name}'"
+            command = f"'cd pyg/train-procgen-pytorch\n source {exe_file_name}'"
             session_name = f"tmpSession{np.random.randint(0, 100)}"
 
             print(f"Host:{host}\tSessionName:{session_name}")
