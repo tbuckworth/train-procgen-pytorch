@@ -142,9 +142,11 @@ def sample_latent_output_mlpmodel(policy, observation):
         h = policy.embedder(x)
         dist, value = policy.hidden_to_output(h)
         y = dist.logits.detach().cpu().numpy()
-        # act = dist.sample().cpu().numpy()
-        act = y.argmax(axis=1)
-    return observation, act, act, value.cpu().numpy()
+        # p = dist.probs.detach().cpu().numpy()
+
+        act = dist.sample().cpu().numpy()
+        # act = y.argmax(axis=1)
+    return observation, y, act, value.cpu().numpy()
 
 
 def test_cartpole_agent(agent, env, print_name, n=40):
