@@ -155,7 +155,7 @@ if __name__ == '__main__':
     hparams = {
         "timeout_in_seconds": [3600 * 10],
         "data_size": [1000, 500, 100, 50],# 5000],
-        "iterations": [20, 40, 80],
+        "iterations": [1, 20, 40, 80],
         "n_envs": [32],
         "rounds": [300],
         "denoise": [True, False],
