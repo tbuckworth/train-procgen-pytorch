@@ -11,12 +11,15 @@ def run_saved_model():
     data_size = 1000
     n_envs = 32
     rounds = 300
+
+    args = from_config
+
     logdir = "logs/train/boxworld/boxworld/2024-04-08__12-29-17__seed_6033"
     pickle_filename = os.path.join(logdir, "symbreg/2024-04-10__16-03-24/symb_reg.pkl")
     pysr_model = PySRRegressor.from_file(pickle_filename)
 
     policy, env, sampler, symbolic_agent_constructor, test_env, test_agent = load_nn_policy(logdir, n_envs)
-    X, Y, V = generate_data(policy, sampler, env, n=int(data_size))
+    X, Y, V = generate_data(policy, sampler, env, n=int(data_size), args)
     ns_agent = symbolic_agent_constructor(pysr_model, policy)
     ns_score_train = test_agent(ns_agent, env, "NeuroSymb Train", rounds)
 

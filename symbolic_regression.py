@@ -85,7 +85,7 @@ def load_nn_policy(logdir, n_envs=2):
         # test_agent = test_cartpole_agent
         create_venv = create_cartpole
     if cfg["env_name"] == "boxworld":
-        sampler = sample_latent_output_fsqmha_boxworld
+        sampler = sample_latent_output_fsqmha
         symbolic_agent_constructor = NeuroSymbolicAgent
         create_venv = create_bw_env
 
@@ -112,15 +112,15 @@ def drop_first_dim(arr):
     return arr.reshape(new_shape)
 
 
-def generate_data(policy, sampler, env, n):
+def generate_data(policy, sampler, env, n, args):
     observation = env.reset()
-    x, y, act, value = sampler(policy, observation)
+    x, y, act, value = sampler(policy, observation, args.stochastic)
     X = x
     Y = y
     V = value
     while len(X) < n:
         observation, rew, done, info = env.step(act)
-        x, y, act, v = sampler(policy, observation)
+        x, y, act, v = sampler(policy, observation, args.stochastic)
         X = np.append(X, x, axis=0)
         Y = np.append(Y, y, axis=0)
         V = np.append(V, v, axis=0)
@@ -137,7 +137,7 @@ def sample_latent_output_fsqmha(policy, observation):
         act = dist.sample()
     return x.cpu().numpy(), y, act.cpu().numpy(), value.cpu().numpy()
 
-def sample_latent_output_fsqmha_boxworld(policy, observation):
+def sample_latent_output_fsqmha_coinrun(policy, observation, stochastic=False):
     with torch.no_grad():
         obs = torch.FloatTensor(observation).to(policy.device)
         x = policy.embedder.forward_to_pool(obs)
@@ -151,18 +151,21 @@ def sample_latent_output_fsqmha_boxworld(policy, observation):
     return x.cpu().numpy(), y, act.cpu().numpy(), value.cpu().numpy()
 
 
-def sample_latent_output_mlpmodel(policy, observation):
+def sample_latent_output_mlpmodel(policy, observation, stochastic=True):
     with torch.no_grad():
         x = torch.FloatTensor(observation).to(policy.device)
         h = policy.embedder(x)
         dist, value = policy.hidden_to_output(h)
-        # y = dist.logits.detach().cpu().numpy()
-        p = dist.probs.detach().cpu().numpy()
-        # inverse sigmoid enables prediction of single logit:
-        z = inverse_sigmoid(p)
-        act = dist.sample().cpu().numpy()
-        # act = y.argmax(axis=1)
-    return observation, z[:, 1], act, value.cpu().numpy()
+        y = dist.logits.detach().cpu().numpy()
+        # deterministic policy:
+        act = y.argmax(axis=1)
+        if stochastic:
+            # inverse sigmoid enables prediction of single logit:
+            p = dist.probs.detach().cpu().numpy()
+            z = inverse_sigmoid(p)
+            y = z[:, 1]
+            act = dist.sample().cpu().numpy()
+    return observation, y, act, value.cpu().numpy()
 
 
 def test_agent_balanced_reward(agent, env, print_name, n=40):
@@ -210,20 +213,23 @@ def test_agent_mean_reward(agent, env, print_name, n=40):
 
 
 class NeuroSymbolicAgent:
-    def __init__(self, model, policy):
+    def __init__(self, model, policy, stochastic):
         self.model = model
         self.policy = policy
+        self.stochastic = stochastic
 
     def forward(self, observation):
         with torch.no_grad():
             obs = torch.FloatTensor(observation).to(self.policy.device)
             x = self.policy.embedder.forward_to_pool(obs)
             h = self.model.predict(x)
-            # sigmoid?
-            logits = torch.FloatTensor(h).to(self.policy.device)
-            log_probs = F.log_softmax(logits, dim=1)
-            p = Categorical(logits=log_probs)
-            act = p.sample()
+            if self.stochastic:
+                logits = torch.FloatTensor(h).to(self.policy.device)
+                log_probs = F.log_softmax(logits, dim=1)
+                p = Categorical(logits=log_probs)
+                act = p.sample()
+            else:
+                act = np.round(h, decimals=0)
         return act.cpu().numpy()
 
 
@@ -239,18 +245,20 @@ class AnalyticModel:
 
 
 class SymbolicAgent:
-    def __init__(self, model, policy):
+    def __init__(self, model, policy, stochastic):
         self.model = model
         self.policy = policy
+        self.stochastic = stochastic
 
     def forward(self, observation):
         with torch.no_grad():
-            # obs = torch.FloatTensor(observation).to(self.policy.device)
-            #TODO: make this work with multiple equations:
             h = self.model.predict(observation)
-            p = sigmoid(h)
-            return np.int32(np.random.random(len(h)) < p)
-            # return np.round(h, 0)
+            if self.stochastic:
+                p = sigmoid(h)
+                return np.int32(np.random.random(len(h)) < p)
+            return np.round(h, 0)
+
+
             # TODO: do this with numpy instead of torch
             logits = torch.FloatTensor(h).to(self.policy.device)
             log_probs = F.log_softmax(logits, dim=1)
@@ -460,11 +468,11 @@ def run_neurosymbolic_search(args):  # data_size, iterations, logdir, n_envs, ro
                        tags=args.wandb_tags, resume=wb_resume, name=name)
 
     policy, env, sampler, symbolic_agent_constructor, test_env, test_agent = load_nn_policy(logdir, n_envs)
-    X, Y, V = generate_data(policy, sampler, env, n=int(data_size))
+    X, Y, V = generate_data(policy, sampler, env, int(data_size), args)
     print("data generated")
     if os.name != "nt":
         pysr_model, elapsed = find_model(X, Y, symbdir, iterations, save_file, V, args)
-        ns_agent = symbolic_agent_constructor(pysr_model, policy)
+        ns_agent = symbolic_agent_constructor(pysr_model, policy, args.stochastic)
         nn_agent = NeuralAgent(policy)
         rn_agent = RandomAgent(env.action_space.n)
 

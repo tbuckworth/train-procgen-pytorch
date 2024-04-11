@@ -494,6 +494,7 @@ def add_symbreg_args(parser):
     parser.add_argument('--ncycles_per_iteration', type=int, default=550)
     parser.add_argument('--bumper', type=bool, default=False)
     parser.add_argument('--model_selection', type=str, default="best")
+    parser.add_argument('--stochastic', type=bool, default=True)
 
     return parser
 
