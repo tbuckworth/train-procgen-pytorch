@@ -3,8 +3,9 @@ import copy
 import itertools
 
 import numpy as np
-
+import re
 from helper import add_training_args, latest_model_path, add_symbreg_args
+from ilp.ilp_helper import run_subprocess
 
 
 def format_args(arg):
@@ -47,7 +48,7 @@ def executable_train(hparams, name, python_execs=[]):
          # "/usr/bin/nvidia-smi",
          # "export CUDA_DIR=/vol/cuda/12.2.0/:${CUDAPATH}",
          # "export XLA_FLAGS=--xla_gpu_cuda_data_dir=/vol/cuda/12.2.0/",
-         ] + python_execs)
+         ] + python_execs + ["exit", "exit"])
 
 
 def add_coinrun_sparsity_params(args):
@@ -83,7 +84,7 @@ def add_boxworld_params(args):
     return args
 
 
-def write_sh_files(hparams, n_gpu, args):
+def write_sh_files(hparams, n_gpu, args, execute, cuda):
     keys, values = zip(*hparams.items())
     h_dict_list = [dict(zip(keys, v)) for v in itertools.product(*values)]
     h_dict_list = np.random.permutation(h_dict_list)
@@ -112,17 +113,41 @@ def write_sh_files(hparams, n_gpu, args):
         f = open(exe_file_name, 'w', newline='\n')
         f.write(exe)
         f.close()
+        if execute:
+            script = "~/free_cpu"
+            if cuda:
+                script = "~/free_gpu"
+            free_machine = run_subprocess(script, "\\n", suppress=True)
+            host = re.search(r"(.*).doc.ic.ac.uk", free_machine).group(1)
+
+            command = f"'source {exe_file_name}'"
+            session_name = "tmpSession"
+
+            cmd1 = f'ssh {host} "tmux new -d -s {session_name}"'
+            cmd2 = f'ssh {host} "tmux send -t {session_name}.0 {command} ENTER"'
+
+            run_subprocess(cmd1, "\\n", suppress=False)
+            run_subprocess(cmd2, "\\n", suppress=False)
+
+
+
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--n_gpu', type=int, default=6)
+    parser.add_argument('--execute', action="store_true", default=False)
+    parser.add_argument('--cuda', action="store_true", default=False)
     # parser = add_training_args(parser)
     parser = add_symbreg_args(parser)
 
     args = parser.parse_args()
     n_gpu = args.n_gpu
+    execute = args.execute
+    cuda = args.cuda
     args.__delattr__("n_gpu")
+    args.__delattr__("execute")
+    args.__delattr__("cuda")
 
     # args = add_coinrun_sparsity_params(args)
     # args = add_boxworld_params(args)
@@ -150,4 +175,4 @@ if __name__ == '__main__':
     }
     n_experiments = np.prod([len(hparams[x]) for x in hparams.keys()])
     print(f"Creating {n_experiments} experiments across {n_gpu} workers.")
-    write_sh_files(hparams, n_gpu, args)
+    write_sh_files(hparams, n_gpu, args, execute, cuda)
