@@ -161,7 +161,7 @@ if __name__ == '__main__':
         "denoise": [True],#, False],
         "populations": [15],# 24],
         "procs": [8],#, 16],
-        "ncycles_per_iteration": [550, 1000],
+        "ncycles_per_iteration": [1000, 2000],
         "bumper": [True, False],
         "binary_operators": [["+", "-", "greater"],
                              # ["+", "-", "greater", "cond", "*"]
