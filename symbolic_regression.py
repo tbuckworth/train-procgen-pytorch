@@ -88,7 +88,8 @@ def load_nn_policy(logdir, n_envs=2):
         create_venv = create_bw_env
 
     test_agent = test_agent_mean_reward
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cpu")
     hyperparameters, last_model = load_hparams_for_model(cfg["param_name"], logdir, n_envs)
     hyperparameters["n_envs"] = n_envs
 
@@ -351,12 +352,12 @@ def send_full_report(df, logdir, model, args):
     rn_train = df.Random_score_Train[0]
     rn_test = df.Random_score_Test[0]
 
-    hline_dict = {"NeuroSymb Train": [ns_train, "black"],
-                  "NeuroSymb Test": [ns_test, "green"],
-                  "Random Train": [rn_train, "darkred"],
-                  "Random Test": [rn_test, "red"], }
+    hline_dict = {"NeuroSymb Train": [ns_train, "blue", "dashed"],
+                  "NeuroSymb Test": [ns_test, "orange", "dashed"],
+                  "Random Train": [rn_train, "blue", "dotted"],
+                  "Random Test": [rn_test, "orange", "dotted"], }
     for key in hline_dict.keys():
-        plt_hline(dfl2, key, hline_dict[key][0], hline_dict[key][1])
+        plt_hline(dfl2, key, hline_dict[key][0], hline_dict[key][1], hline_dict[key][2])
 
     min_y = min(0, dfl["mean_episode_rewards"].min(), dfl["val_mean_episode_rewards"].min())
     max_y = max(0, dfl["mean_episode_rewards"].max(), dfl["val_mean_episode_rewards"].max())
@@ -417,12 +418,12 @@ def split_df_by_index_and_pivot(df):
     tab_code = dfw.to_html(index=True)
 
 
-def plt_hline(dfl2, label, ns_train, colour):
+def plt_hline(dfl2, label, ns_train, colour, style):
     plt.hlines(y=ns_train,
                xmin=0,
                xmax=dfl2.index.max(),
                label=label,
-               linestyles="dashed",
+               linestyles=style,
                color=colour)
 
 
@@ -532,8 +533,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     args.data_size = 1000
-    args.iterations = 1
-    args.logdir = "logs/train/boxworld/boxworld/2024-04-08__12-29-17__seed_6033"
+    args.iterations = 5
+    # args.logdir = "logs/train/boxworld/boxworld/2024-04-08__12-29-17__seed_6033"
+    args.logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
     args.n_envs = 32
     args.rounds = 300
     args.binary_operators = ["+", "-", "greater"]
