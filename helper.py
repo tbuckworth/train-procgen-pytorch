@@ -496,3 +496,15 @@ def add_symbreg_args(parser):
     return parser
 
 
+def inverse_sigmoid(p):
+    # this bit makes sure no probabilities are at 1 or 0
+    min_val = np.finfo(p.dtype).resolution
+    p[p == 0] += min_val
+    p[p == 1] -= min_val
+    z = np.log(p / (1 - p))
+    return z
+
+
+def sigmoid(h):
+    p = 1 / (1 + np.exp(-h))
+    return p

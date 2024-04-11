@@ -119,9 +119,10 @@ def write_sh_files(hparams, n_gpu, args, execute, cuda):
                 script = "~/free_gpu"
             free_machine = run_subprocess(script, "\\n", suppress=True)
             host = re.search(r"(.*).doc.ic.ac.uk", free_machine).group(1)
-
             command = f"'source {exe_file_name}'"
             session_name = "tmpSession"
+
+            print(f"Host:{host}\tSessionName:{session_name}")
 
             cmd1 = f'ssh {host} "tmux new -d -s {session_name}"'
             cmd2 = f'ssh {host} "tmux send -t {session_name}.0 {command} ENTER"'
@@ -154,21 +155,21 @@ if __name__ == '__main__':
 
     hparams = {
         "timeout_in_seconds": [3600 * 10],
-        "data_size": [1000],# 5000],
-        "iterations": [5],#, 10, 20],
+        "data_size": [1000, 100],# 5000],
+        "iterations": [5, 10, 20],
         "n_envs": [32],
         "rounds": [300],
         "denoise": [True],#, False],
         "populations": [15],# 24],
         "procs": [8],#, 16],
-        "ncycles_per_iteration": [550],# 1000],
-        "bumper": [True],#, False],
+        "ncycles_per_iteration": [550, 1000],
+        "bumper": [True, False],
         "binary_operators": [["+", "-", "greater"],
                              # ["+", "-", "greater", "cond", "*"]
                              ],
         "unary_operators": [[],
-                            # ["sin", "relu"],
-                            # ["log", "exp", "relu"],
+                            ["sin", "relu"],
+                            ["log", "exp", "relu"],
                             ],
         "logdir": ["logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"],
         # "logdir": ["logs/train/boxworld/boxworld/2024-04-08__12-29-17__seed_6033"],

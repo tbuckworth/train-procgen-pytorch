@@ -18,7 +18,8 @@ import torch.nn.functional as F
 from torch.distributions import Categorical
 from common.env.procgen_wrappers import create_env, create_procgen_env
 from helper import get_config, get_path, balanced_reward, GLOBAL_DIR, load_storage_and_policy, \
-    load_hparams_for_model, floats_to_dp, dict_to_html_table, wandb_login, add_symbreg_args, DictToArgs
+    load_hparams_for_model, floats_to_dp, dict_to_html_table, wandb_login, add_symbreg_args, DictToArgs, \
+    inverse_sigmoid, sigmoid
 from cartpole.create_cartpole import create_cartpole
 from boxworld.create_box_world import create_bw_env
 from matplotlib import pyplot as plt
@@ -144,8 +145,9 @@ def sample_latent_output_mlpmodel(policy, observation):
         # y = dist.logits.detach().cpu().numpy()
         p = dist.probs.detach().cpu().numpy()
         # inverse sigmoid enables prediction of single logit:
-        z = np.log(p/(1-p))
-
+        z = inverse_sigmoid(p)
+        if np.isinf(z).any() or np.isnan(z).any():
+            print("uh-oh")
         act = dist.sample().cpu().numpy()
         # act = y.argmax(axis=1)
     return observation, z[:, 1], act, value.cpu().numpy()
@@ -231,8 +233,9 @@ class SymbolicAgent:
     def forward(self, observation):
         with torch.no_grad():
             # obs = torch.FloatTensor(observation).to(self.policy.device)
+            #TODO: make this work with multiple equations:
             h = self.model.predict(observation)
-            p = 1/(1+np.exp(-h))
+            p = sigmoid(h)
             return np.int32(np.random.random(len(h)) < p)
             # return np.round(h, 0)
             # TODO: do this with numpy instead of torch
@@ -375,7 +378,6 @@ def send_full_report(df, logdir, model, args):
     if test_improved and not train_improved:
         statement = "Improved Generalization"
 
-
     body_text = f"<br><b>{statement}</b><br>{tab_code}<br><b>Learned Formula:</b><br><p>{eqn_str}</p><br>{params}"
     send_image(plot_file, "PySR Results", body_text=body_text)
     print("")
@@ -504,28 +506,15 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    args.data_size = 1000
-    args.iterations = 1
-    # args.logdir = "logs/train/boxworld/boxworld/2024-04-08__12-29-17__seed_6033"
-    args.logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
-    args.n_envs = 32
-    args.rounds = 300
-    args.binary_operators = ["+", "-", "greater"]
-    args.unary_operators = []
-    args.denoise = True
-    args.use_wandb = False
-    args.wandb_tags = ["test"]
-    args.wandb_name = "test"
-    # args.populations = 24
-
     if args.logdir is None:
+        raise Exception("No oracle provided. Please provide logdir argument")
         # Sparse coinrun:
         # args.logdir = "logs/train/coinrun/coinrun-hparams/2024-03-27__18-20-55__seed_6033"
 
         # 10bn cartpole:
         # args.logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
 
-        # Sparse Boxworld, overfit:
-        args.logdir = "logs/train/boxworld/boxworld/2024-04-08__12-29-17__seed_6033"
+        # # Sparse Boxworld, overfit:
+        # args.logdir = "logs/train/boxworld/boxworld/2024-04-08__12-29-17__seed_6033"
         print(f"No oracle provided.\nUsing Logdir: {args.logdir}")
     run_neurosymbolic_search(args)
