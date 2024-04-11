@@ -8,7 +8,7 @@ import pandas as pd
 import sympy
 import wandb
 
-from email_results import send_image
+from email_results import send_images_first_last
 
 if os.name != "nt":
     from pysr import PySRRegressor
@@ -137,6 +137,7 @@ def sample_latent_output_fsqmha(policy, observation):
         act = dist.sample()
     return x.cpu().numpy(), y, act.cpu().numpy(), value.cpu().numpy()
 
+
 def sample_latent_output_fsqmha_coinrun(policy, observation, stochastic=False):
     with torch.no_grad():
         obs = torch.FloatTensor(observation).to(policy.device)
@@ -146,7 +147,7 @@ def sample_latent_output_fsqmha_coinrun(policy, observation, stochastic=False):
         # y = dist.logits.detach().cpu().numpy()
         p = dist.probs.detach().cpu().numpy()
         z = inverse_sigmoid(p)
-        y = z[:,(1,3)]
+        y = z[:, (1, 3)]
         act = dist.sample()
     return x.cpu().numpy(), y, act.cpu().numpy(), value.cpu().numpy()
 
@@ -258,7 +259,6 @@ class SymbolicAgent:
                 return np.int32(np.random.random(len(h)) < p)
             return np.round(h, 0)
 
-
             # TODO: do this with numpy instead of torch
             logits = torch.FloatTensor(h).to(self.policy.device)
             log_probs = F.log_softmax(logits, dim=1)
@@ -320,7 +320,7 @@ def create_symb_dir_if_exists(logdir):
     return symbdir, save_file
 
 
-def send_full_report(df, logdir, model, args):
+def send_full_report(df, logdir, symbdir, model, args, dfs):
     # load log csv
     dfl = pd.read_csv(os.path.join(logdir, "log-append.csv"))
     cfg = get_config(logdir)
@@ -372,7 +372,7 @@ def send_full_report(df, logdir, model, args):
     ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15),
               fancybox=True, shadow=True, ncol=3)
 
-    plot_file = os.path.join(logdir, "training_plot.png")
+    plot_file = os.path.join(symbdir, "training_plot.png")
     plt.savefig(plot_file)
 
     params = dict_to_html_table(args.__dict__)
@@ -399,8 +399,17 @@ def send_full_report(df, logdir, model, args):
     if test_improved and not train_improved:
         statement = "Improved Generalization"
 
+    lims = [
+        min(dfs.logit.min(), dfs.logit_estimate.min()),
+        max(dfs.logit.max(), dfs.logit_estimate.max())
+    ]
+    dfs.plot.scatter(x="logit", y="logit_estimate", c="value")
+    plt.plot(lims, lims, 'k-', alpha=0.75, zorder=0)
+    scatter_file = os.path.join(symbdir, "training_scatter.png")
+    plt.savefig(scatter_file)
+
     body_text = f"<br><b>{statement}</b><br>{tab_code}<br><b>Learned Formula:</b><br><p>{eqn_str}</p><br>{params}"
-    send_image(plot_file, "PySR Results", body_text=body_text)
+    send_images_first_last([plot_file, scatter_file], "PySR Results", body_text=body_text)
     print("")
 
 
@@ -510,15 +519,42 @@ def run_neurosymbolic_search(args):  # data_size, iterations, logdir, n_envs, ro
         if args.use_wandb:
             wandb.log({k: df_values[k][0] for k in df_values.keys()})
             wandb_table = wandb.Table(
-                # make this work for multiple equations:
+                # TODO: make this work for multiple equations:
                 dataframe=pysr_model.equations_[["equation", "score", "loss", "complexity"]]
             )
+
+
+            Y_hat = pysr_model.predict(X)
+            p = sigmoid(Y)
+            Y_act = sample_from_sigmoid(p)
+            p_hat = sigmoid(Y_hat)
+            Y_hat_act = sample_from_sigmoid(p)
+
+            # TODO: does X work for non-cartpole? I think not.
+            all_metrics = np.hstack((X,
+                                     np.vstack((Y, V, Y_hat, p, p_hat, Y_act, Y_hat_act)).T
+                                     ))
+            dfs = pd.DataFrame(all_metrics,
+                                     columns=["cart_position", "cart_velocity", "pole_angle", "pole_angular_velocity",
+                                              "logit", "value", "logit_estimate", "prob", "prob_estimate",
+                                              "sampled_action", "sampled_action_estimate"])
+            wandb_metrics = wandb.Table(dataframe=dfs)
+
+            # df_dict = df.to_dict()
+            # log_dict = {k:list(df_dict[k].values()) for k in df_dict.keys()}
+
             wandb.log(
-                {f"equations": wandb_table},
+                {f"equations": wandb_table,
+                f"metrics": wandb_metrics},
             )
+
         df = pd.DataFrame(df_values)
         df.to_csv(os.path.join(symbdir, "results.csv"), mode="w", header=True, index=False)
-        send_full_report(df, logdir, pysr_model, args)
+        send_full_report(df, logdir, symbdir, pysr_model, args, dfs)
+
+
+def sample_from_sigmoid(p):
+    return np.int32(np.random.random(p.shape) < p)
 
 
 if __name__ == "__main__":

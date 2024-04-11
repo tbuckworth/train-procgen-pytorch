@@ -11,6 +11,75 @@ import mimetypes
 from numpy.core.defchararray import capitalize
 
 
+def send_images_first_last(image_files, subject, body_text=""):
+    sender_address = 'elkilesh@hotmail.co.uk'
+    sender_pass = 'TBelkpw92'
+    receiver_address = "tfb115@ic.ac.uk"
+    msg = EmailMessage()
+
+    # generic email headers
+    msg['Subject'] = subject
+    msg['From'] = f'Slurm Results <{sender_address}>'
+    msg['To'] = f'Titus Buckworth <{receiver_address}>'
+
+    # set the plain text body
+    msg.set_content('This is a plain text body.')
+
+    # now create a Content-ID for the image
+    image_cid = make_msgid(domain='xyz.com')
+    image_cid2 = make_msgid(domain='wxyz.com')
+
+    # if `domain` argument isn't provided, it will
+    # use your computer's name
+
+    # set an alternative html body
+    msg.add_alternative("""\
+    <html>
+        <body>
+            <img src="cid:{image_cid}">
+            {body_text}            
+            <img src="cid:{image_cid2}">
+        </body>
+    </html>
+    """.format(image_cid=image_cid[1:-1], image_cid2=image_cid2[1:-1], body_text=body_text), subtype='html')
+    # image_cid looks like <long.random.number@xyz.com>
+    # to use it as the img src, we don't need `<` or `>`
+    # so we use [1:-1] to strip them off
+
+    # now open the image and attach it to the email
+    with open(image_files[0], 'rb') as img:
+        # know the Content-Type of the image
+        maintype, subtype = mimetypes.guess_type(img.name)[0].split('/')
+
+        # attach it
+        msg.get_payload()[1].add_related(img.read(),
+                                         maintype=maintype,
+                                         subtype=subtype,
+                                         cid=image_cid)
+    # now open the image and attach it to the email
+    with open(image_files[1], 'rb') as img:
+        # know the Content-Type of the image
+        maintype, subtype = mimetypes.guess_type(img.name)[0].split('/')
+
+        # attach it
+        msg.get_payload()[1].add_related(img.read(),
+                                         maintype=maintype,
+                                         subtype=subtype,
+                                         cid=image_cid2)
+
+    # the message is ready now
+    # you can write it to a file
+    # or send it using smtplib
+    session = smtplib.SMTP('smtp-mail.outlook.com', 587)  # use gmail with port
+    session.starttls()  # enable security
+    session.login(sender_address, sender_pass)  # login with mail_id and password
+    text = msg.as_string()
+    session.sendmail(sender_address, receiver_address, text)
+    session.quit()
+
+
+
+
 def send_image(image_file, subject, body_text=""):
     sender_address = 'elkilesh@hotmail.co.uk'
     sender_pass = 'TBelkpw92'
