@@ -71,7 +71,7 @@ def run_symb_reg_local():
     args = parser.parse_args()
 
     args.data_size = 100
-    args.iterations = 1
+    args.iterations = 5
     # args.logdir = "logs/train/boxworld/boxworld/2024-04-08__12-29-17__seed_6033"
     args.logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
     args.n_envs = 32
@@ -83,6 +83,7 @@ def run_symb_reg_local():
     args.wandb_tags = ["test"]
     args.wandb_name = "test"
     # args.populations = 24
+    args.model_selection = "best"
 
     run_neurosymbolic_search(args)
 
