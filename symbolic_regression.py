@@ -85,7 +85,7 @@ def load_nn_policy(logdir, n_envs=2):
         # test_agent = test_cartpole_agent
         create_venv = create_cartpole
     if cfg["env_name"] == "boxworld":
-        sampler = sample_latent_output_fsqmha
+        sampler = sample_latent_output_fsqmha_boxworld
         symbolic_agent_constructor = NeuroSymbolicAgent
         create_venv = create_bw_env
 
@@ -137,6 +137,19 @@ def sample_latent_output_fsqmha(policy, observation):
         act = dist.sample()
     return x.cpu().numpy(), y, act.cpu().numpy(), value.cpu().numpy()
 
+def sample_latent_output_fsqmha_boxworld(policy, observation):
+    with torch.no_grad():
+        obs = torch.FloatTensor(observation).to(policy.device)
+        x = policy.embedder.forward_to_pool(obs)
+        h = policy.embedder.forward_from_pool(x)
+        dist, value = policy.hidden_to_output(h)
+        # y = dist.logits.detach().cpu().numpy()
+        p = dist.probs.detach().cpu().numpy()
+        z = inverse_sigmoid(p)
+        y = z[:,(1,3)]
+        act = dist.sample()
+    return x.cpu().numpy(), y, act.cpu().numpy(), value.cpu().numpy()
+
 
 def sample_latent_output_mlpmodel(policy, observation):
     with torch.no_grad():
@@ -147,8 +160,6 @@ def sample_latent_output_mlpmodel(policy, observation):
         p = dist.probs.detach().cpu().numpy()
         # inverse sigmoid enables prediction of single logit:
         z = inverse_sigmoid(p)
-        if np.isinf(z).any() or np.isnan(z).any():
-            print("uh-oh")
         act = dist.sample().cpu().numpy()
         # act = y.argmax(axis=1)
     return observation, z[:, 1], act, value.cpu().numpy()
@@ -208,6 +219,7 @@ class NeuroSymbolicAgent:
             obs = torch.FloatTensor(observation).to(self.policy.device)
             x = self.policy.embedder.forward_to_pool(obs)
             h = self.model.predict(x)
+            # sigmoid?
             logits = torch.FloatTensor(h).to(self.policy.device)
             log_probs = F.log_softmax(logits, dim=1)
             p = Categorical(logits=log_probs)
