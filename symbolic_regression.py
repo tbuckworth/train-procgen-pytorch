@@ -563,6 +563,8 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    print(f"\nBinary Ops:\n{' '.join(args.binary_operators)}\n")
+
     if args.logdir is None:
         raise Exception("No oracle provided. Please provide logdir argument")
         # Sparse coinrun:
