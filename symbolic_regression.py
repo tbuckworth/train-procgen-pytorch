@@ -29,16 +29,26 @@ from matplotlib import pyplot as plt
 # os.environ["PYTHON_JULIACALL_BINDIR"] = r"C:\Users\titus\AppData\Local\Microsoft\WindowsApps"
 # os.environ["PYTHON_JULIACALL_BINDIR"] = r"C:\Users\titus\.julia\juliaup\julia-1.10.0+0.x64.w64.mingw32\bin"
 
+pysr_loss_functions = {
+    "sigmoid": "SigmoidLoss()",
+    "exp": "ExpLoss()",
+    "l2marg": "L2MarginLoss()",
+    "logitmarg": "LogitMarginLoss()",
+    "perceptron": "PerceptronLoss()",
+    "logitdist": "LogitDistLoss()",
+    "mse": "loss(prediction, target) = (prediction - target)^2",
+}
+
 def find_model(X, Y, symbdir, iterations, save_file, weights, args):
     model = PySRRegressor(
         equation_file=get_path(symbdir, save_file),
         niterations=args.iterations,  # < Increase me for better results
         binary_operators=args.binary_operators,
         unary_operators=args.unary_operators,
-        weights=weights,
+        weights=weights if args.use_weights else None,
         denoise=args.denoise,
         extra_sympy_mappings={"greater": lambda x, y: sympy.Piecewise((1.0, x > y), (0.0, True))},
-        elementwise_loss="loss(prediction, target) = (prediction - target)^2",
+        elementwise_loss=pysr_loss_functions[args.loss_function],
         timeout_in_seconds=args.timeout_in_seconds,
         populations=args.populations,
         procs=args.procs,
@@ -480,7 +490,9 @@ def run_neurosymbolic_search(args):  # data_size, iterations, logdir, n_envs, ro
     X, Y, V = generate_data(policy, sampler, env, int(data_size), args)
     print("data generated")
     if os.name != "nt":
-        pysr_model, elapsed = find_model(X, Y, symbdir, iterations, save_file, V, args)
+        #TODO: try diff weights e.g. none and entropy
+        weights = V
+        pysr_model, elapsed = find_model(X, Y, symbdir, iterations, save_file, weights, args)
         ns_agent = symbolic_agent_constructor(pysr_model, policy, args.stochastic)
         nn_agent = NeuralAgent(policy)
         rn_agent = RandomAgent(env.action_space.n)

@@ -495,7 +495,8 @@ def add_symbreg_args(parser):
     parser.add_argument('--bumper', type=bool, default=False)
     parser.add_argument('--model_selection', type=str, default="best")
     parser.add_argument('--stochastic', type=bool, default=True)
-
+    parser.add_argument('--loss_function', type=str, default="mse")
+    parser.add_argument('--use_weights', type=bool, default=False)
     return parser
 
 
