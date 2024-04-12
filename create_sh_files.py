@@ -139,8 +139,8 @@ def symbreg_hparams():
         "iterations": [5, 10, 20],  # 20, 40, 80],
         "n_envs": [128],
         "rounds": [500],
-        "denoise": [True],#, False],
-        "use_weights": [True],# False],
+        "denoise": [True],  # , False],
+        "use_weights": [True],  # False],
         # "populations": [15, 24],
         # "procs": [8, 16],
         "ncycles_per_iteration": [1000],  # , 2000, 4000],
@@ -151,16 +151,43 @@ def symbreg_hparams():
         ],
         "wandb_tags": [["stochastic", "cartpole", "losses"]],
         "model_selection": ["best", "accuracy"],
-        "loss_function": ["capped_sigmoid"],#['sigmoid', 'exp', 'l2marg', 'logitmarg', 'perceptron', 'logitdist', 'mse'],
+        "loss_function": ["capped_sigmoid"],
+        # ['sigmoid', 'exp', 'l2marg', 'logitmarg', 'perceptron', 'logitdist', 'mse'],
         "logdir": ["logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"],
         # "logdir": ["logs/train/boxworld/boxworld/2024-04-08__12-29-17__seed_6033"],
+        "use_wandb": [True],
     }
 
 
 def train_hparams():
     return {
 
+    }
 
+
+def add_symbreg_args_dict():
+    return {
+        "data_size": 100,
+        "iterations": 1,
+        "logdir": None,
+        "n_envs": int(8),
+        "rounds": int(10),
+        "binary_operators": ["+", "-", "greater"],
+        "unary_operators": [],
+        "denoise": False,
+        "use_wandb": False,
+        "wandb_tags": [],
+        "wandb_name": None,
+        "wandb_group": None,
+        "timeout_in_seconds": 36000,
+        "populations": 24,
+        "procs": 8,
+        "ncycles_per_iteration": 550,
+        "bumper": False,
+        "model_selection": "best",
+        "stochastic": True,
+        "loss_function": "mse",
+        "use_weights": False,
     }
 
 
@@ -187,9 +214,10 @@ if __name__ == '__main__':
 
     if hparam_type == "symbreg":
         # parser_sub = add_symbreg_args(parser_sub)
+        parser_dict = add_symbreg_args_dict()
         hparams = symbreg_hparams()
         cuda = False
-    args = DictToArgs(hparams)
+    args = DictToArgs(parser_dict)
     # args = parser_sub.parse_args()
 
     # args = add_coinrun_sparsity_params(args)
