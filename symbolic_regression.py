@@ -556,8 +556,8 @@ def run_neurosymbolic_search(args):  # data_size, iterations, logdir, n_envs, ro
         Y_hat_act = sample_from_sigmoid(p)
 
         e_hat = get_entropy(Y_hat)
-        df_values["Entropy_Pred"] = e_hat
-        df_values["Entropy"] = e
+        df_values["Entropy_Pred"] = [e_hat]
+        df_values["Entropy"] = [e]
 
         # TODO: does X work for non-cartpole? I think not.
         all_metrics = np.hstack((X,
