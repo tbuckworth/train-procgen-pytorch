@@ -4,7 +4,7 @@ import itertools
 
 import numpy as np
 import re
-from helper_local import add_training_args, latest_model_path, add_symbreg_args, run_subprocess
+from helper_local import add_training_args, latest_model_path, add_symbreg_args, run_subprocess, DictToArgs
 
 
 def format_args(arg):
@@ -181,15 +181,16 @@ if __name__ == '__main__':
     parser_sub = argparse.ArgumentParser()
 
     if hparam_type == "train":
-        parser_sub = add_training_args(parser_sub)
+        # parser_sub = add_training_args(parser_sub)
         hparams = train_hparams()
         cuda = True
 
     if hparam_type == "symbreg":
-        parser_sub = add_symbreg_args(parser_sub)
+        # parser_sub = add_symbreg_args(parser_sub)
         hparams = symbreg_hparams()
         cuda = False
-    args = parser_sub.parse_args()
+    args = DictToArgs(hparams)
+    # args = parser_sub.parse_args()
 
     # args = add_coinrun_sparsity_params(args)
     # args = add_boxworld_params(args)
