@@ -37,6 +37,7 @@ pysr_loss_functions = {
     "perceptron": "PerceptronLoss()",
     "logitdist": "LogitDistLoss()",
     "mse": "loss(prediction, target) = (prediction - target)^2",
+    "capped_sigmoid": "loss(y_hat, y) = 1 - tanh(y*y_hat) + abs(y_hat-y)",
 }
 
 def find_model(X, Y, symbdir, iterations, save_file, weights, args):
@@ -289,6 +290,18 @@ class NeuralAgent:
             act = dist.sample()
         return act.cpu().numpy()
 
+class DeterministicNeuralAgent:
+    def __init__(self, policy):
+        self.policy = policy
+
+    def forward(self, observation):
+        with torch.no_grad():
+            obs = torch.FloatTensor(observation).to(self.policy.device)
+            h = self.policy.embedder(obs)
+            dist, value = self.policy.hidden_to_output(h)
+            y = dist.logits.detach().cpu().numpy()
+            act = y.argmax(axis=1)
+        return act
 
 class RandomAgent:
     def __init__(self, n_actions):
