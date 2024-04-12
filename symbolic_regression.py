@@ -516,36 +516,36 @@ def run_neurosymbolic_search(args):  # data_size, iterations, logdir, n_envs, ro
             "Problem_name": [problem_name]
         }
 
+        Y_hat = pysr_model.predict(X)
+        p = sigmoid(Y)
+        Y_act = sample_from_sigmoid(p)
+        p_hat = sigmoid(Y_hat)
+        Y_hat_act = sample_from_sigmoid(p)
+
+        # TODO: does X work for non-cartpole? I think not.
+        all_metrics = np.hstack((X,
+                                 np.vstack((Y, V, Y_hat, p, p_hat, Y_act, Y_hat_act)).T
+                                 ))
+        dfs = pd.DataFrame(all_metrics,
+                           columns=["cart_position", "cart_velocity", "pole_angle", "pole_angular_velocity",
+                                    "logit", "value", "logit_estimate", "prob", "prob_estimate",
+                                    "sampled_action", "sampled_action_estimate"])
+
         if args.use_wandb:
             wandb.log({k: df_values[k][0] for k in df_values.keys()})
-            wandb_table = wandb.Table(
-                # TODO: make this work for multiple equations:
-                dataframe=pysr_model.equations_[["equation", "score", "loss", "complexity"]]
-            )
+            # wandb_table = wandb.Table(
+            #     # TODO: make this work for multiple equations:
+            #     dataframe=pysr_model.equations_[["equation", "score", "loss", "complexity"]]
+            # )
 
-
-            Y_hat = pysr_model.predict(X)
-            p = sigmoid(Y)
-            Y_act = sample_from_sigmoid(p)
-            p_hat = sigmoid(Y_hat)
-            Y_hat_act = sample_from_sigmoid(p)
-
-            # TODO: does X work for non-cartpole? I think not.
-            all_metrics = np.hstack((X,
-                                     np.vstack((Y, V, Y_hat, p, p_hat, Y_act, Y_hat_act)).T
-                                     ))
-            dfs = pd.DataFrame(all_metrics,
-                                     columns=["cart_position", "cart_velocity", "pole_angle", "pole_angular_velocity",
-                                              "logit", "value", "logit_estimate", "prob", "prob_estimate",
-                                              "sampled_action", "sampled_action_estimate"])
             wandb_metrics = wandb.Table(dataframe=dfs)
 
             # df_dict = df.to_dict()
             # log_dict = {k:list(df_dict[k].values()) for k in df_dict.keys()}
 
             wandb.log(
-                {f"equations": wandb_table,
-                f"metrics": wandb_metrics},
+                #{#f"equations": wandb_table,
+                {f"metrics": wandb_metrics},
             )
 
         df = pd.DataFrame(df_values)

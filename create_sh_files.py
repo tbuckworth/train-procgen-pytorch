@@ -163,7 +163,7 @@ if __name__ == '__main__':
         "procs": [8, 16],
         "ncycles_per_iteration": [1000, 2000, 4000],
         "bumper": [True, False],
-        "binary_operators": [["+", "-", "greater", "*", "/"],
+        "binary_operators": [["+", "-", "greater", "\*", "/"],
                              # ["+", "-", "greater", "cond", "*"]
                              ],
         "unary_operators": [[],
