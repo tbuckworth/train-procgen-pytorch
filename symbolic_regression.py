@@ -560,6 +560,8 @@ def run_neurosymbolic_search(args):
         df_values["Entropy_Pred"] = [e_hat]
         df_values["Entropy"] = [e]
         shp = Y.shape
+        if len(shp) == 1:
+            shp = (shp[0],1)
         try:
             action_lookup = get_actions(env)
             actions = np.array(list(action_lookup.values()))

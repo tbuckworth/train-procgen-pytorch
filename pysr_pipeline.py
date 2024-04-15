@@ -1,3 +1,5 @@
+from torch import cuda
+
 from helper_local import DictToArgs
 from symbolic_regression import run_neurosymbolic_search
 from train import train_ppo
@@ -8,12 +10,12 @@ if __name__ == "__main__":
         "exp_name": "cartpole",
         "env_name": "cartpole",
         "param_name": "cartpole_position",
-        "num_timesteps": int(1e6),
+        "num_timesteps": int(2e8),
         "num_checkpoints": 1,
         "seed": 6033,
         "--use_wandb": True,
         "--real_procgen": True,
-        "device": "gpu",
+        "device": "gpu" if cuda.is_available() else "cpu",
         "n_envs": 1024,
         "wandb_tags": ["position", "test"],
 
