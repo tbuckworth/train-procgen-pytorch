@@ -13,11 +13,12 @@ def format_args(arg):
     for var_name in d.keys():
         v = d[var_name]
         if v is not None:
-            # if type(v) == bool:
-            #     if v:
-            #         output += f"--{var_name} "
-            # el
-            if type(v) == list:
+            if type(v) == bool:
+                if v:
+                    output += f"--{var_name} "
+                else:
+                    output += f"--no-{var_name} "
+            elif type(v) == list:
                 if len(v) > 0:
                     if type(v[0]) == int:
                         v = [str(x) for x in v]
@@ -161,22 +162,22 @@ if __name__ == '__main__':
     hparams = {
         "timeout_in_seconds": [3600 * 10],
         "data_size": [100, 1000],#, 500, 100, 50],# 5000],
-        "iterations": [5, 10],# 20, 40, 80],
+        "iterations": [5, 10, 20],# 40, 80],
         "n_envs": [128],
         "rounds": [500],
         "denoise": [True, False],
         "use_weights": [True, False],
-        # "populations": [15, 24],
-        # "procs": [8, 16],
-        "ncycles_per_iteration": [1000],#, 2000, 4000],
-        "bumper": [True],#, False],
+        "populations": [15, 24],
+        "procs": [8, 16],
+        "ncycles_per_iteration": [1000, 2000],#, 4000],
+        "bumper": [True, False],
         "binary_operators": [["+", "-", "greater", "\*", "/"]],
         "unary_operators": [#[],
                             ["sin", "relu", "log", "exp", "sign", "sqrt", "square"],
                             ],
-        "wandb_tags": ["stochastic", "cartpole", "losses"],
+        "wandb_tags": ["stochastic", "cartpole"],
         "model_selection": ["best", "accuracy"],
-        "loss_function": ['sigmoid', 'exp', 'l2marg', 'logitmarg', 'perceptron', 'logitdist', 'mse'],
+        "loss_function": ['capped_sigmoid'],
         "logdir": ["logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"],
         # "logdir": ["logs/train/boxworld/boxworld/2024-04-08__12-29-17__seed_6033"],
     }

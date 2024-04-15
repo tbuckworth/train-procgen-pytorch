@@ -482,8 +482,6 @@ def add_symbreg_args(parser):
     parser.add_argument('--binary_operators', type=str, nargs='+', default=["+", "-", "greater"],
                         help="Binary operators to use in search")
     parser.add_argument('--unary_operators', type=str, nargs='+', default=[], help="Unary operators to use in search")
-    parser.add_argument('--denoise', type=bool, default=False)
-    parser.add_argument('--use_wandb', type=bool, default=False)
     parser.add_argument('--wandb_tags', type=str, nargs='+', default=[], help="Tags for Weights & Biases")
     parser.add_argument('--wandb_name', type=str, default=None, help='Experiment Name for Weights & Biases')
     parser.add_argument('--wandb_group', type=str, default=None)
@@ -492,11 +490,23 @@ def add_symbreg_args(parser):
     parser.add_argument('--populations', type=int, default=24)
     parser.add_argument('--procs', type=int, default=8)
     parser.add_argument('--ncycles_per_iteration', type=int, default=550)
-    parser.add_argument('--bumper', type=bool, default=False)
     parser.add_argument('--model_selection', type=str, default="best")
-    parser.add_argument('--stochastic', type=bool, default=True)
     parser.add_argument('--loss_function', type=str, default="mse")
-    parser.add_argument('--use_weights', type=bool, default=False)
+
+    parser.add_argument('--stochastic', action='store_true')
+    parser.add_argument('--use_weights', action='store_true')
+    parser.add_argument('--bumper', action='store_true')
+    parser.add_argument('--denoise', action='store_true')
+    parser.add_argument('--use_wandb', action='store_true')
+
+    parser.add_argument('--no-stochastic', dest='feature', action='store_false')
+    parser.add_argument('--no-use_weights', dest='feature', action='store_false')
+    parser.add_argument('--no-bumper', dest='feature', action='store_false')
+    parser.add_argument('--no-denoise', dest='feature', action='store_false')
+    parser.add_argument('--no-use_wandb', dest='feature', action='store_false')
+
+    parser.set_defaults(stochastic=True, use_weights=True, bumper=True, denoise=True, use_wandb=True)
+
     return parser
 
 
