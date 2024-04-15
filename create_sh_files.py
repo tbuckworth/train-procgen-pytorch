@@ -154,8 +154,8 @@ def symbreg_hparams():
         "weight_metric": [None, "entropy", "value"],
         "loss_function": ["capped_sigmoid"],
         # "loss_function": ['sigmoid', 'exp', 'logitmarg', 'logitdist', 'mse'],
-        "logdir": ["logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"],
-        # "logdir": ["logs/train/boxworld/boxworld/2024-04-08__12-29-17__seed_6033"],
+        # "logdir": ["logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"],
+        "logdir": ["logs/train/boxworld/boxworld/2024-04-08__12-29-17__seed_6033"],
         "use_wandb": [True],
     }
 

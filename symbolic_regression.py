@@ -19,11 +19,10 @@ from torch.distributions import Categorical
 from common.env.procgen_wrappers import create_env, create_procgen_env
 from helper_local import get_config, get_path, balanced_reward, GLOBAL_DIR, load_storage_and_policy, \
     load_hparams_for_model, floats_to_dp, dict_to_html_table, wandb_login, add_symbreg_args, DictToArgs, \
-    inverse_sigmoid, sigmoid
+    inverse_sigmoid, sigmoid, get_actions
 from cartpole.create_cartpole import create_cartpole
 from boxworld.create_box_world import create_bw_env
 from matplotlib import pyplot as plt
-
 
 # os.environ["PYTHON_JULIACALL_BINDIR"] = r"C:\Users\titus\PycharmProjects\train-procgen-pytorch\venv\julia_env\pyjuliapkg\install\bin"
 # os.environ["PYTHON_JULIACALL_BINDIR"] = r"C:\Users\titus\AppData\Local\Microsoft\WindowsApps"
@@ -39,6 +38,7 @@ pysr_loss_functions = {
     "mse": "loss(prediction, target) = (prediction - target)^2",
     "capped_sigmoid": "loss(y_hat, y) = 1 - tanh(y*y_hat) + abs(y_hat-y)",
 }
+
 
 def find_model(X, Y, symbdir, save_file, weights, args):
     model = PySRRegressor(
@@ -283,6 +283,7 @@ class NeuralAgent:
             act = dist.sample()
         return act.cpu().numpy()
 
+
 class DeterministicNeuralAgent:
     def __init__(self, policy):
         self.policy = policy
@@ -295,6 +296,7 @@ class DeterministicNeuralAgent:
             y = dist.logits.detach().cpu().numpy()
             act = y.argmax(axis=1)
         return act
+
 
 class RandomAgent:
     def __init__(self, n_actions):
@@ -471,9 +473,9 @@ def get_entropy(Y):
     # only legit for single action (cartpole)
     if n_actions == 1:
         p = sigmoid(Y)
-        q = 1-p
+        q = 1 - p
         return np.mean(-p * np.log(p) - q * np.log(q))
-    ents = -(np.exp(Y)*Y).sum(-1)
+    ents = -(np.exp(Y) * Y).sum(-1)
     return ents.mean()
 
 
@@ -481,6 +483,8 @@ def run_neurosymbolic_search(args):
     data_size = args.data_size
     logdir = args.logdir
     n_envs = args.n_envs
+    if n_envs < 2:
+        raise Exception("n_envs must be at least 2")
     rounds = args.rounds
     symbdir, save_file = create_symb_dir_if_exists(logdir)
     cfg = vars(args)
@@ -555,9 +559,27 @@ def run_neurosymbolic_search(args):
         e_hat = get_entropy(Y_hat)
         df_values["Entropy_Pred"] = [e_hat]
         df_values["Entropy"] = [e]
+        # TODO: collapse Y by action
+        shp = Y.shape
+        try:
+            action_lookup = get_actions(env)
+            actions = np.array(list(action_lookup.values()))
+        except NotImplementedError:
+            actions = np.array([f"action_{i}" for i in range(Y.shape[-1])])
 
-        all_metrics = np.vstack((Y, V, Y_hat, p, p_hat, Y_act, Y_hat_act)).T
-        columns = ["logit", "value", "logit_estimate", "prob", "prob_estimate",
+        all_metrics = (
+            (actions,
+             Y.reshape(np.prod(shp)),
+             np.repeat(V, shp[-1]),
+             Y_hat.reshape(np.prod(shp)),
+             p.reshape(np.prod(shp)),
+             p_hat.reshape(np.prod(shp)),
+             np.repeat(Y_act, shp[-1]),
+             np.repeat(Y_hat_act, shp[-1]),
+             )
+        ).T
+        # all_metrics = np.vstack((Y, V, Y_hat, p, p_hat, Y_act, Y_hat_act)).T
+        columns = ["action", "logit", "value", "logit_estimate", "prob", "prob_estimate",
                    "sampled_action", "sampled_action_estimate"]
         if problem_name == "cartpole":
             all_metrics = np.hstack((X, all_metrics))
@@ -572,7 +594,7 @@ def run_neurosymbolic_search(args):
             # )
             wandb_metrics = wandb.Table(dataframe=dfs)
             wandb.log(
-                #{#f"equations": wandb_table,
+                # {#f"equations": wandb_table,
                 {f"metrics": wandb_metrics},
             )
 

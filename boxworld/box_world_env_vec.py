@@ -325,6 +325,8 @@ class BoxWorldVec(Env):
     def act(self, ac: Any) -> None:
         self.step(ac)
 
+    def get_action_lookup(self):
+        return ACTION_LOOKUP
 
 if __name__ == "__main__":
     env = BoxWorldVec(2, 6, 2, 1, 1)

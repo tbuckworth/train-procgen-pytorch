@@ -79,23 +79,25 @@ def run_symb_reg_local():
 
     args = parser.parse_args()
 
-    args.data_size = 100
-    args.iterations = 5
+    args.data_size = 10
+    args.iterations = 1
     args.logdir = "logs/train/boxworld/boxworld/2024-04-08__12-29-17__seed_6033"
     # args.logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
-    args.n_envs = 32
-    args.rounds = 300
+    args.n_envs = 2
+    args.rounds = 1
     args.binary_operators = ["+", "-", "*", "greater", "/"]
     args.unary_operators = ["sin", "relu", "log", "exp", "sign", "sqrt", "square"]
 
-    args.denoise = True
+    args.denoise = False
     args.use_wandb = True
-    args.wandb_tags = ["stochastic"]
+    args.wandb_tags = ["stochastic", "boxworld"]
+    args.weight_metric = "value"
     args.wandb_name = "manual"
     # args.populations = 24
     args.model_selection = "best"
     args.ncycles_per_iteration = 2000
     args.bumper = True
+    args.loss_function = "capped_sigmoid"
     run_neurosymbolic_search(args)
 
 
