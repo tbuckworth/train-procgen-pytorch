@@ -13,11 +13,12 @@ def format_args(arg):
     for var_name in d.keys():
         v = d[var_name]
         if v is not None:
-            # if type(v) == bool:
-            #     if v:
-            #         output += f"--{var_name} "
-            # el
-            if type(v) == list:
+            if type(v) == bool:
+                if v:
+                    output += f"--{var_name} "
+                else:
+                    output += f"--no-{var_name} "
+            elif type(v) == list:
                 if len(v) > 0:
                     if type(v[0]) == int:
                         v = [str(x) for x in v]
