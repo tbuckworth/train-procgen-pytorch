@@ -17,7 +17,17 @@ if __name__ == "__main__":
         "n_envs": 1024,
         "wandb_tags": ["position", "test"],
 
-
+        "render": False,
+        "detect_nan": False,
+        "use_valid_env": True,
+        "normalize_rew": True,
+        "paint_vel_info": True,
+        "reduce_duplicate_actions": True,
+        "use_wandb": False,
+        "real_procgen": True,
+        "mirror_env": False,
+        
+        
         "val_env_name": None,
         "start_level": int(0),
         "num_levels": int(500),
