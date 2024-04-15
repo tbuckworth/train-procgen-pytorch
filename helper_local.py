@@ -339,9 +339,6 @@ def add_training_args(parser):
     parser.add_argument('--log_level', type=int, default=int(40), help='[10,20,30,40]')
     parser.add_argument('--num_checkpoints', type=int, default=int(1), help='number of checkpoints to store')
     parser.add_argument('--model_file', type=str)
-    parser.add_argument('--use_wandb', action="store_true", default=False)
-    parser.add_argument('--real_procgen', action="store_true", default=True)
-    parser.add_argument('--mirror_env', action="store_true", default=False)
     parser.add_argument('--mut_info_alpha', type=float, default=None)
     parser.add_argument('--gamma', type=float, default=None)
     parser.add_argument('--learning_rate', type=float, default=None)
@@ -350,14 +347,8 @@ def add_training_args(parser):
     parser.add_argument('--n_steps', type=int, default=None)
     parser.add_argument('--n_minibatch', type=int, default=None)
     parser.add_argument('--mini_batch_size', type=int, default=None)
-    parser.add_argument('--detect_nan', action="store_true", default=False)
     parser.add_argument('--wandb_name', type=str, default=None)
     parser.add_argument('--wandb_group', type=str, default=None)
-    parser.add_argument('--use_valid_env', action="store_true", default=True)
-    parser.add_argument('--normalize_rew', action="store_true", default=True)
-    parser.add_argument('--render', action="store_true", default=False)
-    parser.add_argument('--paint_vel_info', action="store_true", default=True)
-    parser.add_argument('--reduce_duplicate_actions', action="store_true", default=True)
     parser.add_argument('--wandb_tags', type=str, nargs='+')
     parser.add_argument('--minibatches', type=int, nargs='+')
     parser.add_argument('--levels', type=int, nargs='+', default=None)
@@ -373,6 +364,20 @@ def add_training_args(parser):
                         help='MAZE: size of region (in upper left corner) in which goal is sampled.')
     # multi threading
     parser.add_argument('--num_threads', type=int, default=8)
+
+
+    parser.add_argument('--detect_nan', action="store_true", default=False)
+    parser.add_argument('--use_valid_env', action="store_true", default=True)
+    parser.add_argument('--normalize_rew', action="store_true", default=True)
+    parser.add_argument('--render', action="store_true", default=False)
+    parser.add_argument('--paint_vel_info', action="store_true", default=True)
+    parser.add_argument('--reduce_duplicate_actions', action="store_true", default=True)
+    parser.add_argument('--use_wandb', action="store_true", default=False)
+    parser.add_argument('--real_procgen', action="store_true", default=True)
+    parser.add_argument('--mirror_env', action="store_true", default=False)
+
+
+
     return parser
 
 
@@ -499,11 +504,11 @@ def add_symbreg_args(parser):
     parser.add_argument('--denoise', action='store_true')
     parser.add_argument('--use_wandb', action='store_true')
 
-    parser.add_argument('--no-stochastic', dest='feature', action='store_false')
-    parser.add_argument('--no-use_weights', dest='feature', action='store_false')
-    parser.add_argument('--no-bumper', dest='feature', action='store_false')
-    parser.add_argument('--no-denoise', dest='feature', action='store_false')
-    parser.add_argument('--no-use_wandb', dest='feature', action='store_false')
+    parser.add_argument('--no-stochastic', dest='stochastic', action='store_false')
+    parser.add_argument('--no-use_weights', dest='use_weights', action='store_false')
+    parser.add_argument('--no-bumper', dest='bumper', action='store_false')
+    parser.add_argument('--no-denoise', dest='denoise', action='store_false')
+    parser.add_argument('--no-use_wandb', dest='use_wandb', action='store_false')
 
     parser.set_defaults(stochastic=True, use_weights=True, bumper=True, denoise=True, use_wandb=True)
 
