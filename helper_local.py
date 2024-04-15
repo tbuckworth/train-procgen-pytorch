@@ -568,3 +568,7 @@ def run_subprocess(cmd, newline, suppress=False, timeout=-1):
 
     output = '\n'.join(output.decode("utf-8").split(newline))
     return output
+
+
+def sample_from_sigmoid(p):
+    return np.int32(np.random.random(p.shape) < p)
