@@ -13,8 +13,6 @@ if __name__ == "__main__":
         "num_timesteps": int(2e8),
         "num_checkpoints": 1,
         "seed": 6033,
-        "--use_wandb": True,
-        "--real_procgen": True,
         "device": "gpu" if cuda.is_available() else "cpu",
         "n_envs": 1024,
         "wandb_tags": ["position", "test"],
@@ -25,12 +23,12 @@ if __name__ == "__main__":
         "normalize_rew": True,
         "paint_vel_info": True,
         "reduce_duplicate_actions": True,
-        "use_wandb": False,
+        "use_wandb": True,
         "real_procgen": True,
         "mirror_env": False,
         
         
-        "val_env_name": None,
+        "val_env_name": "cartpole",
         "start_level": int(0),
         "num_levels": int(500),
         "distribution_mode": "easy",
