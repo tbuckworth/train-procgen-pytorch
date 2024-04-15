@@ -556,16 +556,19 @@ def run_neurosymbolic_search(args):
             Y_act = sample_from_sigmoid(p)
             p_hat = sigmoid(Y_hat)
             Y_hat_act = sample_from_sigmoid(p)
+            ent = (- (p * np.log(p)) - ((1 - p) * np.log(1 - p))).sum(1)
+            ent_hat = (- (p_hat * np.log(p_hat)) - ((1 - p_hat) * np.log(1 - p_hat))).sum(1)
         else:
             p = softmax(Y)
             p_hat = softmax(Y_hat)
             Y_act = sample_numpy_probs(p)
             Y_hat_act = sample_numpy_probs(p_hat)
+            ent = -(p * np.log(p)).sum(1)
+            ent_hat = -(p_hat * np.log(p_hat)).sum(1)
 
         e_hat = get_entropy(Y_hat)
         df_values["Entropy_Pred"] = [e_hat]
         df_values["Entropy"] = [e]
-        # TODO: collapse Y by action
         shp = Y.shape
         try:
             action_lookup = get_actions(env)
@@ -582,11 +585,13 @@ def run_neurosymbolic_search(args):
              p_hat.reshape(np.prod(shp)),
              np.tile(Y_act, shp[-1]),
              np.tile(Y_hat_act, shp[-1]),
+             np.tile(ent, shp[-1]),
+             np.tile(ent_hat, shp[-1])
              )
         ).T
         # all_metrics = np.vstack((Y, V, Y_hat, p, p_hat, Y_act, Y_hat_act)).T
         columns = ["action", "logit", "value", "logit_estimate", "prob", "prob_estimate",
-                   "sampled_action", "sampled_action_estimate"]
+                   "sampled_action", "sampled_action_estimate", "entropy", "entropy_estimate"]
         if problem_name == "cartpole":
             all_metrics = np.hstack((X, all_metrics))
             columns = ["cart_position", "cart_velocity", "pole_angle", "pole_angular_velocity"] + columns
