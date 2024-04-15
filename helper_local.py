@@ -366,16 +366,36 @@ def add_training_args(parser):
     parser.add_argument('--num_threads', type=int, default=8)
 
 
-    parser.add_argument('--detect_nan', action="store_true", default=False)
-    parser.add_argument('--use_valid_env', action="store_true", default=True)
-    parser.add_argument('--normalize_rew', action="store_true", default=True)
-    parser.add_argument('--render', action="store_true", default=False)
-    parser.add_argument('--paint_vel_info', action="store_true", default=True)
-    parser.add_argument('--reduce_duplicate_actions', action="store_true", default=True)
-    parser.add_argument('--use_wandb', action="store_true", default=False)
-    parser.add_argument('--real_procgen', action="store_true", default=True)
-    parser.add_argument('--mirror_env', action="store_true", default=False)
+    parser.add_argument('--detect_nan', action="store_true")
+    parser.add_argument('--use_valid_env', action="store_true")
+    parser.add_argument('--normalize_rew', action="store_true")
+    parser.add_argument('--render', action="store_true")
+    parser.add_argument('--paint_vel_info', action="store_true")
+    parser.add_argument('--reduce_duplicate_actions', action="store_true")
+    parser.add_argument('--use_wandb', action="store_true")
+    parser.add_argument('--real_procgen', action="store_true")
+    parser.add_argument('--mirror_env', action="store_true")
 
+    parser.add_argument('--no-detect_nan', dest='detect_nan', action="store_false")
+    parser.add_argument('--no-use_valid_env', dest='use_valid_env', action="store_false")
+    parser.add_argument('--no-normalize_rew', dest='normalize_rew', action="store_false")
+    parser.add_argument('--no-render', dest='render', action="store_false")
+    parser.add_argument('--no-paint_vel_info', dest='paint_vel_info', action="store_false")
+    parser.add_argument('--no-reduce_duplicate_actions', dest='reduce_duplicate_actions', action="store_false")
+    parser.add_argument('--no-use_wandb', dest='use_wandb', action="store_false")
+    parser.add_argument('--no-real_procgen', dest='real_procgen', action="store_false")
+    parser.add_argument('--no-mirror_env', dest='mirror_env', action="store_false")
+
+    parser.set_defualts(detect_nan=False,
+                        use_valid_env=True,
+                        normalize_rew=True,
+                        render=False,
+                        paint_vel_info=True,
+                        reduce_duplicate_actions=True,
+                        use_wandb=False,
+                        real_procgen=True,
+                        mirror_env=False
+                        )
 
 
     return parser
