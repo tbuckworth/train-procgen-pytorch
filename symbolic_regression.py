@@ -460,9 +460,8 @@ def temp_func():
 
 
 def get_entropy(Y):
-    n_actions = Y.shape[1]
     # only legit for single action (cartpole)
-    if n_actions == 1:
+    if len(Y.shape)==1:
         p = sigmoid(Y)
         q = 1 - p
         return np.mean(-p * np.log(p) - q * np.log(q))
