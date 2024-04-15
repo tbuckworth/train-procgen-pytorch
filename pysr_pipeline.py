@@ -20,7 +20,7 @@ if __name__ == "__main__":
         "render": False,
         "detect_nan": False,
         "use_valid_env": True,
-        "normalize_rew": True,
+        "normalize_rew": False,
         "paint_vel_info": True,
         "reduce_duplicate_actions": True,
         "use_wandb": True,

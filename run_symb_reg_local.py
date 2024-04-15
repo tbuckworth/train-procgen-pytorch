@@ -8,7 +8,8 @@ if os.name != "nt":
     from pysr import PySRRegressor
 
 from helper_local import add_symbreg_args, get_config, DictToArgs, sigmoid
-from symbolic_regression import run_neurosymbolic_search, load_nn_policy, generate_data, DeterministicNeuralAgent
+from symbolic_regression import run_neurosymbolic_search, load_nn_policy, generate_data, DeterministicNeuralAgent, \
+    NeuralAgent
 
 
 def run_deterministic_agent():
@@ -24,8 +25,10 @@ def run_saved_model():
     # n_envs = 32
     # rounds = 300
 
-    logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
-    symbdir = os.path.join(logdir, "symbreg/2024-04-11__15-12-07/")
+    # logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
+    # symbdir = os.path.join(logdir, "symbreg/2024-04-11__15-12-07/")
+    logdir = "logs/train/cartpole/cartpole/2024-04-15__15-45-47__seed_6033"
+    symbdir = os.path.join(logdir, "symbreg/2024-04-15__16-36-44/")
     pickle_filename = os.path.join(symbdir, "symb_reg.pkl")
     pysr_model = PySRRegressor.from_file(pickle_filename)
 
@@ -35,8 +38,9 @@ def run_saved_model():
     policy, env, sampler, symbolic_agent_constructor, test_env, test_agent = load_nn_policy(logdir, args.n_envs)
     X, Y, V = generate_data(policy, sampler, env, int(args.data_size), args)
     ns_agent = symbolic_agent_constructor(pysr_model, policy, args.stochastic)
+    nn_agent = NeuralAgent(policy)
     ns_score_train = test_agent(ns_agent, env, "NeuroSymb Train", args.rounds)
-
+    nn_score_train = test_agent(nn_agent, env, "Neural    Train", args.rounds)
 
     Y_hat = pysr_model.predict(X)
 
@@ -103,5 +107,5 @@ def run_symb_reg_local():
 
 
 if __name__ == "__main__":
-    run_symb_reg_local()
+    run_saved_model()
     # run_deterministic_agent()
