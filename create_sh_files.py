@@ -142,7 +142,7 @@ def symbreg_hparams():
     return {
         "timeout_in_seconds": [3600 * 10],
         "data_size": [100, 1000],  # , 500, 100, 50],# 5000],
-        "iterations": [5, 10, 20],  # 20, 40, 80],
+        "iterations": [5, 20, 100, 200],  # 20, 40, 80],
         "n_envs": [128],
         "rounds": [500],
         "denoise": [True, False],
@@ -158,9 +158,12 @@ def symbreg_hparams():
         "model_selection": ["best", "accuracy"],
         "weight_metric": [None, "entropy", "value"],
         # "loss_function": ["capped_sigmoid"],
-        "loss_function": ['sigmoid', 'exp', 'logitmarg', 'logitdist', 'mse', 'capped_sigmoid'],
+        # "loss_function": ['sigmoid', 'exp', 'logitmarg', 'logitdist', 'mse', 'capped_sigmoid'],
+        "loss_function": ['sigmoid', 'logitdist', 'mse', 'capped_sigmoid'],
         # "logdir": ["logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"],
-        "logdir": ["logs/train/boxworld/boxworld/2024-04-08__12-29-17__seed_6033"],
+        # "logdir": ["logs/train/boxworld/boxworld/2024-04-08__12-29-17__seed_6033"],
+        # high-entropy one:
+        "logdir": ["logs/train/boxworld/boxworld/2024-04-08__14-52-30__seed_6033"],
         "use_wandb": [True],
     }
 
