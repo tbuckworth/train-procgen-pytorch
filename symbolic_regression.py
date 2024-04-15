@@ -79,21 +79,12 @@ def load_nn_policy(logdir, n_envs=2):
     cfg = get_config(logdir)
     cfg["n_envs"] = n_envs
     if cfg["env_name"] == "coinrun":
-        # action_names, done, env, hidden_state, obs, policy, storage = load_policy(False, logdir,
-        #                                                                           n_envs=n_envs,
-        #                                                                           hparams=cfg["param_name"],
-        #                                                                           start_level=cfg["start_level"],
-        #                                                                           num_levels=cfg["num_levels"])
-
         sampler = sample_latent_output_fsqmha
         symbolic_agent_constructor = NeuroSymbolicAgent
-        # test_env = get_coinrun_test_env(logdir, n_envs)
-        # test_agent = test_agent_balanced_reward
         create_venv = create_procgen_env
     if cfg["env_name"] == "cartpole":
         sampler = sample_latent_output_mlpmodel
         symbolic_agent_constructor = SymbolicAgent
-        # test_agent = test_cartpole_agent
         create_venv = create_cartpole
     if cfg["env_name"] == "boxworld":
         sampler = sample_latent_output_fsqmha
@@ -511,12 +502,12 @@ def run_neurosymbolic_search(args):
     e = get_entropy(Y)
     print("data generated")
     if os.name != "nt":
-        if args.weight_metric is None:
-            weights = None
-        elif args.weight_metric == "entropy":
-            weights = e
-        elif args.weight_metric == "value":
-            weights = V
+        weights = None
+        if args.weight_metric is not None:
+            if args.weight_metric == "entropy":
+                weights = e
+            elif args.weight_metric == "value":
+                weights = V
         pysr_model, elapsed = find_model(X, Y, symbdir, save_file, weights, args)
         ns_agent = symbolic_agent_constructor(pysr_model, policy, args.stochastic)
         nn_agent = NeuralAgent(policy)

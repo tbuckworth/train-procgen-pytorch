@@ -188,6 +188,7 @@ def add_symbreg_args_dict():
         "model_selection": "best",
         "stochastic": True,
         "loss_function": "mse",
+        "weight_metric": "value",
     }
 
 

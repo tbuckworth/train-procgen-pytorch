@@ -31,7 +31,7 @@ def create_cartpole(args, hyperparameters, is_valid=False):
                 "h_range": 2.4,
                 }
     if is_valid:
-        env_args["degrees"] = 9
-        env_args["h_range"] = 1.8
+        env_args["degrees"] = hyperparameters.get("degrees_v", 9)
+        env_args["h_range"] = hyperparameters.get("h_range_v", 1.2)
     normalize_rew = hyperparameters.get('normalize_rew', False)
     return create_cartpole_env_pre_vec(env_args, render=False, normalize_rew=normalize_rew)
