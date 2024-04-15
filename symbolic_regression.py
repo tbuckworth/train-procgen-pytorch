@@ -138,7 +138,7 @@ def generate_data(policy, sampler, env, n, args):
     return X, Y, V
 
 
-def sample_latent_output_fsqmha(policy, observation):
+def sample_latent_output_fsqmha(policy, observation, stochastic):
     with torch.no_grad():
         obs = torch.FloatTensor(observation).to(policy.device)
         x = policy.embedder.forward_to_pool(obs)
@@ -474,13 +474,17 @@ def temp_func():
 
 
 def get_entropy(Y):
+    n_actions = Y.shape[1]
     # only legit for single action (cartpole)
-    p = sigmoid(Y)
-    q = 1-p
-    return np.mean(-p * np.log(p) - q * np.log(q))
+    if n_actions == 1:
+        p = sigmoid(Y)
+        q = 1-p
+        return np.mean(-p * np.log(p) - q * np.log(q))
+    ents = -(np.exp(Y)*Y).sum(-1)
+    return ents.mean()
 
 
-def run_neurosymbolic_search(args):  # data_size, iterations, logdir, n_envs, rounds):
+def run_neurosymbolic_search(args):
     data_size = args.data_size
     iterations = args.iterations
     logdir = args.logdir
@@ -526,9 +530,6 @@ def run_neurosymbolic_search(args):  # data_size, iterations, logdir, n_envs, ro
         nn_score_test = test_agent(nn_agent, test_env, "Neural     Test", rounds)
         rn_score_test = test_agent(rn_agent, test_env, "Random     Test", rounds)
 
-        # values = [iterations, data_size, rounds, nn_score_train, ns_score_train, nn_score_test, ns_score_test, logdir]
-        # columns = ["iterations", "data_size", "rounds", "Neural_score_Train", "NeuroSymb_score_Train",
-        #            "Neural_score_Test", "NeuroSymb_score_Test", "logdir"]
         best = pysr_model.get_best()
         if type(best) != list:
             best = [best]
@@ -559,14 +560,13 @@ def run_neurosymbolic_search(args):  # data_size, iterations, logdir, n_envs, ro
         df_values["Entropy_Pred"] = [e_hat]
         df_values["Entropy"] = [e]
 
-        # TODO: does X work for non-cartpole? I think not.
-        all_metrics = np.hstack((X,
-                                 np.vstack((Y, V, Y_hat, p, p_hat, Y_act, Y_hat_act)).T
-                                 ))
-        dfs = pd.DataFrame(all_metrics,
-                           columns=["cart_position", "cart_velocity", "pole_angle", "pole_angular_velocity",
-                                    "logit", "value", "logit_estimate", "prob", "prob_estimate",
-                                    "sampled_action", "sampled_action_estimate"])
+        all_metrics = np.vstack((Y, V, Y_hat, p, p_hat, Y_act, Y_hat_act)).T
+        columns = ["logit", "value", "logit_estimate", "prob", "prob_estimate",
+                   "sampled_action", "sampled_action_estimate"]
+        if problem_name == "cartpole":
+            all_metrics = np.hstack((X, all_metrics))
+            columns = ["cart_position", "cart_velocity", "pole_angle", "pole_angular_velocity"] + columns
+        dfs = pd.DataFrame(all_metrics, columns=columns)
 
         if args.use_wandb:
             wandb.log({k: df_values[k][0] for k in df_values.keys()})
@@ -574,12 +574,7 @@ def run_neurosymbolic_search(args):  # data_size, iterations, logdir, n_envs, ro
             #     # TODO: make this work for multiple equations:
             #     dataframe=pysr_model.equations_[["equation", "score", "loss", "complexity"]]
             # )
-
             wandb_metrics = wandb.Table(dataframe=dfs)
-
-            # df_dict = df.to_dict()
-            # log_dict = {k:list(df_dict[k].values()) for k in df_dict.keys()}
-
             wandb.log(
                 #{#f"equations": wandb_table,
                 {f"metrics": wandb_metrics},
