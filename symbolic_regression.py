@@ -546,8 +546,8 @@ def run_neurosymbolic_search(args):
             Y_act = sample_from_sigmoid(p)
             p_hat = sigmoid(Y_hat)
             Y_hat_act = sample_from_sigmoid(p)
-            ent = (- (p * np.log(p)) - ((1 - p) * np.log(1 - p))).sum(1)
-            ent_hat = (- (p_hat * np.log(p_hat)) - ((1 - p_hat) * np.log(1 - p_hat))).sum(1)
+            ent = - (p * np.log(p)) - ((1 - p) * np.log(1 - p))
+            ent_hat = - (p_hat * np.log(p_hat)) - ((1 - p_hat) * np.log(1 - p_hat))
         else:
             p = softmax(Y)
             p_hat = softmax(Y_hat)
