@@ -557,8 +557,8 @@ def run_neurosymbolic_search(args):
             p_hat = sigmoid(Y_hat)
             Y_hat_act = sample_from_sigmoid(p)
         else:
-            p = np.exp(Y)
-            p_hat = np.exp(Y_hat)
+            p = softmax(Y)
+            p_hat = softmax(Y_hat)
             Y_act = sample_numpy_probs(p)
             Y_hat_act = sample_numpy_probs(p_hat)
 
@@ -608,6 +608,11 @@ def run_neurosymbolic_search(args):
         df = pd.DataFrame(df_values)
         df.to_csv(os.path.join(symbdir, "results.csv"), mode="w", header=True, index=False)
         send_full_report(df, logdir, symbdir, pysr_model, args, dfs)
+
+
+def softmax(Y):
+    l = np.exp(Y)
+    return l / l.sum(1)
 
 
 def sample_numpy_probs(p):
