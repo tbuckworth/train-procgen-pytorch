@@ -80,4 +80,4 @@ if __name__ == "__main__":
         "stochastic": True,
     })
 
-    run_neurosymbolic_search(args)
+    run_neurosymbolic_search(sargs)
