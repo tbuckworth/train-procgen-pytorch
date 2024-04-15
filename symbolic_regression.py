@@ -37,6 +37,7 @@ pysr_loss_functions = {
     "perceptron": "PerceptronLoss()",
     "logitdist": "LogitDistLoss()",
     "mse": "loss(prediction, target) = (prediction - target)^2",
+    "capped_sigmoid": "loss(y_hat, y) = 1 - tanh(y*y_hat) + abs(y_hat-y)",
 }
 
 def find_model(X, Y, symbdir, iterations, save_file, weights, args):
@@ -289,6 +290,18 @@ class NeuralAgent:
             act = dist.sample()
         return act.cpu().numpy()
 
+class DeterministicNeuralAgent:
+    def __init__(self, policy):
+        self.policy = policy
+
+    def forward(self, observation):
+        with torch.no_grad():
+            obs = torch.FloatTensor(observation).to(self.policy.device)
+            h = self.policy.embedder(obs)
+            dist, value = self.policy.hidden_to_output(h)
+            y = dist.logits.detach().cpu().numpy()
+            act = y.argmax(axis=1)
+        return act
 
 class RandomAgent:
     def __init__(self, n_actions):
@@ -460,6 +473,13 @@ def temp_func():
     run_neurosymbolic_search(data_size, iterations, logdir, n_envs, rounds)
 
 
+def get_entropy(Y):
+    # only legit for single action (cartpole)
+    p = sigmoid(Y)
+    q = 1-p
+    return np.mean(-p * np.log(p) - q * np.log(q))
+
+
 def run_neurosymbolic_search(args):  # data_size, iterations, logdir, n_envs, rounds):
     data_size = args.data_size
     iterations = args.iterations
@@ -488,6 +508,7 @@ def run_neurosymbolic_search(args):  # data_size, iterations, logdir, n_envs, ro
 
     policy, env, sampler, symbolic_agent_constructor, test_env, test_agent = load_nn_policy(logdir, n_envs)
     X, Y, V = generate_data(policy, sampler, env, int(data_size), args)
+    e = get_entropy(Y)
     print("data generated")
     if os.name != "nt":
         #TODO: try diff weights e.g. none and entropy
@@ -533,6 +554,10 @@ def run_neurosymbolic_search(args):  # data_size, iterations, logdir, n_envs, ro
         Y_act = sample_from_sigmoid(p)
         p_hat = sigmoid(Y_hat)
         Y_hat_act = sample_from_sigmoid(p)
+
+        e_hat = get_entropy(Y_hat)
+        df_values["Entropy_Pred"] = [e_hat]
+        df_values["Entropy"] = [e]
 
         # TODO: does X work for non-cartpole? I think not.
         all_metrics = np.hstack((X,

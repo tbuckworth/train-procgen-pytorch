@@ -4,7 +4,7 @@ import itertools
 
 import numpy as np
 import re
-from helper_local import add_training_args, latest_model_path, add_symbreg_args, run_subprocess
+from helper_local import add_training_args, latest_model_path, add_symbreg_args, run_subprocess, DictToArgs
 
 
 def format_args(arg):
@@ -13,12 +13,11 @@ def format_args(arg):
     for var_name in d.keys():
         v = d[var_name]
         if v is not None:
-            if type(v) == bool:
-                if v:
-                    output += f"--{var_name} "
-                else:
-                    output += f"--no-{var_name} "
-            elif type(v) == list:
+            # if type(v) == bool:
+            #     if v:
+            #         output += f"--{var_name} "
+            # el
+            if type(v) == list:
                 if len(v) > 0:
                     if type(v[0]) == int:
                         v = [str(x) for x in v]
@@ -133,55 +132,98 @@ def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset=1.):
             run_subprocess(cmd2, "\\n", suppress=False)
 
 
+def symbreg_hparams():
+    return {
+        "timeout_in_seconds": [3600 * 10],
+        "data_size": [100, 1000],  # , 500, 100, 50],# 5000],
+        "iterations": [5, 10, 20],  # 20, 40, 80],
+        "n_envs": [128],
+        "rounds": [500],
+        "denoise": [True],  # , False],
+        "use_weights": [True],  # False],
+        # "populations": [15, 24],
+        # "procs": [8, 16],
+        "ncycles_per_iteration": [1000],  # , 2000, 4000],
+        "bumper": [True],  # , False],
+        "binary_operators": [["+", "-", "greater", "\*", "/"]],
+        "unary_operators": [  # [],
+            ["sin", "relu", "log", "exp", "sign", "sqrt", "square"],
+        ],
+        "wandb_tags": [["stochastic", "cartpole", "losses"]],
+        "model_selection": ["best", "accuracy"],
+        # "loss_function": ["capped_sigmoid"],
+        "loss_function": ['sigmoid', 'exp', 'logitmarg', 'logitdist', 'mse'],
+        "logdir": ["logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"],
+        # "logdir": ["logs/train/boxworld/boxworld/2024-04-08__12-29-17__seed_6033"],
+        "use_wandb": [True],
+    }
 
+
+def train_hparams():
+    return {
+
+    }
+
+
+def add_symbreg_args_dict():
+    return {
+        "data_size": 100,
+        "iterations": 1,
+        "logdir": None,
+        "n_envs": int(8),
+        "rounds": int(10),
+        "binary_operators": ["+", "-", "greater"],
+        "unary_operators": [],
+        "denoise": False,
+        "use_wandb": False,
+        "wandb_tags": [],
+        "wandb_name": None,
+        "wandb_group": None,
+        "timeout_in_seconds": 36000,
+        "populations": 24,
+        "procs": 8,
+        "ncycles_per_iteration": 550,
+        "bumper": False,
+        "model_selection": "best",
+        "stochastic": True,
+        "loss_function": "mse",
+        "use_weights": False,
+    }
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--n_gpu', type=int, default=6)
     parser.add_argument('--execute', action="store_true", default=False)
-    parser.add_argument('--cuda', action="store_true", default=False)
+    # parser.add_argument('--cuda', action="store_true", default=False)
     parser.add_argument('--max_runs', type=int, default=200)
+    parser.add_argument('--hparam_type', type=str, default=None)
 
-    # parser = add_training_args(parser)
-    parser = add_symbreg_args(parser)
+    largs = parser.parse_args()
+    n_gpu = largs.n_gpu
+    execute = largs.execute
+    max_runs = largs.max_runs
+    hparam_type = largs.hparam_type
 
-    args = parser.parse_args()
-    n_gpu = args.n_gpu
-    execute = args.execute
-    cuda = args.cuda
-    max_runs = args.max_runs
-    args.__delattr__("n_gpu")
-    args.__delattr__("execute")
-    args.__delattr__("cuda")
-    args.__delattr__("max_runs")
+    parser_sub = argparse.ArgumentParser()
+
+    if hparam_type == "train":
+        # parser_sub = add_training_args(parser_sub)
+        hparams = train_hparams()
+        cuda = True
+
+    if hparam_type == "symbreg":
+        # parser_sub = add_symbreg_args(parser_sub)
+        parser_dict = add_symbreg_args_dict()
+        hparams = symbreg_hparams()
+        cuda = False
+    args = DictToArgs(parser_dict)
+    # args = parser_sub.parse_args()
 
     # args = add_coinrun_sparsity_params(args)
     # args = add_boxworld_params(args)
 
-    hparams = {
-        "timeout_in_seconds": [3600 * 10],
-        "data_size": [100, 1000],#, 500, 100, 50],# 5000],
-        "iterations": [5, 10, 20],# 40, 80],
-        "n_envs": [128],
-        "rounds": [500],
-        "denoise": [True, False],
-        "use_weights": [True, False],
-        "populations": [15, 24],
-        "procs": [8, 16],
-        "ncycles_per_iteration": [1000, 2000],#, 4000],
-        "bumper": [True, False],
-        "binary_operators": [["+", "-", "greater", "\*", "/"]],
-        "unary_operators": [#[],
-                            ["sin", "relu", "log", "exp", "sign", "sqrt", "square"],
-                            ],
-        "wandb_tags": ["stochastic", "cartpole"],
-        "model_selection": ["best", "accuracy"],
-        "loss_function": ['capped_sigmoid'],
-        "logdir": ["logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"],
-        # "logdir": ["logs/train/boxworld/boxworld/2024-04-08__12-29-17__seed_6033"],
-    }
     n_experiments = np.prod([len(hparams[x]) for x in hparams.keys()])
     print(f"Creating {n_experiments} experiments across {n_gpu} workers.")
-    random_subset = min(1, max_runs/n_experiments)
+    random_subset = min(1, max_runs / n_experiments)
     write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset)
