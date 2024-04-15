@@ -517,20 +517,19 @@ def add_symbreg_args(parser):
     parser.add_argument('--ncycles_per_iteration', type=int, default=550)
     parser.add_argument('--model_selection', type=str, default="best")
     parser.add_argument('--loss_function', type=str, default="mse")
+    parser.add_argument('--weight_metric', type=str, nargs='+', default=None)
 
     parser.add_argument('--stochastic', action='store_true')
-    parser.add_argument('--use_weights', action='store_true')
     parser.add_argument('--bumper', action='store_true')
     parser.add_argument('--denoise', action='store_true')
     parser.add_argument('--use_wandb', action='store_true')
 
     parser.add_argument('--no-stochastic', dest='stochastic', action='store_false')
-    parser.add_argument('--no-use_weights', dest='use_weights', action='store_false')
     parser.add_argument('--no-bumper', dest='bumper', action='store_false')
     parser.add_argument('--no-denoise', dest='denoise', action='store_false')
     parser.add_argument('--no-use_wandb', dest='use_wandb', action='store_false')
 
-    parser.set_defaults(stochastic=True, use_weights=True, bumper=True, denoise=True, use_wandb=True)
+    parser.set_defaults(stochastic=True, bumper=True, denoise=True, use_wandb=True)
 
     return parser
 

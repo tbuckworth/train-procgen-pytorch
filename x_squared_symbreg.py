@@ -56,7 +56,7 @@ if __name__ == "__main__":
     shape = (data_size, cfg["dims"])
     x, y = generate_data_from_oracle(xsa, low, high, shape)
 
-    symb_model = find_model(x, y, logdir, iterations, save_file)
+    symb_model = find_model(x, y, logdir, save_file)
 
     x_test, y_test = generate_data(low_t, high_t, shape)
     y_symb = symb_model.predict(x_test)

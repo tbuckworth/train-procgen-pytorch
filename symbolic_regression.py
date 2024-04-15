@@ -40,13 +40,13 @@ pysr_loss_functions = {
     "capped_sigmoid": "loss(y_hat, y) = 1 - tanh(y*y_hat) + abs(y_hat-y)",
 }
 
-def find_model(X, Y, symbdir, iterations, save_file, weights, args):
+def find_model(X, Y, symbdir, save_file, weights, args):
     model = PySRRegressor(
         equation_file=get_path(symbdir, save_file),
         niterations=args.iterations,  # < Increase me for better results
         binary_operators=args.binary_operators,
         unary_operators=args.unary_operators,
-        weights=weights if args.use_weights else None,
+        weights=weights,
         denoise=args.denoise,
         extra_sympy_mappings={"greater": lambda x, y: sympy.Piecewise((1.0, x > y), (0.0, True))},
         elementwise_loss=pysr_loss_functions[args.loss_function],
@@ -486,7 +486,6 @@ def get_entropy(Y):
 
 def run_neurosymbolic_search(args):
     data_size = args.data_size
-    iterations = args.iterations
     logdir = args.logdir
     n_envs = args.n_envs
     rounds = args.rounds
@@ -515,9 +514,13 @@ def run_neurosymbolic_search(args):
     e = get_entropy(Y)
     print("data generated")
     if os.name != "nt":
-        #TODO: try diff weights e.g. none and entropy
-        weights = V
-        pysr_model, elapsed = find_model(X, Y, symbdir, iterations, save_file, weights, args)
+        if args.weight_metric is None:
+            weights = None
+        elif args.weight_metric == "entropy":
+            weights = e
+        elif args.weight_metric == "value":
+            weights = V
+        pysr_model, elapsed = find_model(X, Y, symbdir, save_file, weights, args)
         ns_agent = symbolic_agent_constructor(pysr_model, policy, args.stochastic)
         nn_agent = NeuralAgent(policy)
         rn_agent = RandomAgent(env.action_space.n)

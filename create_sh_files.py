@@ -141,7 +141,6 @@ def symbreg_hparams():
         "n_envs": [128],
         "rounds": [500],
         "denoise": [True, False],
-        "use_weights": [True, False],
         "populations": [15, 24],
         "procs": [8, 16],
         "ncycles_per_iteration": [1000, 2000, 4000],
@@ -152,6 +151,7 @@ def symbreg_hparams():
         ],
         "wandb_tags": [["stochastic", "cartpole", "losses"]],
         "model_selection": ["best", "accuracy"],
+        "weight_metric": [None, "entropy", "value"],
         "loss_function": ["capped_sigmoid"],
         # "loss_function": ['sigmoid', 'exp', 'logitmarg', 'logitdist', 'mse'],
         "logdir": ["logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"],
@@ -188,7 +188,6 @@ def add_symbreg_args_dict():
         "model_selection": "best",
         "stochastic": True,
         "loss_function": "mse",
-        "use_weights": False,
     }
 
 
