@@ -609,7 +609,7 @@ def run_neurosymbolic_search(args):
 
 def softmax(Y):
     l = np.exp(Y)
-    return l / l.sum(1)
+    return l / np.repeat(l.sum(1), Y.shape[-1]).reshape(l.shape)
 
 
 def sample_numpy_probs(p):
