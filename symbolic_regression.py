@@ -551,10 +551,16 @@ def run_neurosymbolic_search(args):
         }
 
         Y_hat = pysr_model.predict(X)
-        p = sigmoid(Y)
-        Y_act = sample_from_sigmoid(p)
-        p_hat = sigmoid(Y_hat)
-        Y_hat_act = sample_from_sigmoid(p)
+        if problem_name == "cartpole":
+            p = sigmoid(Y)
+            Y_act = sample_from_sigmoid(p)
+            p_hat = sigmoid(Y_hat)
+            Y_hat_act = sample_from_sigmoid(p)
+        else:
+            p = np.exp(Y)
+            p_hat = np.exp(Y_hat)
+            Y_act = sample_numpy_probs(p)
+            Y_hat_act = sample_numpy_probs(p_hat)
 
         e_hat = get_entropy(Y_hat)
         df_values["Entropy_Pred"] = [e_hat]
@@ -565,17 +571,17 @@ def run_neurosymbolic_search(args):
             action_lookup = get_actions(env)
             actions = np.array(list(action_lookup.values()))
         except NotImplementedError:
-            actions = np.array([f"action_{i}" for i in range(Y.shape[-1])])
+            actions = np.array([f"action_{i}" for i in range(shp[-1])])
 
-        all_metrics = (
-            (actions,
+        all_metrics = np.vstack(
+            (np.repeat(actions, shp[0]),
              Y.reshape(np.prod(shp)),
-             np.repeat(V, shp[-1]),
+             np.tile(V, shp[-1]),
              Y_hat.reshape(np.prod(shp)),
              p.reshape(np.prod(shp)),
              p_hat.reshape(np.prod(shp)),
-             np.repeat(Y_act, shp[-1]),
-             np.repeat(Y_hat_act, shp[-1]),
+             np.tile(Y_act, shp[-1]),
+             np.tile(Y_hat_act, shp[-1]),
              )
         ).T
         # all_metrics = np.vstack((Y, V, Y_hat, p, p_hat, Y_act, Y_hat_act)).T
@@ -585,6 +591,7 @@ def run_neurosymbolic_search(args):
             all_metrics = np.hstack((X, all_metrics))
             columns = ["cart_position", "cart_velocity", "pole_angle", "pole_angular_velocity"] + columns
         dfs = pd.DataFrame(all_metrics, columns=columns)
+        dfs.loc[:, dfs.columns != "action"] = dfs.loc[:, dfs.columns != "action"].astype(float)
 
         if args.use_wandb:
             wandb.log({k: df_values[k][0] for k in df_values.keys()})
@@ -601,6 +608,12 @@ def run_neurosymbolic_search(args):
         df = pd.DataFrame(df_values)
         df.to_csv(os.path.join(symbdir, "results.csv"), mode="w", header=True, index=False)
         send_full_report(df, logdir, symbdir, pysr_model, args, dfs)
+
+
+def sample_numpy_probs(p):
+    r = np.random.random(p.shape[0]).repeat(p.shape[-1]).reshape(p.shape)
+    Y_act = p.shape[-1] - (p.cumsum(1) > r).sum(1)
+    return Y_act
 
 
 def sample_from_sigmoid(p):
