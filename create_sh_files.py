@@ -85,6 +85,7 @@ def add_boxworld_params(args):
 
 
 def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset=1.):
+    hosts = []
     keys, values = zip(*hparams.items())
     h_dict_list = [dict(zip(keys, v)) for v in itertools.product(*values)]
     h_dict_list = np.random.permutation(h_dict_list)
@@ -119,8 +120,12 @@ def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset=1.):
             script = "~/free_cpu"
             if cuda:
                 script = "~/free_gpu"
-            free_machine = run_subprocess(script, "\\n", suppress=True)
-            host = re.search(r"(.*).doc.ic.ac.uk", free_machine).group(1)
+            for _ in range(30):
+                free_machine = run_subprocess(script, "\\n", suppress=True)
+                host = re.search(r"(.*).doc.ic.ac.uk", free_machine).group(1)
+                if host not in hosts:
+                    break
+            hosts.append(host)
             command = f"'cd pyg/train-procgen-pytorch\n source {exe_file_name}'"
             session_name = f"tmpSession{np.random.randint(0, 100)}"
 
