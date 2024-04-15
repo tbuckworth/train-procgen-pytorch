@@ -270,13 +270,6 @@ class SymbolicAgent:
                 return np.int32(np.random.random(len(h)) < p)
             return np.round(h, 0)
 
-            # TODO: do this with numpy instead of torch
-            logits = torch.FloatTensor(h).to(self.policy.device)
-            log_probs = F.log_softmax(logits, dim=1)
-            p = Categorical(logits=log_probs)
-            act = p.sample()
-        return act.cpu().numpy()
-
 
 class NeuralAgent:
     def __init__(self, policy):
@@ -574,7 +567,7 @@ def run_neurosymbolic_search(args):
         if args.use_wandb:
             wandb.log({k: df_values[k][0] for k in df_values.keys()})
             # wandb_table = wandb.Table(
-            #     # TODO: make this work for multiple equations:
+            #     # make this work for multiple equations:
             #     dataframe=pysr_model.equations_[["equation", "score", "loss", "complexity"]]
             # )
             wandb_metrics = wandb.Table(dataframe=dfs)
