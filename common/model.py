@@ -145,7 +145,7 @@ class ImpalaModel(nn.Module):
         self.block1 = ImpalaBlock(in_channels=in_channels, out_channels=16 * scale)
         self.block2 = ImpalaBlock(in_channels=16 * scale, out_channels=32 * scale)
         self.block3 = ImpalaBlock(in_channels=32 * scale, out_channels=32 * scale)
-        self.fc = nn.Linear(in_features=32 * scale * 8 * 8, out_features=256)
+        self.fc = nn.Linear(in_features=32 * scale * 8 * 8, out_features=output_dim)
 
         self.output_dim = output_dim
         self.apply(xavier_uniform_init)

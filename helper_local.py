@@ -79,6 +79,26 @@ def print_values_actions(action_names, pi, value, i="", rewards=None):
     else:
         print(out_str)
 
+def map_actions_to_radians(action_lookup):
+    #TODO: test with coinrun as well
+    eighth = np.pi/4
+    mapping = {
+        'move up': 0,
+        'UP': 0,
+        'UP_RIGHT': eighth,
+        'move right': 2*eighth,
+        'RIGHT': 2*eighth,
+        'DOWN_RIGHT': 3*eighth,
+        'move down': 4*eighth,
+        'DOWN': 4*eighth,
+        'DOWN_LEFT': 5*eighth,
+        'move left': 6*eighth,
+        'LEFT': 6*eighth,
+        'UP_LEFT': 7*eighth,
+        '_': -1,
+    }
+    return np.array([mapping[key] for key in action_lookup.values()])
+
 
 def print_action_entropy(action_names, pi):
     val_names = [f"env{i}" for i in range(len(pi))]
@@ -118,6 +138,10 @@ def add_encoder_to_env(env, encoder):
 
 
 def get_actions(env):
+    try:
+        return env.get_action_lookup()
+    except Exception:
+        pass
     if hasattr(env, "unwrapped"):
         return env.unwrapped.get_action_lookup()
     if hasattr(env, "env"):

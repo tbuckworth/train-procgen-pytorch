@@ -19,7 +19,7 @@ from torch.distributions import Categorical
 from common.env.procgen_wrappers import create_env, create_procgen_env
 from helper_local import get_config, get_path, balanced_reward, GLOBAL_DIR, load_storage_and_policy, \
     load_hparams_for_model, floats_to_dp, dict_to_html_table, wandb_login, add_symbreg_args, DictToArgs, \
-    inverse_sigmoid, sigmoid, get_actions, sample_from_sigmoid
+    inverse_sigmoid, sigmoid, get_actions, sample_from_sigmoid, map_actions_to_radians, match
 from cartpole.create_cartpole import create_cartpole
 from boxworld.create_box_world import create_bw_env
 from matplotlib import pyplot as plt
@@ -128,6 +128,7 @@ def generate_data(policy, sampler, env, n, args):
         V = np.append(V, v, axis=0)
     return X, Y, V
 
+
 def sample_latent_output_impala(policy, observation, stochastic):
     with torch.no_grad():
         obs = torch.FloatTensor(observation).to(policy.device)
@@ -137,6 +138,7 @@ def sample_latent_output_impala(policy, observation, stochastic):
         act = dist.sample()
     return x.cpu().numpy(), h, act.cpu().numpy(), value.cpu().numpy()
 
+
 def sample_latent_output_fsqmha(policy, observation, stochastic):
     with torch.no_grad():
         obs = torch.FloatTensor(observation).to(policy.device)
@@ -145,10 +147,12 @@ def sample_latent_output_fsqmha(policy, observation, stochastic):
         dist, value = policy.hidden_to_output(h)
         y = dist.logits.detach().cpu().numpy()
         act = dist.sample()
+        # if not stochastic:
+        #     act = y.argmax(1)
     return x.cpu().numpy(), y, act.cpu().numpy(), value.cpu().numpy()
 
 
-def sample_latent_output_fsqmha_coinrun(policy, observation, stochastic=False):
+def sample_latent_output_fsqmha_coinrun(policy, observation, stochastic):
     with torch.no_grad():
         obs = torch.FloatTensor(observation).to(policy.device)
         x = policy.embedder.forward_to_pool(obs)
@@ -162,7 +166,7 @@ def sample_latent_output_fsqmha_coinrun(policy, observation, stochastic=False):
     return x.cpu().numpy(), y, act.cpu().numpy(), value.cpu().numpy()
 
 
-def sample_latent_output_mlpmodel(policy, observation, stochastic=True):
+def sample_latent_output_mlpmodel(policy, observation, stochastic):
     with torch.no_grad():
         x = torch.FloatTensor(observation).to(policy.device)
         h = policy.embedder(x)
@@ -224,10 +228,13 @@ def test_agent_mean_reward(agent, env, print_name, n=40):
 
 
 class NeuroSymbolicAgent:
-    def __init__(self, model, policy, stochastic):
+    def __init__(self, model, policy, stochastic, action_mapping):
         self.model = model
         self.policy = policy
         self.stochastic = stochastic
+        self.action_mapping = action_mapping
+        self.n = len(self.action_mapping[self.action_mapping>=0])/2
+        #TODO: sort this for coinrun actions
 
     def forward(self, observation):
         with torch.no_grad():
@@ -240,7 +247,9 @@ class NeuroSymbolicAgent:
                 p = Categorical(logits=log_probs)
                 act = p.sample()
             else:
-                act = np.round(h, decimals=0)
+                rads = np.round(h / (np.pi / self.n), 0) * (np.pi / self.n)
+                return match(rads, self.action_mapping)
+                # act = np.round(h, decimals=0)
         return act.cpu().numpy()
 
 
@@ -256,7 +265,7 @@ class AnalyticModel:
 
 
 class SymbolicAgent:
-    def __init__(self, model, policy, stochastic):
+    def __init__(self, model, policy, stochastic, action_mapping):
         self.model = model
         self.policy = policy
         self.stochastic = stochastic
@@ -507,6 +516,12 @@ def run_neurosymbolic_search(args):
     policy, env, sampler, symbolic_agent_constructor, test_env, test_agent = load_nn_policy(logdir, n_envs)
     X, Y, V = generate_data(policy, sampler, env, int(data_size), args)
     e = get_entropy(Y)
+    if not args.stochastic:
+        action_lookup = get_actions(env)
+        action_mapping = map_actions_to_radians(action_lookup)
+        # map actions to 0:2pi
+        Y = action_mapping[Y.argmax(1)]
+
     print("data generated")
     if os.name != "nt":
         weights = None
@@ -516,7 +531,7 @@ def run_neurosymbolic_search(args):
             elif args.weight_metric == "value":
                 weights = V
         pysr_model, elapsed = find_model(X, Y, symbdir, save_file, weights, args)
-        ns_agent = symbolic_agent_constructor(pysr_model, policy, args.stochastic)
+        ns_agent = symbolic_agent_constructor(pysr_model, policy, args.stochastic, action_mapping)
         nn_agent = NeuralAgent(policy)
         rn_agent = RandomAgent(env.action_space.n)
 

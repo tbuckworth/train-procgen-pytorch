@@ -102,10 +102,11 @@ def run_symb_reg_local():
     args.ncycles_per_iteration = 2000
     args.bumper = True
     args.loss_function = "capped_sigmoid"
-    args.stochastic = True
+    args.stochastic = False
     run_neurosymbolic_search(args)
 
 
 if __name__ == "__main__":
-    run_saved_model()
+    # run_saved_model()
     # run_deterministic_agent()
+    run_symb_reg_local()
