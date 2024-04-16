@@ -39,6 +39,7 @@ class PPO(BaseAgent):
         super(PPO, self).__init__(env, policy, logger, storage, device,
                                   n_checkpoints, env_valid, storage_valid)
 
+        self.nzt_coef = 0.
         self.total_timesteps = 0
         self.entropy_scaling = entropy_scaling
         self.entropy_multiplier = 1.
@@ -98,7 +99,11 @@ class PPO(BaseAgent):
         elif self.entropy_scaling == "time_based":
             self.entropy_multiplier = 1 - (self.t / self.total_timesteps)
 
-        pi_loss_list, value_loss_list, entropy_loss_list, x_ent_loss_list, atn_entropy_list, atn_entropy_list2, total_loss_list, s_loss_list = [], [], [], [], [], [], [], []
+        # Original PPO losses:
+        pi_loss_list, value_loss_list, entropy_loss_list, total_loss_list = [], [], [], []
+        # Extra losses/metrics:
+        x_ent_loss_list, atn_entropy_list, atn_entropy_list2, fs_loss_list, s_loss_list = [], [], [], [], []
+
         batch_size = self.n_steps * self.n_envs // self.n_minibatch
         if batch_size < self.mini_batch_size:
             self.mini_batch_size = batch_size
@@ -116,7 +121,7 @@ class PPO(BaseAgent):
                 mask_batch = (1 - done_batch)
                 # dist_batch, value_batch, _ = self.policy(obs_batch, hidden_state_batch, mask_batch)
                 # layer 2
-                feature_batch, atn_batch_list, feature_indices, codes = self.policy.embedder.forward_with_attn_indices(
+                feature_batch, atn_batch_list, fi_or_tube_loss, codes = self.policy.embedder.forward_with_attn_indices(
                     obs_batch)
                 # remove atn_batch_list from gpu?
                 dist_batch, value_batch = self.policy.hidden_to_output(feature_batch)
@@ -145,12 +150,22 @@ class PPO(BaseAgent):
                 else:
                     s_loss = 0
 
+                # Sparsity Loss X-batch (encourage switching off specific activations)
+                if len(fi_or_tube_loss.shape) == 0:
+                    feature_sparsity_loss = fi_or_tube_loss
+                else:
+                    feature_sparsity_loss = 0
+
                 # Attention Entropy
                 atn_ents = [attention_entropy(atn) for atn in atn_batch_list]
                 # atn_entropy = attention_entropy(atn_batch)
 
-                loss = pi_loss + self.value_coef * value_loss - self.entropy_coef * entropy_loss * \
-                       self.entropy_multiplier - self.x_entropy_coef * x_batch_ent_loss + self.s_loss_coef * s_loss
+                loss = (pi_loss
+                        + self.value_coef * value_loss
+                        - self.entropy_coef * entropy_loss * self.entropy_multiplier
+                        - self.x_entropy_coef * x_batch_ent_loss
+                        + self.s_loss_coef * s_loss
+                        + self.nzt_coef * feature_sparsity_loss)
                 loss.backward()
 
                 # Let model to handle the large batch-size with small gpu-memory
@@ -168,10 +183,16 @@ class PPO(BaseAgent):
                 try:
                     atn_entropy_list.append(atn_ents[0].item())
                     atn_entropy_list2.append(atn_ents[1].item())
+                except Exception:
+                    continue
+                try:
                     s_loss_list.append(s_loss.item())
                 except Exception:
                     continue
-
+                try:
+                    fs_loss_list.append(feature_sparsity_loss.item())
+                except Exception:
+                    continue
 
         # Adjust common/Logger.__init__ if you add/remove from summary:
         summary = {'Loss/pi': np.mean(pi_loss_list),
@@ -181,6 +202,7 @@ class PPO(BaseAgent):
                    'Loss/atn_entropy': np.mean(atn_entropy_list),
                    'Loss/atn_entropy2': np.mean(atn_entropy_list2),
                    'Loss/sparsity': np.mean(s_loss_list),
+                   'Loss/feature_sparsity': np.mean(fs_loss_list),
                    'Loss/total': np.mean(total_loss_list)}
         return summary
 

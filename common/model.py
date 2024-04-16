@@ -151,18 +151,29 @@ class ImpalaModel(nn.Module):
         self.apply(xavier_uniform_init)
 
     def forward(self, x):
+        x = self.forward_to_pool(x)
+        x = self.forward_from_pool(x)
+        return x
+
+    def forward_to_pool(self, x):
         x = self.block1(x)
         x = self.block2(x)
         x = self.block3(x)
         x = nn.ReLU()(x)
         x = Flatten()(x)
+        return x
+
+    def forward_from_pool(self, x):
         x = self.fc(x)
         x = nn.ReLU()(x)
         return x
 
     def forward_with_attn_indices(self, x):
-        out = self.forward(x)
-        return out, [], None, None
+        h = self.forward_to_pool(x)
+        out = self.forward_from_pool(h)
+        #calculate loss on h:
+        feature_sparsity = torch.mean(torch.max(torch.tanh(torch.abs(h * 100)), 0)[0])
+        return out, [], feature_sparsity, None
 
 
 class GRU(nn.Module):

@@ -39,20 +39,25 @@ class Logger(object):
         self.episode_reward_buffer_v = deque(maxlen=40)
 
         time_metrics = ["timesteps", "wall_time", "num_episodes"]  # only collected once
-        loss_metrics = ["loss_pi", "loss_v", "loss_entropy", "loss_x_entropy", "atn_entropy", "atn_entropy2", "loss_sparsity", "loss_total"]
+        loss_metrics = ["loss_pi", "loss_v", "loss_entropy", "loss_x_entropy", "atn_entropy", "atn_entropy2",
+                        "loss_sparsity", "loss_feature_sparsity", "loss_total"]
         if has_vq:
             loss_metrics = ["loss_pi", "loss_v", "loss_entropy", "loss_x_entropy", "loss_commit", "loss_total"]
         # Make sure this is consistent with _get_episode_statistics:
-        episode_metrics = ["max_episode_rewards", "mean_episode_rewards", "median_episode_rewards", "min_episode_rewards",
+        episode_metrics = ["max_episode_rewards", "mean_episode_rewards", "median_episode_rewards",
+                           "min_episode_rewards",
                            "max_episode_len", "mean_episode_len", "min_episode_len",
-                           "mean_timeouts", "mean_episode_len_pos_reward", "balanced_mean_rewards"]  # collected for both train and val envs
+                           "mean_timeouts", "mean_episode_len_pos_reward",
+                           "balanced_mean_rewards"]  # collected for both train and val envs
         self.log = pd.DataFrame(
-            columns=time_metrics + episode_metrics + ["val_" + m for m in episode_metrics] + ["ema_rewards"] + loss_metrics + ["learning_rate"])
+            columns=time_metrics + episode_metrics + ["val_" + m for m in episode_metrics] + [
+                "ema_rewards"] + loss_metrics + ["learning_rate"])
 
         self.timesteps = 0
         self.num_episodes = 0
 
-    def feed(self, rew_batch, done_batch, true_mean_reward, rew_batch_v=None, done_batch_v=None, true_mean_reward_v=None):
+    def feed(self, rew_batch, done_batch, true_mean_reward, rew_batch_v=None, done_batch_v=None,
+             true_mean_reward_v=None):
         self.true_mean_reward = true_mean_reward
         self.true_mean_reward_v = true_mean_reward_v
         steps = rew_batch.shape[0]
@@ -88,15 +93,16 @@ class Logger(object):
 
     def dump(self, summary={}, lr=0.):
         wall_time = time.time() - self.start_time
-        episode_statistics = self._get_episode_statistics() #14
-        episode_statistics_list = list(episode_statistics.values()) #14
-        loss_statistics = list(summary.values()) #5 (x_ent = #4)
+        episode_statistics = self._get_episode_statistics()  # 14
+        episode_statistics_list = list(episode_statistics.values())  # 14
+        loss_statistics = list(summary.values())  # 5 (x_ent = #4)
         ema_reward = episode_statistics['Rewards/mean_episodes']
         if len(self.log) > 0:
-            smoothing = .99/(1+len(self.log))
+            smoothing = .99 / (1 + len(self.log))
             prev_ema = self.log["ema_rewards"].loc[len(self.log) - 1]
-            ema_reward = ema_reward * smoothing + prev_ema * (1-smoothing)
-        log = [self.timesteps, wall_time, self.num_episodes] + episode_statistics_list + [ema_reward] + loss_statistics + [lr]
+            ema_reward = ema_reward * smoothing + prev_ema * (1 - smoothing)
+        log = [self.timesteps, wall_time, self.num_episodes] + episode_statistics_list + [
+            ema_reward] + loss_statistics + [lr]
         self.log.loc[len(self.log)] = log
 
         with open(self.logdir + '/log-append.csv', 'a') as f:
@@ -120,7 +126,8 @@ class Logger(object):
         episode_statistics['Len/mean_episodes'] = np.mean(self.episode_len_buffer)
         episode_statistics['Len/min_episodes'] = np.min(self.episode_len_buffer, initial=0)
         episode_statistics['Len/mean_timeout'] = np.mean(self.episode_timeout_buffer)
-        episode_statistics['Len/mean_episodes_pos_reward'] = np.mean(np.array(self.episode_len_buffer)[np.array(self.episode_reward_buffer) > 0])
+        episode_statistics['Len/mean_episodes_pos_reward'] = np.mean(
+            np.array(self.episode_len_buffer)[np.array(self.episode_reward_buffer) > 0])
         episode_statistics['Rewards/balanced_mean'] = self.true_mean_reward
         # valid
         episode_statistics['[Valid] Rewards/max_episodes'] = np.max(self.episode_reward_buffer_v, initial=0)
@@ -131,7 +138,8 @@ class Logger(object):
         episode_statistics['[Valid] Len/mean_episodes'] = np.mean(self.episode_len_buffer_v)
         episode_statistics['[Valid] Len/min_episodes'] = np.min(self.episode_len_buffer_v, initial=0)
         episode_statistics['[Valid] Len/mean_timeout'] = np.mean(self.episode_timeout_buffer_v)
-        episode_statistics['[Valid] Len/mean_episodes_pos_reward'] = np.mean(np.array(self.episode_len_buffer_v)[np.array(self.episode_reward_buffer_v) > 0])
+        episode_statistics['[Valid] Len/mean_episodes_pos_reward'] = np.mean(
+            np.array(self.episode_len_buffer_v)[np.array(self.episode_reward_buffer_v) > 0])
         episode_statistics['[Valid] Rewards/balanced_mean'] = self.true_mean_reward_v
 
         return episode_statistics
