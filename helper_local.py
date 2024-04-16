@@ -37,6 +37,7 @@ def is_wsl(v: str = platform.uname().release) -> int:
         return 2
     return 0
 
+
 if os.name == "nt":
     GLOBAL_DIR = "C:/Users/titus/PycharmProjects/train-procgen-pytorch/"
     OS_IS = "Windows"
@@ -46,6 +47,7 @@ elif os.getlogin() == "titus":
 if is_wsl() == 2:
     GLOBAL_DIR = "/mnt/c/Users/titus/PycharmProjects/train-procgen-pytorch/"
     OS_IS = "WSL"
+
 
 def match(a, b):
     a = a.tolist()
@@ -58,8 +60,10 @@ def save_gif(frames, filename="test.gif", fps=20):
     clip = ImageSequenceClip(list(frames), fps=fps)
     clip.write_gif(filename, fps=fps)
 
-def get_path(dir, file):
-    return os.path.join(GLOBAL_DIR, dir, file)
+
+def get_path(folder, file):
+    return os.path.join(GLOBAL_DIR, folder, file)
+
 
 def print_values_actions(action_names, pi, value, i="", rewards=None):
     ap = np.squeeze(pi[0])
@@ -80,22 +84,23 @@ def print_values_actions(action_names, pi, value, i="", rewards=None):
     else:
         print(out_str)
 
+
 def map_actions_to_radians(action_lookup):
-    #TODO: test with coinrun as well
-    eighth = np.pi/4
+    # TODO: test with coinrun as well
+    eighth = np.pi / 4
     mapping = {
         'move up': 0,
         'UP': 0,
         'UP_RIGHT': eighth,
-        'move right': 2*eighth,
-        'RIGHT': 2*eighth,
-        'DOWN_RIGHT': 3*eighth,
-        'move down': 4*eighth,
-        'DOWN': 4*eighth,
-        'DOWN_LEFT': 5*eighth,
-        'move left': 6*eighth,
-        'LEFT': 6*eighth,
-        'UP_LEFT': 7*eighth,
+        'move right': 2 * eighth,
+        'RIGHT': 2 * eighth,
+        'DOWN_RIGHT': 3 * eighth,
+        'move down': 4 * eighth,
+        'DOWN': 4 * eighth,
+        'DOWN_LEFT': 5 * eighth,
+        'move left': 6 * eighth,
+        'LEFT': 6 * eighth,
+        'UP_LEFT': 7 * eighth,
         '_': -1,
     }
     return np.array([mapping[key] for key in action_lookup.values()])
@@ -109,12 +114,6 @@ def print_action_entropy(action_names, pi):
     df2.loc["Entropy(%)"] = scaled_entropy
     df2[val_names] = np.asarray(np.round(np.squeeze(df2[val_names]) * 100, 0), dtype=np.int32)
     print(df2)
-
-
-def match(a, b, dtype=np.int32):
-    a = a.tolist()
-    b = b.tolist()
-    return np.array([b.index(x) for x in a if x in b], dtype=dtype)
 
 
 def get_combos(env):
@@ -185,7 +184,8 @@ def initialize_model(device, env, hyperparameters):
         mha_layers = hyperparameters.get("mha_layers", 1)
         n_latents = hyperparameters.get("n_latents", 1)
         latent_dim = hyperparameters.get("latent_dim", 1)
-        model = MHAModel(n_latents, latent_dim, mha_layers)
+        output_dim = hyperparameters.get("output_dim", 256)
+        model = MHAModel(n_latents, latent_dim, mha_layers, output_dim, device)
     elif architecture == 'impalavq':
         has_vq = True
         model = ImpalaVQModel(in_channels=in_channels)
@@ -196,7 +196,7 @@ def initialize_model(device, env, hyperparameters):
         model = ImpalaVQMHAModel(in_channels=in_channels, mha_layers=mha_layers, device=device, use_vq=use_vq,
                                  obs_shape=observation_shape)
     elif architecture == 'impalafsq':
-        model = ImpalaFSQModel(in_channels=in_channels)
+        model = ImpalaFSQModel(in_channels, device)
     elif architecture == 'impalafsqmha':
         mha_layers = hyperparameters.get("mha_layers", 2)
         reduce = hyperparameters.get('pool_direction', 'feature_wise')
@@ -226,7 +226,8 @@ def initialize_model(device, env, hyperparameters):
         n_impala_blocks = hyperparameters.get("n_impala_blocks", 3)
         use_intention = hyperparameters.get("use_intention", True)
         model = ImpalaFSQMHAModel(in_channels, mha_layers, device, observation_shape, reduce,
-                                  n_impala_blocks=n_impala_blocks, levels=levels, use_intention=use_intention, no_quant=True)
+                                  n_impala_blocks=n_impala_blocks, levels=levels, use_intention=use_intention,
+                                  no_quant=True)
     elif architecture == 'ribmha':
         model = ribMHA(in_channels, device, observation_shape)
     elif architecture == 'ribfsqmha':
@@ -251,13 +252,17 @@ def initialize_model(device, env, hyperparameters):
     policy.to(device)
     return model, observation_shape, policy
 
+
 def dict_to_html_table(name_deets):
     specs = {"metric": list(name_deets.keys()), "value": list(name_deets.values())}
     df2 = pd.DataFrame(specs)
     text = df2.to_html(index=False)
     return text
 
-def create_name_from_dict(prefix, suffix, specifications, exclusions=[]):
+
+def create_name_from_dict(prefix, suffix, specifications, exclusions=None):
+    if exclusions is None:
+        exclusions = []
     if type(specifications) == str:
         outstr = "_" + specifications
     else:
@@ -393,7 +398,6 @@ def add_training_args(parser):
     # multi threading
     parser.add_argument('--num_threads', type=int, default=8)
 
-
     parser.add_argument('--detect_nan', action="store_true")
     parser.add_argument('--use_valid_env', action="store_true")
     parser.add_argument('--normalize_rew', action="store_true")
@@ -425,7 +429,6 @@ def add_training_args(parser):
                         mirror_env=False
                         )
 
-
     return parser
 
 
@@ -453,6 +456,7 @@ def balanced_reward(done, info, performance_track):
     all_rewards = list(performance_track.values())
     true_average_reward = np.mean([rew for rew_list in all_rewards for rew in rew_list])
     return true_average_reward
+
 
 def append_to_csv_if_exists(df, filename):
     if os.path.isfile(filename):
@@ -485,12 +489,11 @@ def load_storage_and_policy(device, env, hyperparameters, last_model, logdir, n_
 
 def load_hparams_for_model(hparams, logdir, n_envs):
     hyperparameters = get_hyperparams(hparams)
-    if logdir is not None:
-        last_model = latest_model_path(logdir)
-        print(last_model)
-        hp_file = os.path.join(GLOBAL_DIR, logdir, "hyperparameters.npy")
-        if os.path.exists(hp_file):
-            hyperparameters = np.load(hp_file, allow_pickle='TRUE').item()
+    last_model = latest_model_path(logdir)
+    print(last_model)
+    hp_file = os.path.join(GLOBAL_DIR, logdir, "hyperparameters.npy")
+    if os.path.exists(hp_file):
+        hyperparameters = np.load(hp_file, allow_pickle='TRUE').item()
     if n_envs is not None:
         hyperparameters["n_envs"] = n_envs
     return hyperparameters, last_model
@@ -518,6 +521,7 @@ def floats_to_dp(s, decimals=2):
 
 def wandb_login():
     wandb.login(key="cfc00eee102a1e9647b244a40066bfc5f1a96610")
+
 
 class DictToArgs:
     def __init__(self, input_dict):
@@ -601,6 +605,7 @@ def run_subprocess(cmd, newline, suppress=False, timeout=-1):
 def sample_from_sigmoid(p):
     return np.int32(np.random.random(p.shape) < p)
 
+
 def free_gpu(remove_dict):
     remove_list = [f"{x}.doc.ic.ac.uk" for x in remove_dict.keys()]
 
@@ -640,7 +645,7 @@ def free_gpu(remove_dict):
     # CUDAECCEnabled
     # CUDAGlobalMemoryMb
 
-    machines = list(filter(lambda m: m not in remove_list.keys(), machines))
+    machines = list(filter(lambda m: m not in remove_list, machines))
 
     machines = list(filter(lambda m: "CUDAGlobalMemoryMb" in m.keys() and "CUDADeviceName" in m.keys(), machines))
 
@@ -688,6 +693,3 @@ def free_gpu(remove_dict):
             )
             if pingt.returncode == 0:
                 return labm
-
-
-

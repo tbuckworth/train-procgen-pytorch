@@ -241,16 +241,17 @@ class NeuroSymbolicAgent:
             obs = torch.FloatTensor(observation).to(self.policy.device)
             x = self.policy.embedder.forward_to_pool(obs)
             h = self.model.predict(x)
-            if self.stochastic:
-                logits = torch.FloatTensor(h).to(self.policy.device)
-                log_probs = F.log_softmax(logits, dim=1)
-                p = Categorical(logits=log_probs)
-                act = p.sample()
-            else:
-                rads = np.round(h / (np.pi / self.n), 0) * (np.pi / self.n)
-                return match(rads, self.action_mapping)
-                # act = np.round(h, decimals=0)
-        return act.cpu().numpy()
+            return self.pred_to_action(h)
+
+    def pred_to_action(self, h):
+        if self.stochastic:
+            logits = torch.FloatTensor(h).to(self.policy.device)
+            log_probs = F.log_softmax(logits, dim=1)
+            p = Categorical(logits=log_probs)
+            act = p.sample()
+            return act.cpu().numpy()
+        rads = np.round(h / (np.pi / self.n), 0) * (np.pi / self.n)
+        return match(rads, self.action_mapping)
 
 
 class AnalyticModel:
@@ -486,6 +487,10 @@ def get_entropy(Y):
     return ents.mean()
 
 
+def one_hot(targets, nb_classes):
+    return np.eye(nb_classes)[targets]
+
+
 def run_neurosymbolic_search(args):
     data_size = args.data_size
     logdir = args.logdir
@@ -517,6 +522,7 @@ def run_neurosymbolic_search(args):
     X, Y, V = generate_data(policy, sampler, env, int(data_size), args)
     e = get_entropy(Y)
     if not args.stochastic:
+        save_Y = Y.copy()
         action_lookup = get_actions(env)
         action_mapping = map_actions_to_radians(action_lookup)
         # map actions to 0:2pi
@@ -572,13 +578,21 @@ def run_neurosymbolic_search(args):
             ent = - (p * np.log(p)) - ((1 - p) * np.log(1 - p))
             ent_hat = - (p_hat * np.log(p_hat)) - ((1 - p_hat) * np.log(1 - p_hat))
         else:
-            #TODO: this won't work for non-stochastic clock style
-            p = softmax(Y)
-            p_hat = softmax(Y_hat)
-            Y_act = sample_numpy_probs(p)
-            Y_hat_act = sample_numpy_probs(p_hat)
-            ent = -(p * np.log(p)).sum(1)
-            ent_hat = -(p_hat * np.log(p_hat)).sum(1)
+            if not args.stochastic:
+                p = softmax(save_Y)
+                ent = -(p * np.log(p)).sum(1)
+                Y_act = sample_numpy_probs(p)
+                p = p[np.arange(len(p)),Y_act]
+                Y_hat_act = ns_agent.pred_to_action(Y_hat)
+                p_hat = np.ones_like(Y)#one_hot(Y_hat_act, save_Y.shape[-1])
+                ent_hat = np.zeros_like(Y_hat)
+            else:
+                p = softmax(Y)
+                p_hat = softmax(Y_hat)
+                Y_hat_act = sample_numpy_probs(p_hat)
+                ent_hat = -(p_hat * np.log(p_hat)).sum(1)
+                Y_act = sample_numpy_probs(p)
+                ent = -(p * np.log(p)).sum(1)
 
         e_hat = get_entropy(Y_hat)
         df_values["Entropy_Pred"] = [e_hat]
@@ -592,8 +606,12 @@ def run_neurosymbolic_search(args):
         except NotImplementedError:
             actions = np.array([f"action_{i}" for i in range(shp[-1])])
 
+        if not args.stochastic:
+            action_vector = np.array(list(action_lookup.values()))[Y_act]
+        else:
+            action_vector = np.repeat(actions, shp[0])
         all_metrics = np.vstack(
-            (np.repeat(actions, shp[0]),
+            (action_vector,
              Y.reshape(np.prod(shp)),
              np.tile(V, shp[-1]),
              Y_hat.reshape(np.prod(shp)),
