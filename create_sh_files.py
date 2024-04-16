@@ -2,6 +2,7 @@ import os
 import argparse
 import copy
 import itertools
+import time
 
 import numpy as np
 import re
@@ -146,7 +147,7 @@ def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_ty
 
             run_subprocess(cmd1, "\\n", suppress=False)
             run_subprocess(cmd2, "\\n", suppress=False)
-    np.save(os.path.join("data", f"temp.npy"), hosts)
+    np.save(os.path.join("data", f"hosts_{time.strftime('%Y-%m-%d__%H-%M-%S')}.npy"), hosts)
 
 def symbreg_hparams():
     return {
