@@ -645,7 +645,7 @@ def free_gpu(remove_dict):
     # CUDAECCEnabled
     # CUDAGlobalMemoryMb
 
-    machines = list(filter(lambda m: m not in remove_list, machines))
+    machines = list(filter(lambda m: m["Machine"] not in remove_list, machines))
 
     machines = list(filter(lambda m: "CUDAGlobalMemoryMb" in m.keys() and "CUDADeviceName" in m.keys(), machines))
 

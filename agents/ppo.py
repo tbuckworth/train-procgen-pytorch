@@ -184,15 +184,15 @@ class PPO(BaseAgent):
                     atn_entropy_list.append(atn_ents[0].item())
                     atn_entropy_list2.append(atn_ents[1].item())
                 except Exception:
-                    continue
+                    pass
                 try:
                     s_loss_list.append(s_loss.item())
                 except Exception:
-                    continue
+                    pass
                 try:
                     fs_loss_list.append(feature_sparsity_loss.item())
                 except Exception:
-                    continue
+                    pass
 
         # Adjust common/Logger.__init__ if you add/remove from summary:
         summary = {'Loss/pi': np.mean(pi_loss_list),

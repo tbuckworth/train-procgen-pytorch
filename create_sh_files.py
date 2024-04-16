@@ -286,10 +286,10 @@ def add_training_args_dict():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--n_gpu', type=int, default=6)
-    parser.add_argument('--execute', action="store_true", default=False)
+    parser.add_argument('--execute', action="store_true", default=True)
     # parser.add_argument('--cuda', action="store_true", default=False)
     parser.add_argument('--max_runs', type=int, default=200)
-    parser.add_argument('--hparam_type', type=str, default=None)
+    parser.add_argument('--hparam_type', type=str, default="train")
 
     largs = parser.parse_args()
     n_gpu = largs.n_gpu
