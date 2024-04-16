@@ -85,7 +85,7 @@ def add_boxworld_params(args):
     return args
 
 
-def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset=1.):
+def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_type):
     hosts = {}
     keys, values = zip(*hparams.items())
     h_dict_list = [dict(zip(keys, v)) for v in itertools.product(*values)]
@@ -109,9 +109,9 @@ def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset=1.):
                 arg.__dict__[key] = v
             arg.wandb_name = nme
             hparams = format_args(arg)
-            if args.hparam_type == "symbreg":
+            if hparam_type == "symbreg":
                 script = "symbolic_regression"
-            if args.hparam_type == "train":
+            if hparam_type == "train":
                 script = "train"
             python_execs += [executable_python(hparams, arg.wandb_name, script)]
         cut_to = int(random_subset * len(python_execs))
@@ -312,4 +312,4 @@ if __name__ == '__main__':
     n_experiments = np.prod([len(hparams[x]) for x in hparams.keys()])
     print(f"Creating {n_experiments} experiments across {n_gpu} workers.")
     random_subset = min(1, max_runs / n_experiments)
-    write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset)
+    write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_type)
