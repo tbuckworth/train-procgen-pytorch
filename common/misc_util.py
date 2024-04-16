@@ -34,9 +34,9 @@ def cross_batch_entropy(p):
     it always returning the same logits (effectively ignoring the inputs - model collapse).
     '''
 
-    ln = torch.log(p.probs)
+    # ln = torch.log(p.probs)
 
-    p_log_p = p.probs * ln
+    p_log_p = p.probs * p.logits
 
     entropy = - p_log_p.sum(-1)
 
