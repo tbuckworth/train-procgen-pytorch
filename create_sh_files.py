@@ -6,7 +6,8 @@ import time
 
 import numpy as np
 import re
-from helper_local import latest_model_path, run_subprocess, DictToArgs
+from helper_local import latest_model_path, run_subprocess, DictToArgs, free_gpu
+
 
 def format_args(arg):
     output = ""
@@ -128,7 +129,10 @@ def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_ty
             session_name = f"tmpSession{np.random.randint(0, 100)}"
             found = False
             for attempts in range(30):
-                free_machine = run_subprocess(script, "\\n", suppress=True)
+                if cuda:
+                    free_machine = free_gpu(hosts)
+                else:
+                    free_machine = run_subprocess(script, "\\n", suppress=True)
                 host = re.search(r"(.*).doc.ic.ac.uk", free_machine).group(1)
                 if host not in hosts.keys():
                     hosts[host] = [session_name]

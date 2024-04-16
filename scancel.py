@@ -11,9 +11,9 @@ if __name__ == "__main__":
 
     filename = get_latest_file_matching("hosts_.*.npy", args.n, "data")
 
-    hosts = np.load(os.path.join("data", filename), allow_pickle=True)
+    hosts = np.load(filename, allow_pickle='TRUE').item()
 
     for host in hosts.keys():
         for session_name in hosts[host]:
-            cmd1 = f'ssh {host} "tmux send -t {session_name}.0 exit ENTER"'
+            cmd1 = f'ssh {host} "tmux send -t {session_name}.0 ^C^C ENTER exit ENTER"'
             run_subprocess(cmd1, "\\n", suppress=False)

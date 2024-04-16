@@ -572,6 +572,7 @@ def run_neurosymbolic_search(args):
             ent = - (p * np.log(p)) - ((1 - p) * np.log(1 - p))
             ent_hat = - (p_hat * np.log(p_hat)) - ((1 - p_hat) * np.log(1 - p_hat))
         else:
+            #TODO: this won't work for non-stochastic clock style
             p = softmax(Y)
             p_hat = softmax(Y_hat)
             Y_act = sample_numpy_probs(p)

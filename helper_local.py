@@ -3,6 +3,7 @@ import random
 import re
 import subprocess
 import time
+import json
 from collections import deque
 
 import gym
@@ -599,3 +600,94 @@ def run_subprocess(cmd, newline, suppress=False, timeout=-1):
 
 def sample_from_sigmoid(p):
     return np.int32(np.random.random(p.shape) < p)
+
+def free_gpu(remove_dict):
+    remove_list = [f"{x}.doc.ic.ac.uk" for x in remove_dict.keys()]
+
+    LABCOMPS = "^(ash|beech|cedar|curve|gpu|line|oak|pixel|ray|texel|vertex|willow)[0-9]{2}\.doc"
+
+    # Get condor machine status
+    # We restrict to lab machines only
+    condor_status = subprocess.run(
+        [
+            "/usr/local/condor/release/bin/condor_status",
+            "-long",
+            "-attributes",
+            "Machine,LoadAvg,State,GPUsMemoryUsage,AssignedGPUs,CUDADeviceName,CUDAGlobalMemoryMb,CUDACoresPerCU",
+            "-json",
+            "-constraint",
+            'regexp( \"' + LABCOMPS + '\", Machine)',
+        ],
+        stdout=subprocess.PIPE,
+        check=True,  # Raises exception if subprocess fails
+    )
+
+    # Collect machine information,
+    machines = json.loads(condor_status.stdout)
+    # x = {m["Machine"]:m["CUDADeviceName"] for m in machines if re.search("RTX 40",m["CUDADeviceName"])}
+    # y =  {m["Machine"]:m["CUDADeviceName"] for m in machines if m["CUDAGlobalMemoryMb"]>15000}
+    # all_cuda = {m["Machine"]:m["CUDADeviceName"] for m in machines if "CUDADeviceName" in m.keys()}
+    # x = {m:all_cuda[m] for m in all_cuda.keys() if re.search("RTX 40",all_cuda[m])}
+
+    # CUDACapability
+    # CUDAClockMhz
+    # CUDAComputeUnits
+    # CUDACoresPerCU
+    # CUDADeviceName
+    # CUDADevicePciBusId
+    # CUDADeviceUuid
+    # CUDADriverVersion
+    # CUDAECCEnabled
+    # CUDAGlobalMemoryMb
+
+    machines = list(filter(lambda m: m not in remove_list.keys(), machines))
+
+    machines = list(filter(lambda m: "CUDAGlobalMemoryMb" in m.keys() and "CUDADeviceName" in m.keys(), machines))
+
+    # Rule 0: Pick an RTX 4080 if free
+    rtx40 = filter(
+        lambda m: re.search("RTX 40", m["CUDADeviceName"]) and m["State"] == "Unclaimed" and m["LoadAvg"] < 0.1,
+        machines)
+
+    # else pick an RTX with > 10GB memory (RTX 2080 Ti is typical)
+    rtx = filter(lambda m: re.search("RTX", m["CUDADeviceName"]) and m["CUDAGlobalMemoryMb"] > 10000 and m[
+        "State"] == "Unclaimed" and m["LoadAvg"] < 0.1, machines)
+
+    # else pick a machine with > 10GB GPU memory
+    g10 = filter(lambda m: m["CUDAGlobalMemoryMb"] > 10000 and m["State"] == "Unclaimed" and m["LoadAvg"] < 0.1,
+                 machines)
+
+    # Rule 1: Pick a random unclaimed machine with less than 0.1 load average
+    # We set less than 0.1 load average to avoid any other process such as root
+    # package updates from running in the background that Condor does not pick up
+    unclaimed = filter(lambda m: m["State"] == "Unclaimed" and m["LoadAvg"] < 0.1, machines)
+
+    # Rule 2: Pick a random Claimed machine, yield from Condor for interactive usage
+    # Interactive usage takes priority over Condor jobs
+    claimed = filter(lambda m: m["State"] == "Claimed", machines)
+
+    # Rule 3: Shared usage, all machines are used at the moment, we'll first pick machines
+    # that have half the cpu load, i.e. < 4.0 load average
+    low_usage = filter(lambda m: m["LoadAvg"] < 0.1, machines)
+
+    # Rule 4: All shared usage, all machines are used and have load average high,
+    # we have no option but to randomly pick one for the user
+    all_machines = machines
+
+    # Select a machine, yielding from rules in order
+    for ms in [rtx40, rtx, g10, unclaimed, claimed, low_usage, all_machines]:
+        ms = list(ms)
+        if ms:
+            labm = random.choice(ms)["Machine"]
+            # Check if we can reach the machine, is it running?
+            pingt = subprocess.run(
+                ["ping", "-c", "1", "-W", "1", labm],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=True,
+            )
+            if pingt.returncode == 0:
+                return labm
+
+
+
