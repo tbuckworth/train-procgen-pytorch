@@ -7,7 +7,6 @@ import time
 import numpy as np
 import re
 from helper_local import latest_model_path, run_subprocess, DictToArgs
-from torch import cuda as cd
 
 def format_args(arg):
     output = ""
@@ -185,7 +184,7 @@ def train_hparams():
         "env_name": ['coinrun'],
         "distribution_mode": ['hard'],
         "param_name": ['hard-500-impala'],
-        "device": ["gpu" if cd.is_available() else "cpu"],
+        "device": ["gpu"],
         "num_timesteps": [int(1e8)],
         "seed": [6033],
         # "gamma": None,
