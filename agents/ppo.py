@@ -39,7 +39,7 @@ class PPO(BaseAgent):
         super(PPO, self).__init__(env, policy, logger, storage, device,
                                   n_checkpoints, env_valid, storage_valid)
 
-        self.nzt_coef = 0.
+        self.fs_coef = 0.
         self.total_timesteps = 0
         self.entropy_scaling = entropy_scaling
         self.entropy_multiplier = 1.
@@ -165,7 +165,7 @@ class PPO(BaseAgent):
                         - self.entropy_coef * entropy_loss * self.entropy_multiplier
                         - self.x_entropy_coef * x_batch_ent_loss
                         + self.s_loss_coef * s_loss
-                        + self.nzt_coef * feature_sparsity_loss)
+                        + self.fs_coef * feature_sparsity_loss)
                 loss.backward()
 
                 # Let model to handle the large batch-size with small gpu-memory

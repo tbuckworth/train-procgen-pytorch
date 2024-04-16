@@ -128,6 +128,14 @@ def generate_data(policy, sampler, env, n, args):
         V = np.append(V, v, axis=0)
     return X, Y, V
 
+def sample_latent_output_impala(policy, observation, stochastic):
+    with torch.no_grad():
+        obs = torch.FloatTensor(observation).to(policy.device)
+        x = policy.embedder.forward_to_pool(obs)
+        h = policy.embedder.forward_from_pool(x)
+        dist, value = policy.hidden_to_output(h)
+        act = dist.sample()
+    return x.cpu().numpy(), h, act.cpu().numpy(), value.cpu().numpy()
 
 def sample_latent_output_fsqmha(policy, observation, stochastic):
     with torch.no_grad():

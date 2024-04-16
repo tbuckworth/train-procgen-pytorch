@@ -5,7 +5,7 @@ import itertools
 import numpy as np
 import re
 from helper_local import add_training_args, latest_model_path, add_symbreg_args, run_subprocess, DictToArgs
-
+from torch import cuda
 
 def format_args(arg):
     output = ""
@@ -170,7 +170,28 @@ def symbreg_hparams():
 
 def train_hparams():
     return {
-
+        "exp_name": ['coinrun'],
+        "env_name": ['coinrun'],
+        "distribution_mode": ['hard'],
+        "param_name": ['hard-500-impala'],
+        "device": ["gpu" if cuda.is_available() else "cpu"],
+        "num_timesteps": [int(1e8)],
+        "seed": [6033],
+        # "gamma": None,
+        # "learning_rate": None,
+        # "entropy_coef": None,
+        # "n_envs": None,
+        # "n_steps": None,
+        # "n_minibatch": None,
+        # "mini_batch_size": None,
+        # "wandb_name": None,
+        # "wandb_group": None,
+        "wandb_tags": [["impala", "for_pysr", "output_dim"]],
+        # "detect_nan": False,
+        "use_wandb": [True],
+        "mirror_env": [False],
+        "output_dim": [256, 1, 2, 3, 4, 6],
+        "fs_coef": [0., 0.001, 0.01, 0.1, 0.2],
     }
 
 
@@ -200,6 +221,54 @@ def add_symbreg_args_dict():
     }
 
 
+def add_training_args_dict():
+    return {
+        "exp_name": 'test',
+        "env_name": 'coinrun',
+        "val_env_name": None,
+        "start_level": int(0),
+        "num_levels": int(500),
+        "distribution_mode": 'easy',
+        "param_name": 'easy-200',
+        "device": 'cpu',
+        "gpu_device": int(0),
+        "num_timesteps": int(25000000),
+        "seed": 6033,
+        "log_level": int(40),
+        "num_checkpoints": int(1),
+        "model_file": None,
+        "mut_info_alpha": None,
+        "gamma": None,
+        "learning_rate": None,
+        "entropy_coef": None,
+        "n_envs": None,
+        "n_steps": None,
+        "n_minibatch": None,
+        "mini_batch_size": None,
+        "wandb_name": None,
+        "wandb_group": None,
+        "wandb_tags": [],
+        "levels": None,
+        "sparsity_coef": 0.,
+
+        "random_percent": 0,
+        "key_penalty": 0,
+        "step_penalty": 0,
+        "rand_region": 0,
+        "num_threads": 8,
+
+        "detect_nan": False,
+        "use_valid_env": True,
+        "normalize_rew": True,
+        "render": False,
+        "paint_vel_info": True,
+        "reduce_duplicate_actions": True,
+        "use_wandb": False,
+        "real_procgen": True,
+        "mirror_env": False,
+    }
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--n_gpu', type=int, default=6)
@@ -217,17 +286,15 @@ if __name__ == '__main__':
     parser_sub = argparse.ArgumentParser()
 
     if hparam_type == "train":
-        # parser_sub = add_training_args(parser_sub)
+        parser_dict = add_training_args_dict()
         hparams = train_hparams()
         cuda = True
 
     if hparam_type == "symbreg":
-        # parser_sub = add_symbreg_args(parser_sub)
         parser_dict = add_symbreg_args_dict()
         hparams = symbreg_hparams()
         cuda = False
     args = DictToArgs(parser_dict)
-    # args = parser_sub.parse_args()
 
     # args = add_coinrun_sparsity_params(args)
     # args = add_boxworld_params(args)

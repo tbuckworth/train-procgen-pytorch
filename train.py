@@ -21,9 +21,6 @@ def train_ppo(args):
     # exp_name, env_name, val_env_name, start_level, start_level_val, num_levels, distribution_mode, param_name, gpu_device, num_timesteps, seed, log_level, num_checkpoints, alpha, key, value, device, n_envs, env, listdir, logdir, d, filename, args
     exp_name = args.exp_name
     env_name = args.env_name
-    start_level = args.start_level
-    num_levels = args.num_levels
-    distribution_mode = args.distribution_mode
     param_name = args.param_name
     gpu_device = args.gpu_device
     num_timesteps = int(args.num_timesteps)
@@ -57,6 +54,8 @@ def train_ppo(args):
                      "gamma",
                      "learning_rate",
                      "entropy_coef",
+                     "fs_coef",
+                     "output_dim",
                      ]:
         if var_name in args.__dict__.keys() and args.__dict__[var_name] is not None:
             hyperparameters[var_name] = args.__dict__[var_name]
@@ -93,7 +92,7 @@ def train_ppo(args):
     max_steps = hyperparameters.get("max_steps", 10 ** 3)
 
     create_venv = create_procgen_env
-    
+
     if args.env_name == "boxworld":
         create_venv = create_bw_env
     elif args.render:

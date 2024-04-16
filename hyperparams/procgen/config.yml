@@ -97,6 +97,8 @@ hard-500-impala:
     use_gae: True
     architecture: impala
     recurrent: False
+    output_dim: 256
+    fs_coef: 0.
 
 hard-500-impalavq:
     algo: ppo

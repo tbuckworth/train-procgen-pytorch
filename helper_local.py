@@ -153,7 +153,8 @@ def initialize_model(device, env, hyperparameters):
     if architecture == 'nature':
         model = NatureModel(in_channels=in_channels)
     elif architecture == 'impala':
-        model = ImpalaModel(in_channels=in_channels)
+        output_dim = hyperparameters.get("output_dim", 256)
+        model = ImpalaModel(in_channels=in_channels, output_dim=output_dim)
     elif architecture == 'vqmha':
         has_vq = False
         mha_layers = hyperparameters.get("mha_layers", 1)
