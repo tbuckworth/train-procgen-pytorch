@@ -1,11 +1,12 @@
+import os
 import argparse
 import copy
 import itertools
 
 import numpy as np
 import re
-from helper_local import add_training_args, latest_model_path, add_symbreg_args, run_subprocess, DictToArgs
-from torch import cuda
+from helper_local import latest_model_path, run_subprocess, DictToArgs
+from torch import cuda as cd
 
 def format_args(arg):
     output = ""
@@ -85,7 +86,7 @@ def add_boxworld_params(args):
 
 
 def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset=1.):
-    hosts = []
+    hosts = {}
     keys, values = zip(*hparams.items())
     h_dict_list = [dict(zip(keys, v)) for v in itertools.product(*values)]
     h_dict_list = np.random.permutation(h_dict_list)
@@ -108,7 +109,11 @@ def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset=1.):
                 arg.__dict__[key] = v
             arg.wandb_name = nme
             hparams = format_args(arg)
-            python_execs += [executable_python(hparams, arg.wandb_name, "symbolic_regression")]
+            if args.hparam_type == "symbreg":
+                script = "symbolic_regression"
+            if args.hparam_type == "train":
+                script = "train"
+            python_execs += [executable_python(hparams, arg.wandb_name, script)]
         cut_to = int(random_subset * len(python_execs))
         python_execs = list(np.random.choice(python_execs, cut_to, replace=False))
         exe = executable_train(hparams, arg.wandb_name, python_execs)
@@ -120,14 +125,19 @@ def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset=1.):
             script = "~/free_cpu"
             if cuda:
                 script = "~/free_gpu"
-            for _ in range(30):
+            session_name = f"tmpSession{np.random.randint(0, 100)}"
+            found = False
+            for attempts in range(30):
                 free_machine = run_subprocess(script, "\\n", suppress=True)
                 host = re.search(r"(.*).doc.ic.ac.uk", free_machine).group(1)
-                if host not in hosts:
+                if host not in hosts.keys():
+                    hosts[host] = [session_name]
+                    found = True
                     break
-            hosts.append(host)
+            if not found:
+                hosts[host].append(session_name)
+
             command = f"'cd pyg/train-procgen-pytorch\n source {exe_file_name}'"
-            session_name = f"tmpSession{np.random.randint(0, 100)}"
 
             print(f"Host:{host}\tSessionName:{session_name}")
 
@@ -136,7 +146,7 @@ def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset=1.):
 
             run_subprocess(cmd1, "\\n", suppress=False)
             run_subprocess(cmd2, "\\n", suppress=False)
-
+    np.save(os.path.join("data", f"temp.npy"), hosts)
 
 def symbreg_hparams():
     return {
@@ -174,7 +184,7 @@ def train_hparams():
         "env_name": ['coinrun'],
         "distribution_mode": ['hard'],
         "param_name": ['hard-500-impala'],
-        "device": ["gpu" if cuda.is_available() else "cpu"],
+        "device": ["gpu" if cd.is_available() else "cpu"],
         "num_timesteps": [int(1e8)],
         "seed": [6033],
         # "gamma": None,
