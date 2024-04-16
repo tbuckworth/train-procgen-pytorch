@@ -180,7 +180,7 @@ def symbreg_hparams():
 
 def train_hparams():
     return {
-        "exp_name": ['coinrun'],
+        "exp_name": ['coinrun-hparams'],
         "env_name": ['coinrun'],
         "distribution_mode": ['hard'],
         "param_name": ['hard-500-impala'],
@@ -200,7 +200,7 @@ def train_hparams():
         # "detect_nan": False,
         "use_wandb": [True],
         "mirror_env": [False],
-        "output_dim": [256, 1, 2, 3, 4, 6],
+        "output_dim": [256, 1, 9],
         "fs_coef": [0., 0.001, 0.01, 0.1, 0.2],
     }
 

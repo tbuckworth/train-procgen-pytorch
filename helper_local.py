@@ -387,7 +387,7 @@ def add_training_args(parser):
     parser.add_argument('--no-real_procgen', dest='real_procgen', action="store_false")
     parser.add_argument('--no-mirror_env', dest='mirror_env', action="store_false")
 
-    parser.set_defualts(detect_nan=False,
+    parser.set_defaults(detect_nan=False,
                         use_valid_env=True,
                         normalize_rew=True,
                         render=False,
