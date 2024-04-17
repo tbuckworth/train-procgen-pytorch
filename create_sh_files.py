@@ -197,7 +197,7 @@ def train_hparams():
         "distribution_mode": ['hard'],
         "param_name": ['hard-500-impala'],
         "device": ["gpu"],
-        "num_timesteps": [int(1e8)],
+        "num_timesteps": [int(2e8)],
         "seed": [6033],
         # "gamma": None,
         # "learning_rate": None,
@@ -297,7 +297,7 @@ if __name__ == '__main__':
     parser.add_argument('--execute', action="store_true", default=True)
     # parser.add_argument('--cuda', action="store_true", default=False)
     parser.add_argument('--max_runs', type=int, default=200)
-    parser.add_argument('--hparam_type', type=str, default="symbreg")
+    parser.add_argument('--hparam_type', type=str, default="train")
 
     largs = parser.parse_args()
     n_gpu = largs.n_gpu
