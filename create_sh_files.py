@@ -161,7 +161,7 @@ def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_ty
 def symbreg_hparams():
     return {
         "timeout_in_seconds": [3600 * 10],
-        "data_size": [100, 1000],  # , 500, 100, 50],# 5000],
+        "data_size": [100, 1000, 5000],  # , 500, 100, 50],# 5000],
         "iterations": [5, 20, 100, 200],  # 20, 40, 80],
         "n_envs": [128],
         "rounds": [500],

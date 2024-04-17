@@ -4,6 +4,8 @@ import argparse
 import numpy as np
 from matplotlib import pyplot as plt
 
+from cartpole.create_cartpole import create_cartpole, create_cartpole_env_pre_vec
+
 if os.name != "nt":
     from pysr import PySRRegressor
 
@@ -26,7 +28,51 @@ def run_deterministic_agent():
     dn_score_train = test_agent(dn_agent, env, "DetNeural Train", 300)
     dn_score_test = test_agent(dn_agent, test_env, "DetNeural Test", 300)
 
+def test_agent_specific_environment():
+    # Here we test different planet gravities
+    n_envs = 32
+    logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
+    symbdir = os.path.join(logdir, "symbreg/2024-04-12__17-38-41/")
+    # symbdir = os.path.join(logdir, "symbreg/2024-04-11__15-12-07/")
+    # logdir = "logs/train/cartpole/cartpole/2024-04-15__15-45-47__seed_6033"
+    # symbdir = os.path.join(logdir, "symbreg/2024-04-15__16-36-44/")
+    pickle_filename = os.path.join(symbdir, "symb_reg.pkl")
+    pysr_model = PySRRegressor.from_file(pickle_filename)
 
+    cfg = get_config(symbdir)
+    args = DictToArgs(cfg)
+
+    policy, env, sampler, symbolic_agent_constructor, test_env, test_agent = load_nn_policy(logdir, n_envs)
+
+    nn_agent = NeuralAgent(policy)
+    ns_agent = symbolic_agent_constructor(pysr_model, policy, args.stochastic, None)
+    nn_scores = []
+    ns_scores = []
+    gs = [9.8, 12, 14, 16, 18, 20, 22, 24, 26]
+    for gravity in gs:
+        env_args = {"n_envs": n_envs,
+                    "env_name": "CartPole-v1",
+                    "degrees": 12,
+                    "h_range": 2.4,
+                    "gravity": gravity,#11.15,#10.44,#3.7,#24.8
+                    }
+        mars_test_env = create_cartpole_env_pre_vec(env_args, render=False, normalize_rew=False)
+
+        rounds = 100
+        # nn_score_train = test_agent(nn_agent, env, "Neural Train", rounds)
+        # nn_score_test = test_agent(nn_agent, test_env, "Neural Test", rounds)
+        nn_score_mars = test_agent(nn_agent, mars_test_env, f"Neural\t{gravity}", rounds)
+        nn_scores.append(nn_score_mars)
+        # ns_score_train = test_agent(ns_agent, env, "NeuroSymb Train", rounds)
+        # ns_score_test = test_agent(ns_agent, test_env, "NeuroSymb Test", rounds)
+        ns_score_mars = test_agent(ns_agent, mars_test_env, f"NeuroSymb\t{gravity}", rounds)
+        ns_scores.append(ns_score_mars)
+
+    plt.plot(gs, nn_scores, label="Neural")
+    plt.plot(gs, ns_scores, label="NeuroSymb")
+    plt.legend()
+    plt.show()
+    print("done")
 
 def run_saved_model():
     # data_size = 1000
@@ -145,6 +191,7 @@ def run_symb_reg_local():
 
 
 if __name__ == "__main__":
-    run_saved_model()
+    test_agent_specific_environment()
+    # run_saved_model()
     # run_deterministic_agent()
     # run_symb_reg_local()

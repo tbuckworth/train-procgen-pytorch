@@ -90,7 +90,7 @@ class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
         "render_fps": 50,
     }
 
-    def __init__(self, n_envs, degrees=12, h_range=2.4, max_steps=500, render_mode: Optional[str] = None):
+    def __init__(self, n_envs, degrees=12, h_range=2.4, gravity=9.8, max_steps=500, render_mode: Optional[str] = None):
         if n_envs < 2:
             raise Exception("n_envs must be greater than or equal to 2")
         self.np_random_seed = None
@@ -100,7 +100,7 @@ class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
         self.terminated = np.full(self.num_envs, True)
         self.reward = np.ones((self.num_envs))
         self.info = [{"env_reward": self.reward[i]} for i in range(len(self.reward))]
-        self.gravity = 9.8
+        self.gravity = gravity
         self.masscart = 1.0
         self.masspole = 0.1
         self.total_mass = self.masspole + self.masscart

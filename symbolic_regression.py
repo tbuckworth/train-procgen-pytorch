@@ -138,8 +138,9 @@ def sample_latent_output_impala(policy, observation, stochastic):
         x = policy.embedder.forward_to_pool(obs)
         h = policy.embedder.forward_from_pool(x)
         dist, value = policy.hidden_to_output(h)
+        y = dist.logits.detach().cpu().numpy()
         act = dist.sample()
-    return x.cpu().numpy(), h, act.cpu().numpy(), value.cpu().numpy()
+    return x.cpu().numpy(), y, act.cpu().numpy(), value.cpu().numpy()
 
 
 def sample_latent_output_fsqmha(policy, observation, stochastic):

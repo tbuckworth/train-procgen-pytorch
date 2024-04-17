@@ -1,8 +1,6 @@
 import numpy as np
 
-from cartpole.cartpole import CartPoleEnv
 from cartpole.cartpole_pre_vec import CartPoleVecEnv
-from cartpole.create_cartpole import create_cartpole_env_pre_vec
 
 
 def compute_pairwise_affinities(X, perplexity=30.0, epsilon=1e-8):
