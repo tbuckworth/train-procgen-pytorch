@@ -168,23 +168,25 @@ def symbreg_hparams():
         "denoise": [True, False],
         "populations": [24, 35],
         "procs": [8, 4],
-        "ncycles_per_iteration": [1000, 2000],
+        "ncycles_per_iteration": [2000, 3000],
         "bumper": [True, False],
         "binary_operators": [["+", "-", "greater", "\*", "/"]],
         "unary_operators": [  # [],
             ["sin", "relu", "log", "exp", "sign", "sqrt", "square"],
         ],
-        "wandb_tags": [["stochastic", "cartpole", "losses"]],
+        "wandb_tags": [["deterministic", "coinrun", "losses"]],
         "model_selection": ["best", "accuracy"],
         "weight_metric": [None, "entropy", "value"],
         # "loss_function": ["capped_sigmoid"],
         # "loss_function": ['sigmoid', 'exp', 'logitmarg', 'logitdist', 'mse', 'capped_sigmoid'],
-        "loss_function": ['sigmoid', 'logitdist', 'mse', 'capped_sigmoid'],
+        "loss_function": ['sigmoid', 'logitdist', 'mse', 'capped_sigmoid', 'exp'],
         # "logdir": ["logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"],
         # "logdir": ["logs/train/boxworld/boxworld/2024-04-08__12-29-17__seed_6033"],
         # high-entropy one:
-        "logdir": ["logs/train/boxworld/boxworld/2024-04-08__14-52-30__seed_6033"],
+        # "logdir": ["logs/train/boxworld/boxworld/2024-04-08__14-52-30__seed_6033"],
+        "logdir": ["logs/train/coinrun/coinrun-hparams/2024-03-27__18-20-55__seed_6033"],
         "use_wandb": [True],
+        "stochastic": [False],
     }
 
 
@@ -211,7 +213,7 @@ def train_hparams():
         "use_wandb": [True],
         "mirror_env": [False],
         # "output_dim": [256, 1, 9],
-        "fs_coef": [0., 0.001, 0.01, 0.1, 0.2],
+        "fs_coef": [0.5, 1.0, 2.0, 5.0, 10.0],
     }
 
 

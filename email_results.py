@@ -214,4 +214,4 @@ def send_email(subject, mail_content, attach_file_name, receiver_address='titus.
 
 
 if __name__ == "__main__":
-    send_image("output_images/coinrun_latent_dim_hist.png")
+    send_image("data/slpit_by_formula.png","test")

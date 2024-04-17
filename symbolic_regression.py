@@ -99,6 +99,8 @@ def load_nn_policy(logdir, n_envs=2):
 
     tmp_args = DictToArgs(cfg)
 
+    # This seems to be necessary as training from scratch produces a different result than using a trained model:
+    hyperparameters["normalize_rew"] = False
     env = create_venv(tmp_args, hyperparameters, is_valid=False)
     test_env = create_venv(tmp_args, hyperparameters, is_valid=True)
 

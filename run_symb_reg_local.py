@@ -13,12 +13,20 @@ from symbolic_regression import run_neurosymbolic_search, load_nn_policy, genera
 
 
 def run_deterministic_agent():
-    logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
+    # logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
     # logdir = "logs/train/boxworld/boxworld/2024-04-08__12-29-17__seed_6033"
+    logdir = "logs/train/coinrun/coinrun-hparams/2024-03-27__18-20-55__seed_6033"
     policy, env, sampler, symbolic_agent_constructor, test_env, test_agent = load_nn_policy(logdir, 32)
-    nn_agent = DeterministicNeuralAgent(policy)
-    nn_score_train = test_agent(nn_agent, env, "DetNeural Train", 300)
-    nn_score_test = test_agent(nn_agent, test_env, "DetNeural Test", 300)
+
+    nn_agent = NeuralAgent(policy)
+    nn_score_train = test_agent(nn_agent, env, "Neural Train", 300)
+    nn_score_test = test_agent(nn_agent, test_env, "Neural Test", 300)
+
+    dn_agent = DeterministicNeuralAgent(policy)
+    dn_score_train = test_agent(dn_agent, env, "DetNeural Train", 300)
+    dn_score_test = test_agent(dn_agent, test_env, "DetNeural Test", 300)
+
+
 
 def run_saved_model():
     # data_size = 1000
