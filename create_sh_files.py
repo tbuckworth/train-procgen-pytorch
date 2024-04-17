@@ -34,7 +34,9 @@ def executable_python(hparams, name, script="train"):
     return f"python3.8 /vol/bitbucket/${{USER}}/train-procgen-pytorch/{script}.py {hparams} 2>&1 | tee /vol/bitbucket/${{USER}}/train-procgen-pytorch/scripts/train_{name}.out\n"
 
 
-def executable_train(hparams, name, python_execs=[]):
+def executable_train(python_execs=None):
+    if python_execs is None:
+        python_execs = []
     # return f'"hn=$(hostname); echo ${{hn}} > ${{hn}}.txt; cd pyg/train-procgen-pytorch; source venvcartpole/bin/activate; train.py {hparams}"'
 
     return '\n'.join(
@@ -92,7 +94,11 @@ def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_ty
     h_dict_list = [dict(zip(keys, v)) for v in itertools.product(*values)]
     h_dict_list = np.random.permutation(h_dict_list)
     arg_list = [copy.deepcopy(args) for _ in h_dict_list]
-    n = len(arg_list) // n_gpu
+
+    n_execs = len(arg_list)
+    if n_execs < n_gpu:
+        n_execs = n_gpu
+    n = n_execs // n_gpu
     for gpu in range(n_gpu):
         python_execs = []
         start = gpu * n
@@ -117,7 +123,7 @@ def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_ty
             python_execs += [executable_python(hparams, arg.wandb_name, script)]
         cut_to = int(random_subset * len(python_execs))
         python_execs = list(np.random.choice(python_execs, cut_to, replace=False))
-        exe = executable_train(hparams, arg.wandb_name, python_execs)
+        exe = executable_train(python_execs)
         exe_file_name = f"scripts/tmp_file_{arg.wandb_name}.sh"
         f = open(exe_file_name, 'w', newline='\n')
         f.write(exe)
@@ -200,11 +206,11 @@ def train_hparams():
         # "mini_batch_size": None,
         # "wandb_name": None,
         # "wandb_group": None,
-        "wandb_tags": [["impala", "for_pysr", "output_dim"]],
+        "wandb_tags": [["impala", "for_pysr"]],
         # "detect_nan": False,
         "use_wandb": [True],
         "mirror_env": [False],
-        "output_dim": [256, 1, 9],
+        # "output_dim": [256, 1, 9],
         "fs_coef": [0., 0.001, 0.01, 0.1, 0.2],
     }
 

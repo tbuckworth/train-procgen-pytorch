@@ -54,6 +54,11 @@ def match(a, b):
     b = b.tolist()
     return np.array([b.index(x) for x in a if x in b])
 
+def match(a, b, dtype=np.int32):
+    a = a.tolist()
+    b = b.tolist()
+    return np.array([b.index(x) for x in a if x in b], dtype=dtype)
+
 
 def save_gif(frames, filename="test.gif", fps=20):
     frames = np.array(frames.transpose(0, 2, 3, 1) * 255, dtype=np.uint8)

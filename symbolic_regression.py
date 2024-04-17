@@ -582,7 +582,7 @@ def run_neurosymbolic_search(args):
                 p = softmax(save_Y)
                 ent = -(p * np.log(p)).sum(1)
                 Y_act = sample_numpy_probs(p)
-                p = p[np.arange(len(p)),Y_act]
+                p = p[np.arange(len(p)), Y_act]
                 Y_hat_act = ns_agent.pred_to_action(Y_hat)
                 p_hat = np.ones_like(Y)#one_hot(Y_hat_act, save_Y.shape[-1])
                 ent_hat = np.zeros_like(Y_hat)
