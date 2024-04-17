@@ -84,17 +84,19 @@ def run_symb_reg_local():
     args = parser.parse_args()
 
     args.data_size = 100
-    args.iterations = 5
-    args.logdir = "logs/train/boxworld/boxworld/2024-04-08__12-29-17__seed_6033"
+    args.iterations = 1
+    # args.logdir = "logs/train/boxworld/boxworld/2024-04-08__12-29-17__seed_6033"
     # args.logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
-    args.n_envs = 32
-    args.rounds = 300
+    args.logdir = "logs/train/coinrun/coinrun-hparams/2024-03-27__18-20-55__seed_6033"
+
+    args.n_envs = 4
+    args.rounds = 10
     args.binary_operators = ["+", "-", "*", "greater", "/"]
     args.unary_operators = ["sin", "relu", "log", "exp", "sign", "sqrt", "square"]
 
     args.denoise = False
     args.use_wandb = True
-    args.wandb_tags = ["stochastic", "boxworld"]
+    args.wandb_tags = ["stochastic", "coinrun"]
     args.weight_metric = "value"
     args.wandb_name = "manual"
     # args.populations = 24

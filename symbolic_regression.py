@@ -19,7 +19,7 @@ from torch.distributions import Categorical
 from common.env.procgen_wrappers import create_env, create_procgen_env
 from helper_local import get_config, get_path, balanced_reward, GLOBAL_DIR, load_storage_and_policy, \
     load_hparams_for_model, floats_to_dp, dict_to_html_table, wandb_login, add_symbreg_args, DictToArgs, \
-    inverse_sigmoid, sigmoid, get_actions, sample_from_sigmoid, map_actions_to_radians, match
+    inverse_sigmoid, sigmoid, get_actions, sample_from_sigmoid, map_actions_to_radians, match, get_actions_from_all
 from cartpole.create_cartpole import create_cartpole
 from boxworld.create_box_world import create_bw_env
 from matplotlib import pyplot as plt
@@ -233,8 +233,7 @@ class NeuroSymbolicAgent:
         self.policy = policy
         self.stochastic = stochastic
         self.action_mapping = action_mapping
-        self.n = len(self.action_mapping[self.action_mapping>=0])/2
-        #TODO: sort this for coinrun actions
+        self.n = len(np.unique(self.action_mapping)) // 2
 
     def forward(self, observation):
         with torch.no_grad():
@@ -251,6 +250,7 @@ class NeuroSymbolicAgent:
             act = p.sample()
             return act.cpu().numpy()
         rads = np.round(h / (np.pi / self.n), 0) * (np.pi / self.n)
+        rads[rads < 0] = -1
         return match(rads, self.action_mapping)
 
 
@@ -521,10 +521,17 @@ def run_neurosymbolic_search(args):
     policy, env, sampler, symbolic_agent_constructor, test_env, test_agent = load_nn_policy(logdir, n_envs)
     X, Y, V = generate_data(policy, sampler, env, int(data_size), args)
     e = get_entropy(Y)
+
+
+    try:
+        actions = get_actions_from_all(env)
+    except NotImplementedError:
+        actions = np.array([f"action_{i}" for i in range(env.action_space.n)])
+
     if not args.stochastic:
         save_Y = Y.copy()
-        action_lookup = get_actions(env)
-        action_mapping = map_actions_to_radians(action_lookup)
+        # What if actions aren't implemented? improve map_actions...
+        action_mapping = map_actions_to_radians(actions)
         # map actions to 0:2pi
         Y = action_mapping[Y.argmax(1)]
 
@@ -584,7 +591,7 @@ def run_neurosymbolic_search(args):
                 Y_act = sample_numpy_probs(p)
                 p = p[np.arange(len(p)), Y_act]
                 Y_hat_act = ns_agent.pred_to_action(Y_hat)
-                p_hat = np.ones_like(Y)#one_hot(Y_hat_act, save_Y.shape[-1])
+                p_hat = np.ones_like(Y)  # one_hot(Y_hat_act, save_Y.shape[-1])
                 ent_hat = np.zeros_like(Y_hat)
             else:
                 p = softmax(Y)
@@ -595,21 +602,18 @@ def run_neurosymbolic_search(args):
                 ent = -(p * np.log(p)).sum(1)
 
         e_hat = get_entropy(Y_hat)
-        df_values["Entropy_Pred"] = [e_hat]
-        df_values["Entropy"] = [e]
+        df_values["Entropy_Pred"] = [ent_hat.mean()]
+        df_values["Entropy"] = [ent.mean()]
+
         shp = Y.shape
         if len(shp) == 1:
             shp = (shp[0], 1)
-        try:
-            action_lookup = get_actions(env)
-            actions = np.array(list(action_lookup.values()))
-        except NotImplementedError:
-            actions = np.array([f"action_{i}" for i in range(shp[-1])])
 
         if not args.stochastic:
-            action_vector = np.array(list(action_lookup.values()))[Y_act]
+            action_vector = actions[Y_act]
         else:
             action_vector = np.repeat(actions, shp[0])
+
         all_metrics = np.vstack(
             (action_vector,
              Y.reshape(np.prod(shp)),

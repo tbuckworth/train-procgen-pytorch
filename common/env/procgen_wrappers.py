@@ -417,10 +417,12 @@ class ScaledFloatFrame(VecEnvWrapper):
         obs = self.venv.reset()
         return obs / 255.0
 
+
 class ActionWrapper(VecEnvWrapper):
     '''
     This wrapper reduces down duplicate actions
     '''
+
     def __init__(self, env):
         self.venv = env
         self.observation_space = self.venv.observation_space
@@ -429,6 +431,8 @@ class ActionWrapper(VecEnvWrapper):
         n = len(np.unique(action_names))
         self.action_space = gym.spaces.Discrete(n)
         self.action_mapping = match(self.unique_actions, action_names, dtype=self.venv.action_space.dtype)
+        self.combos = [(x[0],) if len(x) == 1 else (x[0], x[1]) for x in
+                       [re.split("_", x) for x in self.unique_actions]]
 
     def step_wait(self):
         return self.venv.step_wait()
@@ -439,6 +443,7 @@ class ActionWrapper(VecEnvWrapper):
     def step_async(self, actions):
         actions = self.action_mapping[actions]
         return self.venv.step_async(actions)
+
 
 class EncoderWrapper(VecEnvWrapper):
     def __init__(self, env, encoder):

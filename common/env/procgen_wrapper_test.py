@@ -4,7 +4,8 @@ import torch
 import yaml
 
 from common.env.procgen_wrappers import create_env, ActionWrapper
-from helper_local import initialize_model
+from helper_local import initialize_model, get_combos, get_actions_from_all
+
 
 def get_hyperparams(param_name):
     with open('../../hyperparams/procgen/config.yml', 'r') as f:
@@ -26,6 +27,8 @@ class ProcgenWrapperTest(unittest.TestCase):
 
     def test_action_wrapper(self):
         env2 = ActionWrapper(self.env)
+        print(get_combos(env2))
+        print(get_actions_from_all(env2))
         hyperparameters = get_hyperparams("hard-500-impalamha")
         model, obs_shape, policy = initialize_model(self.device, env2, hyperparameters)
         obs = env2.reset()

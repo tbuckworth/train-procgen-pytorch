@@ -90,25 +90,25 @@ def print_values_actions(action_names, pi, value, i="", rewards=None):
         print(out_str)
 
 
-def map_actions_to_radians(action_lookup):
-    # TODO: test with coinrun as well
+def map_actions_to_radians(actions):
     eighth = np.pi / 4
     mapping = {
         'move up': 0,
         'UP': 0,
-        'UP_RIGHT': eighth,
+        'RIGHT_UP': eighth,
         'move right': 2 * eighth,
         'RIGHT': 2 * eighth,
-        'DOWN_RIGHT': 3 * eighth,
+        'RIGHT_DOWN': 3 * eighth,
         'move down': 4 * eighth,
         'DOWN': 4 * eighth,
-        'DOWN_LEFT': 5 * eighth,
+        'LEFT_DOWN': 5 * eighth,
         'move left': 6 * eighth,
         'LEFT': 6 * eighth,
-        'UP_LEFT': 7 * eighth,
-        '_': -1,
+        'LEFT_UP': 7 * eighth,
+        '': -1,
     }
-    return np.array([mapping[key] for key in action_lookup.values()])
+
+    return np.array([mapping[key] for key in actions])
 
 
 def print_action_entropy(action_names, pi):
@@ -119,6 +119,16 @@ def print_action_entropy(action_names, pi):
     df2.loc["Entropy(%)"] = scaled_entropy
     df2[val_names] = np.asarray(np.round(np.squeeze(df2[val_names]) * 100, 0), dtype=np.int32)
     print(df2)
+
+def get_actions_from_all(env):
+    try:
+        return get_action_names(env)
+    except NotImplementedError:
+        pass
+    try:
+        return np.array(list(get_actions(env).values()))
+    except NotImplementedError:
+        raise NotImplementedError("No combos or actions found")
 
 
 def get_combos(env):
