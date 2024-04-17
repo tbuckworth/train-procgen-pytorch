@@ -297,7 +297,7 @@ if __name__ == '__main__':
     parser.add_argument('--execute', action="store_true", default=True)
     # parser.add_argument('--cuda', action="store_true", default=False)
     parser.add_argument('--max_runs', type=int, default=200)
-    parser.add_argument('--hparam_type', type=str, default="train")
+    parser.add_argument('--hparam_type', type=str, default="symbreg")
 
     largs = parser.parse_args()
     n_gpu = largs.n_gpu
