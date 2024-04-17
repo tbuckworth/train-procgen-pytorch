@@ -19,7 +19,8 @@ from torch.distributions import Categorical
 from common.env.procgen_wrappers import create_env, create_procgen_env
 from helper_local import get_config, get_path, balanced_reward, GLOBAL_DIR, load_storage_and_policy, \
     load_hparams_for_model, floats_to_dp, dict_to_html_table, wandb_login, add_symbreg_args, DictToArgs, \
-    inverse_sigmoid, sigmoid, get_actions, sample_from_sigmoid, map_actions_to_radians, match, get_actions_from_all
+    inverse_sigmoid, sigmoid, sample_from_sigmoid, map_actions_to_radians, match, get_actions_from_all, \
+    entropy_from_binary_prob
 from cartpole.create_cartpole import create_cartpole
 from boxworld.create_box_world import create_bw_env
 from matplotlib import pyplot as plt
@@ -529,7 +530,7 @@ def run_neurosymbolic_search(args):
         actions = get_actions_from_all(env)
     except NotImplementedError:
         actions = np.array([f"action_{i}" for i in range(env.action_space.n)])
-
+    action_mapping = None
     if not args.stochastic:
         save_Y = Y.copy()
         # What if actions aren't implemented? improve map_actions...
@@ -584,8 +585,8 @@ def run_neurosymbolic_search(args):
             Y_act = sample_from_sigmoid(p)
             p_hat = sigmoid(Y_hat)
             Y_hat_act = sample_from_sigmoid(p)
-            ent = - (p * np.log(p)) - ((1 - p) * np.log(1 - p))
-            ent_hat = - (p_hat * np.log(p_hat)) - ((1 - p_hat) * np.log(1 - p_hat))
+            ent = entropy_from_binary_prob(p)
+            ent_hat = entropy_from_binary_prob(p_hat)
         else:
             if not args.stochastic:
                 p = softmax(save_Y)

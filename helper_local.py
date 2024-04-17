@@ -708,3 +708,7 @@ def free_gpu(remove_dict):
             )
             if pingt.returncode == 0:
                 return labm
+
+
+def entropy_from_binary_prob(p):
+    return - (p * np.log(p)) - ((1 - p) * np.log(1 - p))
