@@ -1,5 +1,5 @@
 import numpy as np
-
+from helper_local import free_gpu
 from cartpole.cartpole_pre_vec import CartPoleVecEnv
 
 
@@ -73,7 +73,8 @@ def symbolic_regression_function(obs):
     return np.zeros(len(obs))
 
 
-if __name__ == "__main__":
+
+def some_function():
     is_valid = False
     n_envs = 2
     env_args = {"n_envs": n_envs,
@@ -91,3 +92,7 @@ if __name__ == "__main__":
     while True:
         act = symbolic_regression_function(obs)
         obs, rew, done, info = env.step(act)
+
+
+if __name__ == "__main__":
+    free_gpu({})

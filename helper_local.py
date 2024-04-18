@@ -648,6 +648,9 @@ def free_gpu(remove_dict):
     # y =  {m["Machine"]:m["CUDADeviceName"] for m in machines if m["CUDAGlobalMemoryMb"]>15000}
     # all_cuda = {m["Machine"]:m["CUDADeviceName"] for m in machines if "CUDADeviceName" in m.keys()}
     # x = {m:all_cuda[m] for m in all_cuda.keys() if re.search("RTX 40",all_cuda[m])}
+    # x = {m["Machine"]:[m["State"],m["LoadAvg"],m["GPUsMemoryUsage"]] for m in machines if re.search("RTX 40",m["CUDADeviceName"])}
+
+    # Should we change filter to < 1000 GPUsMemoryUsage?
 
     # CUDACapability
     # CUDAClockMhz

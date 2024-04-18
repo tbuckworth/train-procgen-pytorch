@@ -58,8 +58,8 @@ class TestBoxWorldVec(unittest.TestCase):
         self.assertTrue(done2[0])
         self.assertTrue(info2[0]["episode"]["solved"])
 
+    # remove 'no_' from the name in order to test - it's long, so best avoided
     def no_test_long_play(self):
-        # remove 'no_' from the name in order to test - it's long, so best avoided
         act_seq = list(np.random.randint(0, self.n_acts, 16000))
         world, reward, done, info, world2, reward2, done2, info2 = self.run_sequence(act_seq, False)
 
