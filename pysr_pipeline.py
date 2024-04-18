@@ -7,15 +7,15 @@ from train import train_ppo
 if __name__ == "__main__":
 
     args = DictToArgs({
-        "exp_name": "cartpole",
-        "env_name": "cartpole",
-        "param_name": "cartpole_position",
-        "num_timesteps": int(2e8),
+        "exp_name": "mountain_car",
+        "env_name": "mountain_car",
+        "param_name": "mountain_car",
+        "num_timesteps": int(30e6),
         "num_checkpoints": 1,
         "seed": 6033,
         "device": "gpu" if cuda.is_available() else "cpu",
         "n_envs": 1024,
-        "wandb_tags": ["position", "test"],
+        "wandb_tags": ["test", "gravity"],
 
         "render": False,
         "detect_nan": False,
@@ -28,7 +28,7 @@ if __name__ == "__main__":
         "mirror_env": False,
         
         
-        "val_env_name": "cartpole",
+        "val_env_name": "mountain_car",
         "start_level": int(0),
         "num_levels": int(500),
         "distribution_mode": "easy",
@@ -74,7 +74,7 @@ if __name__ == "__main__":
         "populations": 24,
         "procs": 8,
         "model_selection": "best",
-        "ncycles_per_iteration": 2000,
+        "ncycles_per_iteration": 3000,
         "bumper": True,
         "loss_function": "capped_sigmoid",
         "stochastic": True,

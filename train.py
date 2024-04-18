@@ -7,6 +7,7 @@ import os, time, argparse
 import torch
 import numpy as np
 
+from discrete_env.mountain_car_pre_vec import create_mountain_car
 from helper_local import get_hyperparams, initialize_model, add_training_args, wandb_login
 from cartpole.create_cartpole import create_cartpole
 from boxworld.create_box_world import create_bw_env
@@ -100,6 +101,8 @@ def train_ppo(args):
 
     if args.env_name == "cartpole":
         create_venv = create_cartpole
+    if args.env_name == "mountain_car":
+        create_venv = create_mountain_car
 
     env = create_venv(args, hyperparameters)
     env_valid = create_venv(args, hyperparameters, is_valid=True) if args.use_valid_env else None
