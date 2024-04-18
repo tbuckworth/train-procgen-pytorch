@@ -35,11 +35,12 @@ class PPO(BaseAgent):
                  entropy_scaling=None,
                  increasing_lr=False,
                  sparsity_coef=0.,
+                 fs_coef=0.,
                  **kwargs):
         super(PPO, self).__init__(env, policy, logger, storage, device,
                                   n_checkpoints, env_valid, storage_valid)
 
-        self.fs_coef = 0.
+        self.fs_coef = fs_coef
         self.total_timesteps = 0
         self.entropy_scaling = entropy_scaling
         self.entropy_multiplier = 1.

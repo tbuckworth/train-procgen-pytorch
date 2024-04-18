@@ -213,7 +213,7 @@ def train_hparams():
         "use_wandb": [True],
         "mirror_env": [False],
         # "output_dim": [256, 1, 9],
-        "fs_coef": [0.5, 1.0, 2.0, 5.0, 10.0],
+        "fs_coef": [0.0001, 0.001, 0.01, 0.1, 0.5, 1.0, 2.0, 5.0, 10.0],
     }
 
 
