@@ -1,8 +1,5 @@
 import unittest
 
-import numpy as np
-
-from discrete_env.mountain_car import MountainCarEnv
 from discrete_env.mountain_car_pre_vec import MountainCarVecEnv
 
 

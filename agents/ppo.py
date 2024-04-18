@@ -152,7 +152,7 @@ class PPO(BaseAgent):
                     s_loss = 0
 
                 # Sparsity Loss X-batch (encourage switching off specific activations)
-                if len(fi_or_tube_loss.shape) == 0:
+                if fi_or_tube_loss is not None and len(fi_or_tube_loss.shape) == 0:
                     feature_sparsity_loss = fi_or_tube_loss
                 else:
                     feature_sparsity_loss = 0

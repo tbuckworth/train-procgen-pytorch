@@ -7,6 +7,7 @@ import json
 from collections import deque
 
 import gym
+import gymnasium
 import numpy as np
 import pandas as pd
 import torch
@@ -262,7 +263,11 @@ def initialize_model(device, env, hyperparameters):
     if isinstance(action_space, gym.spaces.Discrete):
         action_size = action_space.n
         policy = CategoricalPolicy(model, recurrent, action_size, has_vq)
+    elif isinstance(action_space, gymnasium.spaces.Discrete):
+        action_size = action_space.n
+        policy = CategoricalPolicy(model, recurrent, action_size, has_vq)
     else:
+        # allow gymnasium.spaces.Discrete?
         raise NotImplementedError
     policy.to(device)
     return model, observation_shape, policy

@@ -5,6 +5,7 @@ from agents.ppo import PPO
 from common.env.procgen_wrappers import create_env
 from common.logger import Logger
 from common.storage import Storage
+from discrete_env.mountain_car_pre_vec import MountainCarVecEnv
 from helper_local import initialize_model, get_hyperparams
 
 
@@ -32,22 +33,38 @@ class TestPPO(unittest.TestCase):
         logdir = "logs/test/test"
         if not os.path.isdir(logdir):
             os.mkdir(logdir)
-
+        cls.logdir = logdir
         hyperparameters = get_hyperparams("hard-500-impala")
-        n_steps = hyperparameters.get("n_steps", 256)
+        cls.n_steps = hyperparameters.get("n_steps", 256)
         hyperparameters["n_envs"] = n_envs
         model, obs_shape, policy = initialize_model(cls.device, cls.env, hyperparameters)
         logger = Logger(n_envs, logdir, use_wandb=False, has_vq=False)
         logger.max_steps = 1000
 
         hidden_state_dim = model.output_dim
-        storage = Storage(cls.obs_shape, hidden_state_dim, n_steps, n_envs, cls.device)
+        storage = Storage(cls.obs_shape, hidden_state_dim, cls.n_steps, n_envs, cls.device)
 
         cls.agent = PPO(cls.env, policy, logger, storage, cls.device,
                     1, **hyperparameters)
 
     def test_ppo(self):
         self.agent.train(int(1e5))
+
+    def test_mountain_car_pre_vec(self):
+        n_envs = 2
+        env = MountainCarVecEnv(n_envs=n_envs)
+        env.reset()
+
+        hyperparameters = {"n_envs": n_envs, "architecture": "mlpmodel", "n_steps": self.n_steps}
+        model, obs_shape, policy = initialize_model(self.device, env, hyperparameters)
+        logger = Logger(hyperparameters.get("n_envs"), self.logdir, use_wandb=False, has_vq=False)
+        logger.max_steps = 1000
+
+        hidden_state_dim = model.output_dim
+        storage = Storage(obs_shape, hidden_state_dim, self.n_steps, hyperparameters.get("n_envs"), self.device)
+
+        agent = PPO(env, policy, logger, storage, self.device,1, **hyperparameters)
+        agent.train(int(1e5))
 
 
 if __name__ == '__main__':

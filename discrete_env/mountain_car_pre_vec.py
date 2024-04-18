@@ -188,7 +188,7 @@ class MountainCarVecEnv(gym.Env):
 
         if self.render_mode == "human":
             self.render()
-        return np.array(self.state, dtype=np.float32), {}
+        return np.array(self.state, dtype=np.float32)
 
     def _height(self, xs):
         return np.sin(3 * xs) * 0.45 + 0.55
