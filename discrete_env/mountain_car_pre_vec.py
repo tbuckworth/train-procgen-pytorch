@@ -12,6 +12,8 @@ from gymnasium import spaces
 from gymnasium.envs.classic_control import utils
 from gymnasium.error import DependencyNotInstalled
 
+from helper_local import DictToArgs
+
 
 class MountainCarVecEnv(gym.Env):
     """
@@ -107,7 +109,6 @@ class MountainCarVecEnv(gym.Env):
 
     def __init__(self,
                  n_envs=2,
-                 render_mode: Optional[str] = None,
                  goal_velocity=0,
                  min_position=-1.2,
                  max_position=0.6,
@@ -117,6 +118,7 @@ class MountainCarVecEnv(gym.Env):
                  goal_position=0.5,
                  force=0.001,
                  gravity=0.0025,
+                 render_mode: Optional[str] = None,
                  ):
         self.n_envs = n_envs
         self.min_position = min_position
@@ -309,3 +311,33 @@ class MountainCarVecEnv(gym.Env):
             pygame.display.quit()
             pygame.quit()
             self.isopen = False
+
+
+def create_mountain_car(args, hyperparameters, is_valid=False):
+    if args is None:
+        args = DictToArgs({"render": False})
+    n_envs = hyperparameters.get('n_envs', 32)
+    env_args = {"goal_velocity": hyperparameters.get("goal_velocity", 0),
+                "min_position": hyperparameters.get("min_position", -1.2),
+                "max_position": hyperparameters.get("max_position", 0.6),
+                "min_start_position": hyperparameters.get("min_start_position", -0.6),
+                "max_start_position": hyperparameters.get("max_start_position", -0.4),
+                "max_speed": hyperparameters.get("max_speed", 0.07),
+                "goal_position": hyperparameters.get("goal_position", 0.5),
+                "force": hyperparameters.get("force", 0.001),
+                "gravity": hyperparameters.get("gravity", 0.0025),
+                }
+    if is_valid:
+        env_args = {"goal_velocity": hyperparameters.get("goal_velocity_v", 0),
+                    "min_position": hyperparameters.get("min_position_v", -1.2),
+                    "max_position": hyperparameters.get("max_position_v", 0.6),
+                    "min_start_position": hyperparameters.get("min_start_position_v", -0.6),
+                    "max_start_position": hyperparameters.get("max_start_position_v", -0.4),
+                    "max_speed": hyperparameters.get("max_speed_v", 0.07),
+                    "goal_position": hyperparameters.get("goal_position_v", 0.5),
+                    "force": hyperparameters.get("force_v", 0.001),
+                    "gravity": hyperparameters.get("gravity_v", 0.01),
+                    }
+    env_args["n_envs"] = n_envs
+    env_args["render_mode"] = "human" if args.render else None
+    return MountainCarVecEnv(**env_args)
