@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import sympy
 import wandb
+from discrete_env.mountain_car_pre_vec import create_mountain_car
 
 from email_results import send_images_first_last
 
@@ -91,6 +92,10 @@ def load_nn_policy(logdir, n_envs=2):
         sampler = sample_latent_output_fsqmha
         symbolic_agent_constructor = NeuroSymbolicAgent
         create_venv = create_bw_env
+    if cfg["env_name"] == "mountain_car":
+        sampler = sample_latent_output_mlpmodel_normal
+        symbolic_agent_constructor = SymbolicAgent
+        create_venv = create_mountain_car
 
     test_agent = test_agent_mean_reward
     # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -274,14 +279,42 @@ class SymbolicAgent:
         self.model = model
         self.policy = policy
         self.stochastic = stochastic
+        self.single_output = self.policy.action_size <= 2
 
     def forward(self, observation):
         with torch.no_grad():
             h = self.model.predict(observation)
+            if self.single_output:
+                if self.stochastic:
+                    p = sigmoid(h)
+                    return np.int32(np.random.random(len(h)) < p)
+                return np.round(h, 0)
             if self.stochastic:
-                p = sigmoid(h)
-                return np.int32(np.random.random(len(h)) < p)
-            return np.round(h, 0)
+                p = softmax(h)
+                return sample_numpy_probs(p)
+            return h.argmax(1)
+    #TODO: use this:
+    def sample(self, observation):
+        with torch.no_grad():
+            x = torch.FloatTensor(observation).to(self.policy.device)
+            h = self.policy.embedder(x)
+            dist, value = self.policy.hidden_to_output(h)
+            y = dist.logits.detach().cpu().numpy()
+            if self.single_output:
+                # deterministic policy:
+                act = y.argmax(axis=1)
+                if self.stochastic:
+                    # inverse sigmoid enables prediction of single logit:
+                    p = dist.probs.detach().cpu().numpy()
+                    z = inverse_sigmoid(p)
+                    y = z[:, 1]
+                    act = dist.sample().cpu().numpy()
+                return observation, y, act, value.cpu().numpy()
+            act = y.argmax(1)
+            if self.stochastic:
+                act = dist.sample()
+            return observation, y, act, value.cpu().numpy()
+
 
 
 class NeuralAgent:
