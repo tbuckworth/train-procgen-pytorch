@@ -18,3 +18,5 @@ tqdm==4.66.1
 typing_extensions==4.8.0
 vector_quantize_pytorch==1.11.6
 wandb==0.16.4
+gymnasium==0.29.1
+sympy~=1.12
