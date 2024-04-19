@@ -267,7 +267,6 @@ def initialize_model(device, env, hyperparameters):
         action_size = action_space.n
         policy = CategoricalPolicy(model, recurrent, action_size, has_vq)
     else:
-        # allow gymnasium.spaces.Discrete?
         raise NotImplementedError
     policy.to(device)
     return model, observation_shape, policy
@@ -507,8 +506,8 @@ def load_storage_and_policy(device, env, hyperparameters, last_model, logdir, n_
     return action_names, done, hidden_state, obs, policy, storage
 
 
-def load_hparams_for_model(hparams, logdir, n_envs):
-    hyperparameters = get_hyperparams(hparams)
+def load_hparams_for_model(param_name, logdir, n_envs):
+    hyperparameters = get_hyperparams(param_name)
     last_model = latest_model_path(logdir)
     print(last_model)
     hp_file = os.path.join(GLOBAL_DIR, logdir, "hyperparameters.npy")
@@ -720,3 +719,9 @@ def free_gpu(remove_dict):
 
 def entropy_from_binary_prob(p):
     return - (p * np.log(p)) - ((1 - p) * np.log(1 - p))
+
+
+def get_saved_hyperparams(logdir):
+    hp_file = os.path.join(GLOBAL_DIR, logdir, "hyperparameters.npy")
+    hyperparameters = np.load(hp_file, allow_pickle='TRUE').item()
+    return hyperparameters

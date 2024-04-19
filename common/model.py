@@ -156,11 +156,15 @@ class ImpalaModel(nn.Module):
         return x
 
     def forward_to_pool(self, x):
+        x = self.encode(x)
+        x = Flatten()(x)
+        return x
+
+    def encode(self, x):
         x = self.block1(x)
         x = self.block2(x)
         x = self.block3(x)
         x = nn.ReLU()(x)
-        x = Flatten()(x)
         return x
 
     def forward_from_pool(self, x):
@@ -174,6 +178,8 @@ class ImpalaModel(nn.Module):
         #calculate loss on h:
         feature_sparsity = torch.mean(torch.max(torch.tanh(torch.abs(h * 100)), 0)[0])
         return out, [], feature_sparsity, None
+        # (e != 0).any(0).argwhere().detach().cpu().numpy()
+
 
 
 class GRU(nn.Module):

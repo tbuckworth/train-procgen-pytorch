@@ -10,7 +10,7 @@ from cartpole.create_cartpole import create_cartpole_env_pre_vec
 from common.model import ImpalaVQMHAModel, ImpalaFSQModel, ImpalaModel, Decoder, VQVAE, ImpalaFSQMHAModel, \
     RibFSQMHAModel
 from common.storage import Storage
-from helper_local import initialize_model
+from helper_local import initialize_model, get_config, get_saved_hyperparams, load_hparams_for_model
 from common.env.procgen_wrappers import create_env
 from inspect_agent import predict
 
@@ -25,13 +25,14 @@ class CoinrunTestModel(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.device = torch.device('cpu')
-        env_args = {"num": 2,
+        cls.n_envs = 128
+        env_args = {"num": cls.n_envs,
                     "env_name": "coinrun",
-                    "start_level": 325,
-                    "num_levels": 1,
+                    "start_level": 0,
+                    "num_levels": 500,
                     "paint_vel_info": True,
                     "distribution_mode": "hard"}
-        cls.env = create_env(env_args, render=False, normalize_rew=True)
+        cls.env = create_env(env_args, render=False, normalize_rew=True, reduce_duplicate_actions=True)
         cls.in_channels = cls.env.observation_space.shape[0]
         cls.obs = torch.FloatTensor(cls.env.reset())
         cls.obs_shape = cls.env.observation_space.shape
@@ -73,9 +74,21 @@ class CoinrunTestModel(unittest.TestCase):
 
     def test_ImpalaModel(self):
         model = ImpalaModel(self.in_channels)
-        # model.forward(self.obs)
+
         model.forward_with_attn_indices(self.obs)
         summary(model, self.obs.shape)
+
+    def test_ImpalaModelPolicyLoaded(self):
+        logdir = "logs/train/coinrun/coinrun-hparams/2024-04-18__08-38-17__seed_6033"
+        cfg = get_config(logdir)
+        hyperparameters, last_model = load_hparams_for_model(cfg["param_name"], logdir, self.n_envs)
+
+        model, obs_shape, policy = initialize_model(self.device, self.env, hyperparameters)
+        checkpoint = torch.load(last_model, map_location=self.device)
+        policy.load_state_dict(checkpoint["model_state_dict"])
+        policy.embedder.forward_with_attn_indices(self.obs)
+        # policy.forward(self.obs, None, None)
+
 
     def test_ImpalaDecoder(self):
         model = ImpalaModel(self.in_channels)

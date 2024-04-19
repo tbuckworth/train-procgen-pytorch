@@ -18,10 +18,10 @@ import torch
 import torch.nn.functional as F
 from torch.distributions import Categorical
 from common.env.procgen_wrappers import create_env, create_procgen_env
-from helper_local import get_config, get_path, balanced_reward, GLOBAL_DIR, load_storage_and_policy, \
+from helper_local import get_config, get_path, balanced_reward, load_storage_and_policy, \
     load_hparams_for_model, floats_to_dp, dict_to_html_table, wandb_login, add_symbreg_args, DictToArgs, \
     inverse_sigmoid, sigmoid, sample_from_sigmoid, map_actions_to_radians, match, get_actions_from_all, \
-    entropy_from_binary_prob
+    entropy_from_binary_prob, get_saved_hyperparams
 from cartpole.create_cartpole import create_cartpole
 from boxworld.create_box_world import create_bw_env
 from matplotlib import pyplot as plt
@@ -93,7 +93,7 @@ def load_nn_policy(logdir, n_envs=2):
         symbolic_agent_constructor = NeuroSymbolicAgent
         create_venv = create_bw_env
     if cfg["env_name"] == "mountain_car":
-        sampler = sample_latent_output_mlpmodel_normal
+        # sampler = sample_latent_output_mlpmodel_normal
         symbolic_agent_constructor = SymbolicAgent
         create_venv = create_mountain_car
 
@@ -354,8 +354,7 @@ class RandomAgent:
 
 def get_coinrun_test_env(logdir, n_envs):
     cfg = get_config(logdir)
-    hp_file = os.path.join(GLOBAL_DIR, logdir, "hyperparameters.npy")
-    hyperparameters = np.load(hp_file, allow_pickle='TRUE').item()
+    hyperparameters = get_saved_hyperparams(logdir)
     hyperparameters["n_envs"] = n_envs
     env_args = {"num": hyperparameters["n_envs"],
                 "env_name": "coinrun",

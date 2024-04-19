@@ -164,17 +164,17 @@ def symbreg_hparams():
         "data_size": [100, 1000, 5000],  # , 500, 100, 50],# 5000],
         "iterations": [5, 20, 100, 200],  # 20, 40, 80],
         "n_envs": [128],
-        "rounds": [500],
+        "rounds": [300],
         "denoise": [True, False],
         "populations": [24, 35],
         "procs": [8, 4],
-        "ncycles_per_iteration": [2000, 3000],
+        "ncycles_per_iteration": [3000, 5000],
         "bumper": [True, False],
         "binary_operators": [["+", "-", "greater", "\*", "/"]],
         "unary_operators": [  # [],
             ["sin", "relu", "log", "exp", "sign", "sqrt", "square"],
         ],
-        "wandb_tags": [["deterministic", "coinrun", "losses"]],
+        "wandb_tags": [["deterministic", "coinrun", "losses", "feature_sparse"]],
         "model_selection": ["best", "accuracy"],
         "weight_metric": [None, "entropy", "value"],
         # "loss_function": ["capped_sigmoid"],
@@ -184,7 +184,8 @@ def symbreg_hparams():
         # "logdir": ["logs/train/boxworld/boxworld/2024-04-08__12-29-17__seed_6033"],
         # high-entropy one:
         # "logdir": ["logs/train/boxworld/boxworld/2024-04-08__14-52-30__seed_6033"],
-        "logdir": ["logs/train/coinrun/coinrun-hparams/2024-03-27__18-20-55__seed_6033"],
+        # "logdir": ["logs/train/coinrun/coinrun-hparams/2024-03-27__18-20-55__seed_6033"],
+        "logdir": ["logs/train/coinrun/coinrun-hparams/2024-04-18__08-38-17__seed_6033"],
         "use_wandb": [True],
         "stochastic": [False],
     }
@@ -296,8 +297,8 @@ if __name__ == '__main__':
     parser.add_argument('--n_gpu', type=int, default=6)
     parser.add_argument('--execute', action="store_true", default=True)
     # parser.add_argument('--cuda', action="store_true", default=False)
-    parser.add_argument('--max_runs', type=int, default=200)
-    parser.add_argument('--hparam_type', type=str, default="train")
+    parser.add_argument('--max_runs', type=int, default=500)
+    parser.add_argument('--hparam_type', type=str, default="symbreg")
 
     largs = parser.parse_args()
     n_gpu = largs.n_gpu
