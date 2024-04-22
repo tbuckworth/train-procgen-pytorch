@@ -2,6 +2,7 @@ import contextlib
 import os
 import random
 import re
+import warnings
 from abc import ABC, abstractmethod
 import numpy as np
 import gym
@@ -12,7 +13,7 @@ from procgen import ProcgenGym3Env, ProcgenEnv
 
 from common.env.custom_viewer_wrapper import DecodedViewerWrapper
 from common.model import get_trained_vqvqae
-from helper_local import get_action_names, match, get_combos, get_in_channels
+from helper_local import get_action_names, match, get_combos, get_in_channels, DictToArgs
 
 """
 Copy-pasted from OpenAI to obviate dependency on Baselines. Required for vectorized environments.
@@ -512,6 +513,20 @@ def create_env(env_args, render, normalize_rew=True, mirror_some=False, decoding
 
 
 def create_procgen_env(args, hyperparameters, is_valid=False):
+    if args is None:
+        warnings.warn("Creating procgen env without arguments. Using defaults")
+        args = DictToArgs({
+            "device": "cpu",
+            "real_procgen": True,
+            "val_env_name": "coinrun",
+            "start_level": 0,
+            "num_levels": 500,
+            "env_name": "coinrun",
+            "distribution_mode": "hard",
+            "num_threads": 8,
+            "architecture": "impala",
+            "reduce_duplicate_actions": True,
+        })
     if args.device == 'gpu':
         device = torch.device('cuda')
     elif args.device == 'cpu':

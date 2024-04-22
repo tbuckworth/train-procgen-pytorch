@@ -130,59 +130,7 @@ def generate_data(agent, env, n):
     return X, Y, V
 
 
-def sample_latent_output_impala(policy, observation, stochastic):
-    with torch.no_grad():
-        obs = torch.FloatTensor(observation).to(policy.device)
-        x = policy.embedder.forward_to_pool(obs)
-        h = policy.embedder.forward_from_pool(x)
-        dist, value = policy.hidden_to_output(h)
-        y = dist.logits.detach().cpu().numpy()
-        act = dist.sample()
-    return x.cpu().numpy(), y, act.cpu().numpy(), value.cpu().numpy()
 
-
-def sample_latent_output_fsqmha(policy, observation, stochastic):
-    with torch.no_grad():
-        obs = torch.FloatTensor(observation).to(policy.device)
-        x = policy.embedder.forward_to_pool(obs)
-        h = policy.embedder.forward_from_pool(x)
-        dist, value = policy.hidden_to_output(h)
-        y = dist.logits.detach().cpu().numpy()
-        act = dist.sample()
-        # if not stochastic:
-        #     act = y.argmax(1)
-    return x.cpu().numpy(), y, act.cpu().numpy(), value.cpu().numpy()
-
-
-def sample_latent_output_fsqmha_coinrun(policy, observation, stochastic):
-    with torch.no_grad():
-        obs = torch.FloatTensor(observation).to(policy.device)
-        x = policy.embedder.forward_to_pool(obs)
-        h = policy.embedder.forward_from_pool(x)
-        dist, value = policy.hidden_to_output(h)
-        # y = dist.logits.detach().cpu().numpy()
-        p = dist.probs.detach().cpu().numpy()
-        z = inverse_sigmoid(p)
-        y = z[:, (1, 3)]
-        act = dist.sample()
-    return x.cpu().numpy(), y, act.cpu().numpy(), value.cpu().numpy()
-
-
-def sample_latent_output_mlpmodel(policy, observation, stochastic):
-    with torch.no_grad():
-        x = torch.FloatTensor(observation).to(policy.device)
-        h = policy.embedder(x)
-        dist, value = policy.hidden_to_output(h)
-        y = dist.logits.detach().cpu().numpy()
-        # deterministic policy:
-        act = y.argmax(axis=1)
-        if stochastic:
-            # inverse sigmoid enables prediction of single logit:
-            p = dist.probs.detach().cpu().numpy()
-            z = inverse_sigmoid(p)
-            y = z[:, 1]
-            act = dist.sample().cpu().numpy()
-    return observation, y, act, value.cpu().numpy()
 
 
 def test_agent_balanced_reward(agent, env, print_name, n=40):

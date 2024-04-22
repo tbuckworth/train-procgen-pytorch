@@ -25,7 +25,6 @@ class SymbolicAgent:
                 p = softmax(h)
                 return sample_numpy_probs(p)
             return h.argmax(1)
-    #TODO: use this:
     def sample(self, observation):
         with torch.no_grad():
             x = torch.FloatTensor(observation).to(self.policy.device)
@@ -119,3 +118,50 @@ class NeuroSymbolicAgent:
         rads = np.round(h / (np.pi / self.n), 0) * (np.pi / self.n)
         rads[rads < 0] = -1
         return match(rads, self.action_mapping)
+
+    def sample(self, observation):
+        with torch.no_grad():
+            obs = torch.FloatTensor(observation).to(self.policy.device)
+            x = self.policy.embedder.forward_to_pool(obs)
+            h = self.policy.embedder.forward_from_pool(x)
+            dist, value = self.policy.hidden_to_output(h)
+            y = dist.logits.detach().cpu().numpy()
+            act = dist.sample().cpu().numpy()
+            if not self.stochastic:
+                act = y.argmax(axis=1)
+        return x.cpu().numpy(), y, act, value.cpu().numpy()
+
+    def sample_latent_output_impala(self, observation):
+        with torch.no_grad():
+            obs = torch.FloatTensor(observation).to(self.policy.device)
+            x = self.policy.embedder.forward_to_pool(obs)
+            h = self.policy.embedder.forward_from_pool(x)
+            dist, value = self.policy.hidden_to_output(h)
+            y = dist.logits.detach().cpu().numpy()
+            act = dist.sample()
+        return x.cpu().numpy(), y, act.cpu().numpy(), value.cpu().numpy()
+
+    def sample_latent_output_fsqmha(self, observation):
+        with torch.no_grad():
+            obs = torch.FloatTensor(observation).to(self.policy.device)
+            x = self.policy.embedder.forward_to_pool(obs)
+            h = self.policy.embedder.forward_from_pool(x)
+            dist, value = self.policy.hidden_to_output(h)
+            y = dist.logits.detach().cpu().numpy()
+            act = dist.sample()
+            # if not stochastic:
+            #     act = y.argmax(1)
+        return x.cpu().numpy(), y, act.cpu().numpy(), value.cpu().numpy()
+
+    def sample_latent_output_fsqmha_coinrun(self, observation):
+        with torch.no_grad():
+            obs = torch.FloatTensor(observation).to(self.policy.device)
+            x = self.policy.embedder.forward_to_pool(obs)
+            h = self.policy.embedder.forward_from_pool(x)
+            dist, value = self.policy.hidden_to_output(h)
+            # y = dist.logits.detach().cpu().numpy()
+            p = dist.probs.detach().cpu().numpy()
+            z = inverse_sigmoid(p)
+            y = z[:, (1, 3)]
+            act = dist.sample()
+        return x.cpu().numpy(), y, act.cpu().numpy(), value.cpu().numpy()

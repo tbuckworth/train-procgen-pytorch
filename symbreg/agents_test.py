@@ -5,10 +5,11 @@ from unittest.mock import Mock
 import numpy as np
 from torch import device as torch_device
 
+from common.env.procgen_wrappers import create_procgen_env
 from discrete_env.mountain_car_pre_vec import create_mountain_car
 from helper_local import get_config, DictToArgs, get_path, initialize_model
 from symbolic_regression import load_nn_policy, generate_data
-from symbreg.agents import SymbolicAgent
+from symbreg.agents import SymbolicAgent, NeuroSymbolicAgent
 from pysr import PySRRegressor
 
 
@@ -86,6 +87,31 @@ class TestSymbolicMountainCar(BaseAgentTester):
         self.run_all()
 
 
+class TestNeuroSymbolicCoinrun(BaseAgentTester):
+    def setUp(cls):
+        cls.arch = "impala"
+
+        args = DictToArgs({
+            "device": "cpu",
+            "real_procgen": True,
+            "val_env_name": "coinrun",
+            "start_level": 0,
+            "num_levels": 500,
+            "env_name": "coinrun",
+            "distribution_mode": "hard",
+            "num_threads": 8,
+            "architecture": cls.arch,
+            "reduce_duplicate_actions": True,
+        })
+        hyperparameters = {"n_envs": 2}
+        cls.env = create_procgen_env(args, hyperparameters)
+        cls.symbolic_agent_constructor = NeuroSymbolicAgent
+        super(TestNeuroSymbolicCoinrun, cls).setUp()
+
+    def tests(self):
+        self.run_all()
+
+    #TODO: test coinrun
 
 
 if __name__ == '__main__':
