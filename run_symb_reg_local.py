@@ -10,8 +10,8 @@ if os.name != "nt":
     from pysr import PySRRegressor
 
 from helper_local import add_symbreg_args, get_config, DictToArgs, sigmoid, entropy_from_binary_prob
-from symbolic_regression import run_neurosymbolic_search, load_nn_policy, generate_data, DeterministicNeuralAgent, \
-    NeuralAgent
+from symbolic_regression import run_neurosymbolic_search, load_nn_policy, generate_data
+from symbreg.agents import NeuralAgent, DeterministicNeuralAgent
 
 
 def run_deterministic_agent():

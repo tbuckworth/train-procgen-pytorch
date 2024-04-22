@@ -269,6 +269,7 @@ def initialize_model(device, env, hyperparameters):
     else:
         raise NotImplementedError
     policy.to(device)
+    policy.device = device
     return model, observation_shape, policy
 
 
@@ -725,3 +726,14 @@ def get_saved_hyperparams(logdir):
     hp_file = os.path.join(GLOBAL_DIR, logdir, "hyperparameters.npy")
     hyperparameters = np.load(hp_file, allow_pickle='TRUE').item()
     return hyperparameters
+
+
+def softmax(Y):
+    l = np.exp(Y)
+    return l / np.repeat(l.sum(1), Y.shape[-1]).reshape(l.shape)
+
+
+def sample_numpy_probs(p):
+    r = np.random.random(p.shape[0]).repeat(p.shape[-1]).reshape(p.shape)
+    Y_act = p.shape[-1] - (p.cumsum(1) > r).sum(1)
+    return Y_act

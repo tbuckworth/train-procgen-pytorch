@@ -10,18 +10,17 @@ import wandb
 from discrete_env.mountain_car_pre_vec import create_mountain_car
 
 from email_results import send_images_first_last
+from symbreg.agents import SymbolicAgent, NeuralAgent, RandomAgent, NeuroSymbolicAgent
 
 if os.name != "nt":
     from pysr import PySRRegressor
 # Important! keep torch after pysr
 import torch
-import torch.nn.functional as F
-from torch.distributions import Categorical
 from common.env.procgen_wrappers import create_env, create_procgen_env
 from helper_local import get_config, get_path, balanced_reward, load_storage_and_policy, \
     load_hparams_for_model, floats_to_dp, dict_to_html_table, wandb_login, add_symbreg_args, DictToArgs, \
-    inverse_sigmoid, sigmoid, sample_from_sigmoid, map_actions_to_radians, match, get_actions_from_all, \
-    entropy_from_binary_prob, get_saved_hyperparams
+    inverse_sigmoid, sigmoid, sample_from_sigmoid, map_actions_to_radians, get_actions_from_all, \
+    entropy_from_binary_prob, get_saved_hyperparams, softmax, sample_numpy_probs
 from cartpole.create_cartpole import create_cartpole
 from boxworld.create_box_world import create_bw_env
 from matplotlib import pyplot as plt
@@ -81,24 +80,18 @@ def load_nn_policy(logdir, n_envs=2):
     cfg = get_config(logdir)
     cfg["n_envs"] = n_envs
     if cfg["env_name"] == "coinrun":
-        sampler = sample_latent_output_fsqmha
         symbolic_agent_constructor = NeuroSymbolicAgent
         create_venv = create_procgen_env
     if cfg["env_name"] == "cartpole":
-        sampler = sample_latent_output_mlpmodel
         symbolic_agent_constructor = SymbolicAgent
         create_venv = create_cartpole
     if cfg["env_name"] == "boxworld":
-        sampler = sample_latent_output_fsqmha
         symbolic_agent_constructor = NeuroSymbolicAgent
         create_venv = create_bw_env
     if cfg["env_name"] == "mountain_car":
-        # sampler = sample_latent_output_mlpmodel_normal
         symbolic_agent_constructor = SymbolicAgent
         create_venv = create_mountain_car
 
-    test_agent = test_agent_mean_reward
-    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     device = torch.device("cpu")
     hyperparameters, last_model = load_hparams_for_model(cfg["param_name"], logdir, n_envs)
     hyperparameters["n_envs"] = n_envs
@@ -113,7 +106,7 @@ def load_nn_policy(logdir, n_envs=2):
     action_names, done, hidden_state, obs, policy, storage = load_storage_and_policy(device, env, hyperparameters,
                                                                                      last_model, logdir, n_envs)
 
-    return policy, env, sampler, symbolic_agent_constructor, test_env, test_agent
+    return policy, env, symbolic_agent_constructor, test_env
 
 
 def drop_first_dim(arr):
@@ -122,15 +115,15 @@ def drop_first_dim(arr):
     return arr.reshape(new_shape)
 
 
-def generate_data(policy, sampler, env, n, args):
+def generate_data(agent, env, n):
     observation = env.reset()
-    x, y, act, value = sampler(policy, observation, args.stochastic)
+    x, y, act, value = agent.sample(observation)
     X = x
     Y = y
     V = value
     while len(X) < n:
         observation, rew, done, info = env.step(act)
-        x, y, act, v = sampler(policy, observation, args.stochastic)
+        x, y, act, v = agent.sample(observation)
         X = np.append(X, x, axis=0)
         Y = np.append(Y, y, axis=0)
         V = np.append(V, v, axis=0)
@@ -234,122 +227,6 @@ def test_agent_mean_reward(agent, env, print_name, n=40):
 #         # y = dist.logits.detach().cpu().numpy()
 #         act = dist.sample()
 #     return act.cpu().numpy()
-
-
-class NeuroSymbolicAgent:
-    def __init__(self, model, policy, stochastic, action_mapping):
-        self.model = model
-        self.policy = policy
-        self.stochastic = stochastic
-        self.action_mapping = action_mapping
-        self.n = len(np.unique(self.action_mapping)) // 2
-
-    def forward(self, observation):
-        with torch.no_grad():
-            obs = torch.FloatTensor(observation).to(self.policy.device)
-            x = self.policy.embedder.forward_to_pool(obs)
-            h = self.model.predict(x)
-            return self.pred_to_action(h)
-
-    def pred_to_action(self, h):
-        if self.stochastic:
-            logits = torch.FloatTensor(h).to(self.policy.device)
-            log_probs = F.log_softmax(logits, dim=1)
-            p = Categorical(logits=log_probs)
-            act = p.sample()
-            return act.cpu().numpy()
-        rads = np.round(h / (np.pi / self.n), 0) * (np.pi / self.n)
-        rads[rads < 0] = -1
-        return match(rads, self.action_mapping)
-
-
-class AnalyticModel:
-    def forward(self, observation):
-        out = np.ones((observation.shape[0],))
-        term = 3 * observation[:, 2] + observation[:, 3]
-        out[term <= 0] = 0
-        return out
-
-    def predict(self, observation):
-        return self.forward(observation)
-
-
-class SymbolicAgent:
-    def __init__(self, model, policy, stochastic, action_mapping):
-        self.model = model
-        self.policy = policy
-        self.stochastic = stochastic
-        self.single_output = self.policy.action_size <= 2
-
-    def forward(self, observation):
-        with torch.no_grad():
-            h = self.model.predict(observation)
-            if self.single_output:
-                if self.stochastic:
-                    p = sigmoid(h)
-                    return np.int32(np.random.random(len(h)) < p)
-                return np.round(h, 0)
-            if self.stochastic:
-                p = softmax(h)
-                return sample_numpy_probs(p)
-            return h.argmax(1)
-    #TODO: use this:
-    def sample(self, observation):
-        with torch.no_grad():
-            x = torch.FloatTensor(observation).to(self.policy.device)
-            h = self.policy.embedder(x)
-            dist, value = self.policy.hidden_to_output(h)
-            y = dist.logits.detach().cpu().numpy()
-            if self.single_output:
-                # deterministic policy:
-                act = y.argmax(axis=1)
-                if self.stochastic:
-                    # inverse sigmoid enables prediction of single logit:
-                    p = dist.probs.detach().cpu().numpy()
-                    z = inverse_sigmoid(p)
-                    y = z[:, 1]
-                    act = dist.sample().cpu().numpy()
-                return observation, y, act, value.cpu().numpy()
-            act = y.argmax(1)
-            if self.stochastic:
-                act = dist.sample()
-            return observation, y, act, value.cpu().numpy()
-
-
-
-class NeuralAgent:
-    def __init__(self, policy):
-        self.policy = policy
-
-    def forward(self, observation):
-        with torch.no_grad():
-            obs = torch.FloatTensor(observation).to(self.policy.device)
-            h = self.policy.embedder(obs)
-            dist, value = self.policy.hidden_to_output(h)
-            act = dist.sample()
-        return act.cpu().numpy()
-
-
-class DeterministicNeuralAgent:
-    def __init__(self, policy):
-        self.policy = policy
-
-    def forward(self, observation):
-        with torch.no_grad():
-            obs = torch.FloatTensor(observation).to(self.policy.device)
-            h = self.policy.embedder(obs)
-            dist, value = self.policy.hidden_to_output(h)
-            y = dist.logits.detach().cpu().numpy()
-            act = y.argmax(axis=1)
-        return act
-
-
-class RandomAgent:
-    def __init__(self, n_actions):
-        self.actions = np.arange(n_actions)
-
-    def forward(self, observation):
-        return np.random.choice(self.actions, size=len(observation))
 
 
 def get_coinrun_test_env(logdir, n_envs):
@@ -687,17 +564,6 @@ def run_neurosymbolic_search(args):
         df = pd.DataFrame(df_values)
         df.to_csv(os.path.join(symbdir, "results.csv"), mode="w", header=True, index=False)
         send_full_report(df, logdir, symbdir, pysr_model, args, dfs)
-
-
-def softmax(Y):
-    l = np.exp(Y)
-    return l / np.repeat(l.sum(1), Y.shape[-1]).reshape(l.shape)
-
-
-def sample_numpy_probs(p):
-    r = np.random.random(p.shape[0]).repeat(p.shape[-1]).reshape(p.shape)
-    Y_act = p.shape[-1] - (p.cumsum(1) > r).sum(1)
-    return Y_act
 
 
 if __name__ == "__main__":
