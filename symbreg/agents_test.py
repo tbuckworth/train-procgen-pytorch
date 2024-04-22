@@ -7,7 +7,8 @@ from torch import device as torch_device
 
 from common.env.procgen_wrappers import create_procgen_env
 from discrete_env.mountain_car_pre_vec import create_mountain_car
-from helper_local import get_config, DictToArgs, get_path, initialize_model
+from helper_local import get_config, DictToArgs, get_path, initialize_model, get_actions_from_all, \
+    map_actions_to_radians
 from symbolic_regression import load_nn_policy, generate_data
 from symbreg.agents import SymbolicAgent, NeuroSymbolicAgent
 from pysr import PySRRegressor
@@ -18,6 +19,8 @@ class MockRegressor:
         self.n_out = n_out
 
     def predict(self, x):
+        if self.n_out == 1:
+            return np.random.random((x.shape[0],))
         return np.random.random((x.shape[0], self.n_out))
 
 
@@ -55,13 +58,15 @@ class BaseAgentTester(unittest.TestCase):
     model = None
     arch = None
     symbolic_agent_constructor = None
+    action_mapping = None
 
     def setUp(cls):
         device = torch_device("cpu")
         # cls.env = create_mountain_car(None, {})
         _, _, policy = initialize_model(device, cls.env, {"architecture": cls.arch})
-        cls.model = MockRegressor(cls.env.action_space.n)
-        cls.agent = cls.symbolic_agent_constructor(cls.model, policy, stochastic=False, action_mapping=None)
+        cls.stoch_model = MockRegressor(cls.env.action_space.n)
+        cls.det_model = MockRegressor(1)
+        cls.agent = cls.symbolic_agent_constructor(None, policy, stochastic=False, action_mapping=cls.action_mapping)
 
         cls.obs = cls.env.reset()
 
@@ -71,8 +76,12 @@ class BaseAgentTester(unittest.TestCase):
 
     def forward_sample(self, stochastic):
         self.agent.stochastic = stochastic
+        if stochastic:
+            self.agent.model = self.stoch_model
+        else:
+            self.agent.model = self.det_model
         x, y, act, value = self.agent.sample(self.obs)
-        act_hat = self.agent.forward(x)
+        act_hat = self.agent.forward(self.obs)
         self.assertEqual(act_hat.shape, act.shape)
 
 
@@ -90,7 +99,6 @@ class TestSymbolicMountainCar(BaseAgentTester):
 class TestNeuroSymbolicCoinrun(BaseAgentTester):
     def setUp(cls):
         cls.arch = "impala"
-
         args = DictToArgs({
             "device": "cpu",
             "real_procgen": True,
@@ -105,6 +113,8 @@ class TestNeuroSymbolicCoinrun(BaseAgentTester):
         })
         hyperparameters = {"n_envs": 2}
         cls.env = create_procgen_env(args, hyperparameters)
+        actions = get_actions_from_all(cls.env)
+        cls.action_mapping = map_actions_to_radians(actions)
         cls.symbolic_agent_constructor = NeuroSymbolicAgent
         super(TestNeuroSymbolicCoinrun, cls).setUp()
 

@@ -55,10 +55,22 @@ def match(a, b):
     b = b.tolist()
     return np.array([b.index(x) for x in a if x in b])
 
+
 def match(a, b, dtype=np.int32):
+    if len(a.shape) > 1:
+        return np.array([match(x, b) for x in a], dtype=dtype)
     a = a.tolist()
     b = b.tolist()
     return np.array([b.index(x) for x in a if x in b], dtype=dtype)
+
+
+# def match_big(a, b, dtype=np.int32):
+#     sorted = np.argsort(a)
+#     r = np.searchsorted(a, b, side='right', sorter=sorted)
+#     l = np.searchsorted(a, b, side='left', sorter=sorted)
+#     for b, e in zip(l, r):
+#         inds = sorted[b:e]
+#         print(inds)
 
 
 def save_gif(frames, filename="test.gif", fps=20):
@@ -120,6 +132,7 @@ def print_action_entropy(action_names, pi):
     df2.loc["Entropy(%)"] = scaled_entropy
     df2[val_names] = np.asarray(np.round(np.squeeze(df2[val_names]) * 100, 0), dtype=np.int32)
     print(df2)
+
 
 def get_actions_from_all(env):
     try:
