@@ -15,7 +15,7 @@ if __name__ == "__main__":
         "seed": 6033,
         "device": "gpu" if cuda.is_available() else "cpu",
         "n_envs": 1024,
-        "wandb_tags": ["test", "gravity"],
+        "wandb_tags": ["test", "mountain_car"],
 
         "render": False,
         "detect_nan": False,
@@ -66,9 +66,9 @@ if __name__ == "__main__":
 
         "denoise": False,
         "use_wandb": True,
-        "wandb_tags": ["stochastic", "cartpole", "test"],
+        "wandb_tags": ["stochastic", "mountain_car", "test"],
         "weight_metric": "value",
-        "wandb_name": "test",
+        "wandb_name": "test_mountain_car",
         "wandb_group": None,
         "timeout_in_seconds": 3600,
         "populations": 24,

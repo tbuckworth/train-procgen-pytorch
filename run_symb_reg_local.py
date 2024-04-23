@@ -191,7 +191,7 @@ def run_symb_reg_local():
 
 
 if __name__ == "__main__":
-    test_agent_specific_environment()
+    # test_agent_specific_environment()
     # run_saved_model()
     # run_deterministic_agent()
-    # run_symb_reg_local()
+    run_symb_reg_local()
