@@ -345,6 +345,12 @@ class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
                 np.array(pygame.surfarray.pixels3d(self.screen)), axes=(1, 0, 2)
             )
 
+    def get_action_lookup(self):
+        return {
+            0: "push left",
+            1: "push right",
+        }
+
     def close(self):
         if self.screen is not None:
             import pygame

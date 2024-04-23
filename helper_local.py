@@ -119,9 +119,11 @@ def map_actions_to_values(actions):
         'LEFT': 6 * eighth,
         'LEFT_UP': 7 * eighth,
         '': -1,
-        'acc left':-1,
-        'none':0,
-        'acc right':1,
+        'acc left': -1,
+        'none': 0,
+        'acc right': 1,
+        'push left': 0,
+        'push right': 1,
     }
 
     return np.array([mapping[key] for key in actions])
@@ -757,6 +759,7 @@ def sample_numpy_probs(p):
 
 def round_to_nearest_in(a, b):
     return b[match_to_nearest(a, b)]
+
 
 def match_to_nearest(a, b):
     n = len(b)

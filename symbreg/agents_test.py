@@ -33,6 +33,8 @@ class BaseAgentTester(unittest.TestCase):
     def setUp(cls):
         device = torch_device("cpu")
         _, _, policy = initialize_model(device, cls.env, {"architecture": cls.arch})
+        actions = get_actions_from_all(cls.env)
+        cls.action_mapping = map_actions_to_values(actions)
         cls.stoch_model = MockRegressor(cls.env.action_space.n)
         cls.det_model = MockRegressor(1)
         cls.agent = cls.symbolic_agent_constructor(None, policy, stochastic=False, action_mapping=cls.action_mapping)
@@ -58,8 +60,6 @@ class TestSymbolicMountainCar(BaseAgentTester):
     def setUp(cls):
         cls.arch = "mlpmodel"
         cls.env = create_mountain_car(None, {})
-        actions = get_actions_from_all(cls.env)
-        cls.action_mapping = map_actions_to_values(actions)
         cls.symbolic_agent_constructor = SymbolicAgent
         super(TestSymbolicMountainCar, cls).setUp()
 
@@ -94,8 +94,7 @@ class TestNeuroSymbolicCoinrun(BaseAgentTester):
         })
         hyperparameters = {"n_envs": 2}
         cls.env = create_procgen_env(args, hyperparameters)
-        actions = get_actions_from_all(cls.env)
-        cls.action_mapping = map_actions_to_values(actions)
+
         cls.symbolic_agent_constructor = NeuroSymbolicAgent
         super(TestNeuroSymbolicCoinrun, cls).setUp()
 
