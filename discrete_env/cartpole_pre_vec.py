@@ -8,12 +8,11 @@ from typing import Optional
 
 import numpy as np
 
-import gym
-from gym import spaces
-from gym.envs.classic_control import utils
-from gym.error import DependencyNotInstalled
-from gym3.env import Env
-from gym.utils import seeding
+import gymnasium as gym
+from gymnasium import spaces, Env
+from gymnasium.envs.classic_control import utils
+from gymnasium.error import DependencyNotInstalled
+from gymnasium.utils import seeding
 
 # Analytic Solution:
 # 3 * angle + angle_velocity > 0
@@ -95,10 +94,10 @@ class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
             raise Exception("n_envs must be greater than or equal to 2")
         self.np_random_seed = None
         self._np_random = None
-        self.num_envs = n_envs
+        self.n_envs = n_envs
         self.max_steps = max_steps
-        self.terminated = np.full(self.num_envs, True)
-        self.reward = np.ones((self.num_envs))
+        self.terminated = np.full(self.n_envs, True)
+        self.reward = np.ones((self.n_envs))
         self.info = [{"env_reward": self.reward[i]} for i in range(len(self.reward))]
         self.gravity = gravity
         self.masscart = 1.0
@@ -128,7 +127,7 @@ class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
 
         self.action_space = spaces.Discrete(2)
         self.observation_space = spaces.Box(-high, high, dtype=np.float32)
-        super().__init__(self.observation_space, self.action_space, n_envs)
+        # super().__init__(self.observation_space, self.action_space, n_envs)
         self.render_mode = render_mode
 
         self.screen_width = 600
@@ -136,14 +135,14 @@ class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
         self.screen = None
         self.clock = None
         self.isopen = True
-        self.state = np.zeros((self.num_envs, 4))
-        self.n_steps = np.zeros((self.num_envs))
+        self.state = np.zeros((self.n_envs, 4))
+        self.n_steps = np.zeros((self.n_envs))
         self.reset()
 
     def step(self, action):
         x, x_dot, theta, theta_dot = [np.squeeze(a) for a in np.hsplit(self.state, self.state.shape[-1])]
 
-        force = np.ones((self.num_envs))
+        force = np.ones((self.n_envs))
         force[action == 0] = -1
         force *= self.force_mag
         costheta = np.cos(theta)
@@ -196,8 +195,8 @@ class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
             seed: Optional[int] = 0,
             options: Optional[dict] = None,
     ):
-        self.terminated = np.full(self.num_envs, True)
-        self.n_steps = np.zeros((self.num_envs))
+        self.terminated = np.full(self.n_envs, True)
+        self.n_steps = np.zeros((self.n_envs))
         return self.set(seed=seed, options=options)
 
 
@@ -215,7 +214,7 @@ class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
         low, high = utils.maybe_parse_reset_bounds(
             options, -0.05, 0.05  # default low
         )  # default high
-        state = self._np_random.uniform(low=low, high=high, size=(self.num_envs, 4))
+        state = self._np_random.uniform(low=low, high=high, size=(self.n_envs, 4))
         self.state[self.terminated] = state[self.terminated]
         self.n_steps[self.terminated] = 0
 
