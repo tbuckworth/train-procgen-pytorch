@@ -9,7 +9,6 @@ from gymnasium import Env, spaces
 from gymnasium.envs.classic_control import utils
 from gymnasium.error import DependencyNotInstalled
 
-
 __copyright__ = "Copyright 2013, RLPy http://acl.mit.edu/RLPy"
 __credits__ = [
     "Alborz Geramifard",
@@ -20,6 +19,7 @@ __credits__ = [
 ]
 __license__ = "BSD 3-Clause"
 __author__ = "Christoph Dann <cdann@cdann.de>"
+
 
 # SOURCE:
 # https://github.com/rlpy/rlpy/blob/master/rlpy/Domains/Acrobot.py
@@ -159,7 +159,7 @@ class AcrobotVecEnv(Env):
     MAX_VEL_1 = 4 * pi
     MAX_VEL_2 = 9 * pi
 
-    AVAIL_TORQUE = [-1.0, 0.0, +1]
+    AVAIL_TORQUE = np.array([-1.0, 0.0, +1])
 
     torque_noise_max = 0.0
 
@@ -172,6 +172,7 @@ class AcrobotVecEnv(Env):
     actions_num = 3
 
     def __init__(self, n_envs, render_mode: Optional[str] = None):
+        self.gravity = 9.8
         self.n_envs = n_envs
         self.render_mode = render_mode
         self.screen = None
@@ -192,15 +193,16 @@ class AcrobotVecEnv(Env):
         low, high = utils.maybe_parse_reset_bounds(
             options, -0.1, 0.1  # default low
         )  # default high
-        self.state = self.np_random.uniform(low=low, high=high, size=(4,)).astype(
+        self.state = self.np_random.uniform(low=low, high=high, size=(self.n_envs, 4)).astype(
             np.float32
         )
 
         if self.render_mode == "human":
             self.render()
-        return self._get_ob(), {}
+        return self._get_ob()
 
     def step(self, a):
+        a = np.array(a)
         s = self.state
         assert s is not None, "Call reset before using AcrobotEnv object."
         torque = self.AVAIL_TORQUE[a]
@@ -208,39 +210,41 @@ class AcrobotVecEnv(Env):
         # Add noise to the force action
         if self.torque_noise_max > 0:
             torque += self.np_random.uniform(
-                -self.torque_noise_max, self.torque_noise_max
+                -self.torque_noise_max, self.torque_noise_max, size=(self.n_envs,)
             )
 
-        # Now, augment the state with our force action so it can be passed to
+        # Now, augment the state with our force action, so it can be passed to
         # _dsdt
-        s_augmented = np.append(s, torque)
+        # s_augmented = np.append(s, torque)
+        s_augmented = np.concatenate((s, np.expand_dims(torque, 1)), axis=-1)
 
         ns = rk4(self._dsdt, s_augmented, [0, self.dt])
 
-        ns[0] = wrap(ns[0], -pi, pi)
-        ns[1] = wrap(ns[1], -pi, pi)
-        ns[2] = bound(ns[2], -self.MAX_VEL_1, self.MAX_VEL_1)
-        ns[3] = bound(ns[3], -self.MAX_VEL_2, self.MAX_VEL_2)
+        ns[:, 0] = wrap(ns[:, 0], -pi, pi)
+        ns[:, 1] = wrap(ns[:, 1], -pi, pi)
+        ns[:, 2] = bound(ns[:, 2], -self.MAX_VEL_1, self.MAX_VEL_1)
+        ns[:, 3] = bound(ns[:, 3], -self.MAX_VEL_2, self.MAX_VEL_2)
         self.state = ns
         terminated = self._terminal()
-        reward = -1.0 if not terminated else 0.0
+        reward = np.zeros(self.n_envs)
+        reward[np.logical_not(terminated)] = -1.0
 
         if self.render_mode == "human":
             self.render()
         # truncation=False as the time limit is handled by the `TimeLimit` wrapper added during `make`
-        return self._get_ob(), reward, terminated, False, {}
+        return self._get_ob(), reward, terminated, {}
 
     def _get_ob(self):
         s = self.state
         assert s is not None, "Call reset before using AcrobotEnv object."
         return np.array(
-            [cos(s[0]), sin(s[0]), cos(s[1]), sin(s[1]), s[2], s[3]], dtype=np.float32
-        )
+            [cos(s[:, 0]), sin(s[:, 0]), cos(s[:, 1]), sin(s[:, 1]), s[:, 2], s[:, 3]], dtype=np.float32
+        ).T
 
     def _terminal(self):
         s = self.state
         assert s is not None, "Call reset before using AcrobotEnv object."
-        return bool(-cos(s[0]) - cos(s[1] + s[0]) > 1.0)
+        return -cos(s[:, 0]) - cos(s[:, 1] + s[:, 0]) > 1.0
 
     def _dsdt(self, s_augmented):
         m1 = self.LINK_MASS_1
@@ -250,39 +254,39 @@ class AcrobotVecEnv(Env):
         lc2 = self.LINK_COM_POS_2
         I1 = self.LINK_MOI
         I2 = self.LINK_MOI
-        g = 9.8
-        a = s_augmented[-1]
-        s = s_augmented[:-1]
-        theta1 = s[0]
-        theta2 = s[1]
-        dtheta1 = s[2]
-        dtheta2 = s[3]
+        g = self.gravity
+        a = s_augmented[:, -1]
+        s = s_augmented[:, :-1]
+        theta1 = s[:, 0]
+        theta2 = s[:, 1]
+        dtheta1 = s[:, 2]
+        dtheta2 = s[:, 3]
         d1 = (
-            m1 * lc1**2
-            + m2 * (l1**2 + lc2**2 + 2 * l1 * lc2 * cos(theta2))
-            + I1
-            + I2
+                m1 * lc1 ** 2
+                + m2 * (l1 ** 2 + lc2 ** 2 + 2 * l1 * lc2 * cos(theta2))
+                + I1
+                + I2
         )
-        d2 = m2 * (lc2**2 + l1 * lc2 * cos(theta2)) + I2
+        d2 = m2 * (lc2 ** 2 + l1 * lc2 * cos(theta2)) + I2
         phi2 = m2 * lc2 * g * cos(theta1 + theta2 - pi / 2.0)
         phi1 = (
-            -m2 * l1 * lc2 * dtheta2**2 * sin(theta2)
-            - 2 * m2 * l1 * lc2 * dtheta2 * dtheta1 * sin(theta2)
-            + (m1 * lc1 + m2 * l1) * g * cos(theta1 - pi / 2)
-            + phi2
+                -m2 * l1 * lc2 * dtheta2 ** 2 * sin(theta2)
+                - 2 * m2 * l1 * lc2 * dtheta2 * dtheta1 * sin(theta2)
+                + (m1 * lc1 + m2 * l1) * g * cos(theta1 - pi / 2)
+                + phi2
         )
         if self.book_or_nips == "nips":
             # the following line is consistent with the description in the
             # paper
-            ddtheta2 = (a + d2 / d1 * phi1 - phi2) / (m2 * lc2**2 + I2 - d2**2 / d1)
+            ddtheta2 = (a + d2 / d1 * phi1 - phi2) / (m2 * lc2 ** 2 + I2 - d2 ** 2 / d1)
         else:
             # the following line is consistent with the java implementation and the
             # book
             ddtheta2 = (
-                a + d2 / d1 * phi1 - m2 * l1 * lc2 * dtheta1**2 * sin(theta2) - phi2
-            ) / (m2 * lc2**2 + I2 - d2**2 / d1)
+                               a + d2 / d1 * phi1 - m2 * l1 * lc2 * dtheta1 ** 2 * sin(theta2) - phi2
+                       ) / (m2 * lc2 ** 2 + I2 - d2 ** 2 / d1)
         ddtheta1 = -(d2 * ddtheta2 + phi1) / d1
-        return dtheta1, dtheta2, ddtheta1, ddtheta2, 0.0
+        return dtheta1, dtheta2, ddtheta1, ddtheta2, np.zeros_like(dtheta1)
 
     def render(self):
         if self.render_mode is None:
@@ -398,10 +402,11 @@ def wrap(x, m, M):
         x: a scalar, wrapped
     """
     diff = M - m
-    while x > M:
-        x = x - diff
-    while x < m:
-        x = x + diff
+
+    while np.any(x > M):
+        x[x > M] -= diff
+    while np.any(x < m):
+        x[x < M] += diff
     return x
 
 
@@ -417,11 +422,15 @@ def bound(x, m, M=None):
     Returns:
         x: scalar, bound between min (m) and Max (M)
     """
+    xo = x.copy()
     if M is None:
         M = m[1]
         m = m[0]
     # bound x between min (m) and Max (M)
-    return min(max(x, m), M)
+    xo[xo < m] = m
+    xo[xo > M] = M
+    return xo
+    # return min(max(x, m), M)
 
 
 def rk4(derivs, y0, t):
@@ -450,24 +459,24 @@ def rk4(derivs, y0, t):
     """
 
     try:
-        Ny = len(y0)
+        Ny = y0.shape[-1]
     except TypeError:
-        yout = np.zeros((len(t),), np.float_)
+        yout = np.zeros((len(y0), len(t),), np.float_)
     else:
-        yout = np.zeros((len(t), Ny), np.float_)
+        yout = np.zeros((len(y0), len(t), Ny), np.float_)
 
-    yout[0] = y0
+    yout[:, 0] = y0
 
     for i in np.arange(len(t) - 1):
         this = t[i]
         dt = t[i + 1] - this
         dt2 = dt / 2.0
-        y0 = yout[i]
+        y0 = yout[:, i]
 
-        k1 = np.asarray(derivs(y0))
-        k2 = np.asarray(derivs(y0 + dt2 * k1))
-        k3 = np.asarray(derivs(y0 + dt2 * k2))
-        k4 = np.asarray(derivs(y0 + dt * k3))
-        yout[i + 1] = y0 + dt / 6.0 * (k1 + 2 * k2 + 2 * k3 + k4)
+        k1 = np.asarray(derivs(y0)).T
+        k2 = np.asarray(derivs(y0 + dt2 * k1)).T
+        k3 = np.asarray(derivs(y0 + dt2 * k2)).T
+        k4 = np.asarray(derivs(y0 + dt * k3)).T
+        yout[:, i + 1] = y0 + dt / 6.0 * (k1 + 2 * k2 + 2 * k3 + k4)
     # We only care about the final timestep and we cleave off action value which will be zero
-    return yout[-1][:4]
+    return yout[:, -1][:, :4]
