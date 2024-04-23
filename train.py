@@ -7,6 +7,7 @@ import os, time, argparse
 import torch
 import numpy as np
 
+from discrete_env.acrobot_pre_vec import create_acrobot
 from discrete_env.mountain_car_pre_vec import create_mountain_car
 from helper_local import get_hyperparams, initialize_model, add_training_args, wandb_login
 from cartpole.create_cartpole import create_cartpole
@@ -103,6 +104,8 @@ def train_ppo(args):
         create_venv = create_cartpole
     if args.env_name == "mountain_car":
         create_venv = create_mountain_car
+    if args.env_name == "acrobot":
+        create_venv = create_acrobot
 
     env = create_venv(args, hyperparameters)
     env_valid = create_venv(args, hyperparameters, is_valid=True) if args.use_valid_env else None
