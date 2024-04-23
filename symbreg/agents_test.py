@@ -7,6 +7,7 @@ from torch import device as torch_device
 
 from cartpole.create_cartpole import create_cartpole
 from common.env.procgen_wrappers import create_procgen_env
+from discrete_env.acrobot_pre_vec import create_acrobot
 from discrete_env.mountain_car_pre_vec import create_mountain_car
 from helper_local import DictToArgs, initialize_model, get_actions_from_all, \
     map_actions_to_values
@@ -77,6 +78,16 @@ class TestSymbolicCartpole(BaseAgentTester):
     def tests(self):
         self.run_all()
 
+class TestSymbolicAcrobot(BaseAgentTester):
+    def setUp(cls):
+        cls.arch = "mlpmodel"
+        cls.env = create_acrobot(None, {})
+        cls.symbolic_agent_constructor = SymbolicAgent
+        super(TestSymbolicAcrobot, cls).setUp()
+
+    def tests(self):
+        self.run_all()
+
 class TestNeuroSymbolicCoinrun(BaseAgentTester):
     def setUp(cls):
         cls.arch = "impala"
@@ -100,8 +111,6 @@ class TestNeuroSymbolicCoinrun(BaseAgentTester):
 
     def tests(self):
         self.run_all()
-
-    #TODO: test coinrun
 
 
 if __name__ == '__main__':

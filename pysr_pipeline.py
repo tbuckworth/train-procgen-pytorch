@@ -54,6 +54,8 @@ if __name__ == "__main__":
     })
     logdir = train_ppo(args)
 
+    # logdir = "logs/train/mountain_car/mountain_car/2024-04-23__10-48-44__seed_6033"
+
     sargs = DictToArgs({
         "logdir": logdir,
         "data_size": 100,

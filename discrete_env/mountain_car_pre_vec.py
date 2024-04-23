@@ -118,8 +118,10 @@ class MountainCarVecEnv(gym.Env):
                  goal_position=0.5,
                  force=0.001,
                  gravity=0.0025,
+                 max_steps=500,
                  render_mode: Optional[str] = None,
                  ):
+        self.max_steps = max_steps
         self.n_envs = n_envs
         self.min_position = min_position
         self.max_position = max_position
@@ -151,7 +153,13 @@ class MountainCarVecEnv(gym.Env):
         self.action_space = spaces.Discrete(3)
         self.observation_space = spaces.Box(self.low, self.high, dtype=np.float32)
 
-    def step(self, action: np.array) -> Tuple[np.array, float, bool, dict]:
+        self.terminated = np.full(self.n_envs, True)
+        self.n_inputs = 2
+        self.state = np.zeros((self.n_envs, self.n_inputs))
+        self.n_steps = np.zeros((self.n_envs))
+        self.reset()
+
+    def step(self, action: np.array):
         action = np.array(action)
         assert action.size == self.n_envs, f"number of actions ({action.size}) must match n_envs ({self.n_envs})"
 
@@ -163,7 +171,7 @@ class MountainCarVecEnv(gym.Env):
 
         velocity[np.bitwise_and(position == self.min_position, velocity < 0)] = 0
 
-        done = np.bitwise_and(position >= self.goal_position, velocity >= self.goal_velocity)
+        self.terminated = np.bitwise_and(position >= self.goal_position, velocity >= self.goal_velocity)
 
         reward = np.full(self.n_envs, -1.0)
 
@@ -171,9 +179,15 @@ class MountainCarVecEnv(gym.Env):
         if self.render_mode == "human":
             self.render()
 
+        self.n_steps += 1
+        truncated = self.n_steps >= self.max_steps
+        self.terminated[truncated] = True
+
+        if np.any(self.terminated):
+            self.set()
+
         info = [{"env_reward": reward[i]} for i in range(self.n_envs)]
-        # truncation=False as the time limit is handled by the `TimeLimit` wrapper added during `make`
-        return np.array(self.state, dtype=np.float32), reward, done, info
+        return np.array(self.state, dtype=np.float32), reward, self.terminated, info
 
     def reset(
             self,
@@ -181,16 +195,41 @@ class MountainCarVecEnv(gym.Env):
             seed: Optional[int] = None,
             options: Optional[dict] = None,
     ):
-        super().reset(seed=seed)
-        # Note that if you use custom reset bounds, it may lead to out-of-bound
-        # state/observations.
+        self.terminated = np.full(self.n_envs, True)
+        self.n_steps = np.zeros((self.n_envs))
+        return self.set(seed=seed, options=options)
+        # super().reset(seed=seed)
+        # # Note that if you use custom reset bounds, it may lead to out-of-bound
+        # # state/observations.
+        # low, high = utils.maybe_parse_reset_bounds(options, self.min_start_position, self.max_start_position)
+        # self.state = self.np_random.uniform(low=low, high=high, size=(self.n_envs, 2))
+        # self.state[:, 1] = 0
+        #
+        # if self.render_mode == "human":
+        #     self.render()
+        # return np.array(self.state, dtype=np.float32)
+
+    def set(self,
+            *,
+            seed: Optional[int] = 0,
+            options: Optional[dict] = None,
+            ):
+        self.seed(seed)
         low, high = utils.maybe_parse_reset_bounds(options, self.min_start_position, self.max_start_position)
-        self.state = self.np_random.uniform(low=low, high=high, size=(self.n_envs, 2))
-        self.state[:, 1] = 0
+        state = self.np_random.uniform(low=low, high=high, size=(self.n_envs, self.n_inputs))
+        self.state[self.terminated] = state[self.terminated]
+        self.state[self.terminated, 1] = 0
+        self.n_steps[self.terminated] = 0
 
         if self.render_mode == "human":
             self.render()
         return np.array(self.state, dtype=np.float32)
+
+    def seed(self, seed=None):
+        # if seed is not None:
+        #     self._np_random, seed = seeding.np_random(seed)
+        self._np_random_seed = seed
+        return [seed]
 
     def get_action_lookup(self):
         return {

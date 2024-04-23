@@ -6,6 +6,8 @@ import random
 import json
 import re
 
+from helper_local import free_gpu
+
 # nov2022: lab machine regexp
 # aug2023: temporarily remove edge, vertex & arc - for Summer 2023 lab overhaul
 # sep2023: update to reflec lab 2023/2024 set-up
@@ -103,3 +105,7 @@ for ms in [rtx40, rtx, g10, unclaimed, claimed, low_usage, all_machines]:
         if pingt.returncode == 0:
             print(labm)
             break
+
+
+# if __name__ == "__main__":
+#     print(free_gpu({}))

@@ -180,7 +180,7 @@ class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
         self.terminated = np.bitwise_or(oob, theta_oob)
 
         self.n_steps += 1
-        truncated = self.n_steps >= 500.
+        truncated = self.n_steps >= self.max_steps
         self.terminated[truncated] = True
 
         if np.any(self.terminated):
@@ -237,6 +237,8 @@ class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
         state = self._np_random.uniform(low=low, high=high, size=(self.num_envs, 4))
         self.state[self.terminated] = state[self.terminated]
         self.n_steps[self.terminated] = 0
+
+
         if self.render_mode == "human":
             self.render()
         return self.state

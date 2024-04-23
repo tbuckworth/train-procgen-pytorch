@@ -20,6 +20,8 @@ __credits__ = [
 __license__ = "BSD 3-Clause"
 __author__ = "Christoph Dann <cdann@cdann.de>"
 
+from helper_local import DictToArgs
+
 
 # SOURCE:
 # https://github.com/rlpy/rlpy/blob/master/rlpy/Domains/Acrobot.py
@@ -161,8 +163,6 @@ class AcrobotVecEnv(Env):
 
     AVAIL_TORQUE = np.array([-1.0, 0.0, +1])
 
-    torque_noise_max = 0.0
-
     SCREEN_DIM = 500
 
     #: use dynamics equations from the nips paper or the book
@@ -171,9 +171,16 @@ class AcrobotVecEnv(Env):
     domain_fig = None
     actions_num = 3
 
-    def __init__(self, n_envs, render_mode: Optional[str] = None):
-        self.gravity = 9.8
+    def __init__(self, n_envs,
+                 gravity=9.8,
+                 torque_noise_max=0.0,
+                 max_steps=500,
+                 render_mode: Optional[str] = None):
+        self.max_steps = max_steps
         self.n_envs = n_envs
+        self.gravity = gravity
+        self.torque_noise_max = torque_noise_max
+
         self.render_mode = render_mode
         self.screen = None
         self.clock = None
@@ -184,22 +191,49 @@ class AcrobotVecEnv(Env):
         low = -high
         self.observation_space = spaces.Box(low=low, high=high, dtype=np.float32)
         self.action_space = spaces.Discrete(3)
-        self.state = None
+        
+        self.terminated = np.full(self.n_envs, True)
+        self.n_inputs = 4
+        self.state = np.zeros((self.n_envs, self.n_inputs))
+        self.n_steps = np.zeros((self.n_envs))
+        self.reset()
+
+    def get_action_lookup(self):
+        return {
+            0: "neg torque",
+            1: "no torque",
+            2: "pos torque",
+        }
 
     def reset(self, *, seed: Optional[int] = None, options: Optional[dict] = None):
-        super().reset(seed=seed)
-        # Note that if you use custom reset bounds, it may lead to out-of-bound
-        # state/observations.
+        self.terminated = np.full(self.n_envs, True)
+        self.n_steps = np.zeros((self.n_envs))
+        return self.set(seed=seed, options=options)
+    
+    def set(self,
+            *,
+            seed: Optional[int] = 0,
+            options: Optional[dict] = None,
+            ):
+        self.seed(seed)
         low, high = utils.maybe_parse_reset_bounds(
             options, -0.1, 0.1  # default low
         )  # default high
-        self.state = self.np_random.uniform(low=low, high=high, size=(self.n_envs, 4)).astype(
+        state = self.np_random.uniform(low=low, high=high, size=(self.n_envs, self.n_inputs)).astype(
             np.float32
         )
+        self.state[self.terminated] = state[self.terminated]
+        self.n_steps[self.terminated] = 0
 
         if self.render_mode == "human":
             self.render()
         return self._get_ob()
+
+    def seed(self, seed=None):
+        # if seed is not None:
+        #     self._np_random, seed = seeding.np_random(seed)
+        self._np_random_seed = seed
+        return [seed]
 
     def step(self, a):
         a = np.array(a)
@@ -225,14 +259,21 @@ class AcrobotVecEnv(Env):
         ns[:, 2] = bound(ns[:, 2], -self.MAX_VEL_1, self.MAX_VEL_1)
         ns[:, 3] = bound(ns[:, 3], -self.MAX_VEL_2, self.MAX_VEL_2)
         self.state = ns
-        terminated = self._terminal()
+        self.terminated = self._terminal()
         reward = np.zeros(self.n_envs)
-        reward[np.logical_not(terminated)] = -1.0
+        reward[np.logical_not(self.terminated)] = -1.0
+
+        self.n_steps += 1
+        truncated = self.n_steps >= self.max_steps
+        self.terminated[truncated] = True
+
+        if np.any(self.terminated):
+            self.set()        
 
         if self.render_mode == "human":
             self.render()
         # truncation=False as the time limit is handled by the `TimeLimit` wrapper added during `make`
-        return self._get_ob(), reward, terminated, {}
+        return self._get_ob(), reward, self.terminated, {}
 
     def _get_ob(self):
         s = self.state
@@ -480,3 +521,19 @@ def rk4(derivs, y0, t):
         yout[:, i + 1] = y0 + dt / 6.0 * (k1 + 2 * k2 + 2 * k3 + k4)
     # We only care about the final timestep and we cleave off action value which will be zero
     return yout[:, -1][:, :4]
+
+
+def create_acrobot(args, hyperparameters, is_valid=False):
+    if args is None:
+        args = DictToArgs({"render": False})
+    n_envs = hyperparameters.get('n_envs', 32)
+    env_args = {"gravity": hyperparameters.get("gravity", 9.8),
+                "torque_noise_max": hyperparameters.get("torque_noise_max", 0.)
+                }
+    if is_valid:
+        env_args = {"gravity_v": hyperparameters.get("gravity_v", 9.8),
+                    "torque_noise_max_v": hyperparameters.get("torque_noise_max_v", 1.)
+                    }
+    env_args["n_envs"] = n_envs
+    env_args["render_mode"] = "human" if args.render else None
+    return AcrobotVecEnv(**env_args)

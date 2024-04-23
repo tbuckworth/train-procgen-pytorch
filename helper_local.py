@@ -124,6 +124,9 @@ def map_actions_to_values(actions):
         'acc right': 1,
         'push left': 0,
         'push right': 1,
+        'neg torque': -1,
+        'no torque': 0,
+        'pos torque': 1,
     }
 
     return np.array([mapping[key] for key in actions])

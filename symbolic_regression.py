@@ -379,10 +379,11 @@ def run_neurosymbolic_search(args):
             wandb.init(project=project, config=cfg, sync_tensorboard=True,
                        tags=args.wandb_tags, resume=wb_resume, name=name)
 
-    policy, env, sampler, symbolic_agent_constructor, test_env, test_agent = load_nn_policy(logdir, n_envs)
-    X, Y, V = generate_data(policy, sampler, env, int(data_size), args)
+    policy, env, symbolic_agent_constructor, test_env = load_nn_policy(logdir, n_envs)
+    # policy, env, sampler, symbolic_agent_constructor, test_env, test_agent = load_nn_policy(logdir, n_envs)
+    ns_agent = symbolic_agent_constructor(None, policy, args.stochastic, None)
+    X, Y, V = generate_data(ns_agent, env, int(data_size))
     e = get_entropy(Y)
-
 
     try:
         actions = get_actions_from_all(env)
@@ -395,6 +396,7 @@ def run_neurosymbolic_search(args):
         action_mapping = map_actions_to_values(actions)
         # map actions to 0:2pi
         Y = action_mapping[Y.argmax(1)]
+
 
     print("data generated")
     if os.name != "nt":
@@ -409,13 +411,13 @@ def run_neurosymbolic_search(args):
         nn_agent = NeuralAgent(policy)
         rn_agent = RandomAgent(env.action_space.n)
 
-        ns_score_train = test_agent(ns_agent, env, "NeuroSymb Train", rounds)
-        nn_score_train = test_agent(nn_agent, env, "Neural    Train", rounds)
-        rn_score_train = test_agent(rn_agent, env, "Random    Train", rounds)
+        ns_score_train = test_agent_mean_reward(ns_agent, env, "NeuroSymb Train", rounds)
+        nn_score_train = test_agent_mean_reward(nn_agent, env, "Neural    Train", rounds)
+        rn_score_train = test_agent_mean_reward(rn_agent, env, "Random    Train", rounds)
 
-        ns_score_test = test_agent(ns_agent, test_env, "NeuroSymb  Test", rounds)
-        nn_score_test = test_agent(nn_agent, test_env, "Neural     Test", rounds)
-        rn_score_test = test_agent(rn_agent, test_env, "Random     Test", rounds)
+        ns_score_test = test_agent_mean_reward(ns_agent, test_env, "NeuroSymb  Test", rounds)
+        nn_score_test = test_agent_mean_reward(nn_agent, test_env, "Neural     Test", rounds)
+        rn_score_test = test_agent_mean_reward(rn_agent, test_env, "Random     Test", rounds)
 
         best = pysr_model.get_best()
         if type(best) != list:
