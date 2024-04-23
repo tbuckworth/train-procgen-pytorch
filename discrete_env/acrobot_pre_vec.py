@@ -320,7 +320,7 @@ class AcrobotVecEnv(Env):
 
         surf = pygame.Surface((self.SCREEN_DIM, self.SCREEN_DIM))
         surf.fill((255, 255, 255))
-        s = self.state
+        s = self.state[0]
 
         bound = self.LINK_LENGTH_1 + self.LINK_LENGTH_2 + 0.2  # 2.2 for default
         scale = self.SCREEN_DIM / (bound * 2)

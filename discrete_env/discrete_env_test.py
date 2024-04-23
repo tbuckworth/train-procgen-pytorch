@@ -20,13 +20,13 @@ class TestMountainCar(unittest.TestCase):
 class TestAcrobot(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.env = AcrobotVecEnv(n_envs=2, render_mode=None)
+        cls.env = AcrobotVecEnv(n_envs=2, render_mode="human")
         # cls.env = create_mountain_car(DictToArgs({"render": True}), {}, True)
         cls.env.reset()
 
-    def test_old_step(self):
-        for _ in range(100):
-            obs, rew, done, trunc, info = self.env.step(self.env.action_space.sample())
+    # def test_old_step(self):
+    #     for _ in range(100):
+    #         obs, rew, done, trunc, info = self.env.step(self.env.action_space.sample())
 
     def test_step(self):
         for _ in range(100):
