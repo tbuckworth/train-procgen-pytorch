@@ -103,7 +103,7 @@ def print_values_actions(action_names, pi, value, i="", rewards=None):
         print(out_str)
 
 
-def map_actions_to_radians(actions):
+def map_actions_to_values(actions):
     eighth = np.pi / 4
     mapping = {
         'move up': 0,
@@ -119,6 +119,9 @@ def map_actions_to_radians(actions):
         'LEFT': 6 * eighth,
         'LEFT_UP': 7 * eighth,
         '': -1,
+        'acc left':-1,
+        'none':0,
+        'acc right':1,
     }
 
     return np.array([mapping[key] for key in actions])
@@ -750,3 +753,16 @@ def sample_numpy_probs(p):
     r = np.random.random(p.shape[0]).repeat(p.shape[-1]).reshape(p.shape)
     Y_act = p.shape[-1] - (p.cumsum(1) > r).sum(1)
     return Y_act
+
+
+def round_to_nearest_in(a, b):
+    return b[match_to_nearest(a, b)]
+
+def match_to_nearest(a, b):
+    n = len(b)
+    shp = list(a.shape) + [n]
+
+    broad = np.repeat(a, n).reshape((shp))
+    diffs = np.abs(broad - b)
+
+    return diffs.argmin(-1)

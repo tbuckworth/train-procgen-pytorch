@@ -5,13 +5,12 @@ from unittest.mock import Mock
 import numpy as np
 from torch import device as torch_device
 
+from cartpole.create_cartpole import create_cartpole
 from common.env.procgen_wrappers import create_procgen_env
 from discrete_env.mountain_car_pre_vec import create_mountain_car
-from helper_local import get_config, DictToArgs, get_path, initialize_model, get_actions_from_all, \
-    map_actions_to_radians
-from symbolic_regression import load_nn_policy, generate_data
+from helper_local import DictToArgs, initialize_model, get_actions_from_all, \
+    map_actions_to_values
 from symbreg.agents import SymbolicAgent, NeuroSymbolicAgent
-from pysr import PySRRegressor
 
 
 class MockRegressor:
@@ -23,35 +22,6 @@ class MockRegressor:
             return np.random.random((x.shape[0],))
         return np.random.random((x.shape[0], self.n_out))
 
-
-# class MyTestCase(unittest.TestCase):
-#     @classmethod
-#     def setUpClass(cls):
-#         n_envs = 32
-#         cls.data_size = 100
-#         logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
-#         cls.policy, cls.env, cls.symbolic_agent_constructor, test_env = load_nn_policy(logdir, n_envs)
-#         cls.agent = cls.symbolic_agent_constructor(None, cls.policy, stochastic=False, action_mapping=None)
-#         X, Y, V = generate_data(cls.agent, cls.env, int(cls.data_size))
-#
-#         symbdir = os.path.join(logdir, "symbreg/2024-04-12__17-38-41/")
-#         pickle_filename = get_path(symbdir, "symb_reg.pkl")
-#
-#         cls.model = PySRRegressor.from_file(pickle_filename)
-#
-#     def test_deterministic_symbolic_agent_sample(self):
-#         self.agent.stochastic = False
-#         x, y, v = generate_data(self.agent, self.env, int(self.data_size))
-#         y_hat = self.agent.forward(x)
-#         # self.assertEqual(Y_hat.shape[], Y.shape)
-#
-#     def test_stochastic_symbolic_agent_sample(self):
-#         self.agent.stochastic = True
-#         x, y, v = generate_data(self.agent, self.env, int(self.data_size))
-#         y_hat = self.agent.forward(x)
-#         self.assertEqual(y_hat.shape, y.shape)
-
-
 class BaseAgentTester(unittest.TestCase):
     agent = None
     env = None
@@ -62,7 +32,6 @@ class BaseAgentTester(unittest.TestCase):
 
     def setUp(cls):
         device = torch_device("cpu")
-        # cls.env = create_mountain_car(None, {})
         _, _, policy = initialize_model(device, cls.env, {"architecture": cls.arch})
         cls.stoch_model = MockRegressor(cls.env.action_space.n)
         cls.det_model = MockRegressor(1)
@@ -76,7 +45,7 @@ class BaseAgentTester(unittest.TestCase):
 
     def forward_sample(self, stochastic):
         self.agent.stochastic = stochastic
-        if stochastic:
+        if stochastic and not self.agent.single_output:
             self.agent.model = self.stoch_model
         else:
             self.agent.model = self.det_model
@@ -89,12 +58,24 @@ class TestSymbolicMountainCar(BaseAgentTester):
     def setUp(cls):
         cls.arch = "mlpmodel"
         cls.env = create_mountain_car(None, {})
+        actions = get_actions_from_all(cls.env)
+        cls.action_mapping = map_actions_to_values(actions)
         cls.symbolic_agent_constructor = SymbolicAgent
         super(TestSymbolicMountainCar, cls).setUp()
 
     def tests(self):
         self.run_all()
 
+
+class TestSymbolicCartpole(BaseAgentTester):
+    def setUp(cls):
+        cls.arch = "mlpmodel"
+        cls.env = create_cartpole(None, {})
+        cls.symbolic_agent_constructor = SymbolicAgent
+        super(TestSymbolicCartpole, cls).setUp()
+
+    def tests(self):
+        self.run_all()
 
 class TestNeuroSymbolicCoinrun(BaseAgentTester):
     def setUp(cls):
@@ -114,7 +95,7 @@ class TestNeuroSymbolicCoinrun(BaseAgentTester):
         hyperparameters = {"n_envs": 2}
         cls.env = create_procgen_env(args, hyperparameters)
         actions = get_actions_from_all(cls.env)
-        cls.action_mapping = map_actions_to_radians(actions)
+        cls.action_mapping = map_actions_to_values(actions)
         cls.symbolic_agent_constructor = NeuroSymbolicAgent
         super(TestNeuroSymbolicCoinrun, cls).setUp()
 

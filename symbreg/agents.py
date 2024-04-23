@@ -3,7 +3,8 @@ import torch
 from torch.distributions import Categorical
 from torch.nn import functional as F
 
-from helper_local import sigmoid, inverse_sigmoid, match, softmax, sample_numpy_probs
+from helper_local import sigmoid, inverse_sigmoid, softmax, sample_numpy_probs, \
+    match_to_nearest
 
 
 class SymbolicAgent:
@@ -12,6 +13,10 @@ class SymbolicAgent:
         self.policy = policy
         self.stochastic = stochastic
         self.single_output = self.policy.action_size <= 2
+        self.action_mapping = action_mapping
+        self.n = len(np.unique(self.action_mapping)) // 2
+        if not stochastic and action_mapping is None and not self.single_output:
+            raise Exception("Deterministic agent requires action_mapping")
 
     def forward(self, observation):
         with torch.no_grad():
@@ -21,10 +26,8 @@ class SymbolicAgent:
                     p = sigmoid(h)
                     return np.int32(np.random.random(len(h)) < p)
                 return np.round(h, 0)
-            if self.stochastic:
-                p = softmax(h)
-                return sample_numpy_probs(p)
-            return h.argmax(1)
+            return self.pred_to_action(h)
+
     def sample(self, observation):
         with torch.no_grad():
             x = torch.FloatTensor(observation).to(self.policy.device)
@@ -45,6 +48,16 @@ class SymbolicAgent:
             if self.stochastic:
                 act = dist.sample()
             return observation, y, act, value.cpu().numpy()
+
+    def pred_to_action(self, h):
+        if self.stochastic:
+            p = softmax(h)
+            return sample_numpy_probs(p)
+
+        if self.single_output:
+            return h.argmax(axis=1)
+
+        return match_to_nearest(h, self.action_mapping)
 
 
 class NeuralAgent:
@@ -99,6 +112,7 @@ class NeuroSymbolicAgent:
         self.policy = policy
         self.stochastic = stochastic
         self.action_mapping = action_mapping
+        self.single_output = self.policy.action_size <= 2
         self.n = len(np.unique(self.action_mapping)) // 2
 
     def forward(self, observation):
@@ -115,9 +129,10 @@ class NeuroSymbolicAgent:
             p = Categorical(logits=log_probs)
             act = p.sample()
             return act.cpu().numpy()
-        rads = np.round(h / (np.pi / self.n), 0) * (np.pi / self.n)
-        rads[rads < 0] = -1
-        return match(rads, self.action_mapping)
+        return match_to_nearest(h, self.action_mapping)
+        # rads = np.round(h / (np.pi / self.n), 0) * (np.pi / self.n)
+        # rads[rads < 0] = -1
+        # return match(rads, self.action_mapping)
 
     def sample(self, observation):
         with torch.no_grad():

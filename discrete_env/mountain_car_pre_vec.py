@@ -192,6 +192,13 @@ class MountainCarVecEnv(gym.Env):
             self.render()
         return np.array(self.state, dtype=np.float32)
 
+    def get_action_lookup(self):
+        return {
+            0: 'acc left',
+            1: 'none',
+            2: 'acc right',
+        }
+
     def _height(self, xs):
         return np.sin(3 * xs) * 0.45 + 0.55
 
