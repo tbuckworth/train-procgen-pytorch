@@ -88,8 +88,9 @@ def add_boxworld_params(args):
     return args
 
 
-def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_type):
+def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_type, re_use_machine=False):
     hosts = {}
+    free_machine = None
     keys, values = zip(*hparams.items())
     h_dict_list = [dict(zip(keys, v)) for v in itertools.product(*values)]
     h_dict_list = np.random.permutation(h_dict_list)
@@ -136,7 +137,8 @@ def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_ty
             found = False
             for attempts in range(30):
                 if cuda:
-                    free_machine = free_gpu(hosts)
+                    if not re_use_machine and free_machine is not None:
+                        free_machine = free_gpu(hosts)
                 else:
                     free_machine = run_subprocess(script, "\\n", suppress=True)
                 host = re.search(r"(.*).doc.ic.ac.uk", free_machine).group(1)
@@ -193,28 +195,28 @@ def symbreg_hparams():
 
 def train_hparams():
     return {
-        "exp_name": ['coinrun-hparams'],
-        "env_name": ['coinrun'],
-        "distribution_mode": ['hard'],
-        "param_name": ['hard-500-impala'],
+        "exp_name": [None],
+        "env_name": ['cartpole', 'mountain_car', 'acrobot'],
+        # "distribution_mode": ['hard'],
+        "param_name": ['mlpmodel'],
         "device": ["gpu"],
         "num_timesteps": [int(2e8)],
         "seed": [6033],
-        # "gamma": None,
+        "gamma": [0.99, 0.999, 0.95],
         # "learning_rate": None,
-        # "entropy_coef": None,
-        # "n_envs": None,
-        # "n_steps": None,
+        "entropy_coef": [0, 0.02, 0.05],
+        "n_envs": [512, 1024],
         # "n_minibatch": None,
         # "mini_batch_size": None,
         # "wandb_name": None,
         # "wandb_group": None,
-        "wandb_tags": [["impala", "for_pysr"]],
+        "wandb_tags": [["discrete", "gravity"]],
         # "detect_nan": False,
         "use_wandb": [True],
         "mirror_env": [False],
+        "use_valid_env": [True],
         # "output_dim": [256, 1, 9],
-        "fs_coef": [0.0001, 0.001, 0.01, 0.1, 0.5, 1.0, 2.0, 5.0, 10.0],
+        # "fs_coef": [0.0001, 0.001, 0.01, 0.1, 0.5, 1.0, 2.0, 5.0, 10.0],
     }
 
 
@@ -298,7 +300,9 @@ if __name__ == '__main__':
     parser.add_argument('--execute', action="store_true", default=True)
     # parser.add_argument('--cuda', action="store_true", default=False)
     parser.add_argument('--max_runs', type=int, default=500)
-    parser.add_argument('--hparam_type', type=str, default="symbreg")
+    parser.add_argument('--hparam_type', type=str, default="train")
+
+    re_use_machine = True
 
     largs = parser.parse_args()
     n_gpu = largs.n_gpu
@@ -325,4 +329,4 @@ if __name__ == '__main__':
     n_experiments = np.prod([len(hparams[x]) for x in hparams.keys()])
     print(f"Creating {n_experiments} experiments across {n_gpu} workers.")
     random_subset = min(1, max_runs / n_experiments)
-    write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_type)
+    write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_type, re_use_machine)
