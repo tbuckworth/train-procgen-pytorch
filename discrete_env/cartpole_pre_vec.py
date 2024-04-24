@@ -7,20 +7,15 @@ import math
 from typing import Optional
 
 import numpy as np
-
-import gymnasium as gym
-from gymnasium import spaces, Env
-from gymnasium.error import DependencyNotInstalled
-from gymnasium.utils import seeding
-
 from discrete_env.helper_pre_vec import StartSpace
+from discrete_env.pre_vec_env import PreVecEnv
 
 
 # Analytic Solution:
 # 3 * angle + angle_velocity > 0
 
 
-class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
+class CartPoleVecEnv(PreVecEnv):
     """
     ### Description
 
@@ -99,15 +94,9 @@ class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
                  max_gravity=10.4,
                  max_steps=500,
                  render_mode: Optional[str] = None):
-        if n_envs < 2:
-            raise Exception("n_envs must be greater than or equal to 2")
-        self.n_actions = 2
-        self.np_random_seed = None
-        self._np_random = None
-        self.n_envs = n_envs
-        self.max_steps = max_steps
-        self.terminated = np.full(self.n_envs, True)
-        self.reward = np.ones((self.n_envs))
+
+        n_actions = 2
+        self.reward = np.ones((n_envs))
         self.info = [{"env_reward": self.reward[i]} for i in range(len(self.reward))]
         self.min_gravity = min_gravity
         self.max_gravity = max_gravity
@@ -143,35 +132,7 @@ class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
                                       high=[0.05, 0.05, 0.05, 0.05, self.max_gravity],
                                       np_random=self._np_random)
 
-        # super().__init__(self.observation_space, self.action_space, n_envs)
-
-        self.action_space = spaces.Discrete(self.n_actions)
-        self.observation_space = spaces.Box(self.low, self.high, dtype=np.float32)
-        self.render_mode = render_mode
-        self.screen_width = 600
-        self.screen_height = 400
-        self.screen = None
-        self.clock = None
-        self.isopen = True
-        self.n_inputs = len(self.high)
-        self.terminated = np.full(self.n_envs, True)
-        self.state = np.zeros((self.n_envs, self.n_inputs))
-        self.n_steps = np.zeros((self.n_envs))
-        self.reset()
-
-    def step(self, action):
-        self.transition_model(action)
-
-        self.n_steps += 1
-        truncated = self.n_steps >= self.max_steps
-        self.terminated[truncated] = True
-
-        if np.any(self.terminated):
-            self.set()
-
-        if self.render_mode == "human":
-            self.render()
-        return self.state, self.reward, self.terminated, self.info
+        super().__init__(n_envs, n_actions, max_steps, render_mode)
 
     def transition_model(self, action):
         x, x_dot, theta, theta_dot, gravity = self.state.T
@@ -205,85 +166,6 @@ class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
         theta_oob = np.bitwise_or(theta < -self.theta_threshold_radians,
                                   theta > self.theta_threshold_radians)
         self.terminated = np.bitwise_or(oob, theta_oob)
-
-    def reset(
-            self,
-            *,
-            seed: Optional[int] = 0,
-            options: Optional[dict] = None,
-    ):
-        self.terminated = np.full(self.n_envs, True)
-        self.n_steps = np.zeros((self.n_envs))
-        return self.set(seed=seed)
-
-    def set(self,
-            *,
-            seed: Optional[int] = 0,
-            ):
-        self.seed(seed)
-        state = self.start_space.sample(self.n_envs)
-        self.state[self.terminated] = state[self.terminated]
-        self.n_steps[self.terminated] = 0
-
-        if self.render_mode == "human":
-            self.render()
-        return self.state
-
-    def seed(self, seed=None):
-        self.np_random_seed = seed
-        if self.np_random_seed is not None:
-            self._np_random, self.np_random_seed = seeding.np_random(seed)
-            self.start_space.set_np_random(self._np_random)
-        return [seed]
-
-    def save(self):
-        np.save('cartpole.npy', self.world)
-
-    def render(self):
-        if self.render_mode is None:
-            gym.logger.warn(
-                "You are calling render method without specifying any render mode. "
-                "You can specify the render_mode at initialization, "
-                f'e.g. gym("{self.spec.id}", render_mode="rgb_array")'
-            )
-            return
-
-        try:
-            import pygame
-            self.pygame = pygame
-            from pygame import gfxdraw
-            self.gfxdraw = gfxdraw
-        except ImportError:
-            raise DependencyNotInstalled(
-                "pygame is not installed, run `pip install gym[classic_control]`"
-            )
-
-        if self.screen is None:
-            pygame.init()
-            if self.render_mode == "human":
-                pygame.display.init()
-                self.screen = pygame.display.set_mode(
-                    (self.screen_width, self.screen_height)
-                )
-            else:  # mode == "rgb_array"
-                self.screen = pygame.Surface((self.screen_width, self.screen_height))
-        if self.clock is None:
-            self.clock = pygame.time.Clock()
-
-        if not self.render_unique():
-            return None
-
-        self.surf = pygame.transform.flip(self.surf, False, True)
-        self.screen.blit(self.surf, (0, 0))
-        if self.render_mode == "human":
-            pygame.event.pump()
-            self.clock.tick(self.metadata["render_fps"])
-            pygame.display.flip()
-
-        elif self.render_mode == "rgb_array":
-            return np.transpose(
-                np.array(pygame.surfarray.pixels3d(self.screen)), axes=(1, 0, 2)
-            )
 
     def render_unique(self):
         world_width = self.x_threshold * 2
@@ -340,18 +222,6 @@ class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
             0: "push left",
             1: "push right",
         }
-
-    def close(self):
-        if self.screen is not None:
-            import pygame
-
-            pygame.display.quit()
-            pygame.quit()
-            self.isopen = False
-
-    def get_info(self):
-        return self.info
-
 
 
 def create_cartpole(args, hyperparameters, is_valid=False):

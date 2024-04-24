@@ -161,7 +161,10 @@ class PreVecEnv(Env):
         return self.info
 
     def get_action_lookup(self):
-        pass
+        raise NotImplementedError
 
     def transition_model(self, action):
-        pass
+        raise NotImplementedError
+
+    def render_unique(self):
+        raise NotImplementedError
