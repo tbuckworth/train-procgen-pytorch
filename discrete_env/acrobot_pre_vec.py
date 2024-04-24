@@ -198,7 +198,7 @@ class AcrobotVecEnv(PreVecEnv):
         self.i_g = 4
 
         self.high = np.array(
-            [1.0, 1.0, 1.0, 1.0, self.max_gravity], dtype=np.float32
+            [1.0, 1.0, 1.0, 1.0, self.MAX_VEL_1, self.MAX_VEL_2, self.max_gravity], dtype=np.float32
         )
         self.low = -self.high
         self.low[-1] = self.max_gravity
@@ -207,6 +207,7 @@ class AcrobotVecEnv(PreVecEnv):
                                       high=[0.1, 0.1, 0.1, 0.1, self.max_gravity],
                                       np_random=self._np_random)
 
+        self.n_inputs = 5 # override because obs != state
         super().__init__(n_envs, n_actions, "Acrobot", max_steps, render_mode)
 
     def get_action_lookup(self):
