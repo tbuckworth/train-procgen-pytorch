@@ -160,6 +160,7 @@ def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_ty
             run_subprocess(cmd2, "\\n", suppress=False)
     np.save(os.path.join("data", f"hosts_{time.strftime('%Y-%m-%d__%H-%M-%S')}.npy"), hosts)
 
+
 def symbreg_hparams():
     return {
         "timeout_in_seconds": [3600 * 10],
@@ -196,17 +197,16 @@ def symbreg_hparams():
 def train_hparams():
     return {
         "exp_name": [None],
-        "env_name": ['mountain_car'],
+        "env_name": ['acrobot'],
         # "distribution_mode": ['hard'],
         "param_name": ['mlpmodel'],
         "device": ["gpu"],
         "num_timesteps": [int(2e8)],
         "seed": [6033],
-        "gamma": [0.99],
-        "lambda": [0.98],
+        "gamma": [0.99, 0.999, 0.95],
         # "learning_rate": None,
-        "entropy_coef": [0],#, 0.02, 0.05],
-        "n_envs": [16],
+        "entropy_coef": [0, 0.02, 0.05],
+        "n_envs": [512, 1024],
         # "n_minibatch": None,
         # "mini_batch_size": None,
         # "wandb_name": None,
