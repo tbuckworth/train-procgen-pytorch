@@ -132,7 +132,7 @@ class CartPoleVecEnv(PreVecEnv):
                                       high=[0.05, 0.05, 0.05, 0.05, self.max_gravity],
                                       np_random=self._np_random)
 
-        super().__init__(n_envs, n_actions, max_steps, render_mode)
+        super().__init__(n_envs, n_actions, "CartPole", max_steps, render_mode)
 
     def transition_model(self, action):
         x, x_dot, theta, theta_dot, gravity = self.state.T

@@ -12,10 +12,12 @@ from gymnasium import spaces
 from gymnasium.envs.classic_control import utils
 from gymnasium.error import DependencyNotInstalled
 
+from discrete_env.helper_pre_vec import StartSpace
+from discrete_env.pre_vec_env import PreVecEnv
 from helper_local import DictToArgs
 
 
-class MountainCarVecEnv(gym.Env):
+class MountainCarVecEnv(PreVecEnv):
     """
     ## Description
 
@@ -117,12 +119,15 @@ class MountainCarVecEnv(gym.Env):
                  max_speed=0.07,
                  goal_position=0.5,
                  force=0.001,
-                 gravity=0.0025,
                  max_steps=500,
+                 max_gravity=0.01,
+                 min_gravity=0.0025,
                  render_mode: Optional[str] = None,
                  ):
-        self.max_steps = max_steps
-        self.n_envs = n_envs
+        n_actions = 3
+        self._np_random = None
+        self.max_gravity = max_gravity
+        self.min_gravity = min_gravity
         self.min_position = min_position
         self.max_position = max_position
         self.min_start_position = min_start_position
@@ -137,34 +142,22 @@ class MountainCarVecEnv(gym.Env):
         self.goal_velocity = goal_velocity
 
         self.force = force
-        self.gravity = gravity
 
-        self.low = np.array([self.min_position, -self.max_speed], dtype=np.float32)
-        self.high = np.array([self.max_position, self.max_speed], dtype=np.float32)
+        self.low = np.array([self.min_position, -self.max_speed, self.min_gravity], dtype=np.float32)
+        self.high = np.array([self.max_position, self.max_speed, self.max_gravity], dtype=np.float32)
 
-        self.render_mode = render_mode
+        self.start_space = StartSpace(low=[self.min_start_position, 0, self.min_gravity],
+                                      high=[self.max_start_position, 0, self.max_gravity],
+                                      np_random=self._np_random)
 
-        self.screen_width = 600
-        self.screen_height = 400
-        self.screen = None
-        self.clock = None
-        self.isopen = True
+        self.reward = np.full(n_envs, -1.0)
+        self.info = [{"env_reward": self.reward[i]} for i in range(n_envs)]
 
-        self.action_space = spaces.Discrete(3)
-        self.observation_space = spaces.Box(self.low, self.high, dtype=np.float32)
+        super().__init__(n_envs, n_actions, "MountainCar", max_steps, render_mode)
 
-        self.terminated = np.full(self.n_envs, True)
-        self.n_inputs = 2
-        self.state = np.zeros((self.n_envs, self.n_inputs))
-        self.n_steps = np.zeros((self.n_envs))
-        self.reset()
-
-    def step(self, action: np.array):
-        action = np.array(action)
-        assert action.size == self.n_envs, f"number of actions ({action.size}) must match n_envs ({self.n_envs})"
-
-        position, velocity = self.state.T
-        velocity += (action - 1) * self.force + np.cos(3 * position) * (-self.gravity)
+    def transition_model(self, action: np.array):
+        position, velocity, gravity = self.state.T
+        velocity += (action - 1) * self.force + np.cos(3 * position) * (-gravity)
         velocity = np.clip(velocity, -self.max_speed, self.max_speed)
         position += velocity
         position = np.clip(position, self.min_position, self.max_position)
@@ -173,63 +166,8 @@ class MountainCarVecEnv(gym.Env):
 
         self.terminated = np.bitwise_and(position >= self.goal_position, velocity >= self.goal_velocity)
 
-        reward = np.full(self.n_envs, -1.0)
+        self.state = np.vstack((position, velocity, gravity)).T
 
-        self.state = np.vstack((position, velocity)).T
-        if self.render_mode == "human":
-            self.render()
-
-        self.n_steps += 1
-        truncated = self.n_steps >= self.max_steps
-        self.terminated[truncated] = True
-
-        if np.any(self.terminated):
-            self.set()
-
-        info = [{"env_reward": reward[i]} for i in range(self.n_envs)]
-        return np.array(self.state, dtype=np.float32), reward, self.terminated, info
-
-    def reset(
-            self,
-            *,
-            seed: Optional[int] = None,
-            options: Optional[dict] = None,
-    ):
-        self.terminated = np.full(self.n_envs, True)
-        self.n_steps = np.zeros((self.n_envs))
-        return self.set(seed=seed, options=options)
-        # super().reset(seed=seed)
-        # # Note that if you use custom reset bounds, it may lead to out-of-bound
-        # # state/observations.
-        # low, high = utils.maybe_parse_reset_bounds(options, self.min_start_position, self.max_start_position)
-        # self.state = self.np_random.uniform(low=low, high=high, size=(self.n_envs, 2))
-        # self.state[:, 1] = 0
-        #
-        # if self.render_mode == "human":
-        #     self.render()
-        # return np.array(self.state, dtype=np.float32)
-
-    def set(self,
-            *,
-            seed: Optional[int] = 0,
-            options: Optional[dict] = None,
-            ):
-        self.seed(seed)
-        low, high = utils.maybe_parse_reset_bounds(options, self.min_start_position, self.max_start_position)
-        state = self.np_random.uniform(low=low, high=high, size=(self.n_envs, self.n_inputs))
-        self.state[self.terminated] = state[self.terminated]
-        self.state[self.terminated, 1] = 0
-        self.n_steps[self.terminated] = 0
-
-        if self.render_mode == "human":
-            self.render()
-        return np.array(self.state, dtype=np.float32)
-
-    def seed(self, seed=None):
-        # if seed is not None:
-        #     self._np_random, seed = seeding.np_random(seed)
-        self._np_random_seed = seed
-        return [seed]
 
     def get_action_lookup(self):
         return {
@@ -241,42 +179,13 @@ class MountainCarVecEnv(gym.Env):
     def _height(self, xs):
         return np.sin(3 * xs) * 0.45 + 0.55
 
-    def render(self):
-        if self.render_mode is None:
-            assert self.spec is not None
-            gym.logger.warn(
-                "You are calling render method without specifying any render mode. "
-                "You can specify the render_mode at initialization, "
-                f'e.g. gym.make("{self.spec.id}", render_mode="rgb_array")'
-            )
-            return
-
-        try:
-            import pygame
-            from pygame import gfxdraw
-        except ImportError as e:
-            raise DependencyNotInstalled(
-                'pygame is not installed, run `pip install "gymnasium[classic_control]"`'
-            ) from e
-
-        if self.screen is None:
-            pygame.init()
-            if self.render_mode == "human":
-                pygame.display.init()
-                self.screen = pygame.display.set_mode(
-                    (self.screen_width, self.screen_height)
-                )
-            else:  # mode in "rgb_array"
-                self.screen = pygame.Surface((self.screen_width, self.screen_height))
-        if self.clock is None:
-            self.clock = pygame.time.Clock()
-
+    def render_unique(self):
         world_width = self.max_position - self.min_position
         scale = self.screen_width / world_width
         carwidth = 40
         carheight = 20
 
-        self.surf = pygame.Surface((self.screen_width, self.screen_height))
+        self.surf = self.pygame.Surface((self.screen_width, self.screen_height))
         self.surf.fill((255, 255, 255))
 
         # This is where we pick the first environment:
@@ -286,14 +195,14 @@ class MountainCarVecEnv(gym.Env):
         ys = self._height(xs)
         xys = list(zip((xs - self.min_position) * scale, ys * scale))
 
-        pygame.draw.aalines(self.surf, points=xys, closed=False, color=(0, 0, 0))
+        self.pygame.draw.aalines(self.surf, points=xys, closed=False, color=(0, 0, 0))
 
         clearance = 10
 
         l, r, t, b = -carwidth / 2, carwidth / 2, carheight, 0
         coords = []
         for c in [(l, b), (l, t), (r, t), (r, b)]:
-            c = pygame.math.Vector2(c).rotate_rad(math.cos(3 * pos))
+            c = self.pygame.math.Vector2(c).rotate_rad(math.cos(3 * pos))
             coords.append(
                 (
                     c[0] + (pos - self.min_position) * scale,
@@ -301,62 +210,39 @@ class MountainCarVecEnv(gym.Env):
                 )
             )
 
-        gfxdraw.aapolygon(self.surf, coords, (0, 0, 0))
-        gfxdraw.filled_polygon(self.surf, coords, (0, 0, 0))
+        self.gfxdraw.aapolygon(self.surf, coords, (0, 0, 0))
+        self.gfxdraw.filled_polygon(self.surf, coords, (0, 0, 0))
 
         for c in [(carwidth / 4, 0), (-carwidth / 4, 0)]:
-            c = pygame.math.Vector2(c).rotate_rad(math.cos(3 * pos))
+            c = self.pygame.math.Vector2(c).rotate_rad(math.cos(3 * pos))
             wheel = (
                 int(c[0] + (pos - self.min_position) * scale),
                 int(c[1] + clearance + self._height(pos) * scale),
             )
 
-            gfxdraw.aacircle(
+            self.gfxdraw.aacircle(
                 self.surf, wheel[0], wheel[1], int(carheight / 2.5), (128, 128, 128)
             )
-            gfxdraw.filled_circle(
+            self.gfxdraw.filled_circle(
                 self.surf, wheel[0], wheel[1], int(carheight / 2.5), (128, 128, 128)
             )
 
         flagx = int((self.goal_position - self.min_position) * scale)
         flagy1 = int(self._height(self.goal_position) * scale)
         flagy2 = flagy1 + 50
-        gfxdraw.vline(self.surf, flagx, flagy1, flagy2, (0, 0, 0))
+        self.gfxdraw.vline(self.surf, flagx, flagy1, flagy2, (0, 0, 0))
 
-        gfxdraw.aapolygon(
+        self.gfxdraw.aapolygon(
             self.surf,
             [(flagx, flagy2), (flagx, flagy2 - 10), (flagx + 25, flagy2 - 5)],
             (204, 204, 0),
         )
-        gfxdraw.filled_polygon(
+        self.gfxdraw.filled_polygon(
             self.surf,
             [(flagx, flagy2), (flagx, flagy2 - 10), (flagx + 25, flagy2 - 5)],
             (204, 204, 0),
         )
-
-        self.surf = pygame.transform.flip(self.surf, False, True)
-        self.screen.blit(self.surf, (0, 0))
-        if self.render_mode == "human":
-            pygame.event.pump()
-            self.clock.tick(self.metadata["render_fps"])
-            pygame.display.flip()
-
-        elif self.render_mode == "rgb_array":
-            return np.transpose(
-                np.array(pygame.surfarray.pixels3d(self.screen)), axes=(1, 0, 2)
-            )
-
-    def get_keys_to_action(self):
-        # Control with left and right arrow keys.
-        return {(): 1, (276,): 0, (275,): 2, (275, 276): 1}
-
-    def close(self):
-        if self.screen is not None:
-            import pygame
-
-            pygame.display.quit()
-            pygame.quit()
-            self.isopen = False
+        return True
 
 
 def create_mountain_car(args, hyperparameters, is_valid=False):

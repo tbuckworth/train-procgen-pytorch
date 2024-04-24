@@ -25,14 +25,11 @@ class PreVecEnv(Env):
     Pre-vectorized means applying vectorization at the environment level as opposed to stacking concurrent environments.
     """
 
-    metadata = {
-        "render_modes": ["human", "rgb_array"],
-        "render_fps": 50,
-    }
-
     def __init__(self, n_envs, n_actions,
+                 env_name,
                  max_steps=500,
                  render_mode: Optional[str] = None):
+        self.env_name = env_name
         if n_envs < 2:
             raise Exception("n_envs must be greater than or equal to 2")
         self.n_envs = n_envs
@@ -54,7 +51,15 @@ class PreVecEnv(Env):
         self.n_steps = np.zeros((self.n_envs))
         self.reset()
 
+    metadata = {
+        "render_modes": ["human", "rgb_array"],
+        "render_fps": 50,
+    }
+
     def step(self, action):
+        action = np.array(action)
+        assert action.size == self.n_envs, f"number of actions ({action.size}) must match n_envs ({self.n_envs})"
+
         self.transition_model(action)
 
         self.n_steps += 1
@@ -101,7 +106,7 @@ class PreVecEnv(Env):
         return [seed]
 
     def save(self):
-        np.save('cartpole.npy', self.world)
+        np.save(f'{self.env_name}.npy', self.state)
 
     def render(self):
         if self.render_mode is None:
