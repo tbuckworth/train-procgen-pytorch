@@ -13,9 +13,6 @@ from gymnasium import spaces, Env
 from gymnasium.error import DependencyNotInstalled
 from gymnasium.utils import seeding
 
-from discrete_env.helper_pre_vec import StartSpace
-
-
 
 
 class PreVecEnv(Env):
@@ -24,7 +21,8 @@ class PreVecEnv(Env):
     Absract base class for pre-vectorized discrete environments.
     Pre-vectorized means applying vectorization at the environment level as opposed to stacking concurrent environments.
     """
-
+    screen_width=None
+    screen_height=None
     def __init__(self, n_envs, n_actions,
                  env_name,
                  max_steps=500,
@@ -40,8 +38,8 @@ class PreVecEnv(Env):
         self.action_space = spaces.Discrete(self.n_actions)
         self.observation_space = spaces.Box(self.low, self.high, dtype=np.float32)
         self.render_mode = render_mode
-        self.screen_width = 600
-        self.screen_height = 400
+        self.screen_width = 600 if self.screen_width is None else self.screen_width
+        self.screen_height = 400 if self.screen_height is None else self.screen_width
         self.screen = None
         self.clock = None
         self.isopen = True
@@ -71,7 +69,7 @@ class PreVecEnv(Env):
 
         if self.render_mode == "human":
             self.render()
-        return self.state, self.reward, self.terminated, self.info
+        return self._get_ob(), self.reward, self.terminated, self.info
 
 
 
@@ -96,7 +94,7 @@ class PreVecEnv(Env):
 
         if self.render_mode == "human":
             self.render()
-        return self.state
+        return self._get_ob()
 
     def seed(self, seed=None):
         self.np_random_seed = seed
@@ -161,6 +159,10 @@ class PreVecEnv(Env):
             pygame.display.quit()
             pygame.quit()
             self.isopen = False
+
+    def _get_ob(self):
+        assert self.state is not None, "Call reset before using PreVecEnv object."
+        return self.state
 
     def get_info(self):
         return self.info

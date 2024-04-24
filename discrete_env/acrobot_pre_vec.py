@@ -20,6 +20,8 @@ __credits__ = [
 __license__ = "BSD 3-Clause"
 __author__ = "Christoph Dann <cdann@cdann.de>"
 
+from discrete_env.helper_pre_vec import StartSpace
+from discrete_env.pre_vec_env import PreVecEnv
 from helper_local import DictToArgs
 
 
@@ -27,7 +29,7 @@ from helper_local import DictToArgs
 # https://github.com/rlpy/rlpy/blob/master/rlpy/Domains/Acrobot.py
 
 
-class AcrobotVecEnv(Env):
+class AcrobotVecEnv(PreVecEnv):
     """
     ## Description
 
@@ -163,40 +165,51 @@ class AcrobotVecEnv(Env):
 
     AVAIL_TORQUE = np.array([-1.0, 0.0, +1])
 
-    SCREEN_DIM = 500
+    screen_width = 500
+    screen_height = 500
 
     #: use dynamics equations from the nips paper or the book
     book_or_nips = "book"
     action_arrow = None
     domain_fig = None
-    actions_num = 3
 
     def __init__(self, n_envs,
-                 gravity=9.8,
                  torque_noise_max=0.0,
+                 min_gravity=9.8,
+                 max_gravity=11.4,
                  max_steps=500,
                  render_mode: Optional[str] = None):
+        self._np_random = None
+        n_actions = 3
+        self.min_gravity = min_gravity
+        self.max_gravity = max_gravity
         self.max_steps = max_steps
         self.n_envs = n_envs
-        self.gravity = gravity
         self.torque_noise_max = torque_noise_max
 
         self.render_mode = render_mode
         self.screen = None
         self.clock = None
         self.isopen = True
-        high = np.array(
-            [1.0, 1.0, 1.0, 1.0, self.MAX_VEL_1, self.MAX_VEL_2], dtype=np.float32
+        self.i_t1 = 0
+        self.i_t2 = 1
+        self.i_d1 = 2
+        self.i_d2 = 3
+        self.i_g = 4
+        # self.i_? = 4
+        # self.i_? = 5
+
+        self.high = np.array(
+            [1.0, 1.0, 1.0, 1.0, self.max_gravity], dtype=np.float32
         )
-        low = -high
-        self.observation_space = spaces.Box(low=low, high=high, dtype=np.float32)
-        self.action_space = spaces.Discrete(3)
-        
-        self.terminated = np.full(self.n_envs, True)
-        self.n_inputs = 4
-        self.state = np.zeros((self.n_envs, self.n_inputs))
-        self.n_steps = np.zeros((self.n_envs))
-        self.reset()
+        self.low = -self.high
+        self.low[-1] = self.max_gravity
+
+        self.start_space = StartSpace(low=[-0.1, -0.1, -0.1, -0.1, self.min_gravity],
+                                      high=[0.1, 0.1, 0.1, 0.1, self.max_gravity],
+                                      np_random=self._np_random)
+
+        super().__init__(n_envs, n_actions, "Acrobot", max_steps, render_mode)
 
     def get_action_lookup(self):
         return {
@@ -205,38 +218,7 @@ class AcrobotVecEnv(Env):
             2: "pos torque",
         }
 
-    def reset(self, *, seed: Optional[int] = None, options: Optional[dict] = None):
-        self.terminated = np.full(self.n_envs, True)
-        self.n_steps = np.zeros((self.n_envs))
-        return self.set(seed=seed, options=options)
-    
-    def set(self,
-            *,
-            seed: Optional[int] = 0,
-            options: Optional[dict] = None,
-            ):
-        self.seed(seed)
-        low, high = utils.maybe_parse_reset_bounds(
-            options, -0.1, 0.1  # default low
-        )  # default high
-        state = self.np_random.uniform(low=low, high=high, size=(self.n_envs, self.n_inputs)).astype(
-            np.float32
-        )
-        self.state[self.terminated] = state[self.terminated]
-        self.n_steps[self.terminated] = 0
-
-        if self.render_mode == "human":
-            self.render()
-        return self._get_ob()
-
-    def seed(self, seed=None):
-        # if seed is not None:
-        #     self._np_random, seed = seeding.np_random(seed)
-        self._np_random_seed = seed
-        return [seed]
-
-    def step(self, a):
-        a = np.array(a)
+    def transition_model(self, a):
         s = self.state
         assert s is not None, "Call reset before using AcrobotEnv object."
         torque = self.AVAIL_TORQUE[a]
@@ -249,43 +231,40 @@ class AcrobotVecEnv(Env):
 
         # Now, augment the state with our force action, so it can be passed to
         # _dsdt
-        # s_augmented = np.append(s, torque)
-        s_augmented = np.concatenate((s, np.expand_dims(torque, 1)), axis=-1)
+        # exclude gravity:
+        s_augmented = np.concatenate((s[:, :self.i_g], np.expand_dims(torque, 1)), axis=-1)
 
         ns = rk4(self._dsdt, s_augmented, [0, self.dt])
 
-        ns[:, 0] = wrap(ns[:, 0], -pi, pi)
-        ns[:, 1] = wrap(ns[:, 1], -pi, pi)
-        ns[:, 2] = bound(ns[:, 2], -self.MAX_VEL_1, self.MAX_VEL_1)
-        ns[:, 3] = bound(ns[:, 3], -self.MAX_VEL_2, self.MAX_VEL_2)
-        self.state = ns
+        ns[:, self.i_t1] = wrap(ns[:, self.i_t1], -pi, pi)
+        ns[:, self.i_t2] = wrap(ns[:, self.i_t2], -pi, pi)
+        ns[:, self.i_d1] = bound(ns[:, self.i_d1], -self.MAX_VEL_1, self.MAX_VEL_1)
+        ns[:, self.i_d2] = bound(ns[:, self.i_d2], -self.MAX_VEL_2, self.MAX_VEL_2)
+
+        self.state[:, :self.i_g] = ns
         self.terminated = self._terminal()
-        reward = np.zeros(self.n_envs)
-        reward[np.logical_not(self.terminated)] = -1.0
+        self.reward = np.zeros(self.n_envs)
+        self.reward[np.logical_not(self.terminated)] = -1.0
 
-        self.n_steps += 1
-        truncated = self.n_steps >= self.max_steps
-        self.terminated[truncated] = True
-
-        if np.any(self.terminated):
-            self.set()        
-
-        if self.render_mode == "human":
-            self.render()
-        # truncation=False as the time limit is handled by the `TimeLimit` wrapper added during `make`
-        return self._get_ob(), reward, self.terminated, {}
+        self.info = {'env_reward': self.reward[i] for i in range(self.n_envs)}
 
     def _get_ob(self):
         s = self.state
-        assert s is not None, "Call reset before using AcrobotEnv object."
         return np.array(
-            [cos(s[:, 0]), sin(s[:, 0]), cos(s[:, 1]), sin(s[:, 1]), s[:, 2], s[:, 3]], dtype=np.float32
+            [
+                cos(s[:, self.i_t1]),
+                sin(s[:, self.i_t1]),
+                cos(s[:, self.i_t2]),
+                sin(s[:, self.i_t2]),
+                s[:, self.i_d1],
+                s[:, self.i_d2],
+                s[:, self.i_g]], dtype=np.float32
         ).T
 
     def _terminal(self):
         s = self.state
         assert s is not None, "Call reset before using AcrobotEnv object."
-        return -cos(s[:, 0]) - cos(s[:, 1] + s[:, 0]) > 1.0
+        return -cos(s[:, self.i_t1]) - cos(s[:, self.i_t2] + s[:, self.i_t1]) > 1.0
 
     def _dsdt(self, s_augmented):
         m1 = self.LINK_MASS_1
@@ -295,13 +274,13 @@ class AcrobotVecEnv(Env):
         lc2 = self.LINK_COM_POS_2
         I1 = self.LINK_MOI
         I2 = self.LINK_MOI
-        g = self.gravity
+        g = self.state[:, self.i_g]
         a = s_augmented[:, -1]
         s = s_augmented[:, :-1]
-        theta1 = s[:, 0]
-        theta2 = s[:, 1]
-        dtheta1 = s[:, 2]
-        dtheta2 = s[:, 3]
+        theta1 = s[:, self.i_t1]
+        theta2 = s[:, self.i_t2]
+        dtheta1 = s[:, self.i_d1]
+        dtheta2 = s[:, self.i_d2]
         d1 = (
                 m1 * lc1 ** 2
                 + m2 * (l1 ** 2 + lc2 ** 2 + 2 * l1 * lc2 * cos(theta2))
@@ -329,43 +308,15 @@ class AcrobotVecEnv(Env):
         ddtheta1 = -(d2 * ddtheta2 + phi1) / d1
         return dtheta1, dtheta2, ddtheta1, ddtheta2, np.zeros_like(dtheta1)
 
-    def render(self):
-        if self.render_mode is None:
-            assert self.spec is not None
-            gym.logger.warn(
-                "You are calling render method without specifying any render mode. "
-                "You can specify the render_mode at initialization, "
-                f'e.g. gym.make("{self.spec.id}", render_mode="rgb_array")'
-            )
-            return
+    def render_unique(self):
 
-        try:
-            import pygame
-            from pygame import gfxdraw
-        except ImportError as e:
-            raise DependencyNotInstalled(
-                'pygame is not installed, run `pip install "gymnasium[classic-control]"`'
-            ) from e
-
-        if self.screen is None:
-            pygame.init()
-            if self.render_mode == "human":
-                pygame.display.init()
-                self.screen = pygame.display.set_mode(
-                    (self.SCREEN_DIM, self.SCREEN_DIM)
-                )
-            else:  # mode in "rgb_array"
-                self.screen = pygame.Surface((self.SCREEN_DIM, self.SCREEN_DIM))
-        if self.clock is None:
-            self.clock = pygame.time.Clock()
-
-        surf = pygame.Surface((self.SCREEN_DIM, self.SCREEN_DIM))
-        surf.fill((255, 255, 255))
+        self.surf = self.pygame.Surface((self.screen_width, self.screen_width))
+        self.surf.fill((255, 255, 255))
         s = self.state[0]
 
         bound = self.LINK_LENGTH_1 + self.LINK_LENGTH_2 + 0.2  # 2.2 for default
-        scale = self.SCREEN_DIM / (bound * 2)
-        offset = self.SCREEN_DIM / 2
+        scale = self.screen_width / (bound * 2)
+        offset = self.screen_width / 2
 
         if s is None:
             return None
@@ -384,8 +335,8 @@ class AcrobotVecEnv(Env):
         thetas = [s[0] - pi / 2, s[0] + s[1] - pi / 2]
         link_lengths = [self.LINK_LENGTH_1 * scale, self.LINK_LENGTH_2 * scale]
 
-        pygame.draw.line(
-            surf,
+        self.pygame.draw.line(
+            self.surf,
             start_pos=(-2.2 * scale + offset, 1 * scale + offset),
             end_pos=(2.2 * scale + offset, 1 * scale + offset),
             color=(0, 0, 0),
@@ -398,35 +349,15 @@ class AcrobotVecEnv(Env):
             coords = [(l, b), (l, t), (r, t), (r, b)]
             transformed_coords = []
             for coord in coords:
-                coord = pygame.math.Vector2(coord).rotate_rad(th)
+                coord = self.pygame.math.Vector2(coord).rotate_rad(th)
                 coord = (coord[0] + x, coord[1] + y)
                 transformed_coords.append(coord)
-            gfxdraw.aapolygon(surf, transformed_coords, (0, 204, 204))
-            gfxdraw.filled_polygon(surf, transformed_coords, (0, 204, 204))
+            self.gfxdraw.aapolygon(self.surf, transformed_coords, (0, 204, 204))
+            self.gfxdraw.filled_polygon(self.surf, transformed_coords, (0, 204, 204))
 
-            gfxdraw.aacircle(surf, int(x), int(y), int(0.1 * scale), (204, 204, 0))
-            gfxdraw.filled_circle(surf, int(x), int(y), int(0.1 * scale), (204, 204, 0))
-
-        surf = pygame.transform.flip(surf, False, True)
-        self.screen.blit(surf, (0, 0))
-
-        if self.render_mode == "human":
-            pygame.event.pump()
-            self.clock.tick(self.metadata["render_fps"])
-            pygame.display.flip()
-
-        elif self.render_mode == "rgb_array":
-            return np.transpose(
-                np.array(pygame.surfarray.pixels3d(self.screen)), axes=(1, 0, 2)
-            )
-
-    def close(self):
-        if self.screen is not None:
-            import pygame
-
-            pygame.display.quit()
-            pygame.quit()
-            self.isopen = False
+            self.gfxdraw.aacircle(self.surf, int(x), int(y), int(0.1 * scale), (204, 204, 0))
+            self.gfxdraw.filled_circle(self.surf, int(x), int(y), int(0.1 * scale), (204, 204, 0))
+        return True
 
 
 def wrap(x, m, M):
@@ -480,15 +411,15 @@ def rk4(derivs, y0, t):
 
     Example for 2D system:
 
-        >>> def derivs(x):
-        ...     d1 =  x[0] + 2*x[1]
-        ...     d2 =  -3*x[0] + 4*x[1]
-        ...     return d1, d2
-
-        >>> dt = 0.0005
-        >>> t = np.arange(0.0, 2.0, dt)
-        >>> y0 = (1,2)
-        >>> yout = rk4(derivs, y0, t)
+        # >>> def derivs(x):
+        # ...     d1 =  x[0] + 2*x[1]
+        # ...     d2 =  -3*x[0] + 4*x[1]
+        # ...     return d1, d2
+        #
+        # >>> dt = 0.0005
+        # >>> t = np.arange(0.0, 2.0, dt)
+        # >>> y0 = (1,2)
+        # >>> yout = rk4(derivs, y0, t)
 
     Args:
         derivs: the derivative of the system and has the signature `dy = derivs(yi)`

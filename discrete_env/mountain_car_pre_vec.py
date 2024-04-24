@@ -3,14 +3,9 @@ http://incompleteideas.net/MountainCar/MountainCar1.cp
 permalink: https://perma.cc/6Z2N-PFWC
 """
 import math
-from typing import Optional, Tuple
+from typing import Optional
 
 import numpy as np
-
-import gymnasium as gym
-from gymnasium import spaces
-from gymnasium.envs.classic_control import utils
-from gymnasium.error import DependencyNotInstalled
 
 from discrete_env.helper_pre_vec import StartSpace
 from discrete_env.pre_vec_env import PreVecEnv
