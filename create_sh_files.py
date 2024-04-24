@@ -196,7 +196,7 @@ def symbreg_hparams():
 def train_hparams():
     return {
         "exp_name": [None],
-        "env_name": ['cartpole', 'mountain_car', 'acrobot'],
+        "env_name": ['acrobot'],
         # "distribution_mode": ['hard'],
         "param_name": ['mlpmodel'],
         "device": ["gpu"],
@@ -296,7 +296,7 @@ def add_training_args_dict():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--n_gpu', type=int, default=4)
+    parser.add_argument('--n_gpu', type=int, default=20)
     parser.add_argument('--execute', action="store_true", default=True)
     # parser.add_argument('--cuda', action="store_true", default=False)
     parser.add_argument('--max_runs', type=int, default=500)
