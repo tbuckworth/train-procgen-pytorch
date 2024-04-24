@@ -245,7 +245,7 @@ class AcrobotVecEnv(PreVecEnv):
         self.reward = np.zeros(self.n_envs)
         self.reward[np.logical_not(self.terminated)] = -1.0
 
-        self.info = {'env_reward': self.reward[i] for i in range(self.n_envs)}
+        self.info = [{'env_reward': self.reward[i]} for i in range(self.n_envs)]
 
     def _get_ob(self):
         s = self.state
