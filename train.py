@@ -1,4 +1,3 @@
-from common.env.procgen_wrappers import create_rendered_env, create_procgen_env
 from common.logger import Logger
 from common.storage import Storage
 from common import set_global_seeds, set_global_log_levels
@@ -7,11 +6,8 @@ import os, time, argparse
 import torch
 import numpy as np
 
-from discrete_env.acrobot_pre_vec import create_acrobot
-from discrete_env.mountain_car_pre_vec import create_mountain_car
 from helper_local import get_hyperparams, initialize_model, add_training_args, wandb_login
-from cartpole.create_cartpole import create_cartpole
-from boxworld.create_box_world import create_bw_env
+from discrete_env.helper_pre_vec import get_env_constructor
 
 try:
     import wandb
@@ -93,19 +89,7 @@ def train_ppo(args):
     n_envs = hyperparameters.get('n_envs', 256)
     max_steps = hyperparameters.get("max_steps", 10 ** 3)
 
-    create_venv = create_procgen_env
-
-    if args.env_name == "boxworld":
-        create_venv = create_bw_env
-    elif args.render:
-        create_venv = create_rendered_env
-
-    if args.env_name == "cartpole":
-        create_venv = create_cartpole
-    if args.env_name == "mountain_car":
-        create_venv = create_mountain_car
-    if args.env_name == "acrobot":
-        create_venv = create_acrobot
+    create_venv = get_env_constructor(args)
 
     env = create_venv(args, hyperparameters)
     env_valid = create_venv(args, hyperparameters, is_valid=True) if args.use_valid_env else None

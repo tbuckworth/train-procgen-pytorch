@@ -21,6 +21,7 @@ from helper_local import get_config, get_path, balanced_reward, load_storage_and
     load_hparams_for_model, floats_to_dp, dict_to_html_table, wandb_login, add_symbreg_args, DictToArgs, \
     inverse_sigmoid, sigmoid, sample_from_sigmoid, map_actions_to_values, get_actions_from_all, \
     entropy_from_binary_prob, get_saved_hyperparams, softmax, sample_numpy_probs
+from discrete_env.helper_pre_vec import get_env_constructor
 from cartpole.create_cartpole import create_cartpole
 from boxworld.create_box_world import create_bw_env
 from matplotlib import pyplot as plt
@@ -79,18 +80,12 @@ def get_best_str(model, split='\n'):
 def load_nn_policy(logdir, n_envs=2):
     cfg = get_config(logdir)
     cfg["n_envs"] = n_envs
-    if cfg["env_name"] == "coinrun":
+    env_name = cfg["env_name"]
+    create_venv = get_env_constructor(env_name)
+    symbolic_agent_constructor = SymbolicAgent
+
+    if env_name in ["coinrun", "boxworld"]:
         symbolic_agent_constructor = NeuroSymbolicAgent
-        create_venv = create_procgen_env
-    if cfg["env_name"] == "cartpole":
-        symbolic_agent_constructor = SymbolicAgent
-        create_venv = create_cartpole
-    if cfg["env_name"] == "boxworld":
-        symbolic_agent_constructor = NeuroSymbolicAgent
-        create_venv = create_bw_env
-    if cfg["env_name"] == "mountain_car":
-        symbolic_agent_constructor = SymbolicAgent
-        create_venv = create_mountain_car
 
     device = torch.device("cpu")
     hyperparameters, last_model = load_hparams_for_model(cfg["param_name"], logdir, n_envs)
