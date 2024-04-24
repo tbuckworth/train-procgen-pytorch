@@ -137,7 +137,7 @@ def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_ty
             found = False
             for attempts in range(30):
                 if cuda:
-                    if not re_use_machine and free_machine is not None:
+                    if not re_use_machine or free_machine is None:
                         free_machine = free_gpu(hosts)
                 else:
                     free_machine = run_subprocess(script, "\\n", suppress=True)
@@ -296,7 +296,7 @@ def add_training_args_dict():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--n_gpu', type=int, default=6)
+    parser.add_argument('--n_gpu', type=int, default=4)
     parser.add_argument('--execute', action="store_true", default=True)
     # parser.add_argument('--cuda', action="store_true", default=False)
     parser.add_argument('--max_runs', type=int, default=500)

@@ -7,7 +7,7 @@ import torch
 import numpy as np
 
 from helper_local import get_hyperparams, initialize_model, add_training_args, wandb_login
-from discrete_env.helper_pre_vec import get_env_constructor
+from common.env.env_constructor import get_env_constructor
 
 try:
     import wandb
@@ -89,7 +89,7 @@ def train_ppo(args):
     n_envs = hyperparameters.get('n_envs', 256)
     max_steps = hyperparameters.get("max_steps", 10 ** 3)
 
-    create_venv = get_env_constructor(args)
+    create_venv = get_env_constructor(args.env_name)
 
     env = create_venv(args, hyperparameters)
     env_valid = create_venv(args, hyperparameters, is_valid=True) if args.use_valid_env else None

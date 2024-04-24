@@ -21,7 +21,7 @@ from helper_local import get_config, get_path, balanced_reward, load_storage_and
     load_hparams_for_model, floats_to_dp, dict_to_html_table, wandb_login, add_symbreg_args, DictToArgs, \
     inverse_sigmoid, sigmoid, sample_from_sigmoid, map_actions_to_values, get_actions_from_all, \
     entropy_from_binary_prob, get_saved_hyperparams, softmax, sample_numpy_probs
-from discrete_env.helper_pre_vec import get_env_constructor
+from common.env.env_constructor import get_env_constructor
 from cartpole.create_cartpole import create_cartpole
 from boxworld.create_box_world import create_bw_env
 from matplotlib import pyplot as plt
