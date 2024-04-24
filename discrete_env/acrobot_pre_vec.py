@@ -196,8 +196,6 @@ class AcrobotVecEnv(PreVecEnv):
         self.i_d1 = 2
         self.i_d2 = 3
         self.i_g = 4
-        # self.i_? = 4
-        # self.i_? = 5
 
         self.high = np.array(
             [1.0, 1.0, 1.0, 1.0, self.max_gravity], dtype=np.float32
@@ -458,11 +456,13 @@ def create_acrobot(args, hyperparameters, is_valid=False):
     if args is None:
         args = DictToArgs({"render": False})
     n_envs = hyperparameters.get('n_envs', 32)
-    env_args = {"gravity": hyperparameters.get("gravity", 9.8),
+    env_args = {"min_gravity": hyperparameters.get("min_gravity", 9.8),
+                "max_gravity": hyperparameters.get("max_gravity", 10.4),
                 "torque_noise_max": hyperparameters.get("torque_noise_max", 0.)
                 }
     if is_valid:
-        env_args = {"gravity_v": hyperparameters.get("gravity_v", 9.8),
+        env_args = {"min_gravity_v": hyperparameters.get("min_gravity_v", 9.8),
+                    "max_gravity_v": hyperparameters.get("max_gravity_v", 10.4),
                     "torque_noise_max_v": hyperparameters.get("torque_noise_max_v", 1.)
                     }
     env_args["n_envs"] = n_envs

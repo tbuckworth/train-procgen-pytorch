@@ -252,7 +252,8 @@ def create_mountain_car(args, hyperparameters, is_valid=False):
                 "max_speed": hyperparameters.get("max_speed", 0.07),
                 "goal_position": hyperparameters.get("goal_position", 0.5),
                 "force": hyperparameters.get("force", 0.001),
-                "gravity": hyperparameters.get("gravity", 0.0025),
+                "min_gravity": hyperparameters.get("min_gravity", 0.0025),
+                "max_gravity": hyperparameters.get("max_gravity", 0.01),
                 }
     if is_valid:
         env_args = {"goal_velocity": hyperparameters.get("goal_velocity_v", 0),
@@ -263,7 +264,8 @@ def create_mountain_car(args, hyperparameters, is_valid=False):
                     "max_speed": hyperparameters.get("max_speed_v", 0.07),
                     "goal_position": hyperparameters.get("goal_position_v", 0.5),
                     "force": hyperparameters.get("force_v", 0.001),
-                    "gravity": hyperparameters.get("gravity_v", 0.01),
+                    "min_gravity": hyperparameters.get("min_gravity_v", 0.01),
+                    "max_gravity": hyperparameters.get("max_gravity_v", 0.05),
                     }
     env_args["n_envs"] = n_envs
     env_args["render_mode"] = "human" if args.render else None
