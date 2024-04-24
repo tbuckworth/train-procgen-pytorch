@@ -1,7 +1,7 @@
 from boxworld.create_box_world import create_bw_env
-from cartpole.create_cartpole import create_cartpole
 from common.env.procgen_wrappers import create_procgen_env
 from discrete_env.acrobot_pre_vec import create_acrobot
+from discrete_env.cartpole_pre_vec import create_cartpole
 from discrete_env.mountain_car_pre_vec import create_mountain_car
 
 
