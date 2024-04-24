@@ -7,8 +7,6 @@ from helper_local import DictToArgs
 
 class BaseDiscreteEnvTest(unittest.TestCase):
     def setUp(cls) -> None:
-        # cls.env = MountainCarVecEnv(n_envs=2, max_steps=100, render_mode="human")
-        # cls.env = create_mountain_car(DictToArgs({"render": True, "max_steps": 20}), {}, True)
         cls.env = cls.env_cons(n_envs=2, max_steps=50, render_mode="human")
         cls.env.reset()
 

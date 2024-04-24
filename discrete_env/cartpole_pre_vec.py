@@ -10,12 +10,15 @@ import numpy as np
 
 import gymnasium as gym
 from gymnasium import spaces, Env
-from gymnasium.envs.classic_control import utils
 from gymnasium.error import DependencyNotInstalled
 from gymnasium.utils import seeding
 
+from discrete_env.helper_pre_vec import StartSpace
+
+
 # Analytic Solution:
 # 3 * angle + angle_velocity > 0
+
 
 class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
     """
@@ -89,9 +92,16 @@ class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
         "render_fps": 50,
     }
 
-    def __init__(self, n_envs, degrees=12, h_range=2.4, gravity=9.8, max_steps=500, render_mode: Optional[str] = None):
+    def __init__(self, n_envs,
+                 degrees=12,
+                 h_range=2.4,
+                 min_gravity=9.8,
+                 max_gravity=10.4,
+                 max_steps=500,
+                 render_mode: Optional[str] = None):
         if n_envs < 2:
             raise Exception("n_envs must be greater than or equal to 2")
+        self.n_actions = 2
         self.np_random_seed = None
         self._np_random = None
         self.n_envs = n_envs
@@ -99,7 +109,8 @@ class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
         self.terminated = np.full(self.n_envs, True)
         self.reward = np.ones((self.n_envs))
         self.info = [{"env_reward": self.reward[i]} for i in range(len(self.reward))]
-        self.gravity = gravity
+        self.min_gravity = min_gravity
+        self.max_gravity = max_gravity
         self.masscart = 1.0
         self.masspole = 0.1
         self.total_mass = self.masspole + self.masscart
@@ -115,49 +126,69 @@ class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
 
         # Angle limit set to 2 * theta_threshold_radians so failing observation
         # is still within bounds.
-        high = np.array(
+        self.high = np.array(
             [
                 self.x_threshold * 2,
                 np.finfo(np.float32).max,
                 self.theta_threshold_radians * 2,
                 np.finfo(np.float32).max,
+                self.max_gravity,
             ],
             dtype=np.float32,
         )
+        self.low = -self.high
+        self.low[-1] = self.min_gravity
 
-        self.action_space = spaces.Discrete(2)
-        self.observation_space = spaces.Box(-high, high, dtype=np.float32)
+        self.start_space = StartSpace(low=[-0.05, -0.05, -0.05, -0.05, self.min_gravity],
+                                      high=[0.05, 0.05, 0.05, 0.05, self.max_gravity],
+                                      np_random=self._np_random)
+
         # super().__init__(self.observation_space, self.action_space, n_envs)
-        self.render_mode = render_mode
 
+        self.action_space = spaces.Discrete(self.n_actions)
+        self.observation_space = spaces.Box(self.low, self.high, dtype=np.float32)
+        self.render_mode = render_mode
         self.screen_width = 600
         self.screen_height = 400
         self.screen = None
         self.clock = None
         self.isopen = True
-        self.state = np.zeros((self.n_envs, 4))
+        self.n_inputs = len(self.high)
+        self.terminated = np.full(self.n_envs, True)
+        self.state = np.zeros((self.n_envs, self.n_inputs))
         self.n_steps = np.zeros((self.n_envs))
         self.reset()
 
     def step(self, action):
-        x, x_dot, theta, theta_dot = [np.squeeze(a) for a in np.hsplit(self.state, self.state.shape[-1])]
+        self.transition_model(action)
 
+        self.n_steps += 1
+        truncated = self.n_steps >= self.max_steps
+        self.terminated[truncated] = True
+
+        if np.any(self.terminated):
+            self.set()
+
+        if self.render_mode == "human":
+            self.render()
+        return self.state, self.reward, self.terminated, self.info
+
+    def transition_model(self, action):
+        x, x_dot, theta, theta_dot, gravity = self.state.T
         force = np.ones((self.n_envs))
         force[action == 0] = -1
         force *= self.force_mag
         costheta = np.cos(theta)
         sintheta = np.sin(theta)
-
         # For the interested reader:
         # https://coneural.org/florian/papers/05_cart_pole.pdf
         temp = (
                        force + self.polemass_length * theta_dot ** 2 * sintheta
                ) / self.total_mass
-        thetaacc = (self.gravity * sintheta - costheta * temp) / (
+        thetaacc = (gravity * sintheta - costheta * temp) / (
                 self.length * (4.0 / 3.0 - self.masspole * costheta ** 2 / self.total_mass)
         )
         xacc = temp - self.polemass_length * thetaacc * costheta / self.total_mass
-
         if self.kinematics_integrator == "euler":
             x = x + self.tau * x_dot
             x_dot = x_dot + self.tau * xacc
@@ -168,26 +199,12 @@ class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
             x = x + self.tau * x_dot
             theta_dot = theta_dot + self.tau * thetaacc
             theta = theta + self.tau * theta_dot
-
-        self.state = np.vstack((x, x_dot, theta, theta_dot)).T
-
+        self.state = np.vstack((x, x_dot, theta, theta_dot, gravity)).T
         oob = np.bitwise_or(x < -self.x_threshold,
                             x > self.x_threshold)
         theta_oob = np.bitwise_or(theta < -self.theta_threshold_radians,
                                   theta > self.theta_threshold_radians)
         self.terminated = np.bitwise_or(oob, theta_oob)
-
-        self.n_steps += 1
-        truncated = self.n_steps >= self.max_steps
-        self.terminated[truncated] = True
-
-        if np.any(self.terminated):
-            self.set()
-
-
-        if self.render_mode == "human":
-            self.render()
-        return self.state, self.reward, self.terminated, self.info
 
     def reset(
             self,
@@ -197,27 +214,16 @@ class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
     ):
         self.terminated = np.full(self.n_envs, True)
         self.n_steps = np.zeros((self.n_envs))
-        return self.set(seed=seed, options=options)
-
+        return self.set(seed=seed)
 
     def set(self,
             *,
             seed: Optional[int] = 0,
-            options: Optional[dict] = None,
             ):
         self.seed(seed)
-        # super().reset(seed=seed)
-        if self.np_random_seed is not None:
-            self._np_random, self.np_random_seed = seeding.np_random(seed)
-        # Note that if you use custom reset bounds, it may lead to out-of-bound
-        # state/observations.
-        low, high = utils.maybe_parse_reset_bounds(
-            options, -0.05, 0.05  # default low
-        )  # default high
-        state = self._np_random.uniform(low=low, high=high, size=(self.n_envs, 4))
+        state = self.start_space.sample(self.n_envs)
         self.state[self.terminated] = state[self.terminated]
         self.n_steps[self.terminated] = 0
-
 
         if self.render_mode == "human":
             self.render()
@@ -225,6 +231,9 @@ class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
 
     def seed(self, seed=None):
         self.np_random_seed = seed
+        if self.np_random_seed is not None:
+            self._np_random, self.np_random_seed = seeding.np_random(seed)
+            self.start_space.set_np_random(self._np_random)
         return [seed]
 
     def save(self):
@@ -241,7 +250,9 @@ class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
 
         try:
             import pygame
+            self.pygame = pygame
             from pygame import gfxdraw
+            self.gfxdraw = gfxdraw
         except ImportError:
             raise DependencyNotInstalled(
                 "pygame is not installed, run `pip install gym[classic_control]`"
@@ -259,61 +270,8 @@ class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
         if self.clock is None:
             self.clock = pygame.time.Clock()
 
-        world_width = self.x_threshold * 2
-        scale = self.screen_width / world_width
-        polewidth = 10.0
-        polelen = scale * (2 * self.length)
-        cartwidth = 50.0
-        cartheight = 30.0
-
-        if self.state is None:
+        if not self.render_unique():
             return None
-
-        x = self.state[0]
-
-        self.surf = pygame.Surface((self.screen_width, self.screen_height))
-        self.surf.fill((255, 255, 255))
-
-        l, r, t, b = -cartwidth / 2, cartwidth / 2, cartheight / 2, -cartheight / 2
-        axleoffset = cartheight / 4.0
-        cartx = x[0] * scale + self.screen_width / 2.0  # MIDDLE OF CART
-        carty = 100  # TOP OF CART
-        cart_coords = [(l, b), (l, t), (r, t), (r, b)]
-        cart_coords = [(c[0] + cartx, c[1] + carty) for c in cart_coords]
-        gfxdraw.aapolygon(self.surf, cart_coords, (0, 0, 0))
-        gfxdraw.filled_polygon(self.surf, cart_coords, (0, 0, 0))
-
-        l, r, t, b = (
-            -polewidth / 2,
-            polewidth / 2,
-            polelen - polewidth / 2,
-            -polewidth / 2,
-        )
-
-        pole_coords = []
-        for coord in [(l, b), (l, t), (r, t), (r, b)]:
-            coord = pygame.math.Vector2(coord).rotate_rad(-x[2])
-            coord = (coord[0] + cartx, coord[1] + carty + axleoffset)
-            pole_coords.append(coord)
-        gfxdraw.aapolygon(self.surf, pole_coords, (202, 152, 101))
-        gfxdraw.filled_polygon(self.surf, pole_coords, (202, 152, 101))
-
-        gfxdraw.aacircle(
-            self.surf,
-            int(cartx),
-            int(carty + axleoffset),
-            int(polewidth / 2),
-            (129, 132, 203),
-        )
-        gfxdraw.filled_circle(
-            self.surf,
-            int(cartx),
-            int(carty + axleoffset),
-            int(polewidth / 2),
-            (129, 132, 203),
-        )
-
-        gfxdraw.hline(self.surf, 0, self.screen_width, carty, (0, 0, 0))
 
         self.surf = pygame.transform.flip(self.surf, False, True)
         self.screen.blit(self.surf, (0, 0))
@@ -326,6 +284,56 @@ class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
             return np.transpose(
                 np.array(pygame.surfarray.pixels3d(self.screen)), axes=(1, 0, 2)
             )
+
+    def render_unique(self):
+        world_width = self.x_threshold * 2
+        scale = self.screen_width / world_width
+        polewidth = 10.0
+        polelen = scale * (2 * self.length)
+        cartwidth = 50.0
+        cartheight = 30.0
+        if self.state is None:
+            return False
+        x = self.state[0]
+        self.surf = self.pygame.Surface((self.screen_width, self.screen_height))
+        self.surf.fill((255, 255, 255))
+        l, r, t, b = -cartwidth / 2, cartwidth / 2, cartheight / 2, -cartheight / 2
+        axleoffset = cartheight / 4.0
+        cartx = x[0] * scale + self.screen_width / 2.0  # MIDDLE OF CART
+        carty = 100  # TOP OF CART
+        cart_coords = [(l, b), (l, t), (r, t), (r, b)]
+        cart_coords = [(c[0] + cartx, c[1] + carty) for c in cart_coords]
+        self.gfxdraw.aapolygon(self.surf, cart_coords, (0, 0, 0))
+        self.gfxdraw.filled_polygon(self.surf, cart_coords, (0, 0, 0))
+        l, r, t, b = (
+            -polewidth / 2,
+            polewidth / 2,
+            polelen - polewidth / 2,
+            -polewidth / 2,
+        )
+        pole_coords = []
+        for coord in [(l, b), (l, t), (r, t), (r, b)]:
+            coord = self.pygame.math.Vector2(coord).rotate_rad(-x[2])
+            coord = (coord[0] + cartx, coord[1] + carty + axleoffset)
+            pole_coords.append(coord)
+        self.gfxdraw.aapolygon(self.surf, pole_coords, (202, 152, 101))
+        self.gfxdraw.filled_polygon(self.surf, pole_coords, (202, 152, 101))
+        self.gfxdraw.aacircle(
+            self.surf,
+            int(cartx),
+            int(carty + axleoffset),
+            int(polewidth / 2),
+            (129, 132, 203),
+        )
+        self.gfxdraw.filled_circle(
+            self.surf,
+            int(cartx),
+            int(carty + axleoffset),
+            int(polewidth / 2),
+            (129, 132, 203),
+        )
+        self.gfxdraw.hline(self.surf, 0, self.screen_width, carty, (0, 0, 0))
+        return True
 
     def get_action_lookup(self):
         return {
@@ -344,8 +352,21 @@ class CartPoleVecEnv(Env):  # gym.Env[np.ndarray, Union[int, np.ndarray]]):
     def get_info(self):
         return self.info
 
-    def observe(self):
-        return self.reward, self.state, self.terminated
 
-    def act(self, ac) -> None:
-        self.step(ac)
+
+def create_cartpole(args, hyperparameters, is_valid=False):
+    n_envs = hyperparameters.get('n_envs', 32)
+    env_args = {"n_envs": n_envs,
+                "env_name": "CartPole-gravity",
+                "degrees": 12,
+                "h_range": 2.4,
+                "min_gravity": 9.8,
+                "max_gravity": 10.4,
+                }
+    if is_valid:
+        env_args["degrees"] = hyperparameters.get("degrees_v", 9)
+        env_args["h_range"] = hyperparameters.get("h_range_v", 1.2)
+        env_args["min_gravity"] = hyperparameters.get("min_gravity_v", 10.4)
+        env_args["max_gravity"] = hyperparameters.get("max_gravity_v", 24.8)
+
+    return CartPoleVecEnv(**env_args)
