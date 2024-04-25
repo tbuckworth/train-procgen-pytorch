@@ -751,6 +751,7 @@ def get_saved_hyperparams(logdir):
 
 def softmax(Y):
     l = np.exp(Y)
+    l[np.isinf(l)] = np.finfo(l.dtype).max
     return l / np.repeat(l.sum(1), Y.shape[-1]).reshape(l.shape)
 
 

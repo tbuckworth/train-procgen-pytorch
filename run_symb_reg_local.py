@@ -9,8 +9,9 @@ from cartpole.create_cartpole import create_cartpole, create_cartpole_env_pre_ve
 if os.name != "nt":
     from pysr import PySRRegressor
 
-from helper_local import add_symbreg_args, get_config, DictToArgs, sigmoid, entropy_from_binary_prob
-from symbolic_regression import run_neurosymbolic_search, load_nn_policy, generate_data
+from helper_local import add_symbreg_args, get_config, DictToArgs, sigmoid, entropy_from_binary_prob, \
+    get_actions_from_all, map_actions_to_values
+from symbolic_regression import run_neurosymbolic_search, load_nn_policy, generate_data, test_agent_mean_reward
 from symbreg.agents import NeuralAgent, DeterministicNeuralAgent
 
 
@@ -79,24 +80,31 @@ def run_saved_model():
     # n_envs = 32
     # rounds = 300
 
-    logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
-    symbdir = os.path.join(logdir, "symbreg/2024-04-12__17-38-41/")
+    # logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
+    # symbdir = os.path.join(logdir, "symbreg/2024-04-12__17-38-41/")
     # symbdir = os.path.join(logdir, "symbreg/2024-04-11__15-12-07/")
     # logdir = "logs/train/cartpole/cartpole/2024-04-15__15-45-47__seed_6033"
     # symbdir = os.path.join(logdir, "symbreg/2024-04-15__16-36-44/")
+    logdir = "logs/train/acrobot/test/2024-04-25__10-03-20__seed_6033"
+    symbdir = os.path.join(logdir, "symbreg/2024-04-25__16-53-11/")
+
     pickle_filename = os.path.join(symbdir, "symb_reg.pkl")
     pysr_model = PySRRegressor.from_file(pickle_filename)
 
     cfg = get_config(symbdir)
     args = DictToArgs(cfg)
 
-    policy, env, sampler, symbolic_agent_constructor, test_env, test_agent = load_nn_policy(logdir, args.n_envs)
-    X, Y, V = generate_data(policy, sampler, env, int(1000), args)
-    # ns_agent = symbolic_agent_constructor(pysr_model, policy, args.stochastic, None)
-    # nn_agent = NeuralAgent(policy)
-    # ns_score_train = test_agent(ns_agent, env, "NeuroSymb Train", args.rounds)
-    # nn_score_train = test_agent(nn_agent, env, "Neural    Train", args.rounds)
+    policy, env, symbolic_agent_constructor, test_env = load_nn_policy(logdir, args.n_envs)
 
+    actions = get_actions_from_all(env)
+    action_mapping = map_actions_to_values(actions)
+
+    ns_agent = symbolic_agent_constructor(pysr_model, policy, args.stochastic, action_mapping)
+    # X, Y, V = generate_data(ns_agent, env, int(1000))
+    # nn_agent = NeuralAgent(policy)
+    ns_score_train = test_agent_mean_reward(ns_agent, env, "NeuroSymb Train", args.rounds)
+    # nn_score_train = test_agent(nn_agent, env, "Neural    Train", args.rounds)
+    return
     Y, Y_hat = plot_action_entropy_vs_pole_angle(X, Y, args, policy, pysr_model, sampler, symbdir)
 
 
@@ -169,16 +177,17 @@ def run_symb_reg_local():
     args.iterations = 1
     # args.logdir = "logs/train/boxworld/boxworld/2024-04-08__12-29-17__seed_6033"
     # args.logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
-    args.logdir = "logs/train/coinrun/coinrun-hparams/2024-03-27__18-20-55__seed_6033"
+    # args.logdir = "logs/train/coinrun/coinrun-hparams/2024-03-27__18-20-55__seed_6033"
+    args.logdir = "logs/train/acrobot/test/2024-04-25__10-03-20__seed_6033"
 
-    args.n_envs = 4
-    args.rounds = 10
+    args.n_envs = 128
+    args.rounds = 300
     args.binary_operators = ["+", "-", "*", "greater", "/"]
     args.unary_operators = ["sin", "relu", "log", "exp", "sign", "sqrt", "square"]
 
     args.denoise = False
     args.use_wandb = True
-    args.wandb_tags = ["stochastic", "coinrun"]
+    args.wandb_tags = ["test"]
     args.weight_metric = "value"
     args.wandb_name = "manual"
     # args.populations = 24
@@ -186,12 +195,13 @@ def run_symb_reg_local():
     args.ncycles_per_iteration = 2000
     args.bumper = True
     args.loss_function = "capped_sigmoid"
-    args.stochastic = False
-    run_neurosymbolic_search(args)
+    for stoch in [True, False]:
+        args.stochastic = stoch
+        run_neurosymbolic_search(args)
 
 
 if __name__ == "__main__":
     # test_agent_specific_environment()
-    # run_saved_model()
+    run_saved_model()
     # run_deterministic_agent()
-    run_symb_reg_local()
+    # run_symb_reg_local()

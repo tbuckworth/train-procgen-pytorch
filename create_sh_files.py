@@ -164,21 +164,21 @@ def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_ty
 def symbreg_hparams():
     return {
         "timeout_in_seconds": [3600 * 10],
-        "data_size": [100, 1000, 5000],  # , 500, 100, 50],# 5000],
-        "iterations": [5, 20, 100, 200],  # 20, 40, 80],
+        "data_size": [100, 1000],  # , 500, 100, 50],# 5000],
+        "iterations": [5, 20],  # 20, 40, 80],
         "n_envs": [128],
         "rounds": [300],
-        "denoise": [True, False],
+        "denoise": [True],
         "populations": [24, 35],
         "procs": [8, 4],
-        "ncycles_per_iteration": [3000, 5000],
-        "bumper": [True, False],
+        "ncycles_per_iteration": [3000],
+        "bumper": [True],
         "binary_operators": [["+", "-", "greater", "\*", "/"]],
         "unary_operators": [  # [],
             ["sin", "relu", "log", "exp", "sign", "sqrt", "square"],
         ],
-        "wandb_tags": [["deterministic", "coinrun", "losses", "feature_sparse"]],
-        "model_selection": ["best", "accuracy"],
+        "wandb_tags": [["acrobot", "hparam"]],
+        "model_selection": ["best"],
         "weight_metric": [None, "entropy", "value"],
         # "loss_function": ["capped_sigmoid"],
         # "loss_function": ['sigmoid', 'exp', 'logitmarg', 'logitdist', 'mse', 'capped_sigmoid'],
@@ -188,9 +188,10 @@ def symbreg_hparams():
         # high-entropy one:
         # "logdir": ["logs/train/boxworld/boxworld/2024-04-08__14-52-30__seed_6033"],
         # "logdir": ["logs/train/coinrun/coinrun-hparams/2024-03-27__18-20-55__seed_6033"],
-        "logdir": ["logs/train/coinrun/coinrun-hparams/2024-04-18__08-38-17__seed_6033"],
+        # "logdir": ["logs/train/coinrun/coinrun-hparams/2024-04-18__08-38-17__seed_6033"],
+        "logdir": ["logs/train/acrobot/test/2024-04-25__10-03-20__seed_6033"],
         "use_wandb": [True],
-        "stochastic": [False],
+        "stochastic": [True, False],
     }
 
 def mountain_car_hparams():
@@ -341,13 +342,13 @@ def add_training_args_dict():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--n_gpu', type=int, default=20)
+    parser.add_argument('--n_gpu', type=int, default=4)
     parser.add_argument('--execute', action="store_true", default=True)
     # parser.add_argument('--cuda', action="store_true", default=False)
-    parser.add_argument('--max_runs', type=int, default=500)
+    parser.add_argument('--max_runs', type=int, default=200)
     parser.add_argument('--hparam_type', type=str, default="train")
 
-    re_use_machine = True
+    re_use_machine = False
 
     largs = parser.parse_args()
     n_gpu = largs.n_gpu

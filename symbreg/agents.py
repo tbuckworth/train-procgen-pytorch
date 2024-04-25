@@ -15,8 +15,7 @@ class SymbolicAgent:
         self.single_output = self.policy.action_size <= 2
         self.action_mapping = action_mapping
         self.n = len(np.unique(self.action_mapping)) // 2
-        if not stochastic and action_mapping is None and not self.single_output:
-            raise Exception("Deterministic agent requires action_mapping")
+
 
     def forward(self, observation):
         with torch.no_grad():
@@ -56,8 +55,11 @@ class SymbolicAgent:
 
         if self.single_output:
             return h.argmax(axis=1)
-
-        return match_to_nearest(h, self.action_mapping)
+        try:
+            return match_to_nearest(h, self.action_mapping)
+        except Exception as e:
+            print(e)
+            raise Exception("Deterministic agent requires action_mapping")
 
 
 class NeuralAgent:
