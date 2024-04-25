@@ -133,7 +133,7 @@ def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_ty
             script = "~/free_cpu"
             if cuda:
                 script = "~/free_gpu"
-            session_name = f"tmpSession{np.random.randint(0, 100)}"
+            session_name = f"tmpSession{np.random.randint(0, 1000)}"
             found = False
             for attempts in range(30):
                 if cuda:
@@ -193,20 +193,20 @@ def symbreg_hparams():
         "stochastic": [False],
     }
 
-
-def train_hparams():
+def mountain_car_hparams():
     return {
         "exp_name": [None],
-        "env_name": ['cartpole'],
+        "env_name": ['mountain_car'],
         # "distribution_mode": ['hard'],
         "param_name": ['mlpmodel'],
         "device": ["gpu"],
-        "num_timesteps": [int(2e8)],
-        "seed": [6033, 401, 1, 2, 6],
-        "gamma": [0.99, 0.999, 0.95],
-        "learning_rate": [0.0005],
-        "entropy_coef": [0],# 0.02, 0.05],
-        "n_envs": [1024],
+        "num_timesteps": [int(1e9)],
+        "seed": [6033, 0],
+        "gamma": [0.95],
+        "learning_rate": [0.0005, 0.00025, 0.001, 0.01],
+        "entropy_coef": [0.02],
+        "n_envs": [16, 256, 512, 1024],
+        "n_steps": [256, 16],
         # "n_minibatch": None,
         # "mini_batch_size": None,
         # "wandb_name": None,
@@ -219,6 +219,37 @@ def train_hparams():
         # "output_dim": [256, 1, 9],
         # "fs_coef": [0.0001, 0.001, 0.01, 0.1, 0.5, 1.0, 2.0, 5.0, 10.0],
     }
+
+def acrobot_hparams():
+    return {
+        "exp_name": [None],
+        "env_name": ['acrobot'],
+        # "distribution_mode": ['hard'],
+        "param_name": ['mlpmodel'],
+        "device": ["gpu"],
+        "num_timesteps": [int(5e7)],
+        "seed": [6033, 0, 1, 101, 40],
+        "gamma": [0.95],
+        "learning_rate": [0.0005],
+        "entropy_coef": [0, 0.02],
+        "n_envs": [16, 128, 256],
+        "n_steps": [256, 16],
+        # "n_minibatch": None,
+        # "mini_batch_size": None,
+        # "wandb_name": None,
+        # "wandb_group": None,
+        "wandb_tags": [["discrete", "gravity"]],
+        # "detect_nan": False,
+        "use_wandb": [True],
+        "mirror_env": [False],
+        "use_valid_env": [True],
+        # "output_dim": [256, 1, 9],
+        # "fs_coef": [0.0001, 0.001, 0.01, 0.1, 0.5, 1.0, 2.0, 5.0, 10.0],
+    }
+
+def train_hparams():
+    return acrobot_hparams()
+
 
 
 def add_symbreg_args_dict():

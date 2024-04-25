@@ -462,9 +462,10 @@ def create_acrobot(args, hyperparameters, is_valid=False):
                 "torque_noise_max": hyperparameters.get("torque_noise_max", 0.)
                 }
     if is_valid:
-        env_args = {"min_gravity": hyperparameters.get("min_gravity_v", 9.8),
-                    "max_gravity": hyperparameters.get("max_gravity_v", 10.4),
-                    "torque_noise_max": hyperparameters.get("torque_noise_max_v", 1.)
+        env_args = {"min_gravity": hyperparameters.get("min_gravity_v", 10.4),
+                    "max_gravity": hyperparameters.get("max_gravity_v", 24.8),
+                    # add noise?
+                    "torque_noise_max": hyperparameters.get("torque_noise_max_v", 0.)
                     }
     env_args["n_envs"] = n_envs
     env_args["render_mode"] = "human" if args.render else None
