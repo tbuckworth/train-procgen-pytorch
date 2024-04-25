@@ -6,7 +6,7 @@ import time
 
 import numpy as np
 import re
-from helper_local import latest_model_path, run_subprocess, DictToArgs, free_gpu
+from helper_local import latest_model_path, run_subprocess, DictToArgs, free_gpu, get_config
 
 
 def format_args(arg):
@@ -248,8 +248,21 @@ def acrobot_hparams():
     }
 
 def train_hparams():
+    return continue_run("logs/train/mountain_car/test/2024-04-25__05-18-36__seed_6033")
     return acrobot_hparams()
 
+
+def continue_run(logdir):
+    model_file = latest_model_path(logdir)
+    cfg = get_config(logdir)
+    # hp_file = os.path.join(logdir, "hyperparameters.npy")
+    # if os.path.exists(hp_file):
+    #     hyperparameters = np.load(hp_file, allow_pickle='TRUE').item()
+    cfg["model_file"] = model_file
+
+    cfg = {k:[v] for k,v in cfg.items()}
+
+    return cfg
 
 
 def add_symbreg_args_dict():
@@ -287,7 +300,7 @@ def add_training_args_dict():
         "num_levels": int(500),
         "distribution_mode": 'easy',
         "param_name": 'easy-200',
-        "device": 'cpu',
+        "device": 'gpu',
         "gpu_device": int(0),
         "num_timesteps": int(25000000),
         "seed": 6033,

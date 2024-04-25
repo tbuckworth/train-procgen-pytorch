@@ -94,5 +94,27 @@ def some_function():
         obs, rew, done, info = env.step(act)
 
 
+def flappy_bird():
+    # import flappy_bird_gymnasium
+    import gymnasium
+
+    env = gymnasium.make("FlappyBird-v0", render_mode="human", use_lidar=True)
+
+    obs, _ = env.reset()
+    while True:
+        # Next action:
+        # (feed the observation to your agent here)
+        action = env.action_space.sample()
+
+        # Processing:
+        obs, reward, terminated, _, info = env.step(action)
+
+        # Checking if the player is still alive
+        if terminated:
+            break
+
+    env.close()
+
+
 if __name__ == "__main__":
-    free_gpu({})
+    flappy_bird()
