@@ -98,7 +98,7 @@ def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_ty
 
     n_execs = len(arg_list)
     if n_execs < n_gpu:
-        n_execs = n_gpu
+        n_gpu = n_execs
     n = n_execs // n_gpu
     for gpu in range(n_gpu):
         python_execs = []
@@ -151,7 +151,7 @@ def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_ty
 
             command = f"'cd pyg/train-procgen-pytorch\n source {exe_file_name}'"
 
-            print(f"Host:{host}\tSessionName:{session_name}")
+            print(f"Host:{host}\tSessionName:{session_name}\tScript:{exe_file_name}")
 
             cmd1 = f'ssh {host} "tmux new -d -s {session_name}"'
             cmd2 = f'ssh {host} "tmux send -t {session_name}.0 {command} ENTER"'

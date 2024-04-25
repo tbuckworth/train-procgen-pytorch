@@ -227,15 +227,15 @@ class CartPoleVecEnv(PreVecEnv):
 def create_cartpole(args, hyperparameters, is_valid=False):
     n_envs = hyperparameters.get('n_envs', 32)
     env_args = {"n_envs": n_envs,
-                "env_name": "CartPole-gravity",
+                # "env_name": "CartPole-gravity",
                 "degrees": 12,
                 "h_range": 2.4,
                 "min_gravity": 9.8,
                 "max_gravity": 10.4,
                 }
     if is_valid:
-        env_args["degrees"] = hyperparameters.get("degrees_v", 9)
-        env_args["h_range"] = hyperparameters.get("h_range_v", 1.2)
+        env_args["degrees"] = hyperparameters.get("degrees_v", 12)
+        env_args["h_range"] = hyperparameters.get("h_range_v", 2.4)
         env_args["min_gravity"] = hyperparameters.get("min_gravity_v", 10.4)
         env_args["max_gravity"] = hyperparameters.get("max_gravity_v", 24.8)
 
