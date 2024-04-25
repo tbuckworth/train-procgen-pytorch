@@ -100,6 +100,7 @@ class CartPoleVecEnv(PreVecEnv):
         self.info = [{"env_reward": self.reward[i]} for i in range(len(self.reward))]
         self.min_gravity = min_gravity
         self.max_gravity = max_gravity
+        # TODO: vectorizzzze!
         self.masscart = 1.0
         self.masspole = 0.1
         self.total_mass = self.masspole + self.masscart

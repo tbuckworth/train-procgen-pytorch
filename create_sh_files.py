@@ -88,7 +88,7 @@ def add_boxworld_params(args):
     return args
 
 
-def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_type, re_use_machine=False):
+def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_type, re_use_machine=False, specify_host=None):
     hosts = {}
     free_machine = None
     keys, values = zip(*hparams.items())
@@ -136,12 +136,15 @@ def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_ty
             session_name = f"tmpSession{np.random.randint(0, 1000)}"
             found = False
             for attempts in range(30):
-                if cuda:
-                    if not re_use_machine or free_machine is None:
-                        free_machine = free_gpu(hosts)
+                if specify_host is None:
+                    if cuda:
+                        if not re_use_machine or free_machine is None:
+                            free_machine = free_gpu(hosts)
+                    else:
+                        free_machine = run_subprocess(script, "\\n", suppress=True)
+                    host = re.search(r"(.*).doc.ic.ac.uk", free_machine).group(1)
                 else:
-                    free_machine = run_subprocess(script, "\\n", suppress=True)
-                host = re.search(r"(.*).doc.ic.ac.uk", free_machine).group(1)
+                    host = specify_host
                 if host not in hosts.keys():
                     hosts[host] = [session_name]
                     found = True
@@ -194,6 +197,7 @@ def symbreg_hparams():
         "stochastic": [True, False],
     }
 
+
 def mountain_car_hparams():
     return {
         "exp_name": [None],
@@ -203,11 +207,11 @@ def mountain_car_hparams():
         "device": ["gpu"],
         "num_timesteps": [int(1e9)],
         "seed": [6033, 0],
-        "gamma": [0.95],
-        "learning_rate": [0.0005, 0.00025, 0.001, 0.01],
+        "gamma": [0.95, 0.9, 0.85, 0.8],
+        "learning_rate": [0.0001, 0.00005, 0.00025],
         "entropy_coef": [0.02],
-        "n_envs": [16, 256, 512, 1024],
-        "n_steps": [256, 16],
+        "n_envs": [256, 512],
+        "n_steps": [256],
         # "n_minibatch": None,
         # "mini_batch_size": None,
         # "wandb_name": None,
@@ -220,6 +224,7 @@ def mountain_car_hparams():
         # "output_dim": [256, 1, 9],
         # "fs_coef": [0.0001, 0.001, 0.01, 0.1, 0.5, 1.0, 2.0, 5.0, 10.0],
     }
+
 
 def acrobot_hparams():
     return {
@@ -248,9 +253,10 @@ def acrobot_hparams():
         # "fs_coef": [0.0001, 0.001, 0.01, 0.1, 0.5, 1.0, 2.0, 5.0, 10.0],
     }
 
+
 def train_hparams():
-    return continue_run("logs/train/mountain_car/test/2024-04-25__05-18-36__seed_6033")
-    return acrobot_hparams()
+    # return continue_run("logs/train/mountain_car/test/2024-04-25__05-18-36__seed_6033")
+    return mountain_car_hparams()
 
 
 def continue_run(logdir):
@@ -260,8 +266,13 @@ def continue_run(logdir):
     # if os.path.exists(hp_file):
     #     hyperparameters = np.load(hp_file, allow_pickle='TRUE').item()
     cfg["model_file"] = model_file
+    cfg["learning_rate"] = 0.0001
 
-    cfg = {k:[v] for k,v in cfg.items()}
+    # May need to change this:
+    exclusions = ["algo", "epoch", "lmbda", "grad_clip_norm", "eps_clip", "value_coef", "normalize_adv", "use_gae",
+                  "architecture", "recurrent",
+                  "no-recurrent", "depth", "latent_size", "mid_weight"]
+    cfg = {k: [v] for k, v in cfg.items() if k not in exclusions}
 
     return cfg
 
@@ -342,13 +353,16 @@ def add_training_args_dict():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--n_gpu', type=int, default=4)
+    parser.add_argument('--n_gpu', type=int, default=20)
     parser.add_argument('--execute', action="store_true", default=True)
     # parser.add_argument('--cuda', action="store_true", default=False)
     parser.add_argument('--max_runs', type=int, default=200)
     parser.add_argument('--hparam_type', type=str, default="train")
 
-    re_use_machine = False
+    re_use_machine = True
+    specify_host = "gpu19"
+    if specify_host is not None and not re_use_machine:
+        print("Warning - specifying host will re-use that host")
 
     largs = parser.parse_args()
     n_gpu = largs.n_gpu
@@ -376,4 +390,4 @@ if __name__ == '__main__':
     n_experiments = np.prod([len(hparams[x]) for x in hparams.keys()])
     print(f"Creating {n_experiments} experiments across {n_gpu} workers.")
     random_subset = min(1, max_runs / n_experiments)
-    write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_type, re_use_machine)
+    write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_type, re_use_machine, specify_host)
