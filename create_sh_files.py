@@ -253,10 +253,37 @@ def acrobot_hparams():
         # "fs_coef": [0.0001, 0.001, 0.01, 0.1, 0.5, 1.0, 2.0, 5.0, 10.0],
     }
 
+def cartpole_hparams():
+    return {
+        "exp_name": [None],
+        "env_name": ['cartpole'],
+        # "distribution_mode": ['hard'],
+        "param_name": ['mlpmodel'],
+        "device": ["gpu"],
+        "num_timesteps": [int(2e8)],
+        "seed": [6033, 0, 1, 101, 40],
+        "gamma": [0.95],
+        "learning_rate": [0.0005],
+        "entropy_coef": [0, 0.02],
+        "n_envs": [1024],
+        "n_steps": [256],
+        # "n_minibatch": None,
+        # "mini_batch_size": None,
+        # "wandb_name": None,
+        # "wandb_group": None,
+        "wandb_tags": [["multi-extrapolation"]],
+        # "detect_nan": False,
+        "use_wandb": [True],
+        "mirror_env": [False],
+        "use_valid_env": [True],
+        # "output_dim": [256, 1, 9],
+        # "fs_coef": [0.0001, 0.001, 0.01, 0.1, 0.5, 1.0, 2.0, 5.0, 10.0],
+    }
+
 
 def train_hparams():
     # return continue_run("logs/train/mountain_car/test/2024-04-25__05-18-36__seed_6033")
-    return mountain_car_hparams()
+    return cartpole_hparams()
 
 
 def continue_run(logdir):
@@ -360,7 +387,7 @@ if __name__ == '__main__':
     parser.add_argument('--hparam_type', type=str, default="train")
 
     re_use_machine = True
-    specify_host = "gpu19"
+    specify_host = None
     if specify_host is not None and not re_use_machine:
         print("Warning - specifying host will re-use that host")
 
