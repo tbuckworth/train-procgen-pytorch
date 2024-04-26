@@ -7,8 +7,9 @@ import math
 from typing import Optional
 
 import numpy as np
-from discrete_env.helper_pre_vec import StartSpace
+from discrete_env.helper_pre_vec import StartSpace, override_value, assign_env_vars
 from discrete_env.pre_vec_env import PreVecEnv
+from helper_local import DictToArgs
 
 
 # Analytic Solution:
@@ -276,38 +277,25 @@ class CartPoleVecEnv(PreVecEnv):
 
 
 def create_cartpole(args, hyperparameters, is_valid=False):
-    n_envs = hyperparameters.get('n_envs', 32)
-    env_args = {"n_envs": n_envs,
-                "degrees": 12,
-                "h_range": 2.4,
-                "min_gravity": 9.8,
-                "max_gravity": 10.4,
-                "min_pole_length": 0.5,
-                "max_pole_length": 1.0,
-                "min_cart_mass": 1.0,
-                "max_cart_mass": 1.5,
-                "min_pole_mass": 0.1,
-                "max_pole_mass": 0.2,
-                "min_force_mag": 10.,
-                "max_force_mag": 10.,
-                }
-    if is_valid:
-        overrides = {
-            "min_gravity": 10.4,
-            "max_gravity": 24.8,
-            "min_pole_length": 1.0,
-            "max_pole_length": 2.0,
-            "min_cart_mass": 2.,
-            "max_cart_mass": 3.,
-            "min_pole_mass": 0.2,
-            "max_pole_mass": 0.4,
-            "min_force_mag": 10.,
-            "max_force_mag": 10.,
-        }
-        for k, v in overrides.items():
-            override_value(env_args, hyperparameters, k, v)
+    if args is None:
+        args = DictToArgs({"render": False})
+    # The second values are for test envs, if one value, it is used for both.
+    param_range = {
+        "n_envs": [32],
+        "degrees": [12],
+        "h_range": [2.4],
+        "min_gravity": [9.8, 10.4],
+        "max_gravity": [10.4, 24.8],
+        "min_pole_length": [0.5, 1.0],
+        "max_pole_length": [1.0, 2.0],
+        "min_cart_mass": [1.0, 2.],
+        "max_cart_mass": [1.5, 3.],
+        "min_pole_mass": [0.1, .2],
+        "max_pole_mass": [0.2, .4],
+        "min_force_mag": [10.],
+        "max_force_mag": [10.],
+    }
+    # The above params will be applied, unless the hyperparameters override them.
+    env_args = assign_env_vars(hyperparameters, is_valid, param_range)
+    env_args["render_mode"] = "human" if args.render else None
     return CartPoleVecEnv(**env_args)
-
-
-def override_value(env_args, hyperparameters, param, value):
-    env_args[param] = hyperparameters.get(f"{param}_v", value)

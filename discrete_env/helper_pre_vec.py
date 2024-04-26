@@ -16,3 +16,15 @@ class StartSpace:
         self._np_random = np_random
 
 
+def override_value(env_args, hyperparameters, suffix, param, value):
+    env_args[param] = hyperparameters.get(f"{param}{suffix}", value)
+
+
+def assign_env_vars(hyperparameters, is_valid, overrides):
+    env_args = {}
+    suffix = ""
+    if is_valid:
+        suffix = "_v"
+    for k, v in overrides.items():
+        override_value(env_args, hyperparameters, suffix, k, v[0])
+    return env_args

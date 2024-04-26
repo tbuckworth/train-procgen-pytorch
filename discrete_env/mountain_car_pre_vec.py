@@ -7,7 +7,7 @@ from typing import Optional
 
 import numpy as np
 
-from discrete_env.helper_pre_vec import StartSpace
+from discrete_env.helper_pre_vec import StartSpace, assign_env_vars
 from discrete_env.pre_vec_env import PreVecEnv
 from helper_local import DictToArgs
 
@@ -184,7 +184,6 @@ class MountainCarVecEnv(PreVecEnv):
             self.reward = self._height(position)
             self.info = [{"env_reward": self.reward[i]} for i in range(self.n_envs)]
 
-
     def get_action_lookup(self):
         return {
             0: 'acc left',
@@ -264,32 +263,23 @@ class MountainCarVecEnv(PreVecEnv):
 def create_mountain_car(args, hyperparameters, is_valid=False):
     if args is None:
         args = DictToArgs({"render": False})
-    n_envs = hyperparameters.get('n_envs', 32)
-    env_args = {}
-    #TODO: finish this!
-    env_args = {"goal_velocity": hyperparameters.get("goal_velocity", 0),
-                "min_position": hyperparameters.get("min_position", -1.2),
-                "max_position": hyperparameters.get("max_position", 0.6),
-                "min_start_position": hyperparameters.get("min_start_position", -0.6),
-                "max_start_position": hyperparameters.get("max_start_position", -0.4),
-                "max_speed": hyperparameters.get("max_speed", 0.07),
-                "goal_position": hyperparameters.get("goal_position", 0.5),
-                "force": hyperparameters.get("force", 0.001),
-                "min_gravity": hyperparameters.get("min_gravity", 0.0025),
-                "max_gravity": hyperparameters.get("max_gravity", 0.01),
-                }
-    if is_valid:
-        env_args = {"goal_velocity": hyperparameters.get("goal_velocity_v", 0),
-                    "min_position": hyperparameters.get("min_position_v", -1.2),
-                    "max_position": hyperparameters.get("max_position_v", 0.6),
-                    "min_start_position": hyperparameters.get("min_start_position_v", -0.6),
-                    "max_start_position": hyperparameters.get("max_start_position_v", -0.4),
-                    "max_speed": hyperparameters.get("max_speed_v", 0.07),
-                    "goal_position": hyperparameters.get("goal_position_v", 0.5),
-                    "force": hyperparameters.get("force_v", 0.001),
-                    "min_gravity": hyperparameters.get("min_gravity_v", 0.01),
-                    "max_gravity": hyperparameters.get("max_gravity_v", 0.05),
-                    }
-    env_args["n_envs"] = n_envs
+    # The second values are for test envs, if one value, it is used for both.
+    param_range = {
+        "n_envs": [32],
+        "goal_velocity": [0],
+        "min_position": [-1.2],
+        "max_position": [0.6],
+        "min_start_position": [-0.6],
+        "max_start_position": [-0.4],
+        "max_speed": [0.07],
+        "goal_position": [0.5],
+        "force": [0.001],
+        "min_gravity": [0.0025, 0.01],
+        "max_gravity": [0.01, 0.05],
+        "sparse_rewards": [False],
+    }
+    # The above params will be applied, unless the hyperparameters override them.
+    env_args = assign_env_vars(hyperparameters, is_valid, param_range)
+
     env_args["render_mode"] = "human" if args.render else None
     return MountainCarVecEnv(**env_args)
