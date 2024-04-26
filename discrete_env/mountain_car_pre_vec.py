@@ -266,7 +266,6 @@ def create_mountain_car(args, hyperparameters, is_valid=False):
     n_envs = hyperparameters.get("n_envs", 32)
     # The second values are for test envs, if one value, it is used for both.
     param_range = {
-        # "n_envs": [32],
         "goal_velocity": [0],
         "min_position": [-1.2],
         "max_position": [0.6],

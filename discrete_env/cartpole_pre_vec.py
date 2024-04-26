@@ -279,9 +279,9 @@ class CartPoleVecEnv(PreVecEnv):
 def create_cartpole(args, hyperparameters, is_valid=False):
     if args is None:
         args = DictToArgs({"render": False})
+    n_envs = hyperparameters.get("n_envs", 32)
     # The second values are for test envs, if one value, it is used for both.
     param_range = {
-        "n_envs": [32],
         "degrees": [12],
         "h_range": [2.4],
         "min_gravity": [9.8, 10.4],
@@ -297,5 +297,6 @@ def create_cartpole(args, hyperparameters, is_valid=False):
     }
     # The above params will be applied, unless the hyperparameters override them.
     env_args = assign_env_vars(hyperparameters, is_valid, param_range)
+    env_args["n_envs"] = n_envs
     env_args["render_mode"] = "human" if args.render else None
     return CartPoleVecEnv(**env_args)

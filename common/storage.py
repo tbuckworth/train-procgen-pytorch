@@ -28,8 +28,6 @@ class Storage():
         self.step = 0
 
     def store(self, obs, hidden_state, act, rew, done, info, log_prob_act, value):
-        print(self.obs_batch.shape)
-        print(obs.shape)
         self.obs_batch[self.step] = torch.from_numpy(obs.copy())
         self.hidden_states_batch[self.step] = torch.from_numpy(hidden_state.copy())
         self.act_batch[self.step] = torch.from_numpy(act.copy())
