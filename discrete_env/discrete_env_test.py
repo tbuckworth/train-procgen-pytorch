@@ -1,5 +1,7 @@
 import unittest
 
+import numpy as np
+
 from discrete_env.acrobot_pre_vec import AcrobotVecEnv
 from discrete_env.cartpole_pre_vec import CartPoleVecEnv
 from discrete_env.mountain_car_pre_vec import MountainCarVecEnv, create_mountain_car
@@ -8,7 +10,7 @@ from helper_local import DictToArgs
 class BaseDiscreteEnvTest(unittest.TestCase):
     def setUp(cls) -> None:
         cls.env = cls.env_cons(n_envs=2, max_steps=50, render_mode="human")
-        cls.env.reset()
+        cls.env.reset(seed=np.random.randint(0,1000))
 
     def run_step(self):
         for i in range(100):

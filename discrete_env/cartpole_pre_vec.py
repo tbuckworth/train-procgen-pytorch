@@ -92,21 +92,30 @@ class CartPoleVecEnv(PreVecEnv):
                  h_range=2.4,
                  min_gravity=9.8,
                  max_gravity=10.4,
+                 min_pole_length=0.5,
+                 max_pole_length=1.0,
+                 min_cart_mass=1.0,
+                 max_cart_mass=1.5,
+                 min_pole_mass=0.1,
+                 max_pole_mass=0.2,
+                 min_force_mag=10.,
+                 max_force_mag=10.,
                  max_steps=500,
-                 render_mode: Optional[str] = None):
+                 render_mode: Optional[str] = None, ):
 
         n_actions = 2
         self.reward = np.ones((n_envs))
         self.info = [{"env_reward": self.reward[i]} for i in range(len(self.reward))]
         self.min_gravity = min_gravity
         self.max_gravity = max_gravity
-        # TODO: vectorizzzze!
-        self.masscart = 1.0
-        self.masspole = 0.1
-        self.total_mass = self.masspole + self.masscart
-        self.length = 0.5  # actually half the pole's length
-        self.polemass_length = self.masspole * self.length
-        self.force_mag = 10.0
+        self.min_cart_mass = min_cart_mass
+        self.max_cart_mass = max_cart_mass
+        self.min_pole_mass = min_pole_mass
+        self.max_pole_mass = max_pole_mass
+        self.min_pole_length = min_pole_length
+        self.max_pole_length = max_pole_length
+        self.min_force_mag = min_force_mag
+        self.max_force_mag = max_force_mag
         self.tau = 0.02  # seconds between state updates
         self.kinematics_integrator = "euler"
 
@@ -123,15 +132,33 @@ class CartPoleVecEnv(PreVecEnv):
                 self.theta_threshold_radians * 2,
                 np.finfo(np.float32).max,
                 self.max_gravity,
+                self.max_pole_length,
+                self.max_cart_mass,
+                self.max_pole_mass,
+                self.max_force_mag,
             ],
             dtype=np.float32,
         )
         self.low = -self.high
-        self.low[-1] = self.min_gravity
+        self.i_g = 4
+        self.i_pl = 5
+        self.i_mc = 6
+        self.i_mp = 7
+        self.i_fm = 8
+        self.low[self.i_g] = self.min_gravity
+        self.low[self.i_pl] = self.min_pole_length
+        self.low[self.i_mc] = self.min_cart_mass
+        self.low[self.i_mp] = self.min_pole_mass
+        self.low[self.i_fm] = self.min_force_mag
 
-        self.start_space = StartSpace(low=[-0.05, -0.05, -0.05, -0.05, self.min_gravity],
-                                      high=[0.05, 0.05, 0.05, 0.05, self.max_gravity],
-                                      np_random=self._np_random)
+        self.start_space = StartSpace(
+            low=[-0.05, -0.05, -0.05, -0.05,
+                 self.min_gravity, self.min_pole_length, self.min_cart_mass,
+                 self.min_pole_mass, self.min_force_mag],
+            high=[0.05, 0.05, 0.05, 0.05,
+                  self.max_gravity, self.max_pole_length, self.max_cart_mass,
+                  self.max_pole_mass, self.max_force_mag],
+            np_random=self._np_random)
 
         self.customizable_params = [
             "degrees",
@@ -139,9 +166,12 @@ class CartPoleVecEnv(PreVecEnv):
             "min_gravity",
             "max_gravity",
             "max_steps",
-            "masscart",
-            "masspole",
-            "length",
+            "min_cart_mass",
+            "max_cart_mass",
+            "min_pole_mass",
+            "max_pole_mass",
+            "min_pole_length",
+            "max_pole_length",
             "force_mag",
             "tau",
             "kinematics_integrator",
@@ -150,21 +180,25 @@ class CartPoleVecEnv(PreVecEnv):
         super().__init__(n_envs, n_actions, "CartPole", max_steps, render_mode)
 
     def transition_model(self, action):
-        x, x_dot, theta, theta_dot, gravity = self.state.T
+        x, x_dot, theta, theta_dot, gravity, pole_length, mass_cart, mass_pole, force_mag = self.state.T
         force = np.ones((self.n_envs))
         force[action == 0] = -1
-        force *= self.force_mag
+        force *= force_mag
         costheta = np.cos(theta)
         sintheta = np.sin(theta)
+
+        polemass_length = mass_pole * pole_length
+        total_mass = mass_pole + mass_cart
+
         # For the interested reader:
         # https://coneural.org/florian/papers/05_cart_pole.pdf
         temp = (
-                       force + self.polemass_length * theta_dot ** 2 * sintheta
-               ) / self.total_mass
+                       force + polemass_length * theta_dot ** 2 * sintheta
+               ) / total_mass
         thetaacc = (gravity * sintheta - costheta * temp) / (
-                self.length * (4.0 / 3.0 - self.masspole * costheta ** 2 / self.total_mass)
+                pole_length * (4.0 / 3.0 - mass_pole * costheta ** 2 / total_mass)
         )
-        xacc = temp - self.polemass_length * thetaacc * costheta / self.total_mass
+        xacc = temp - polemass_length * thetaacc * costheta / total_mass
         if self.kinematics_integrator == "euler":
             x = x + self.tau * x_dot
             x_dot = x_dot + self.tau * xacc
@@ -175,7 +209,7 @@ class CartPoleVecEnv(PreVecEnv):
             x = x + self.tau * x_dot
             theta_dot = theta_dot + self.tau * thetaacc
             theta = theta + self.tau * theta_dot
-        self.state = np.vstack((x, x_dot, theta, theta_dot, gravity)).T
+        self.state = np.vstack((x, x_dot, theta, theta_dot, gravity, pole_length, mass_cart, mass_pole, force_mag)).T
         oob = np.bitwise_or(x < -self.x_threshold,
                             x > self.x_threshold)
         theta_oob = np.bitwise_or(theta < -self.theta_threshold_radians,
@@ -183,15 +217,17 @@ class CartPoleVecEnv(PreVecEnv):
         self.terminated = np.bitwise_or(oob, theta_oob)
 
     def render_unique(self):
-        world_width = self.x_threshold * 2
-        scale = self.screen_width / world_width
-        polewidth = 10.0
-        polelen = scale * (2 * self.length)
-        cartwidth = 50.0
-        cartheight = 30.0
         if self.state is None:
             return False
         x = self.state[0]
+        pole_length = x[self.i_pl]
+
+        world_width = self.x_threshold * 2
+        scale = self.screen_width / world_width
+        polewidth = 10.0
+        polelen = scale * (2 * pole_length)
+        cartwidth = 50.0
+        cartheight = 30.0
         self.surf = self.pygame.Surface((self.screen_width, self.screen_height))
         self.surf.fill((255, 255, 255))
         l, r, t, b = -cartwidth / 2, cartwidth / 2, cartheight / 2, -cartheight / 2
