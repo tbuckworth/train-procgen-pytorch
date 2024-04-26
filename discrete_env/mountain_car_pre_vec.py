@@ -181,7 +181,7 @@ class MountainCarVecEnv(PreVecEnv):
         self.state = np.vstack((position, velocity, gravity)).T
 
         if not self.sparse_rewards:
-            self.reward = self._height(position)
+            self.reward = self._height(position) - 1
             self.info = [{"env_reward": self.reward[i]} for i in range(self.n_envs)]
 
     def get_action_lookup(self):
