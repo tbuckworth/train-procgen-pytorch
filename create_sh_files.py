@@ -216,7 +216,7 @@ def mountain_car_hparams():
         # "mini_batch_size": None,
         # "wandb_name": None,
         # "wandb_group": None,
-        "wandb_tags": [["gravity", "smooth rewards"]],
+        "wandb_tags": [["gravity", "smooth rewards", "subtract_one"]],
         # "detect_nan": False,
         "use_wandb": [True],
         "mirror_env": [False],
