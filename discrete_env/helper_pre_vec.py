@@ -23,10 +23,12 @@ def override_value(env_args, hyperparameters, suffix, param, value):
 def assign_env_vars(hyperparameters, is_valid, overrides):
     env_args = {}
     suffix = ""
+    i = 0
     if is_valid:
         suffix = "_v"
+        i = -1
     for k, v in overrides.items():
         if is_valid and k == "n_envs":
-            override_value(env_args, hyperparameters, "", k, v[0])
-        override_value(env_args, hyperparameters, suffix, k, v[0])
+            override_value(env_args, hyperparameters, "", k, v[i])
+        override_value(env_args, hyperparameters, suffix, k, v[i])
     return env_args
