@@ -159,6 +159,8 @@ def train_ppo(args):
             project = "Coinrun VQMHA"
         elif env_name == "cartpole":
             project = "CartPole"
+        elif exp_name == "mountain_car_cont_rew":
+            project = "MountainCar Continuous Reward"
         else:
             project = env_name
         if args.wandb_group is not None:

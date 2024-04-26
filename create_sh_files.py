@@ -200,15 +200,15 @@ def symbreg_hparams():
 
 def mountain_car_hparams():
     return {
-        "exp_name": [None],
+        "exp_name": ["mountain_car_cont_rew"],
         "env_name": ['mountain_car'],
         # "distribution_mode": ['hard'],
         "param_name": ['mlpmodel'],
         "device": ["gpu"],
-        "num_timesteps": [int(1e9)],
+        "num_timesteps": [int(2e8)],
         "seed": [6033, 0],
-        "gamma": [0.95, 0.9, 0.85, 0.8],
-        "learning_rate": [0.0001, 0.00005, 0.00025],
+        "gamma": [0.95],
+        "learning_rate": [0.0001, 0.0005],
         "entropy_coef": [0.02],
         "n_envs": [256, 512],
         "n_steps": [256],
@@ -216,7 +216,7 @@ def mountain_car_hparams():
         # "mini_batch_size": None,
         # "wandb_name": None,
         # "wandb_group": None,
-        "wandb_tags": [["discrete", "gravity"]],
+        "wandb_tags": [["gravity", "smooth rewards"]],
         # "detect_nan": False,
         "use_wandb": [True],
         "mirror_env": [False],
@@ -283,7 +283,7 @@ def cartpole_hparams():
 
 def train_hparams():
     # return continue_run("logs/train/mountain_car/test/2024-04-25__05-18-36__seed_6033")
-    return cartpole_hparams()
+    return mountain_car_hparams()
 
 
 def continue_run(logdir):
