@@ -117,10 +117,12 @@ class MountainCarVecEnv(PreVecEnv):
                  max_steps=500,
                  max_gravity=0.01,
                  min_gravity=0.0025,
+                 sparse_rewards=False,
                  render_mode: Optional[str] = None,
                  ):
         n_actions = 3
         self._np_random = None
+        self.sparse_rewards = sparse_rewards
         self.max_gravity = max_gravity
         self.min_gravity = min_gravity
         self.min_position = min_position
@@ -144,9 +146,9 @@ class MountainCarVecEnv(PreVecEnv):
         self.start_space = StartSpace(low=[self.min_start_position, 0, self.min_gravity],
                                       high=[self.max_start_position, 0, self.max_gravity],
                                       np_random=self._np_random)
-
-        self.reward = np.full(n_envs, -1.0)
-        self.info = [{"env_reward": self.reward[i]} for i in range(n_envs)]
+        if self.sparse_rewards:
+            self.reward = np.full(n_envs, -1.0)
+            self.info = [{"env_reward": self.reward[i]} for i in range(n_envs)]
 
         self.customizable_params = [
             "goal_velocity",
@@ -160,6 +162,7 @@ class MountainCarVecEnv(PreVecEnv):
             "max_steps",
             "max_gravity",
             "min_gravity",
+            "sparse_rewards",
         ]
 
         super().__init__(n_envs, n_actions, "MountainCar", max_steps, render_mode)
@@ -176,6 +179,11 @@ class MountainCarVecEnv(PreVecEnv):
         self.terminated = np.bitwise_and(position >= self.goal_position, velocity >= self.goal_velocity)
 
         self.state = np.vstack((position, velocity, gravity)).T
+
+        if not self.sparse_rewards:
+            self.reward = self._height(position)
+            self.info = [{"env_reward": self.reward[i]} for i in range(self.n_envs)]
+
 
     def get_action_lookup(self):
         return {
@@ -257,6 +265,8 @@ def create_mountain_car(args, hyperparameters, is_valid=False):
     if args is None:
         args = DictToArgs({"render": False})
     n_envs = hyperparameters.get('n_envs', 32)
+    env_args = {}
+    #TODO: finish this!
     env_args = {"goal_velocity": hyperparameters.get("goal_velocity", 0),
                 "min_position": hyperparameters.get("min_position", -1.2),
                 "max_position": hyperparameters.get("max_position", 0.6),
