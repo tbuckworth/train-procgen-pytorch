@@ -1,7 +1,10 @@
 import numpy as np
 
 from cartpole.cartpole_pre_vec import CartPoleVecEnv
-from helper_local import sigmoid, sample_from_sigmoid
+from common.env.env_constructor import get_env_constructor
+from discrete_env.acrobot_pre_vec import AcrobotVecEnv
+from helper_local import sigmoid, sample_from_sigmoid, DictToArgs, map_actions_to_values, get_actions_from_all, match, \
+    match_to_nearest
 
 
 def symbolic_regression_function(obs):
@@ -15,6 +18,17 @@ def alt_func(obs):
     p = sigmoid(x2/0.04 + x3)
     return sample_from_sigmoid(p)
     # return (0.57+5*x2+x3).round(decimals=0)
+
+def acrobot_func(obs, action_mapping):
+    #2523 lowest complexity
+    x0, x1, x2, x3, x4, x5, x6 = obs.T
+    out = np.sign((x1 / 0.28540868) + x5)
+    return match(out, action_mapping)
+
+def acrobot_best(obs, action_mapping):
+    x0, x1, x2, x3, x4, x5, x6 = obs.T
+    out = np.sign((x5 - (np.sin(np.sin(x3)) - x1)) - -0.011042326) * x6
+    return match_to_nearest(out, action_mapping)
 
 # def temp()
 #     episodes = 0
@@ -36,10 +50,17 @@ if __name__ == "__main__":
     is_valid = False
     n_envs = 2
 
-    env = CartPoleVecEnv(n_envs, degrees=12, h_range=2.4, max_steps=500, render_mode="human")
+    # env = CartPoleVecEnv(n_envs, degrees=12, h_range=2.4, max_steps=500, render_mode="human")
+    # env = AcrobotVecEnv(n_envs)
+    env = get_env_constructor("acrobot")(DictToArgs({"render": True}), {}, is_valid)
+    action_mapping = map_actions_to_values(get_actions_from_all(env))
+
+
+
+
     obs = env.reset()
     while True:
-        act = alt_func(obs)
+        act = acrobot_best(obs, action_mapping)
         ep_rew = env.n_steps[0]
         obs, rew, done, info = env.step(act)
         if done[0]:

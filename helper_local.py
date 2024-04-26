@@ -774,4 +774,7 @@ def match_to_nearest(a, b):
 
     return diffs.argmin(-1)
 
+def get_attributes(env):
+    vn = env.__dir__()
+    vn = [v for v in vn if not re.search("__",v)]
 

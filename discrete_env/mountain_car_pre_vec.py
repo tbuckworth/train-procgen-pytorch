@@ -148,6 +148,20 @@ class MountainCarVecEnv(PreVecEnv):
         self.reward = np.full(n_envs, -1.0)
         self.info = [{"env_reward": self.reward[i]} for i in range(n_envs)]
 
+        self.customizable_params = [
+            "goal_velocity",
+            "min_position",
+            "max_position",
+            "min_start_position",
+            "max_start_position",
+            "max_speed",
+            "goal_position",
+            "force",
+            "max_steps",
+            "max_gravity",
+            "min_gravity",
+        ]
+
         super().__init__(n_envs, n_actions, "MountainCar", max_steps, render_mode)
 
     def transition_model(self, action: np.array):
@@ -162,7 +176,6 @@ class MountainCarVecEnv(PreVecEnv):
         self.terminated = np.bitwise_and(position >= self.goal_position, velocity >= self.goal_velocity)
 
         self.state = np.vstack((position, velocity, gravity)).T
-
 
     def get_action_lookup(self):
         return {

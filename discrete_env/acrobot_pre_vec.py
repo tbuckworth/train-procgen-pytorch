@@ -207,7 +207,22 @@ class AcrobotVecEnv(PreVecEnv):
                                       high=[0.1, 0.1, 0.1, 0.1, self.max_gravity],
                                       np_random=self._np_random)
 
-        self.n_inputs = 5 # override because obs != state
+        self.customizable_params = ["torque_noise_max",
+                                    "min_gravity",
+                                    "max_gravity",
+                                    "max_steps",
+                                    "LINK_LENGTH_1",
+                                    "LINK_LENGTH_2",
+                                    "LINK_MASS_1",
+                                    "LINK_MASS_2",
+                                    "LINK_COM_POS_1",
+                                    "LINK_COM_POS_2",
+                                    "LINK_MOI",
+                                    "MAX_VEL_1",
+                                    "MAX_VEL_2",
+                                    ]
+
+        self.n_inputs = 5  # override because obs != state
         super().__init__(n_envs, n_actions, "Acrobot", max_steps, render_mode)
 
     def get_action_lookup(self):

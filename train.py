@@ -94,6 +94,16 @@ def train_ppo(args):
     env = create_venv(args, hyperparameters)
     env_valid = create_venv(args, hyperparameters, is_valid=True) if args.use_valid_env else None
 
+    try:
+        env_params = env.get_params()
+        env_params_v = env_valid.get_params(suffix="_v")
+        upload_env_params = True
+    except AttributeError:
+        env_params = {}
+        env_params_v = {}
+        upload_env_params = False
+
+
     ############
     ## LOGGER ##
     ############
@@ -133,6 +143,9 @@ def train_ppo(args):
     np.save(os.path.join(logdir, "config.npy"), cfg)
 
     if args.use_wandb:
+        if upload_env_params:
+            cfg.update(env_params)
+            cfg.update(env_params_v)
         wandb_login()
         name = f"{hyperparameters['architecture']}-{wandb_name}"
         wb_resume = "allow"  # if args.model_file is None else "must"

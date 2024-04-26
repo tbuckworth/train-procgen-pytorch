@@ -133,6 +133,20 @@ class CartPoleVecEnv(PreVecEnv):
                                       high=[0.05, 0.05, 0.05, 0.05, self.max_gravity],
                                       np_random=self._np_random)
 
+        self.customizable_params = [
+            "degrees",
+            "h_range",
+            "min_gravity",
+            "max_gravity",
+            "max_steps",
+            "masscart",
+            "masspole",
+            "length",
+            "force_mag",
+            "tau",
+            "kinematics_integrator",
+        ]
+
         super().__init__(n_envs, n_actions, "CartPole", max_steps, render_mode)
 
     def transition_model(self, action):

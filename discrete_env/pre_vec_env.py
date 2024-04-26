@@ -72,7 +72,8 @@ class PreVecEnv(Env):
             self.render()
         return self._get_ob(), self.reward, self.terminated, self.info
 
-
+    def get_params(self, suffix=""):
+        return {f"{name}{suffix}": self.__getattribute__(name) for name in self.customizable_params}
 
     def reset(
             self,
