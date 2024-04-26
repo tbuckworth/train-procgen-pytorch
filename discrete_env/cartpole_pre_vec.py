@@ -278,16 +278,36 @@ class CartPoleVecEnv(PreVecEnv):
 def create_cartpole(args, hyperparameters, is_valid=False):
     n_envs = hyperparameters.get('n_envs', 32)
     env_args = {"n_envs": n_envs,
-                # "env_name": "CartPole-gravity",
                 "degrees": 12,
                 "h_range": 2.4,
                 "min_gravity": 9.8,
                 "max_gravity": 10.4,
+                "min_pole_length": 0.5,
+                "max_pole_length": 1.0,
+                "min_cart_mass": 1.0,
+                "max_cart_mass": 1.5,
+                "min_pole_mass": 0.1,
+                "max_pole_mass": 0.2,
+                "min_force_mag": 10.,
+                "max_force_mag": 10.,
                 }
     if is_valid:
-        env_args["degrees"] = hyperparameters.get("degrees_v", 12)
-        env_args["h_range"] = hyperparameters.get("h_range_v", 2.4)
-        env_args["min_gravity"] = hyperparameters.get("min_gravity_v", 10.4)
-        env_args["max_gravity"] = hyperparameters.get("max_gravity_v", 24.8)
-
+        overrides = {
+            "min_gravity": 10.4,
+            "max_gravity": 24.8,
+            "min_pole_length": 1.0,
+            "max_pole_length": 2.0,
+            "min_cart_mass": 2.,
+            "max_cart_mass": 3.,
+            "min_pole_mass": 0.2,
+            "max_pole_mass": 0.4,
+            "min_force_mag": 10.,
+            "max_force_mag": 10.,
+        }
+        for k, v in overrides.items():
+            override_value(env_args, hyperparameters, k, v)
     return CartPoleVecEnv(**env_args)
+
+
+def override_value(env_args, hyperparameters, param, value):
+    env_args[param] = hyperparameters.get(f"{param}_v", value)
