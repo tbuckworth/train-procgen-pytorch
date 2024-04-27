@@ -1,3 +1,5 @@
+import re
+
 import numpy as np
 from helper_local import free_gpu
 from cartpole.cartpole_pre_vec import CartPoleVecEnv
@@ -73,7 +75,6 @@ def symbolic_regression_function(obs):
     return np.zeros(len(obs))
 
 
-
 def some_function():
     is_valid = False
     n_envs = 2
@@ -116,5 +117,56 @@ def flappy_bird():
     env.close()
 
 
+def call_wandb():
+    import pandas as pd
+    import wandb
+
+    api = wandb.Api()
+    entity, project = "ic-ai-safety", "Symb Reg"
+    runs = api.runs(entity + "/" + project,
+                    # filters={"$and": [{"summary.problem_name": "acrobot"}]}
+                    )
+
+    summary_list, config_list, name_list = [], [], []
+    for run in runs:
+        # .summary contains output keys/values for
+        # metrics such as accuracy.
+        #  We call ._json_dict to omit large files
+        summary_list.append(run.summary._json_dict)
+
+        # .config contains the hyperparameters.
+        #  We remove special values that start with _.
+        config_list.append({k: v for k, v in run.config.items() if not k.startswith("_")})
+
+        # .name is the human-readable name of the run.
+        name_list.append(run.name)
+
+    runs_df = pd.DataFrame(
+        {"summary": summary_list, "config": config_list, "name": name_list}
+    )
+
+    runs_df.to_csv("project.csv")
+
+    all_dicts = []
+    for s, c, n in zip(summary_list, config_list, name_list):
+        s_dict = {f"summary.{k}": v for k, v in s.items()}
+        s_dict.update({f"config.{k}": v for k, v in c.items()})
+        s_dict["name"] = n
+        all_dicts.append(s_dict)
+
+    df = pd.DataFrame.from_dict(all_dicts)
+
+
+
+    logdirs = np.unique([cfg["logdir"] for cfg in config_list])
+    logdir = 'logs/train/acrobot/test/2024-04-25__10-03-20__seed_6033'
+    flt = np.array([cfg["logdir"] == logdir for cfg in config_list])
+
+    [bool(re.search("acrobot", cfg["logdir"])) for cfg in config_list]
+    [summary.get("problem_name", "") == "acrobot" for summary in summary_list]
+
+    machines = list(filter(lambda summary: summary.get("problem_name", "") == "acrobot", summary_list))
+
+
 if __name__ == "__main__":
-    flappy_bird()
+    call_wandb()
