@@ -180,19 +180,20 @@ def symbreg_hparams():
         "unary_operators": [  # [],
             ["sin", "relu", "log", "exp", "sign", "sqrt", "square"],
         ],
-        "wandb_tags": [["acrobot", "hparam"]],
+        "wandb_tags": [["cartpole", "hparam", "multi-extrapolation"]],
         "model_selection": ["best"],
         "weight_metric": [None, "entropy", "value"],
         # "loss_function": ["capped_sigmoid"],
         # "loss_function": ['sigmoid', 'exp', 'logitmarg', 'logitdist', 'mse', 'capped_sigmoid'],
-        "loss_function": ['sigmoid', 'logitdist', 'mse', 'capped_sigmoid', 'exp'],
+        "loss_function": ['mse', 'capped_sigmoid'],# 'exp', 'sigmoid', 'logitdist', ],
         # "logdir": ["logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"],
         # "logdir": ["logs/train/boxworld/boxworld/2024-04-08__12-29-17__seed_6033"],
         # high-entropy one:
         # "logdir": ["logs/train/boxworld/boxworld/2024-04-08__14-52-30__seed_6033"],
         # "logdir": ["logs/train/coinrun/coinrun-hparams/2024-03-27__18-20-55__seed_6033"],
         # "logdir": ["logs/train/coinrun/coinrun-hparams/2024-04-18__08-38-17__seed_6033"],
-        "logdir": ["logs/train/acrobot/test/2024-04-25__10-03-20__seed_6033"],
+        # "logdir": ["logs/train/acrobot/test/2024-04-25__10-03-20__seed_6033"],
+        "logdir": ["logs/train/cartpole/test/2024-04-26__12-37-41__seed_40"],
         "use_wandb": [True],
         "stochastic": [True, False],
     }
@@ -386,7 +387,7 @@ if __name__ == '__main__':
     parser.add_argument('--max_runs', type=int, default=200)
     parser.add_argument('--hparam_type', type=str, default="train")
 
-    re_use_machine = True
+    re_use_machine = False
     specify_host = None
     if specify_host is not None and not re_use_machine:
         print("Warning - specifying host will re-use that host")
