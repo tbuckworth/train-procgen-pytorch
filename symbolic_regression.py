@@ -125,9 +125,6 @@ def generate_data(agent, env, n):
     return X, Y, V
 
 
-
-
-
 def test_agent_balanced_reward(agent, env, print_name, n=40):
     performance_track = {}
     episodes = 0
@@ -392,7 +389,6 @@ def run_neurosymbolic_search(args):
         # map actions to 0:2pi
         Y = action_mapping[Y.argmax(1)]
 
-
     print("data generated")
     if os.name != "nt":
         weights = None
@@ -490,7 +486,18 @@ def run_neurosymbolic_search(args):
                    "sampled_action", "sampled_action_estimate", "entropy", "entropy_estimate"]
         if problem_name == "cartpole":
             all_metrics = np.hstack((X, all_metrics))
-            columns = ["cart_position", "cart_velocity", "pole_angle", "pole_angular_velocity"] + columns
+            state_features = [
+                "cart_position",
+                "cart_velocity",
+                "pole_angle",
+                "pole_angular_velocity",
+                "gravity",
+                "pole_length",
+                "cart_mass",
+                "pole_mass",
+                "force_magnitude",
+            ]
+            columns = state_features + columns
         dfs = pd.DataFrame(all_metrics, columns=columns)
         dfs.loc[:, dfs.columns != "action"] = dfs.loc[:, dfs.columns != "action"].astype(float)
 
