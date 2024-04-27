@@ -178,8 +178,8 @@ def run_symb_reg_local():
     # args.logdir = "logs/train/boxworld/boxworld/2024-04-08__12-29-17__seed_6033"
     # args.logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
     # args.logdir = "logs/train/coinrun/coinrun-hparams/2024-03-27__18-20-55__seed_6033"
-    args.logdir = "logs/train/acrobot/test/2024-04-25__10-03-20__seed_6033"
-
+    # args.logdir = "logs/train/acrobot/test/2024-04-25__10-03-20__seed_6033"
+    args.logdir = "logs/train/cartpole/test/2024-04-26__12-37-41__seed_40"
     args.n_envs = 128
     args.rounds = 300
     args.binary_operators = ["+", "-", "*", "greater", "/"]
@@ -202,6 +202,6 @@ def run_symb_reg_local():
 
 if __name__ == "__main__":
     # test_agent_specific_environment()
-    run_saved_model()
+    # run_saved_model()
     # run_deterministic_agent()
-    # run_symb_reg_local()
+    run_symb_reg_local()

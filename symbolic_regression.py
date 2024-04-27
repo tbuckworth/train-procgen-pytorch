@@ -465,6 +465,8 @@ def run_neurosymbolic_search(args):
 
         if not args.stochastic:
             action_vector = actions[Y_act]
+        elif len(actions) == 2:
+            action_vector = np.repeat(actions[-1], shp[0])
         else:
             action_vector = np.repeat(actions, shp[0])
 
