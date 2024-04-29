@@ -140,7 +140,7 @@ def test_agent_balanced_reward(agent, env, print_name, n=40):
     return true_average_reward
 
 
-def test_agent_mean_reward(agent, env, print_name, n=40, return_std=False):
+def test_agent_mean_reward(agent, env, print_name, n=40, return_values=False):
     episodes = 0
     obs = env.reset()
     act = agent.forward(obs)
@@ -155,8 +155,9 @@ def test_agent_mean_reward(agent, env, print_name, n=40, return_std=False):
             episode_rewards += list(cum_rew[done])
             cum_rew[done] = 0
     print(f"{print_name}:\tEpisode:{episodes}\tMean Reward:{np.mean(episode_rewards):.2f}")
-    if return_std:
-        return {"mean":np.mean(episode_rewards), "std":np.std(episode_rewards)}
+    if return_values:
+        return episode_rewards
+        # return {"mean":np.mean(episode_rewards), "std":np.std(episode_rewards)}
     return np.mean(episode_rewards)
 
 

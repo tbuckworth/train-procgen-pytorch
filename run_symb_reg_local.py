@@ -5,6 +5,7 @@ from distutils.file_util import write_file
 
 import numpy as np
 import pandas as pd
+import scipy
 from matplotlib import pyplot as plt
 
 from cartpole.create_cartpole import create_cartpole, create_cartpole_env_pre_vec
@@ -89,8 +90,8 @@ def test_saved_model():
     pysr_model = PySRRegressor.from_file(pickle_filename)
     orig_cfg = get_config(logdir)
     cfg = get_config(symbdir)
-    cfg["n_envs"] = 128
-    cfg["rounds"] = 300
+    cfg["n_envs"] = 32
+    cfg["rounds"] = 10
     env_cons = get_env_constructor(orig_cfg["env_name"])
     args = DictToArgs(cfg)
     policy, env, symbolic_agent_constructor, test_env = load_nn_policy(logdir, args.n_envs)
@@ -104,7 +105,11 @@ def test_saved_model():
     train_params = env.get_params().copy()
     test_params = test_env.get_params().copy()
 
+    test_params["max_gravity"] = 15
+    test_params["max_pole_length"] = 1.5
     groups = ["gravity", "pole_length", "cart_mass", "pole_mass"]
+    new_index = ["Train", "Gravity", "Pole Length", "Cart Mass", "Pole Mass", "All OOD"]
+
     ranges = {k: {} for k in groups}
     params = {}
     for group in groups:
@@ -132,24 +137,30 @@ def test_saved_model():
     tf["all"] = np.nan
 
     results = {}
+    record = {}
     for group, param in params.items():
         temp_env = env_cons(None, param, False)
+        temp_env.reset(6033)
         assert temp_env.get_params() == param, "params do not match"
         ns_score = test_agent_mean_reward(ns_agent, temp_env, f"NeuroSymb {group}", args.rounds, True)
         nn_score = test_agent_mean_reward(nn_agent, temp_env, f"Neural    {group}", args.rounds, True)
-        results[group] = {"ns_mean": ns_score["mean"],
-                          "ns_std": ns_score["std"],
-                          "nn_mean": nn_score["mean"],
-                          "nn_std": nn_score["std"],
+        results[group] = {"ns_mean": np.mean(ns_score),
+                          "ns_std": np.std(ns_score),
+                          "nn_mean": np.mean(nn_score),
+                          "nn_std": np.std(nn_score),
+                          "p_value": scipy.stats.ttest_ind(ns_score, nn_score, equal_var=False)[1]
                           }
+        record[group] = {"ns": ns_score, "nn": nn_score}
 
     df = pd.DataFrame.from_dict(results).T
-    df = df.round(1)
+    round_dict = {x: 1 for x in df.columns.values.tolist()}
+    round_dict["p_value"] = 2
+    df = df.round(round_dict)
     dfo = pd.concat([tf.T, df], axis=1).reindex(["train"] + groups + ["all"])
 
     dfo.to_csv(os.path.join(symbdir, "results_table.csv"), index=True)
 
-    env_name = orig_cfg["cartpole"]
+    env_name = orig_cfg["env_name"]
 
     # dfo = pd.read_csv(os.path.join(symbdir, "results_table.csv"), index_col=0)
     formatted_vals = {
@@ -157,29 +168,41 @@ def test_saved_model():
         "Test\nRange": concat_np_list([dfo["test_min"].values, " - ", dfo["test_max"].values], shape=(len(dfo),)),
         "Symbolic\nReward": concat_np_list([dfo["ns_mean"].values, " $\pm$ ", dfo["ns_std"].values], shape=(len(dfo),)),
         "Neural\nReward": concat_np_list([dfo["nn_mean"].values, " $\pm$ ", dfo["nn_std"].values], shape=(len(dfo),)),
+        "P Value": dfo["p_value"].values.astype(str),
     }
-    new_index = ["Train", "Gravity", "Pole Length", "Cart Mass", "Pole Mass", "All OOD"]
 
     df = pd.DataFrame.from_dict(formatted_vals)
     df.index = new_index
     df[df == "nan - nan"] = ""
 
+    bolden_df(df, dfo, greater_col="ns_mean", lesser_col="nn_mean", f_greater_col="Symbolic\nReward")
+    bolden_df(df, dfo, greater_col="nn_mean", lesser_col="ns_mean", f_greater_col="Neural\nReward")
+
     latex = df.to_latex()  # os.path.join(symbdir, "results_table.tex"))
 
-    caption = "Training Environment uses all metrics from Train Range, while `All OOD' uses all metrics from Test Range."
+    caption = ("Training Environment uses all metrics from Train Range, "
+               "while `All OOD' uses all metrics from Test Range."
+               "P Value is the probability that the means are different (T-test)."
+               "Bold indicates the winner when P Value is less than 0.05.")
     label = f"{env_name}-results-table"
     output_str = wrap_latex_in_table(caption, label, latex)
     write_file(os.path.join(symbdir, f"{env_name}_table.tex"), [output_str])
 
-    return None
-
-
-def format_results():
-    symbdir = "logs/train/cartpole/test/2024-04-26__12-37-41__seed_40/symbreg/2024-04-27__16-00-09"
-
-    return latex
+    # plot record
 
     return None
+
+
+def bolden_df(df,
+              dfo,
+              greater_col="ns_mean",
+              lesser_col="nn_mean",
+              f_greater_col="Symbolic\nReward"
+              ):
+    symb_win = np.bitwise_and(dfo["p_value"] < 0.05, dfo[greater_col] > dfo[lesser_col]).values
+    vals = df[f_greater_col].loc[symb_win]
+
+    df[f_greater_col].loc[symb_win] = concat_np_list(["\\textbf{", vals.values, "}"], (len(vals),))
 
 
 def wrap_latex_in_table(caption, label, latex):
@@ -310,8 +333,8 @@ def run_symb_reg_local():
 
 
 if __name__ == "__main__":
-    format_results()
-    # test_saved_model()
+    # format_results()
+    test_saved_model()
     # test_agent_specific_environment()
     # run_saved_model()
     # run_deterministic_agent()
