@@ -1,5 +1,6 @@
 import os
 import argparse
+import re
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -74,6 +75,27 @@ def test_agent_specific_environment():
     plt.legend()
     plt.show()
     print("done")
+
+def test_saved_model():
+    symbdir = "logs/train/acrobot/test/2024-04-25__10-03-20__seed_6033/symbreg/2024-04-25__16-54-37/"
+    pickle_filename = os.path.join(symbdir, "symb_reg.pkl")
+    logdir = re.search(r"(logs.*)symbreg", symbdir).group(1)
+    pysr_model = PySRRegressor.from_file(pickle_filename)
+    cfg = get_config(symbdir)
+    cfg["n_envs"] = 128
+    cfg["rounds"] = 300
+    args = DictToArgs(cfg)
+    policy, env, symbolic_agent_constructor, test_env = load_nn_policy(logdir, args.n_envs)
+
+    actions = get_actions_from_all(env)
+    action_mapping = map_actions_to_values(actions)
+
+    ns_agent = symbolic_agent_constructor(pysr_model, policy, args.stochastic, action_mapping)
+    nn_agent = NeuralAgent(policy)
+    ns_score_train = test_agent_mean_reward(ns_agent, env, "NeuroSymb Train", args.rounds)
+    nn_score_train = test_agent_mean_reward(nn_agent, env, "Neural    Train", args.rounds)
+
+    return 1
 
 def run_saved_model():
     # data_size = 1000
@@ -201,7 +223,8 @@ def run_symb_reg_local():
 
 
 if __name__ == "__main__":
+    test_saved_model()
     # test_agent_specific_environment()
     # run_saved_model()
     # run_deterministic_agent()
-    run_symb_reg_local()
+    # run_symb_reg_local()

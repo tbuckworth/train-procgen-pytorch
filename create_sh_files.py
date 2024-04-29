@@ -238,10 +238,10 @@ def acrobot_hparams():
         "seed": [6033, 0, 1, 101, 40],
         "gamma": [0.95],
         "learning_rate": [0.0005],
-        "entropy_coef": [0, 0.02],
-        "n_envs": [16, 128, 256],
-        "n_steps": [256, 16],
-        # "n_minibatch": None,
+        "entropy_coef": [0.02],
+        "n_envs": [256],
+        "n_steps": [256],
+        "n_minibatch": [16],
         # "mini_batch_size": None,
         # "wandb_name": None,
         # "wandb_group": None,
@@ -284,7 +284,7 @@ def cartpole_hparams():
 
 def train_hparams():
     # return continue_run("logs/train/mountain_car/test/2024-04-25__05-18-36__seed_6033")
-    return mountain_car_hparams()
+    return acrobot_hparams()
 
 
 def continue_run(logdir):
@@ -387,7 +387,7 @@ if __name__ == '__main__':
     parser.add_argument('--max_runs', type=int, default=200)
     parser.add_argument('--hparam_type', type=str, default="train")
 
-    re_use_machine = False
+    re_use_machine = True
     specify_host = None
     if specify_host is not None and not re_use_machine:
         print("Warning - specifying host will re-use that host")
