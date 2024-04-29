@@ -90,8 +90,8 @@ def test_saved_model():
     pysr_model = PySRRegressor.from_file(pickle_filename)
     orig_cfg = get_config(logdir)
     cfg = get_config(symbdir)
-    cfg["n_envs"] = 32
-    cfg["rounds"] = 10
+    cfg["n_envs"] = 100
+    cfg["rounds"] = 1000
     env_cons = get_env_constructor(orig_cfg["env_name"])
     args = DictToArgs(cfg)
     policy, env, symbolic_agent_constructor, test_env = load_nn_policy(logdir, args.n_envs)
@@ -189,6 +189,13 @@ def test_saved_model():
     write_file(os.path.join(symbdir, f"{env_name}_table.tex"), [output_str])
 
     # plot record
+    n_cols = 2
+    fig, axes = plt.subplots(3, n_cols, figsize=(10, 10), sharex=True)
+    for i, group in enumerate(record):
+        ax = axes[i//n_cols, i%n_cols]
+        ax.hist(record[group]["ns"])
+        ax.hist(record[group]["nn"])
+    plt.show()
 
     return None
 
