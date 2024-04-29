@@ -119,7 +119,8 @@ class CartPoleVecEnv(PreVecEnv):
         self.max_force_mag = max_force_mag
         self.tau = 0.02  # seconds between state updates
         self.kinematics_integrator = "euler"
-
+        self.degrees = degrees
+        self.h_range = h_range
         # Angle at which to fail the episode
         self.theta_threshold_radians = degrees * 2 * math.pi / 360
         self.x_threshold = h_range
@@ -173,7 +174,8 @@ class CartPoleVecEnv(PreVecEnv):
             "max_pole_mass",
             "min_pole_length",
             "max_pole_length",
-            "force_mag",
+            "min_force_mag",
+            "max_force_mag",
             "tau",
             "kinematics_integrator",
         ]

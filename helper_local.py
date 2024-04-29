@@ -778,3 +778,11 @@ def get_attributes(env):
     vn = env.__dir__()
     vn = [v for v in vn if not re.search("__",v)]
 
+
+def concat_np_list(l, shape):
+    output = np.repeat("", np.prod(shape)).reshape(shape)
+    for arr in l:
+        if type(arr) == np.ndarray:
+            arr = arr.astype(str)
+        output = np.core.defchararray.add(output, arr)
+    return output

@@ -10,7 +10,7 @@ import pandas as pd
 import torch
 from matplotlib import pyplot as plt
 
-from helper_local import coords_to_image, GLOBAL_DIR, run_subprocess
+from helper_local import coords_to_image, GLOBAL_DIR, run_subprocess, concat_np_list
 # from matplotlib import pyplot as plt
 
 # from VQMHA import flatten_features
@@ -270,15 +270,6 @@ class LogicDistiller:
     def clear_examples(self):
         self.example_list = []
         self.example_strings = []
-
-
-def concat_np_list(l, shape):
-    output = np.repeat("", np.prod(shape)).reshape(shape)
-    for arr in l:
-        if type(arr) == np.ndarray:
-            arr = arr.astype(str)
-        output = np.core.defchararray.add(output, arr)
-    return output
 
 
 def main():
