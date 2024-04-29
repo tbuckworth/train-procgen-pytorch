@@ -140,7 +140,7 @@ def test_saved_model():
     record = {}
     for group, param in params.items():
         temp_env = env_cons(None, param, False)
-        temp_env.reset(6033)
+        temp_env.reset(seed=6033)
         assert temp_env.get_params() == param, "params do not match"
         ns_score = test_agent_mean_reward(ns_agent, temp_env, f"NeuroSymb {group}", args.rounds, True)
         nn_score = test_agent_mean_reward(nn_agent, temp_env, f"Neural    {group}", args.rounds, True)
