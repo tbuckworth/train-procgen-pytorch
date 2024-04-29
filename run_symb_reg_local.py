@@ -195,6 +195,8 @@ def test_saved_model():
         ax = axes[i//n_cols, i%n_cols]
         ax.hist(record[group]["ns"])
         ax.hist(record[group]["nn"])
+        ax.set_title(group)
+    plt.savefig(os.path.join(symbdir, f"{env_name}_hist.png"))
     plt.show()
 
     return None
