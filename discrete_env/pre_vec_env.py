@@ -23,7 +23,7 @@ class PreVecEnv(Env):
     """
     screen_width=None
     screen_height=None
-    n_inputs=None
+    input_adjust=0
     def __init__(self, n_envs, n_actions,
                  env_name,
                  max_steps=500,
@@ -44,7 +44,7 @@ class PreVecEnv(Env):
         self.screen = None
         self.clock = None
         self.isopen = True
-        self.n_inputs = len(self.high) if self.n_inputs is None else self.n_inputs
+        self.n_inputs = len(self.high) + self.input_adjust
         self.terminated = np.full(self.n_envs, True)
         self.state = np.zeros((self.n_envs, self.n_inputs))
         self.n_steps = np.zeros((self.n_envs))

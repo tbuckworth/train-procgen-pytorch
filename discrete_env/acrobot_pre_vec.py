@@ -20,7 +20,7 @@ __credits__ = [
 __license__ = "BSD 3-Clause"
 __author__ = "Christoph Dann <cdann@cdann.de>"
 
-from discrete_env.helper_pre_vec import StartSpace
+from discrete_env.helper_pre_vec import StartSpace, assign_env_vars
 from discrete_env.pre_vec_env import PreVecEnv
 from helper_local import DictToArgs
 
@@ -152,17 +152,6 @@ class AcrobotVecEnv(PreVecEnv):
 
     dt = 0.2
 
-    LINK_LENGTH_1 = 1.0  # [m]
-    LINK_LENGTH_2 = 1.0  # [m]
-    LINK_MASS_1 = 1.0  #: [kg] mass of link 1
-    LINK_MASS_2 = 1.0  #: [kg] mass of link 2
-    LINK_COM_POS_1 = 0.5  #: [m] position of the center of mass of link 1
-    LINK_COM_POS_2 = 0.5  #: [m] position of the center of mass of link 2
-    LINK_MOI = 1.0  #: moments of inertia for both links
-
-    MAX_VEL_1 = 4 * pi
-    MAX_VEL_2 = 9 * pi
-
     AVAIL_TORQUE = np.array([-1.0, 0.0, +1])
 
     screen_width = 500
@@ -175,14 +164,56 @@ class AcrobotVecEnv(PreVecEnv):
 
     def __init__(self, n_envs,
                  torque_noise_max=0.0,
-                 min_gravity=9.8,
-                 max_gravity=11.4,
+                 gravity=None,
+                 link_length_1=None,  # [m]
+                 link_length_2=None,  # [m]
+                 link_mass_1=None,  #: [kg] mass of link 1
+                 link_mass_2=None,  #: [kg] mass of link 2
+                 link_com_pos_1=None,  #: [m] position of the center of mass of link 1
+                 link_com_pos_2=None,  #: [m] position of the center of mass of link 2
+                 link_moi=None,  #: moments of inertia for both links
+                 max_vel_1=4 * pi,
+                 max_vel_2=9 * pi,
                  max_steps=500,
+                 unprocessed_features=False,
                  render_mode: Optional[str] = None):
+        self.unprocessed_features = unprocessed_features
+        if link_moi is None:
+            link_moi = [1.0, 1.0]
+        if link_com_pos_2 is None:
+            link_com_pos_2 = [0.5, 0.5]
+        if link_com_pos_1 is None:
+            link_com_pos_1 = [0.5, 0.5]
+        if link_mass_2 is None:
+            link_mass_2 = [1.0, 1.5]
+        if link_mass_1 is None:
+            link_mass_1 = [1.0, 1.5]
+        if link_length_2 is None:
+            link_length_2 = [1.0, 1.5]
+        if gravity is None:
+            gravity = [9.8, 11.4]
+        if link_length_1 is None:
+            link_length_1 = [1.0, 1.5]
         self._np_random = None
         n_actions = 3
-        self.min_gravity = min_gravity
-        self.max_gravity = max_gravity
+
+        contextual_vars = np.array(
+            [gravity, link_length_1, link_length_2, link_mass_1, link_mass_2, link_com_pos_1, link_com_pos_2, link_moi])
+        self.i_t1 = 0
+        self.i_t2 = 1
+        self.i_d1 = 2
+        self.i_d2 = 3
+        self.i_g = 4
+        self.i_ll1 = 5
+        self.i_ll2 = 6
+        self.i_lm1 = 7
+        self.i_lm2 = 8
+        self.i_lcp1 = 9
+        self.i_lcp2 = 10
+        self.i_moi = 11
+        self.max_vel_1 = max_vel_1
+        self.max_vel_2 = max_vel_2
+
         self.max_steps = max_steps
         self.n_envs = n_envs
         self.torque_noise_max = torque_noise_max
@@ -191,38 +222,34 @@ class AcrobotVecEnv(PreVecEnv):
         self.screen = None
         self.clock = None
         self.isopen = True
-        self.i_t1 = 0
-        self.i_t2 = 1
-        self.i_d1 = 2
-        self.i_d2 = 3
-        self.i_g = 4
 
-        self.high = np.array(
-            [1.0, 1.0, 1.0, 1.0, self.MAX_VEL_1, self.MAX_VEL_2, self.max_gravity], dtype=np.float32
+        high = np.array(
+            [1.0, 1.0, 1.0, 1.0, self.max_vel_1, self.max_vel_2], dtype=np.float32
         )
-        self.low = -self.high
-        self.low[-1] = self.max_gravity
+        self.high = np.concatenate((high, contextual_vars[:, -1]))
+        self.low = np.concatenate((-high, contextual_vars[:, 0]))
 
-        self.start_space = StartSpace(low=[-0.1, -0.1, -0.1, -0.1, self.min_gravity],
-                                      high=[0.1, 0.1, 0.1, 0.1, self.max_gravity],
+        base = np.array([0.1, 0.1, 0.1, 0.1])
+
+        self.start_space = StartSpace(low=np.concatenate((-base, contextual_vars[:, 0])),
+                                      high=np.concatenate((base, contextual_vars[:, -1])),
                                       np_random=self._np_random)
 
         self.customizable_params = ["torque_noise_max",
-                                    "min_gravity",
-                                    "max_gravity",
+                                    "gravity",
+                                    "link_length_1",
+                                    "link_length_2",
+                                    "link_mass_1",
+                                    "link_mass_2",
+                                    "link_com_pos_1",
+                                    "link_com_pos_2",
+                                    "link_moi",
+                                    "max_vel_1",
+                                    "max_vel_2",
                                     "max_steps",
-                                    "LINK_LENGTH_1",
-                                    "LINK_LENGTH_2",
-                                    "LINK_MASS_1",
-                                    "LINK_MASS_2",
-                                    "LINK_COM_POS_1",
-                                    "LINK_COM_POS_2",
-                                    "LINK_MOI",
-                                    "MAX_VEL_1",
-                                    "MAX_VEL_2",
                                     ]
 
-        self.n_inputs = 5  # override because obs != state
+        self.input_adjust = -2 if not self.unprocessed_features else 0  # override because obs != state
         super().__init__(n_envs, n_actions, "Acrobot", max_steps, render_mode)
 
     def get_action_lookup(self):
@@ -252,8 +279,8 @@ class AcrobotVecEnv(PreVecEnv):
 
         ns[:, self.i_t1] = wrap(ns[:, self.i_t1], -pi, pi)
         ns[:, self.i_t2] = wrap(ns[:, self.i_t2], -pi, pi)
-        ns[:, self.i_d1] = bound(ns[:, self.i_d1], -self.MAX_VEL_1, self.MAX_VEL_1)
-        ns[:, self.i_d2] = bound(ns[:, self.i_d2], -self.MAX_VEL_2, self.MAX_VEL_2)
+        ns[:, self.i_d1] = bound(ns[:, self.i_d1], -self.max_vel_1, self.max_vel_1)
+        ns[:, self.i_d2] = bound(ns[:, self.i_d2], -self.max_vel_2, self.max_vel_2)
 
         self.state[:, :self.i_g] = ns
         self.terminated = self._terminal()
@@ -263,17 +290,16 @@ class AcrobotVecEnv(PreVecEnv):
         self.info = [{'env_reward': self.reward[i]} for i in range(self.n_envs)]
 
     def _get_ob(self):
+        if self.unprocessed_features:
+            return self.state
         s = self.state
-        return np.array(
+        return np.concatenate((np.array(
             [
                 cos(s[:, self.i_t1]),
                 sin(s[:, self.i_t1]),
                 cos(s[:, self.i_t2]),
                 sin(s[:, self.i_t2]),
-                s[:, self.i_d1],
-                s[:, self.i_d2],
-                s[:, self.i_g]], dtype=np.float32
-        ).T
+            ]), s[:, self.i_d1:].T)).T
 
     def _terminal(self):
         s = self.state
@@ -281,20 +307,11 @@ class AcrobotVecEnv(PreVecEnv):
         return -cos(s[:, self.i_t1]) - cos(s[:, self.i_t2] + s[:, self.i_t1]) > 1.0
 
     def _dsdt(self, s_augmented):
-        m1 = self.LINK_MASS_1
-        m2 = self.LINK_MASS_2
-        l1 = self.LINK_LENGTH_1
-        lc1 = self.LINK_COM_POS_1
-        lc2 = self.LINK_COM_POS_2
-        I1 = self.LINK_MOI
-        I2 = self.LINK_MOI
-        g = self.state[:, self.i_g]
+        theta1, theta2, dtheta1, dtheta2, g, l1, l2, m1, m2, lc1, lc2, link_moi = self.state.T
+
+        I1 = link_moi
+        I2 = link_moi
         a = s_augmented[:, -1]
-        s = s_augmented[:, :-1]
-        theta1 = s[:, self.i_t1]
-        theta2 = s[:, self.i_t2]
-        dtheta1 = s[:, self.i_d1]
-        dtheta2 = s[:, self.i_d2]
         d1 = (
                 m1 * lc1 ** 2
                 + m2 * (l1 ** 2 + lc2 ** 2 + 2 * l1 * lc2 * cos(theta2))
@@ -327,8 +344,10 @@ class AcrobotVecEnv(PreVecEnv):
         self.surf = self.pygame.Surface((self.screen_width, self.screen_width))
         self.surf.fill((255, 255, 255))
         s = self.state[0]
+        link_length_1 = s[self.i_ll1]
+        link_length_2 = s[self.i_ll2]
 
-        bound = self.LINK_LENGTH_1 + self.LINK_LENGTH_2 + 0.2  # 2.2 for default
+        bound = link_length_1 + link_length_2 + 0.2  # 2.2 for default
         scale = self.screen_width / (bound * 2)
         offset = self.screen_width / 2
 
@@ -336,18 +355,18 @@ class AcrobotVecEnv(PreVecEnv):
             return None
 
         p1 = [
-            -self.LINK_LENGTH_1 * cos(s[0]) * scale,
-            self.LINK_LENGTH_1 * sin(s[0]) * scale,
+            -link_length_1 * cos(s[0]) * scale,
+            link_length_1 * sin(s[0]) * scale,
         ]
 
         p2 = [
-            p1[0] - self.LINK_LENGTH_2 * cos(s[0] + s[1]) * scale,
-            p1[1] + self.LINK_LENGTH_2 * sin(s[0] + s[1]) * scale,
+            p1[0] - link_length_2 * cos(s[0] + s[1]) * scale,
+            p1[1] + link_length_2 * sin(s[0] + s[1]) * scale,
         ]
 
         xys = np.array([[0, 0], p1, p2])[:, ::-1]
         thetas = [s[0] - pi / 2, s[0] + s[1] - pi / 2]
-        link_lengths = [self.LINK_LENGTH_1 * scale, self.LINK_LENGTH_2 * scale]
+        link_lengths = [link_length_1 * scale, link_length_2 * scale]
 
         self.pygame.draw.line(
             self.surf,
@@ -472,16 +491,14 @@ def create_acrobot(args, hyperparameters, is_valid=False):
     if args is None:
         args = DictToArgs({"render": False})
     n_envs = hyperparameters.get('n_envs', 32)
-    env_args = {"min_gravity": hyperparameters.get("min_gravity", 9.8),
-                "max_gravity": hyperparameters.get("max_gravity", 10.4),
-                "torque_noise_max": hyperparameters.get("torque_noise_max", 0.)
-                }
-    if is_valid:
-        env_args = {"min_gravity": hyperparameters.get("min_gravity_v", 10.4),
-                    "max_gravity": hyperparameters.get("max_gravity_v", 24.8),
-                    # add noise?
-                    "torque_noise_max": hyperparameters.get("torque_noise_max_v", 0.)
-                    }
+    param_range = {
+        "gravity": [[9.8, 10.4], [10.4, 24.8]],
+        "link_length_1": [[1., 1.5], [1.5, 2.0]],
+        "link_length_2": [[1., 1.5], [1.5, 2.0]],
+        "link_mass_1": [[1., 1.5], [1.5, 2.0]],
+        "link_mass_2": [[1., 1.5], [1.5, 2.0]],
+    }
+    env_args = assign_env_vars(hyperparameters, is_valid, param_range)
     env_args["n_envs"] = n_envs
     env_args["render_mode"] = "human" if args.render else None
     return AcrobotVecEnv(**env_args)
