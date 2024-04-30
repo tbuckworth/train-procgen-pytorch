@@ -279,8 +279,8 @@ def initialize_model(device, env, hyperparameters):
         model = MLPModel(in_channels, depth, mid_weight, latent_size)
     elif architecture == 'transformobot':
         n_layers = hyperparameters.get("n_layers", 2)
-        n_heads = hyperparameters.get("n_heads", 4)
-        model = TransformoBot(in_channels, n_layers, n_heads)
+        # n_heads = hyperparameters.get("n_heads", 1)
+        model = TransformoBot(in_channels, n_layers)
     else:
         raise NotImplementedError(f"Architecture:{architecture} not found in helper.py")
     # Discrete action space

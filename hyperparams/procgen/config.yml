@@ -787,7 +787,7 @@ cartpole_transform:
     architecture: transformobot
     recurrent: False
     n_layers: 2
-    n_heads: 4
+    n_heads: 1
 
 
 mlpmodel:

@@ -49,18 +49,26 @@ class Flatten(nn.Module):
     def forward(self, x):
         return torch.flatten(x, start_dim=1)
 
+
 class TransformoBot(nn.Module):
-    def __init__(self, input_dims, n_layers=2, n_heads=4):
+    def __init__(self, input_dims, n_layers=2, n_heads=1):
         super(TransformoBot, self).__init__()
-        self.trans = nn.Transformer(nhead=n_heads,
-                                    num_encoder_layers=n_layers,
-                                    dim_feedforward=input_dims,
-                                    num_decoder_layers=n_layers,
-                                    batch_first=True)
+        self.trans = nn.Transformer(
+            d_model=1,
+            nhead=n_heads,
+            num_encoder_layers=n_layers,
+            dim_feedforward=input_dims,
+            num_decoder_layers=n_layers,
+            batch_first=True)
         self.output_dim = input_dims
 
     def forward(self, x):
-        return self.trans(x, x)
+        x = x.unsqueeze(-1)
+        return self.trans(x, x).squeeze()
+
+    def forward_with_attn_indices(self, x):
+        return self.forward(x), [], None, None
+
 
 class MlpModel(nn.Module):
     def __init__(self,
@@ -149,6 +157,7 @@ class ImpalaBlock(nn.Module):
 
 scale = 1
 
+
 class ImpalaModel(nn.Module):
     def __init__(self,
                  in_channels, output_dim=256,
@@ -187,11 +196,10 @@ class ImpalaModel(nn.Module):
     def forward_with_attn_indices(self, x):
         h = self.forward_to_pool(x)
         out = self.forward_from_pool(h)
-        #calculate loss on h:
+        # calculate loss on h:
         feature_sparsity = torch.mean(torch.max(torch.tanh(torch.abs(h * 100)), 0)[0])
         return out, [], feature_sparsity, None
         # (e != 0).any(0).argwhere().detach().cpu().numpy()
-
 
 
 class GRU(nn.Module):
@@ -458,7 +466,8 @@ class QuantizedMHAModel(nn.Module):
         self.quantizer = quantizer
         if self.quantizer is None:
             self.return_indices = False
-        self.MHA = MHAModel(n_latents, embed_dim, mha_layers, output_dim, device, num_heads, reduce, use_intention=use_intention)
+        self.MHA = MHAModel(n_latents, embed_dim, mha_layers, output_dim, device, num_heads, reduce,
+                            use_intention=use_intention)
 
     def forward_with_attn_indices(self, x):
         e = self.encoder(x)
@@ -482,7 +491,6 @@ class QuantizedMHAModel(nn.Module):
 
     def forward_from_pool(self, x):
         return self.MHA.mlp(x)
-
 
     def flatten_and_append_coor(self, x, return_indices=False):
         flat_coor, flattened_features = self.flatten_and_get_coor(x)
@@ -559,8 +567,8 @@ class FSQMHAModel(QuantizedMHAModel):
         n_latents = encoder.get_n_latents(input_shape)
 
         super(FSQMHAModel, self).__init__(in_channels, device, input_shape, n_latents, encoder, quantizer,
-                                                mha_layers, num_heads=latent_dim, embed_dim=latent_dim, output_dim=256,
-                                                reduce=reduce, use_intention=use_intention)
+                                          mha_layers, num_heads=latent_dim, embed_dim=latent_dim, output_dim=256,
+                                          reduce=reduce, use_intention=use_intention)
 
 
 class ImpalaFSQMHAModel(FSQMHAModel):
@@ -585,7 +593,7 @@ class ribEncoder(nn.Module):
     def __init__(self, in_channels, mid_channels, embed_dim, n_blocks=None):
         super(ribEncoder, self).__init__()
         self.conv1 = nn.Conv2d(in_channels=in_channels, out_channels=mid_channels, kernel_size=2, stride=1, padding=0)
-        self.conv2 = nn.Conv2d(in_channels=mid_channels, out_channels=embed_dim-2, kernel_size=2, stride=1, padding=0)
+        self.conv2 = nn.Conv2d(in_channels=mid_channels, out_channels=embed_dim - 2, kernel_size=2, stride=1, padding=0)
 
     def forward(self, x):
         x = self.conv1(x)
@@ -849,7 +857,8 @@ def get_trained_vqvqae(in_channels, hyperparameters, device):
 
 
 class MHAModel(nn.Module):
-    def __init__(self, n_latents, latent_dim, mha_layers, output_dim, device, num_heads=4, reduce='feature_wise', use_intention=False):
+    def __init__(self, n_latents, latent_dim, mha_layers, output_dim, device, num_heads=4, reduce='feature_wise',
+                 use_intention=False):
         super(MHAModel, self).__init__()
         self.mha_layers = mha_layers
         # self.vqvae = get_trained_vqvqae(in_channels, hyperparameters, model_path, device)
@@ -859,7 +868,7 @@ class MHAModel(nn.Module):
             self.mha = MultiHeadIntention(latent_dim, num_heads, device)
         else:
             self.mha = GlobalSelfAttention(shape=(n_latents, latent_dim), num_heads=num_heads, embed_dim=latent_dim,
-                                       dropout=0.1)
+                                           dropout=0.1)
         if reduce == 'feature_wise':
             pool_reduction = 'w'
             fc_dim = latent_dim
@@ -939,8 +948,8 @@ class MLPModel(nn.Module):
         )
         self.apply(xavier_uniform_init)
 
-    def forward(self, x):
-        return self.model(x)
-
     def forward_with_attn_indices(self, x):
         return self.model(x), [], None, None
+
+    def forward(self, x):
+        return self.model(x)

@@ -16,7 +16,7 @@ if os.name != "nt":
 
 from helper_local import add_symbreg_args, get_config, DictToArgs, sigmoid, entropy_from_binary_prob, \
     get_actions_from_all, map_actions_to_values, concat_np_list, match
-from symbolic_regression import run_neurosymbolic_search, load_nn_policy, generate_data#, test_agent_mean_reward
+from symbolic_regression import run_neurosymbolic_search, load_nn_policy, generate_data  # , test_agent_mean_reward
 from symbreg.agents import NeuralAgent, DeterministicNeuralAgent
 
 
@@ -81,6 +81,7 @@ def test_agent_specific_environment():
     plt.show()
     print("done")
 
+
 def test_agent_mean_reward(agent, env, print_name, n=40, return_values=False):
     episodes = 0
     obs = env.reset()
@@ -95,8 +96,8 @@ def test_agent_mean_reward(agent, env, print_name, n=40, return_values=False):
         if np.any(done):
             episodes += np.sum(done)
             episode_rewards += list(cum_rew[done])
-            #TODO: make this general:
-            episode_context += obs[done, 4:-1].tolist()
+            # TODO: make this general:
+            episode_context += obs[done, env.i_g:].tolist()
             cum_rew[done] = 0
     print(f"{print_name}:\tEpisode:{episodes}\tMean Reward:{np.mean(episode_rewards):.2f}")
     if return_values:
@@ -104,16 +105,18 @@ def test_agent_mean_reward(agent, env, print_name, n=40, return_values=False):
         # return {"mean":np.mean(episode_rewards), "std":np.std(episode_rewards)}
     return np.mean(episode_rewards)
 
+
 def test_saved_model():
-    symbdir = "logs/train/acrobot/test/2024-04-25__10-03-20__seed_6033/symbreg/2024-04-25__16-54-37/"
     symbdir = "logs/train/cartpole/test/2024-04-26__12-37-41__seed_40/symbreg/2024-04-27__16-00-09"
+    symbdir = "logs/train/acrobot/test/2024-04-29__18-42-26__seed_40/symbreg/2024-04-30__16-46-13"
     pickle_filename = os.path.join(symbdir, "symb_reg.pkl")
     logdir = re.search(r"(logs.*)symbreg", symbdir).group(1)
     pysr_model = PySRRegressor.from_file(pickle_filename)
     orig_cfg = get_config(logdir)
+    env_name = orig_cfg["env_name"]
     cfg = get_config(symbdir)
     cfg["n_envs"] = 100
-    cfg["rounds"] = 300
+    cfg["rounds"] = 1000
     env_cons = get_env_constructor(orig_cfg["env_name"])
     args = DictToArgs(cfg)
     policy, env, symbolic_agent_constructor, test_env = load_nn_policy(logdir, args.n_envs)
@@ -127,10 +130,25 @@ def test_saved_model():
     train_params = env.get_params().copy()
     test_params = test_env.get_params().copy()
 
-    test_params["max_gravity"] = 15
-    test_params["max_pole_length"] = 1.5
-    groups = ["gravity", "pole_length", "cart_mass", "pole_mass"]
-    new_index = ["Train", "Gravity", "Pole Length", "Cart Mass", "Pole Mass", "All OOD"]
+    if env_name == "cartpole":
+        # test_params["max_gravity"] = 15
+        # test_params["max_pole_length"] = 1.5
+        groups = ["gravity", "pole_length", "cart_mass", "pole_mass"]
+        fancy_names = ["Gravity", "Pole Length", "Cart Mass", "Pole Mass"]
+    elif env_name == "acrobot":
+        groups = ["gravity",
+                  "link_length_1",
+                  "link_length_2",
+                  "link_mass_1",
+                  "link_mass_2"]
+
+        fancy_names = ["Gravity", "1st Link Length", "2nd Link Length", "1st Link Mass", "2nd Link Mass"]
+    else:
+        raise NotImplementedError(f"Implement for env {orig_cfg['env_name']}")
+
+    assert len(fancy_names) == len(groups), "Fancy names must have same length as groups"
+
+    new_index = ["Train"] + fancy_names + ["All OOD"]
 
     ranges = {k: {} for k in groups}
     params = {}
@@ -148,15 +166,26 @@ def test_saved_model():
     params["all"] = test_params
 
     # TODO: this will have to be different for acrobot:
-    train_ranges = {k: {re.sub(r"(min|max).*", r"train_\1", ks): vs["train"] for ks, vs in v.items()} for k, v in
-                    ranges.items()}
-    test_ranges = {k: {re.sub(r"(min|max).*", r"test_\1", ks): vs["test"] for ks, vs in v.items()} for k, v in
-                   ranges.items()}
+    if env_name == "cartpole":
+        train_ranges = {k: {re.sub(r"(min|max).*", r"train_\1", ks): vs["train"] for ks, vs in v.items()} for k, v in
+                        ranges.items()}
+        test_ranges = {k: {re.sub(r"(min|max).*", r"test_\1", ks): vs["test"] for ks, vs in v.items()} for k, v in
+                       ranges.items()}
+        tf = pd.DataFrame.from_dict(train_ranges)
+        tf = tf._append(tf.from_dict(test_ranges))
+    elif env_name == "acrobot":
+        train_ranges = {k:
+                            {f"train_min": v[k]["train"][0],
+                             "train_max": v[k]["train"][1],
+                             f"test_min": v[k]["test"][0],
+                             "test_max": v[k]["test"][1]}
 
-    tf = pd.DataFrame.from_dict(train_ranges)
-    tf = tf._append(tf.from_dict(test_ranges))
-    tf["train"] = np.nan
+                        for k, v in ranges.items()
+                        }
+
+        tf = pd.DataFrame.from_dict(train_ranges)
     tf["all"] = np.nan
+    tf["train"] = np.nan
 
     results = {}
     record = {}
@@ -165,6 +194,7 @@ def test_saved_model():
         temp_env.reset(seed=6033)
         assert temp_env.get_params() == param, "params do not match"
         ns_reward, ns_context = test_agent_mean_reward(ns_agent, temp_env, f"NeuroSymb {group}", args.rounds, True)
+        temp_env.reset(seed=6033)
         nn_reward, nn_context = test_agent_mean_reward(nn_agent, temp_env, f"Neural    {group}", args.rounds, True)
         results[group] = {"ns_mean": np.mean(ns_reward),
                           "ns_std": np.std(ns_reward),
@@ -181,8 +211,6 @@ def test_saved_model():
     dfo = pd.concat([tf.T, df], axis=1).reindex(["train"] + groups + ["all"])
 
     dfo.to_csv(os.path.join(symbdir, "results_table.csv"), index=True)
-
-    env_name = orig_cfg["env_name"]
 
     # dfo = pd.read_csv(os.path.join(symbdir, "results_table.csv"), index_col=0)
     formatted_vals = {
@@ -212,17 +240,16 @@ def test_saved_model():
 
     # plot record
     n_cols = 2
-    fig, axes = plt.subplots(3, n_cols, figsize=(10, 10), sharex=True)
+    fig, axes = plt.subplots(4, n_cols, figsize=(10, 10), sharex=True)
     for i, group in enumerate(record):
-        ax = axes[i//n_cols, i%n_cols]
+        ax = axes[i // n_cols, i % n_cols]
         ax.hist(record[group]["ns"][0])
         ax.hist(record[group]["nn"][0])
         ax.set_title(group)
     # plt.savefig(os.path.join(symbdir, f"{env_name}_hist.png"))
     plt.show()
 
-
-    obs_order = ["gravity", "pole_length","cart_mass","pole_mass"]
+    obs_order = ["gravity", "pole_length", "cart_mass", "pole_mass"]
     n_cols = 2
     fig, axes = plt.subplots(2, n_cols, figsize=(10, 10), sharex=False)
     for i, group in enumerate(record):
@@ -285,7 +312,6 @@ def test_saved_model():
         ax.set_title(group)
     # plt.savefig(os.path.join(symbdir, f"{env_name}_hist.png"))
     plt.show()
-
 
     return None
 

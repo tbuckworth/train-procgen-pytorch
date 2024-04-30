@@ -178,27 +178,42 @@ class AcrobotVecEnv(PreVecEnv):
                  unprocessed_features=False,
                  render_mode: Optional[str] = None):
         self.unprocessed_features = unprocessed_features
+        self.gravity = gravity
+        self.link_length_1 = link_length_1
+        self.link_length_2 = link_length_2
+        self.link_mass_1 = link_mass_1
+        self.link_mass_2 = link_mass_2
+        self.link_com_pos_1 = link_com_pos_1
+        self.link_com_pos_2 = link_com_pos_2
+        self.link_moi = link_moi,
         if link_moi is None:
-            link_moi = [1.0, 1.0]
+            self.link_moi = [1.0, 1.0]
         if link_com_pos_2 is None:
-            link_com_pos_2 = [0.5, 0.5]
+            self.link_com_pos_2 = [0.5, 0.5]
         if link_com_pos_1 is None:
-            link_com_pos_1 = [0.5, 0.5]
+            self.link_com_pos_1 = [0.5, 0.5]
         if link_mass_2 is None:
-            link_mass_2 = [1.0, 1.5]
+            self.link_mass_2 = [1.0, 1.5]
         if link_mass_1 is None:
-            link_mass_1 = [1.0, 1.5]
+            self.link_mass_1 = [1.0, 1.5]
         if link_length_2 is None:
-            link_length_2 = [1.0, 1.5]
+            self.link_length_2 = [1.0, 1.5]
         if gravity is None:
-            gravity = [9.8, 11.4]
+            self.gravity = [9.8, 11.4]
         if link_length_1 is None:
-            link_length_1 = [1.0, 1.5]
+            self.link_length_1 = [1.0, 1.5]
         self._np_random = None
         n_actions = 3
 
         contextual_vars = np.array(
-            [gravity, link_length_1, link_length_2, link_mass_1, link_mass_2, link_com_pos_1, link_com_pos_2, link_moi])
+            [self.gravity,
+             self.link_length_1,
+             self.link_length_2,
+             self.link_mass_1,
+             self.link_mass_2,
+             self.link_com_pos_1,
+             self.link_com_pos_2,
+             self.link_moi])
         self.i_t1 = 0
         self.i_t2 = 1
         self.i_d1 = 2
