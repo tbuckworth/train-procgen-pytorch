@@ -766,6 +766,30 @@ vq-vae:
     decay: .99
     epsilon: 0.00001
 
+
+cartpole_transform:
+    algo: ppo
+    n_envs: 1024
+    n_steps: 256
+    epoch: 3
+    n_minibatch: 16
+    mini_batch_size: 8192
+    gamma: 0.99
+    lmbda: 0.95
+    learning_rate: 0.0005
+    grad_clip_norm: 0.5
+    eps_clip: 0.2
+    value_coef: 0.5
+    entropy_coef: 0.02
+    normalize_adv: True
+    normalize_rew: False
+    use_gae: True
+    architecture: transformobot
+    recurrent: False
+    n_layers: 2
+    n_heads: 4
+
+
 mlpmodel:
     algo: ppo
     n_envs: 1024

@@ -49,6 +49,18 @@ class Flatten(nn.Module):
     def forward(self, x):
         return torch.flatten(x, start_dim=1)
 
+class TransformoBot(nn.Module):
+    def __init__(self, input_dims, n_layers=2, n_heads=4):
+        super(TransformoBot, self).__init__()
+        self.trans = nn.Transformer(nhead=n_heads,
+                                    num_encoder_layers=n_layers,
+                                    dim_feedforward=input_dims,
+                                    num_decoder_layers=n_layers,
+                                    batch_first=True)
+        self.output_dim = input_dims
+
+    def forward(self, x):
+        return self.trans(x, x)
 
 class MlpModel(nn.Module):
     def __init__(self,

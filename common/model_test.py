@@ -7,6 +7,7 @@ from torchinfo import summary
 
 from boxworld.create_box_world import create_box_world_env_pre_vec
 from cartpole.create_cartpole import create_cartpole_env_pre_vec
+from common.env.env_constructor import get_env_constructor
 from common.model import ImpalaVQMHAModel, ImpalaFSQModel, ImpalaModel, Decoder, VQVAE, ImpalaFSQMHAModel, \
     RibFSQMHAModel
 from common.storage import Storage
@@ -200,7 +201,9 @@ class CartPoleTestModel(unittest.TestCase):
         cls.device = torch.device('cpu')
         env_args = {"n_envs": 10}
         cls.n_envs = env_args["n_envs"]
-        cls.env = create_cartpole_env_pre_vec(env_args, render=False, normalize_rew=True)
+        env_cons = get_env_constructor("cartpole")
+        cls.env = env_cons(None, env_args, False)
+        # cls.env = create_cartpole_env_pre_vec(env_args, render=False, normalize_rew=True)
         cls.in_channels = cls.env.observation_space.shape[0]
         cls.obs = torch.FloatTensor(cls.env.reset())
         cls.obs_shape = cls.env.observation_space.shape
@@ -222,6 +225,11 @@ class CartPoleTestModel(unittest.TestCase):
         storage.store(next_obs, hidden_state, act, rew, done, info, log_prob_act, value)
         rew_batch, done_batch, true_average_reward = storage.fetch_log_data()
 
+    def test_TransformoBot(self):
+        hyperparameters = get_hyperparams("cartpole_transform")
+        model, obs_shape, policy = initialize_model(self.device, self.env, hyperparameters)
+        model.forward(self.obs)
+        summary(model, self.obs.shape)
 
 
 if __name__ == '__main__':

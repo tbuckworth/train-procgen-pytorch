@@ -15,8 +15,8 @@ if os.name != "nt":
     from pysr import PySRRegressor
 
 from helper_local import add_symbreg_args, get_config, DictToArgs, sigmoid, entropy_from_binary_prob, \
-    get_actions_from_all, map_actions_to_values, concat_np_list
-from symbolic_regression import run_neurosymbolic_search, load_nn_policy, generate_data, test_agent_mean_reward
+    get_actions_from_all, map_actions_to_values, concat_np_list, match
+from symbolic_regression import run_neurosymbolic_search, load_nn_policy, generate_data#, test_agent_mean_reward
 from symbreg.agents import NeuralAgent, DeterministicNeuralAgent
 
 
@@ -81,6 +81,28 @@ def test_agent_specific_environment():
     plt.show()
     print("done")
 
+def test_agent_mean_reward(agent, env, print_name, n=40, return_values=False):
+    episodes = 0
+    obs = env.reset()
+    act = agent.forward(obs)
+    cum_rew = np.zeros(len(act))
+    episode_rewards = []
+    episode_context = []
+    while episodes < n:
+        obs, rew, done, info = env.step(act)
+        cum_rew += rew
+        act = agent.forward(obs)
+        if np.any(done):
+            episodes += np.sum(done)
+            episode_rewards += list(cum_rew[done])
+            #TODO: make this general:
+            episode_context += obs[done, 4:-1].tolist()
+            cum_rew[done] = 0
+    print(f"{print_name}:\tEpisode:{episodes}\tMean Reward:{np.mean(episode_rewards):.2f}")
+    if return_values:
+        return episode_rewards, episode_context
+        # return {"mean":np.mean(episode_rewards), "std":np.std(episode_rewards)}
+    return np.mean(episode_rewards)
 
 def test_saved_model():
     symbdir = "logs/train/acrobot/test/2024-04-25__10-03-20__seed_6033/symbreg/2024-04-25__16-54-37/"
@@ -91,7 +113,7 @@ def test_saved_model():
     orig_cfg = get_config(logdir)
     cfg = get_config(symbdir)
     cfg["n_envs"] = 100
-    cfg["rounds"] = 1000
+    cfg["rounds"] = 300
     env_cons = get_env_constructor(orig_cfg["env_name"])
     args = DictToArgs(cfg)
     policy, env, symbolic_agent_constructor, test_env = load_nn_policy(logdir, args.n_envs)
@@ -142,15 +164,15 @@ def test_saved_model():
         temp_env = env_cons(None, param, False)
         temp_env.reset(seed=6033)
         assert temp_env.get_params() == param, "params do not match"
-        ns_score = test_agent_mean_reward(ns_agent, temp_env, f"NeuroSymb {group}", args.rounds, True)
-        nn_score = test_agent_mean_reward(nn_agent, temp_env, f"Neural    {group}", args.rounds, True)
-        results[group] = {"ns_mean": np.mean(ns_score),
-                          "ns_std": np.std(ns_score),
-                          "nn_mean": np.mean(nn_score),
-                          "nn_std": np.std(nn_score),
-                          "p_value": scipy.stats.ttest_ind(ns_score, nn_score, equal_var=False)[1]
+        ns_reward, ns_context = test_agent_mean_reward(ns_agent, temp_env, f"NeuroSymb {group}", args.rounds, True)
+        nn_reward, nn_context = test_agent_mean_reward(nn_agent, temp_env, f"Neural    {group}", args.rounds, True)
+        results[group] = {"ns_mean": np.mean(ns_reward),
+                          "ns_std": np.std(ns_reward),
+                          "nn_mean": np.mean(nn_reward),
+                          "nn_std": np.std(nn_reward),
+                          "p_value": scipy.stats.ttest_ind(ns_reward, nn_reward, equal_var=False)[1]
                           }
-        record[group] = {"ns": ns_score, "nn": nn_score}
+        record[group] = {"ns": (ns_reward, ns_context), "nn": (nn_reward, nn_context)}
 
     df = pd.DataFrame.from_dict(results).T
     round_dict = {x: 1 for x in df.columns.values.tolist()}
@@ -193,11 +215,77 @@ def test_saved_model():
     fig, axes = plt.subplots(3, n_cols, figsize=(10, 10), sharex=True)
     for i, group in enumerate(record):
         ax = axes[i//n_cols, i%n_cols]
-        ax.hist(record[group]["ns"])
-        ax.hist(record[group]["nn"])
+        ax.hist(record[group]["ns"][0])
+        ax.hist(record[group]["nn"][0])
         ax.set_title(group)
-    plt.savefig(os.path.join(symbdir, f"{env_name}_hist.png"))
+    # plt.savefig(os.path.join(symbdir, f"{env_name}_hist.png"))
     plt.show()
+
+
+    obs_order = ["gravity", "pole_length","cart_mass","pole_mass"]
+    n_cols = 2
+    fig, axes = plt.subplots(2, n_cols, figsize=(10, 10), sharex=False)
+    for i, group in enumerate(record):
+        if group in obs_order:
+            ax = axes[i // n_cols, i % n_cols]
+            obs = np.array(record[group]["ns"][1])
+            x = obs[:, match(np.array([group]), np.array(obs_order))].squeeze()
+            y = np.array(record[group]["ns"][0])
+            # flt = y!=500
+            flt = np.ones_like(y).astype(bool)
+            ax.scatter(
+                x=x[flt],
+                y=y[flt],
+                # c=[i for i in range(np.sum(flt))]
+            )
+
+            obs = np.array(record[group]["nn"][1])
+            x = obs[:, match(np.array([group]), np.array(obs_order))].squeeze()
+            y = np.array(record[group]["nn"][0])
+            # flt = y!=500
+            flt = np.ones_like(y).astype(bool)
+            ax.scatter(
+                x=x[flt],
+                y=y[flt],
+                # c=[i for i in range(np.sum(flt))]
+            )
+            # ax.hist(record[group]["nn"][0])
+            ax.set_title(group)
+    # plt.savefig(os.path.join(symbdir, f"{env_name}_hist.png"))
+    plt.show()
+
+    obs_order = ["gravity", "pole_length", "cart_mass", "pole_mass"]
+    n_cols = 2
+    fig, axes = plt.subplots(2, n_cols, figsize=(10, 10), sharex=False)
+    for i, group in enumerate(obs_order):
+        ax = axes[i // n_cols, i % n_cols]
+        obs = np.array(record["all"]["nn"][1])
+        x = obs[:, i].squeeze()
+        y = np.array(record["all"]["nn"][0])
+        # flt = y!=500
+        flt = np.ones_like(y).astype(bool)
+        ax.scatter(
+            x=x[flt],
+            y=y[flt],
+            c=[i for i in range(np.sum(flt))]
+        )
+
+        # obs = np.array(record["all"]["nn"][1])
+        # x = obs[:, i].squeeze()
+        # y = np.array(record["all"]["nn"][0])
+        #
+        # # flt = y!=500
+        # flt = np.ones_like(y).astype(bool)
+        # ax.scatter(
+        #     x=x[flt],
+        #     y=y[flt],
+        #     # c=[i for i in range(np.sum(flt))]
+        # )
+        # # ax.hist(record[group]["nn"][0])
+        ax.set_title(group)
+    # plt.savefig(os.path.join(symbdir, f"{env_name}_hist.png"))
+    plt.show()
+
 
     return None
 

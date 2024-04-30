@@ -168,13 +168,13 @@ def symbreg_hparams():
     return {
         "timeout_in_seconds": [3600 * 10],
         "data_size": [100, 1000],  # , 500, 100, 50],# 5000],
-        "iterations": [5, 20],  # 20, 40, 80],
-        "n_envs": [128],
-        "rounds": [300],
+        "iterations": [1, 5, 20],  # 20, 40, 80],
+        "n_envs": [100],
+        "rounds": [1000],
         "denoise": [True],
         "populations": [24, 35],
         "procs": [8, 4],
-        "ncycles_per_iteration": [3000],
+        "ncycles_per_iteration": [4000],
         "bumper": [True],
         "binary_operators": [["+", "-", "greater", "\*", "/"]],
         "unary_operators": [  # [],
@@ -193,7 +193,8 @@ def symbreg_hparams():
         # "logdir": ["logs/train/coinrun/coinrun-hparams/2024-03-27__18-20-55__seed_6033"],
         # "logdir": ["logs/train/coinrun/coinrun-hparams/2024-04-18__08-38-17__seed_6033"],
         # "logdir": ["logs/train/acrobot/test/2024-04-25__10-03-20__seed_6033"],
-        "logdir": ["logs/train/cartpole/test/2024-04-26__12-37-41__seed_40"],
+        # "logdir": ["logs/train/cartpole/test/2024-04-26__12-37-41__seed_40"],
+        "logdir": ["logs/train/acrobot/test/2024-04-29__18-42-26__seed_40"],
         "use_wandb": [True],
         "stochastic": [True, False],
     }
@@ -381,13 +382,13 @@ def add_training_args_dict():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--n_gpu', type=int, default=20)
+    parser.add_argument('--n_gpu', type=int, default=6)
     parser.add_argument('--execute', action="store_true", default=True)
     # parser.add_argument('--cuda', action="store_true", default=False)
     parser.add_argument('--max_runs', type=int, default=200)
-    parser.add_argument('--hparam_type', type=str, default="train")
+    parser.add_argument('--hparam_type', type=str, default="symbreg")
 
-    re_use_machine = True
+    re_use_machine = False
     specify_host = None
     if specify_host is not None and not re_use_machine:
         print("Warning - specifying host will re-use that host")

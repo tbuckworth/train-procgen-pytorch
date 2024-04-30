@@ -18,7 +18,7 @@ import platform
 from matplotlib import pyplot as plt
 
 from common.model import NatureModel, ImpalaModel, MHAModel, ImpalaVQModel, ImpalaVQMHAModel, ImpalaFSQModel, ribMHA, \
-    ImpalaFSQMHAModel, RibFSQMHAModel, MLPModel
+    ImpalaFSQMHAModel, RibFSQMHAModel, MLPModel, TransformoBot
 from common.policy import CategoricalPolicy
 from moviepy.editor import ImageSequenceClip
 
@@ -277,6 +277,10 @@ def initialize_model(device, env, hyperparameters):
         mid_weight = hyperparameters.get("mid_weight", 64)
         latent_size = hyperparameters.get("latent_size", 256)
         model = MLPModel(in_channels, depth, mid_weight, latent_size)
+    elif architecture == 'transformobot':
+        n_layers = hyperparameters.get("n_layers", 2)
+        n_heads = hyperparameters.get("n_heads", 4)
+        model = TransformoBot(in_channels, n_layers, n_heads)
     else:
         raise NotImplementedError(f"Architecture:{architecture} not found in helper.py")
     # Discrete action space
