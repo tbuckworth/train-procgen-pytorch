@@ -194,7 +194,7 @@ def symbreg_hparams():
         # "logdir": ["logs/train/coinrun/coinrun-hparams/2024-04-18__08-38-17__seed_6033"],
         # "logdir": ["logs/train/acrobot/test/2024-04-25__10-03-20__seed_6033"],
         # "logdir": ["logs/train/cartpole/test/2024-04-26__12-37-41__seed_40"],
-        "logdir": ["logs/train/acrobot/test/2024-04-29__18-42-26__seed_40"],
+        "logdir": ["logs/train/acrobot/test/2024-05-01__12-22-24__seed_6033"],
         "use_wandb": [True],
         "stochastic": [True, False],
     }
@@ -411,14 +411,14 @@ def add_training_args_dict():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--n_gpu', type=int, default=32)
+    parser.add_argument('--n_gpu', type=int, default=6)
     parser.add_argument('--execute', action="store_true", default=True)
     # parser.add_argument('--cuda', action="store_true", default=False)
     parser.add_argument('--max_runs', type=int, default=200)
     parser.add_argument('--hparam_type', type=str, default="train")
 
-    re_use_machine = True
-    specify_host = "gpu33"
+    re_use_machine = False
+    specify_host = None#"gpu33"
     if specify_host is not None and not re_use_machine:
         print("Warning - specifying host will re-use that host")
 
