@@ -33,11 +33,11 @@ class CartPoleSwingUpEnv(gym.Env):
         self.g = 9.82  # gravity
         self.m_c = 0.5  # cart mass
         self.m_p = 0.5  # pendulum mass
-        self.total_m = (self.m_p + self.m_c)
+        self.total_mass = (self.m_p + self.m_c)
         self.l = 0.6  # pole's length
-        self.m_p_l = (self.m_p * self.l)
+        self.polemass_length = (self.m_p * self.l)
         self.force_mag = 10.0
-        self.dt = 0.01  # seconds between state updates
+        self.tau = 0.01  # seconds between state updates
         self.b = 0.1  # friction coefficient
 
         self.t = 0  # timestep
@@ -72,18 +72,18 @@ class CartPoleSwingUpEnv(gym.Env):
         state = self.state
         x, x_dot, theta, theta_dot = state
 
-        s = math.sin(theta)
-        c = math.cos(theta)
+        sintheta = math.sin(theta)
+        costheta = math.cos(theta)
 
-        xdot_update = (-2 * self.m_p_l * (
-                    theta_dot ** 2) * s + 3 * self.m_p * self.g * s * c + 4 * action - 4 * self.b * x_dot) / (
-                                  4 * self.total_m - 3 * self.m_p * c ** 2)
-        thetadot_update = (-3 * self.m_p_l * (theta_dot ** 2) * s * c + 6 * self.total_m * self.g * s + 6 * (
-                    action - self.b * x_dot) * c) / (4 * self.l * self.total_m - 3 * self.m_p_l * c ** 2)
-        x = x + x_dot * self.dt
-        theta = theta + theta_dot * self.dt
-        x_dot = x_dot + xdot_update * self.dt
-        theta_dot = theta_dot + thetadot_update * self.dt
+        xdot_update = (-2 * self.polemass_length * (
+                    theta_dot ** 2) * sintheta + 3 * self.m_p * self.g * sintheta * costheta + 4 * action - 4 * self.b * x_dot) / (
+                              4 * self.total_mass - 3 * self.m_p * costheta ** 2)
+        thetadot_update = (-3 * self.polemass_length * (theta_dot ** 2) * sintheta * costheta + 6 * self.total_mass * self.g * sintheta + 6 * (
+                    action - self.b * x_dot) * costheta) / (4 * self.l * self.total_mass - 3 * self.polemass_length * costheta ** 2)
+        x = x + x_dot * self.tau
+        theta = theta + theta_dot * self.tau
+        x_dot = x_dot + xdot_update * self.tau
+        theta_dot = theta_dot + thetadot_update * self.tau
 
         self.state = (x, x_dot, theta, theta_dot)
 
@@ -99,7 +99,7 @@ class CartPoleSwingUpEnv(gym.Env):
         # Reward_theta is 1 when theta is 0, 0 if between 90 and 270
         reward_theta = max(0, np.cos(theta))
 
-        # Reward_x is 0 when cart is at the edge of the screen, 1 when it's in the centre
+        # Reward_x is 0 when cart is at the edge of the screen, 1 when it'sintheta in the centre
         reward_x = np.cos((x / self.x_threshold) * (np.pi / 2.0))
 
         # [0, 1]
@@ -199,3 +199,4 @@ class CartPoleSwingUpEnv(gym.Env):
         self.pole_bob_trans.set_translation(-self.l * np.sin(x[2]), self.l * np.cos(x[2]))
 
         return self.viewer.render(return_rgb_array=mode == 'rgb_array')
+
