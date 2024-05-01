@@ -532,11 +532,4 @@ def create_acrobot(args, hyperparameters, is_valid=False):
         "link_mass_1": [[1., 1.5], [1.5, 2.0]],
         "link_mass_2": [[1., 1.5], [1.5, 2.0]],
     }
-    param_range = {
-        "gravity": [[9.8, 9.8], [10.4, 24.8]],
-        "link_length_1": [[1., 1.], [1.5, 2.0]],
-        "link_length_2": [[1., 1.], [1.5, 2.0]],
-        "link_mass_1": [[1., 1.], [1.5, 2.0]],
-        "link_mass_2": [[1., 1.], [1.5, 2.0]],
-    }
     return create_pre_vec(args, hyperparameters, param_range, AcrobotVecEnv, is_valid)

@@ -246,7 +246,7 @@ def acrobot_hparams():
         # "mini_batch_size": None,
         # "wandb_name": None,
         # "wandb_group": None,
-        "wandb_tags": [["discrete", "gravity"]],
+        "wandb_tags": [["multi-extrapolation", "gravity", "fixed"]],
         # "detect_nan": False,
         "use_wandb": [True],
         "mirror_env": [False],
@@ -314,7 +314,7 @@ def cartpole_hparams():
 
 def train_hparams():
     # return continue_run("logs/train/mountain_car/test/2024-04-25__05-18-36__seed_6033")
-    return cartpole_hparams()
+    return acrobot_hparams()
 
 
 def continue_run(logdir):
