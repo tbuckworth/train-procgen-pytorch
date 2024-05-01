@@ -68,6 +68,20 @@ class Logger(object):
         if valid:
             rew_batch_v = rew_batch_v.T
             done_batch_v = done_batch_v.T
+
+        # cr = np.cumsum(rew_batch, axis=1)
+        # cr_masked = cr * done_batch
+        # ep_rew = []
+        # for i, row in enumerate(cr_masked):
+        #     prev = np.arange(len(row))
+        #     prev[done_batch[i] == 0] = 0
+        #     prev = np.maximum.accumulate(prev)
+        #     last = np.concatenate(([0], row[prev][:-1]))
+        #     last[done_batch[i] == 0] = 0
+        #     ep_rews = row - last
+        #     print(ep_rews[ep_rews != 0])
+        #     ep_rew += ep_rews[ep_rews != 0].tolist()
+
         # TODO: Vectorize this if possible
         for i in range(self.n_envs):
             for j in range(steps):

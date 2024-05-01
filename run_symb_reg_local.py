@@ -97,7 +97,7 @@ def test_agent_mean_reward(agent, env, print_name, n=40, return_values=False):
             episodes += np.sum(done)
             episode_rewards += list(cum_rew[done])
             # TODO: make this general:
-            episode_context += obs[done, env.i_g:].tolist()
+            episode_context += obs[done, (env.i_g-env.input_adjust):].tolist()
             cum_rew[done] = 0
     print(f"{print_name}:\tEpisode:{episodes}\tMean Reward:{np.mean(episode_rewards):.2f}")
     if return_values:
@@ -116,7 +116,7 @@ def test_saved_model():
     env_name = orig_cfg["env_name"]
     cfg = get_config(symbdir)
     cfg["n_envs"] = 100
-    cfg["rounds"] = 1000
+    cfg["rounds"] = 300
     env_cons = get_env_constructor(orig_cfg["env_name"])
     args = DictToArgs(cfg)
     policy, env, symbolic_agent_constructor, test_env = load_nn_policy(logdir, args.n_envs)
@@ -136,6 +136,7 @@ def test_saved_model():
         groups = ["gravity", "pole_length", "cart_mass", "pole_mass"]
         fancy_names = ["Gravity", "Pole Length", "Cart Mass", "Pole Mass"]
     elif env_name == "acrobot":
+        test_params["gravity"] = [5.0, 9.8]
         groups = ["gravity",
                   "link_length_1",
                   "link_length_2",
@@ -240,7 +241,8 @@ def test_saved_model():
 
     # plot record
     n_cols = 2
-    fig, axes = plt.subplots(4, n_cols, figsize=(10, 10), sharex=True)
+    n_row = int(np.ceil(len(record)/n_cols))
+    fig, axes = plt.subplots(n_row, n_cols, figsize=(10, 10), sharex=True)
     for i, group in enumerate(record):
         ax = axes[i // n_cols, i % n_cols]
         ax.hist(record[group]["ns"][0])
@@ -249,9 +251,10 @@ def test_saved_model():
     # plt.savefig(os.path.join(symbdir, f"{env_name}_hist.png"))
     plt.show()
 
-    obs_order = ["gravity", "pole_length", "cart_mass", "pole_mass"]
+    obs_order = groups
     n_cols = 2
-    fig, axes = plt.subplots(2, n_cols, figsize=(10, 10), sharex=False)
+    n_row = int(np.ceil(len(obs_order)/n_cols))
+    fig, axes = plt.subplots(n_row, n_cols, figsize=(10, 10), sharex=False)
     for i, group in enumerate(record):
         if group in obs_order:
             ax = axes[i // n_cols, i % n_cols]
@@ -281,9 +284,8 @@ def test_saved_model():
     # plt.savefig(os.path.join(symbdir, f"{env_name}_hist.png"))
     plt.show()
 
-    obs_order = ["gravity", "pole_length", "cart_mass", "pole_mass"]
-    n_cols = 2
-    fig, axes = plt.subplots(2, n_cols, figsize=(10, 10), sharex=False)
+
+    fig, axes = plt.subplots(n_row, n_cols, figsize=(10, 10), sharex=False)
     for i, group in enumerate(obs_order):
         ax = axes[i // n_cols, i % n_cols]
         obs = np.array(record["all"]["nn"][1])
@@ -296,19 +298,6 @@ def test_saved_model():
             y=y[flt],
             c=[i for i in range(np.sum(flt))]
         )
-
-        # obs = np.array(record["all"]["nn"][1])
-        # x = obs[:, i].squeeze()
-        # y = np.array(record["all"]["nn"][0])
-        #
-        # # flt = y!=500
-        # flt = np.ones_like(y).astype(bool)
-        # ax.scatter(
-        #     x=x[flt],
-        #     y=y[flt],
-        #     # c=[i for i in range(np.sum(flt))]
-        # )
-        # # ax.hist(record[group]["nn"][0])
         ax.set_title(group)
     # plt.savefig(os.path.join(symbdir, f"{env_name}_hist.png"))
     plt.show()

@@ -13,6 +13,8 @@ from gymnasium import spaces, Env
 from gymnasium.error import DependencyNotInstalled
 from gymnasium.utils import seeding
 
+from discrete_env.helper_pre_vec import assign_env_vars
+from helper_local import DictToArgs
 
 
 class PreVecEnv(Env):
@@ -27,6 +29,7 @@ class PreVecEnv(Env):
     def __init__(self, n_envs, n_actions,
                  env_name,
                  max_steps=500,
+                 seed=0,
                  render_mode: Optional[str] = None):
         self.env_name = env_name
         if n_envs < 2:
@@ -48,7 +51,7 @@ class PreVecEnv(Env):
         self.terminated = np.full(self.n_envs, True)
         self.state = np.zeros((self.n_envs, self.n_inputs))
         self.n_steps = np.zeros((self.n_envs))
-        self.reset()
+        self.reset(seed=seed)
 
     metadata = {
         "render_modes": ["human", "rgb_array"],
@@ -78,7 +81,7 @@ class PreVecEnv(Env):
     def reset(
             self,
             *,
-            seed: Optional[int] = 0,
+            seed: Optional[int] = None,
             options: Optional[dict] = None,
     ):
         self.terminated = np.full(self.n_envs, True)
@@ -87,7 +90,7 @@ class PreVecEnv(Env):
 
     def set(self,
             *,
-            seed: Optional[int] = 0,
+            seed: Optional[int] = None,
             ):
         self.seed(seed)
         state = self.start_space.sample(self.n_envs)
@@ -177,3 +180,15 @@ class PreVecEnv(Env):
 
     def render_unique(self):
         raise NotImplementedError
+
+
+def create_pre_vec(args, hyperparameters, param_range, env_cons, is_valid):
+    if args is None:
+        args = DictToArgs({"render": False, "seed": 0})
+    n_envs = hyperparameters.get('n_envs', 32)
+
+    env_args = assign_env_vars(hyperparameters, is_valid, param_range)
+    env_args["n_envs"] = n_envs
+    env_args["render_mode"] = "human" if args.render else None
+    env_args["seed"] = args.seed
+    return env_cons(**env_args)

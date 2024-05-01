@@ -21,7 +21,7 @@ __license__ = "BSD 3-Clause"
 __author__ = "Christoph Dann <cdann@cdann.de>"
 
 from discrete_env.helper_pre_vec import StartSpace, assign_env_vars
-from discrete_env.pre_vec_env import PreVecEnv
+from discrete_env.pre_vec_env import PreVecEnv, create_pre_vec
 from helper_local import DictToArgs
 
 
@@ -176,6 +176,7 @@ class AcrobotVecEnv(PreVecEnv):
                  max_vel_2=9 * pi,
                  max_steps=500,
                  unprocessed_features=False,
+                 seed=0,
                  render_mode: Optional[str] = None):
         self.unprocessed_features = unprocessed_features
         self.gravity = gravity
@@ -265,7 +266,7 @@ class AcrobotVecEnv(PreVecEnv):
                                     ]
 
         self.input_adjust = -2 if not self.unprocessed_features else 0  # override because obs != state
-        super().__init__(n_envs, n_actions, "Acrobot", max_steps, render_mode)
+        super().__init__(n_envs, n_actions, "Acrobot", max_steps, seed, render_mode)
 
     def get_action_lookup(self):
         return {
@@ -502,10 +503,24 @@ def rk4(derivs, y0, t):
     return yout[:, -1][:, :4]
 
 
+# def create_acrobot(args, hyperparameters, is_valid=False):
+#     if args is None:
+#         args = DictToArgs({"render": False, "seed": 0})
+#     n_envs = hyperparameters.get('n_envs', 32)
+#     param_range = {
+#         "gravity": [[9.8, 10.4], [10.4, 24.8]],
+#         "link_length_1": [[1., 1.5], [1.5, 2.0]],
+#         "link_length_2": [[1., 1.5], [1.5, 2.0]],
+#         "link_mass_1": [[1., 1.5], [1.5, 2.0]],
+#         "link_mass_2": [[1., 1.5], [1.5, 2.0]],
+#     }
+#     env_args = assign_env_vars(hyperparameters, is_valid, param_range)
+#     env_args["n_envs"] = n_envs
+#     env_args["render_mode"] = "human" if args.render else None
+#     env_args["seed"] = args.seed
+#     return AcrobotVecEnv(**env_args)
+
 def create_acrobot(args, hyperparameters, is_valid=False):
-    if args is None:
-        args = DictToArgs({"render": False})
-    n_envs = hyperparameters.get('n_envs', 32)
     param_range = {
         "gravity": [[9.8, 10.4], [10.4, 24.8]],
         "link_length_1": [[1., 1.5], [1.5, 2.0]],
@@ -513,7 +528,4 @@ def create_acrobot(args, hyperparameters, is_valid=False):
         "link_mass_1": [[1., 1.5], [1.5, 2.0]],
         "link_mass_2": [[1., 1.5], [1.5, 2.0]],
     }
-    env_args = assign_env_vars(hyperparameters, is_valid, param_range)
-    env_args["n_envs"] = n_envs
-    env_args["render_mode"] = "human" if args.render else None
-    return AcrobotVecEnv(**env_args)
+    return create_pre_vec(args, hyperparameters, param_range, AcrobotVecEnv, is_valid)
