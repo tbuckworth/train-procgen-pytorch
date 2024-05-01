@@ -285,22 +285,22 @@ def cartpole_hparams_transformer():
 def cartpole_hparams():
     return {
         "exp_name": [None],
-        "env_name": ['cartpole'],
+        "env_name": ['cartpole_swing'],
         # "distribution_mode": ['hard'],
         "param_name": ['mlpmodel'],
         "device": ["gpu"],
         "num_timesteps": [int(2e8)],
-        "seed": [6033, 0, 1, 101, 40],
-        "gamma": [0.95],
-        "learning_rate": [0.0005],
+        "seed": [6033],# 0, 1, 101, 40],
+        "gamma": [0.95, 0.9],
+        "learning_rate": [0.0005, 0.001, 0.00025, 0.01],
         "entropy_coef": [0, 0.02],
-        "n_envs": [1024],
+        "n_envs": [1024, 512],
         "n_steps": [256],
         # "n_minibatch": None,
         # "mini_batch_size": None,
         # "wandb_name": None,
         # "wandb_group": None,
-        "wandb_tags": [["multi-extrapolation", "fixed_seed"]],
+        "wandb_tags": [["multi-extrapolation", "fixed_reward"]],
         # "detect_nan": False,
         "use_wandb": [True],
         "mirror_env": [False],
@@ -314,7 +314,7 @@ def cartpole_hparams():
 
 def train_hparams():
     # return continue_run("logs/train/mountain_car/test/2024-04-25__05-18-36__seed_6033")
-    return acrobot_hparams()
+    return cartpole_hparams()
 
 
 def continue_run(logdir):
@@ -411,14 +411,14 @@ def add_training_args_dict():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--n_gpu', type=int, default=20)
+    parser.add_argument('--n_gpu', type=int, default=32)
     parser.add_argument('--execute', action="store_true", default=True)
     # parser.add_argument('--cuda', action="store_true", default=False)
     parser.add_argument('--max_runs', type=int, default=200)
     parser.add_argument('--hparam_type', type=str, default="train")
 
     re_use_machine = True
-    specify_host = "gpu31"
+    specify_host = "gpu33"
     if specify_host is not None and not re_use_machine:
         print("Warning - specifying host will re-use that host")
 

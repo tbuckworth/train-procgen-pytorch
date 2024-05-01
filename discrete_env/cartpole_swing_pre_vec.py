@@ -105,8 +105,6 @@ class CartPoleSwingVecEnv(PreVecEnv):
                  render_mode: Optional[str] = None, ):
 
         n_actions = 2
-        self.reward = np.ones((n_envs))
-        self.info = [{"env_reward": self.reward[i]} for i in range(len(self.reward))]
         self.min_gravity = min_gravity
         self.max_gravity = max_gravity
         self.min_cart_mass = min_cart_mass
@@ -221,11 +219,13 @@ class CartPoleSwingVecEnv(PreVecEnv):
         reward_theta = np.cos(theta)
         reward_theta[reward_theta < 0] = 0
 
-        # Reward_x is 0 when cart is at the edge of the screen, 1 when it'sintheta in the centre
+        # Reward_x is 0 when cart is at the edge of the screen, 1 when it's in the centre
         reward_x = np.cos((x / self.x_threshold) * (np.pi / 2.0))
 
         # [0, 1]
         self.reward = reward_theta * reward_x
+        self.info = [{"env_reward": self.reward[i]} for i in range(len(self.reward))]
+
 
     def render_unique(self):
         if self.state is None:
