@@ -1,9 +1,14 @@
 import re
 
 import numpy as np
+from numpy import cos,sin,pi
+
+from common.env.env_constructor import get_env_constructor
 from helper_local import free_gpu
 from cartpole.cartpole_pre_vec import CartPoleVecEnv
-
+import gymnasium
+from discrete_env.acrobot_pre_vec import rk4 as rk4_pre_vec
+from discrete_env.acrobot import rk4 as rk4_gymnasium
 
 def compute_pairwise_affinities(X, perplexity=30.0, epsilon=1e-8):
     # Compute pairwise Euclidean distances
@@ -156,8 +161,6 @@ def call_wandb():
 
     df = pd.DataFrame.from_dict(all_dicts)
 
-
-
     logdirs = np.unique([cfg["logdir"] for cfg in config_list])
     logdir = 'logs/train/acrobot/test/2024-04-25__10-03-20__seed_6033'
     flt = np.array([cfg["logdir"] == logdir for cfg in config_list])
@@ -168,5 +171,118 @@ def call_wandb():
     machines = list(filter(lambda summary: summary.get("problem_name", "") == "acrobot", summary_list))
 
 
+def dsdt_gymnasium(self, s_augmented):
+    m1 = self.LINK_MASS_1
+    m2 = self.LINK_MASS_2
+    l1 = self.LINK_LENGTH_1
+    lc1 = self.LINK_COM_POS_1
+    lc2 = self.LINK_COM_POS_2
+    I1 = self.LINK_MOI
+    I2 = self.LINK_MOI
+    g = 9.8
+    a = s_augmented[-1]
+    s = s_augmented[:-1]
+    theta1 = s[0]
+    theta2 = s[1]
+    dtheta1 = s[2]
+    dtheta2 = s[3]
+    d1 = (
+            m1 * lc1 ** 2
+            + m2 * (l1 ** 2 + lc2 ** 2 + 2 * l1 * lc2 * cos(theta2))
+            + I1
+            + I2
+    )
+    d2 = m2 * (lc2 ** 2 + l1 * lc2 * cos(theta2)) + I2
+    phi2 = m2 * lc2 * g * cos(theta1 + theta2 - pi / 2.0)
+    phi1 = (
+            -m2 * l1 * lc2 * dtheta2 ** 2 * sin(theta2)
+            - 2 * m2 * l1 * lc2 * dtheta2 * dtheta1 * sin(theta2)
+            + (m1 * lc1 + m2 * l1) * g * cos(theta1 - pi / 2)
+            + phi2
+    )
+    if self.book_or_nips == "nips":
+        # the following line is consistent with the description in the
+        # paper
+        ddtheta2 = (a + d2 / d1 * phi1 - phi2) / (m2 * lc2 ** 2 + I2 - d2 ** 2 / d1)
+    else:
+        # the following line is consistent with the java implementation and the
+        # book
+        ddtheta2 = (
+                           a + d2 / d1 * phi1 - m2 * l1 * lc2 * dtheta1 ** 2 * sin(theta2) - phi2
+                   ) / (m2 * lc2 ** 2 + I2 - d2 ** 2 / d1)
+    ddtheta1 = -(d2 * ddtheta2 + phi1) / d1
+    return dtheta1, dtheta2, ddtheta1, ddtheta2, 0.0
+
+def dsdt_pre_vec(self, s_augmented):
+    theta1, theta2, dtheta1, dtheta2, g, l1, l2, m1, m2, lc1, lc2, link_moi = self.state.T
+
+    I1 = link_moi
+    I2 = link_moi
+    a = s_augmented[:, -1]
+    theta1 = s_augmented[:, 0]
+    theta2 = s_augmented[:, 1]
+    dtheta1 = s_augmented[:, 2]
+    dtheta2 = s_augmented[:, 3]
+    d1 = (
+            m1 * lc1 ** 2
+            + m2 * (l1 ** 2 + lc2 ** 2 + 2 * l1 * lc2 * cos(theta2))
+            + I1
+            + I2
+    )
+    d2 = m2 * (lc2 ** 2 + l1 * lc2 * cos(theta2)) + I2
+    phi2 = m2 * lc2 * g * cos(theta1 + theta2 - pi / 2.0)
+    phi1 = (
+            -m2 * l1 * lc2 * dtheta2 ** 2 * sin(theta2)
+            - 2 * m2 * l1 * lc2 * dtheta2 * dtheta1 * sin(theta2)
+            + (m1 * lc1 + m2 * l1) * g * cos(theta1 - pi / 2)
+            + phi2
+    )
+    if self.book_or_nips == "nips":
+        # the following line is consistent with the description in the
+        # paper
+        ddtheta2 = (a + d2 / d1 * phi1 - phi2) / (m2 * lc2 ** 2 + I2 - d2 ** 2 / d1)
+    else:
+        # the following line is consistent with the java implementation and the
+        # book
+        ddtheta2 = (
+                           a + d2 / d1 * phi1 - m2 * l1 * lc2 * dtheta1 ** 2 * sin(theta2) - phi2
+                   ) / (m2 * lc2 ** 2 + I2 - d2 ** 2 / d1)
+    ddtheta1 = -(d2 * ddtheta2 + phi1) / d1
+    return dtheta1, dtheta2, ddtheta1, ddtheta2, np.zeros_like(dtheta1)
+
+
+def acrobot_gymnasium():
+    env = gymnasium.make("Acrobot-v1", render_mode="human")
+    env.reset()
+    # env.render()
+    for i in range(100):
+        # actions = [env.action_space.sample() for _ in range(self.env.n_envs)]
+        obs, rew, done, trunc, info = env.step(env.action_space.sample())
+        if done:
+            print(i)
+
+    state = env.state
+
+    s_augmented = np.append(state, -1)
+    y_gold = np.array(dsdt_gymnasium(env, s_augmented))
+
+    env_pv = get_env_constructor("acrobot")(None, {})
+
+    #s_aug_v = np.stack((s_augmented, s_augmented))
+
+    env_pv.state[:, :env_pv.i_g] = state
+
+    s_aug_v = np.tile(s_augmented, env_pv.n_envs).reshape(env_pv.n_envs, len(s_augmented))
+
+    np.stack(dsdt_pre_vec(env_pv, s_aug_v)).T
+
+    rk4_gymnasium(lambda x: dsdt_gymnasium(env,x), s_augmented, [0, 0.2])
+
+    rk4_pre_vec(lambda x: dsdt_pre_vec(env_pv, x), s_aug_v, [0, 0.2])
+
+    test_func = lambda y0: np.allclose(np.asarray(dsdt_pre_vec(env_pv,y0)).T[0],
+                                       dsdt_gymnasium(env, y0[0]))
+
+
 if __name__ == "__main__":
-    call_wandb()
+    acrobot_gymnasium()

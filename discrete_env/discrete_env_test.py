@@ -20,9 +20,8 @@ class BaseDiscreteEnvTest(unittest.TestCase):
         for i in range(100):
             actions = [self.env.action_space.sample() for _ in range(self.env.n_envs)]
             obs, rew, done, info = self.env.step(actions)
-            print(rew[0])
             if done[0]:
-                print("done")
+                print(i)
 
 
 class TestMountainCar(BaseDiscreteEnvTest):

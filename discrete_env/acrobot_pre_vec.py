@@ -323,11 +323,15 @@ class AcrobotVecEnv(PreVecEnv):
         return -cos(s[:, self.i_t1]) - cos(s[:, self.i_t2] + s[:, self.i_t1]) > 1.0
 
     def _dsdt(self, s_augmented):
-        theta1, theta2, dtheta1, dtheta2, g, l1, l2, m1, m2, lc1, lc2, link_moi = self.state.T
+        _, _, _, _, g, l1, l2, m1, m2, lc1, lc2, link_moi = self.state.T
 
         I1 = link_moi
         I2 = link_moi
         a = s_augmented[:, -1]
+        theta1 = s_augmented[:, 0]
+        theta2 = s_augmented[:, 1]
+        dtheta1 = s_augmented[:, 2]
+        dtheta2 = s_augmented[:, 3]
         d1 = (
                 m1 * lc1 ** 2
                 + m2 * (l1 ** 2 + lc2 ** 2 + 2 * l1 * lc2 * cos(theta2))
@@ -527,5 +531,12 @@ def create_acrobot(args, hyperparameters, is_valid=False):
         "link_length_2": [[1., 1.5], [1.5, 2.0]],
         "link_mass_1": [[1., 1.5], [1.5, 2.0]],
         "link_mass_2": [[1., 1.5], [1.5, 2.0]],
+    }
+    param_range = {
+        "gravity": [[9.8, 9.8], [10.4, 24.8]],
+        "link_length_1": [[1., 1.], [1.5, 2.0]],
+        "link_length_2": [[1., 1.], [1.5, 2.0]],
+        "link_mass_1": [[1., 1.], [1.5, 2.0]],
+        "link_mass_2": [[1., 1.], [1.5, 2.0]],
     }
     return create_pre_vec(args, hyperparameters, param_range, AcrobotVecEnv, is_valid)
