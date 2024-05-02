@@ -105,17 +105,29 @@ def test_agent_mean_reward(agent, env, print_name, n=40, return_values=False):
         # return {"mean":np.mean(episode_rewards), "std":np.std(episode_rewards)}
     return np.mean(episode_rewards)
 
+def run_tests():
+    dirs = [
+        "logs/train/acrobot/test/2024-05-01__12-22-24__seed_6033/symbreg/2024-05-02__02-06-38",
+        "logs/train/cartpole/test/2024-05-01__11-17-16__seed_6033/symbreg/2024-05-02__13-37-11"
+    ]
+    for symbdir in dirs:
+        try:
+            test_saved_model(symbdir, n_envs=1000, n_rounds=1000)
+        except Exception as e:
+            print(e)
 
-def test_saved_model():
-    symbdir = "logs/train/acrobot/test/2024-05-01__12-22-24__seed_6033/symbreg/2024-05-02__02-06-38"
+def test_saved_model(symbdir, n_envs=10, n_rounds=10):
+    # symbdir = "logs/train/acrobot/test/2024-05-01__12-22-24__seed_6033/symbreg/2024-05-02__02-06-38"
+    # symbdir = "logs/train/cartpole/test/2024-05-01__11-17-16__seed_6033/symbreg/2024-05-02__12-03-40"
+    # symbdir = "logs/train/cartpole/test/2024-05-01__11-17-16__seed_6033/symbreg/2024-05-02__13-37-11"
     pickle_filename = os.path.join(symbdir, "symb_reg.pkl")
     logdir = re.search(r"(logs.*)symbreg", symbdir).group(1)
     pysr_model = PySRRegressor.from_file(pickle_filename)
     orig_cfg = get_config(logdir)
     env_name = orig_cfg["env_name"]
     cfg = get_config(symbdir)
-    cfg["n_envs"] = 100
-    cfg["rounds"] = 1000
+    cfg["n_envs"] = n_envs
+    cfg["rounds"] = n_rounds
     env_cons = get_env_constructor(orig_cfg["env_name"])
     args = DictToArgs(cfg)
     policy, env, symbolic_agent_constructor, test_env = load_nn_policy(logdir, args.n_envs)
@@ -185,8 +197,8 @@ def test_saved_model():
     else:
         raise NotImplementedError(f"Implement for env {env_name}")
 
-    tf["all"] = np.nan
-    tf["train"] = np.nan
+    # tf["all"] = np.nan
+    # tf["train"] = np.nan
 
     results = {}
     record = {}
@@ -209,36 +221,85 @@ def test_saved_model():
     round_dict = {x: 1 for x in df.columns.values.tolist()}
     round_dict["p_value"] = 2
     df = df.round(round_dict)
-    dfo = pd.concat([tf.T, df], axis=1).reindex(["train"] + groups + ["all"])
-
-    dfo.to_csv(os.path.join(symbdir, "results_table.csv"), index=True)
-
-    # dfo = pd.read_csv(os.path.join(symbdir, "results_table.csv"), index_col=0)
     formatted_vals = {
-        "Train\nRange": concat_np_list([dfo["train_min"].values, " - ", dfo["train_max"].values], shape=(len(dfo),)),
-        "Test\nRange": concat_np_list([dfo["test_min"].values, " - ", dfo["test_max"].values], shape=(len(dfo),)),
-        "Symbolic\nReward": concat_np_list([dfo["ns_mean"].values, " $\pm$ ", dfo["ns_std"].values], shape=(len(dfo),)),
-        "Neural\nReward": concat_np_list([dfo["nn_mean"].values, " $\pm$ ", dfo["nn_std"].values], shape=(len(dfo),)),
-        "P Value": dfo["p_value"].values.astype(str),
+        "Symbolic\nReward": concat_np_list([df["ns_mean"].values, " $\pm$ ", df["ns_std"].values], shape=(len(df),)),
+        "Neural\nReward": concat_np_list([df["nn_mean"].values, " $\pm$ ", df["nn_std"].values], shape=(len(df),)),
+        "P Value": df["p_value"].values.astype(str),
     }
+    dff = pd.DataFrame.from_dict(formatted_vals)
+    dff.index = new_index
+    # df[df == "nan - nan"] = ""
 
-    df = pd.DataFrame.from_dict(formatted_vals)
-    df.index = new_index
-    df[df == "nan - nan"] = ""
+    bolden_df(dff, df, greater_col="ns_mean", lesser_col="nn_mean", f_greater_col="Symbolic\nReward")
+    bolden_df(dff, df, greater_col="nn_mean", lesser_col="ns_mean", f_greater_col="Neural\nReward")
 
-    bolden_df(df, dfo, greater_col="ns_mean", lesser_col="nn_mean", f_greater_col="Symbolic\nReward")
-    bolden_df(df, dfo, greater_col="nn_mean", lesser_col="ns_mean", f_greater_col="Neural\nReward")
+    latex = dff.to_latex()  # os.path.join(symbdir, "results_table.tex"))
 
-    latex = df.to_latex()  # os.path.join(symbdir, "results_table.tex"))
+    formatted_vals = {
+            "Train\nRange": concat_np_list([tf.T["train_min"].values, " - ", tf.T["train_max"].values], shape=(len(tf.T),)),
+            "Test\nRange": concat_np_list([tf.T["test_min"].values, " - ", tf.T["test_max"].values], shape=(len(tf.T),)),
+    }
+    tff = pd.DataFrame.from_dict(formatted_vals)
+    tff.index = fancy_names
 
-    caption = ("Training Environment uses all metrics from Train Range, "
-               "while `All OOD' uses all metrics from Test Range."
-               "P Value is the probability that the means are different (T-test)."
+    tf_latex = tff.to_latex()
+
+
+    # dfo = pd.concat([tf.T, df], axis=1).reindex(["train"] + groups + ["all"])
+    #
+    # dfo.to_csv(os.path.join(symbdir, "results_table.csv"), index=True)
+    #
+    # # dfo = pd.read_csv(os.path.join(symbdir, "results_table.csv"), index_col=0)
+    # formatted_vals = {
+    #     "Train\nRange": concat_np_list([dfo["train_min"].values, " - ", dfo["train_max"].values], shape=(len(dfo),)),
+    #     "Test\nRange": concat_np_list([dfo["test_min"].values, " - ", dfo["test_max"].values], shape=(len(dfo),)),
+    #     "Symbolic\nReward": concat_np_list([dfo["ns_mean"].values, " $\pm$ ", dfo["ns_std"].values], shape=(len(dfo),)),
+    #     "Neural\nReward": concat_np_list([dfo["nn_mean"].values, " $\pm$ ", dfo["nn_std"].values], shape=(len(dfo),)),
+    #     "P Value": dfo["p_value"].values.astype(str),
+    # }
+
+
+    caption = (f"{env_name} - Training Environment uses all metrics from Train Range, "
+               "while `All OOD' uses all metrics from Test Range. "
+               "P Value is the probability that the means are different (T-test). "
                "Bold indicates the winner when P Value is less than 0.05.")
     label = f"{env_name}-results-table"
-    output_str = wrap_latex_in_table(caption, label, latex)
-    write_file(os.path.join(symbdir, f"{env_name}_table.tex"), [output_str])
+    perf_tab = wrap_latex_in_table(caption, label, [latex, tf_latex])
 
+
+    # caption = ("Environment Contextual Ranges for Training and Testing.")
+    # metr_tab = wrap_latex_in_table(caption, f"{env_name}-range-table", [tf_latex, latex])
+
+
+    write_file(os.path.join(symbdir, f"{env_name}_table.tex"), [perf_tab])
+
+
+    if ns_agent.single_output:
+        title = "Neural vs Symbolic Action Logits In and Out of Distribution"
+
+        x_train, y_train, v_train = generate_data(ns_agent, env, 1000)
+        x_test, y_test, v_test = generate_data(ns_agent, test_env, 1000)
+
+        l_train_ns = ns_agent.model.predict(x_train)
+        l_test_ns = ns_agent.model.predict(x_test)
+        min_x = min(np.min(y_test),np.min(y_train))
+        max_x = max(np.max(y_test),np.max(y_train))
+        min_y = min(np.min(l_test_ns),np.min(l_train_ns))
+        max_y = max(np.max(l_test_ns),np.max(l_train_ns))
+        plt.axline(xy1=(0,min_y),xy2=(0,max_y),color="black", linestyle="dashed", alpha=0.3)
+        plt.axline(xy1=(min_x,0),xy2=(max_x,0),color="black",linestyle="dashed", alpha=0.3)
+        plt.scatter(y_test, l_test_ns, label="Test", alpha=0.5)
+        plt.scatter(y_train, l_train_ns, label="Train", alpha=0.5)
+        plt.xlabel("Neural Logits")
+        plt.ylabel("Symbolic Logits")
+        plt.legend()
+        plt.title(title)
+        plt.savefig(os.path.join(symbdir, f"{env_name}_logit.png"))
+        plt.show()
+
+
+
+    ############################## graphs ###############################################
 
     title = "Reward Distributions"
     n_cols = 2
@@ -414,7 +475,8 @@ def bolden_df(df,
 
 
 def wrap_latex_in_table(caption, label, latex):
-    return f"\\begin{{table}}\n\\caption{{{caption}}}\n\\label{{{label}}}\n\\centering\n{latex}\n\\end{{table}}"
+    tabulars = '\n'.join(latex)
+    return f"\\begin{{table}}\n\\caption{{{caption}}}\n\\label{{{label}}}\n\\centering\n{tabulars}\n\\end{{table}}"
 
 
 def run_saved_model():
@@ -520,7 +582,8 @@ def run_symb_reg_local():
     # args.logdir = "logs/train/coinrun/coinrun-hparams/2024-03-27__18-20-55__seed_6033"
     # args.logdir = "logs/train/acrobot/test/2024-04-25__10-03-20__seed_6033"
     args.logdir = "logs/train/cartpole/test/2024-04-26__12-37-41__seed_40"
-    args.n_envs = 128
+    args.logdir = "logs/train/cartpole_swing/test/2024-05-01__14-19-53__seed_6033"
+    args.n_envs = 100
     args.rounds = 300
     args.binary_operators = ["+", "-", "*", "greater", "/"]
     args.unary_operators = ["sin", "relu", "log", "exp", "sign", "sqrt", "square"]
@@ -541,8 +604,9 @@ def run_symb_reg_local():
 
 
 if __name__ == "__main__":
+    run_tests()
     # format_results()
-    test_saved_model()
+    # test_saved_model()
     # test_agent_specific_environment()
     # run_saved_model()
     # run_deterministic_agent()

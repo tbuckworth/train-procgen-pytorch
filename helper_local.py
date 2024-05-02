@@ -422,6 +422,7 @@ def add_training_args(parser):
     parser.add_argument('--n_envs', type=int, default=None)
     parser.add_argument('--n_steps', type=int, default=None)
     parser.add_argument('--n_minibatch', type=int, default=None)
+    parser.add_argument('--n_epochs', type=int, default=None)
     parser.add_argument('--mini_batch_size', type=int, default=None)
     parser.add_argument('--wandb_name', type=str, default=None)
     parser.add_argument('--wandb_group', type=str, default=None)

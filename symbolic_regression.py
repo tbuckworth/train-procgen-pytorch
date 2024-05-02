@@ -435,7 +435,7 @@ def run_neurosymbolic_search(args):
         }
 
         Y_hat = pysr_model.predict(X)
-        if problem_name == "cartpole":
+        if ns_agent.single_output:
             p = sigmoid(Y)
             Y_act = sample_from_sigmoid(p)
             p_hat = sigmoid(Y_hat)
@@ -459,7 +459,6 @@ def run_neurosymbolic_search(args):
                 Y_act = sample_numpy_probs(p)
                 ent = -(p * np.log(p)).sum(1)
 
-        e_hat = get_entropy(Y_hat)
         df_values["Entropy_Pred"] = [ent_hat.mean()]
         df_values["Entropy"] = [ent.mean()]
 

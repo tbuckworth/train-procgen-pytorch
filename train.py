@@ -39,22 +39,24 @@ def train_ppo(args):
         hyperparameters["entropy_coef"] = ent_coef * alpha
         hyperparameters["x_entropy_coef"] = ent_coef * (1 - alpha)
 
-    for var_name in ["n_envs",
-                     "n_steps",
-                     "n_minibatch",
-                     "mini_batch_size",
-                     "levels",
-                     "n_impala_blocks",
-                     "eps_clip",
-                     "increasing_lr",
-                     "sparsity_coef",
-                     "normalize_rew",
-                     "gamma",
-                     "learning_rate",
-                     "entropy_coef",
-                     "fs_coef",
-                     "output_dim",
-                     ]:
+    for var_name in [
+        "n_envs",
+        "n_steps",
+        "n_minibatch",
+        "mini_batch_size",
+        "levels",
+        "n_impala_blocks",
+        "eps_clip",
+        "increasing_lr",
+        "sparsity_coef",
+        "normalize_rew",
+        "gamma",
+        "learning_rate",
+        "entropy_coef",
+        "fs_coef",
+        "output_dim",
+        "n_epochs",
+    ]:
         if var_name in args.__dict__.keys() and args.__dict__[var_name] is not None:
             hyperparameters[var_name] = args.__dict__[var_name]
 
@@ -102,7 +104,6 @@ def train_ppo(args):
         env_params = {}
         env_params_v = {}
         upload_env_params = False
-
 
     ############
     ## LOGGER ##
