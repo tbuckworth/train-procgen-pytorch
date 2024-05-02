@@ -112,7 +112,7 @@ def run_tests():
     ]
     for symbdir in dirs:
         try:
-            test_saved_model(symbdir, n_envs=100, n_rounds=10)
+            test_saved_model(symbdir, n_envs=1000, n_rounds=1000)
         except Exception as e:
             print(e)
 
