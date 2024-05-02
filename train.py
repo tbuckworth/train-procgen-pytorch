@@ -146,6 +146,7 @@ def train_ppo(args):
         if upload_env_params:
             cfg.update(env_params)
             cfg.update(env_params_v)
+        cfg["logdir"] = logdir
         wandb_login()
         name = f"{hyperparameters['architecture']}-{wandb_name}"
         wb_resume = "allow"  # if args.model_file is None else "must"

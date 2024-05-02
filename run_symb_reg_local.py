@@ -327,15 +327,15 @@ def test_saved_model():
     plt.show()
 
 
-
-    title = "Reward vs Context Value Within Gravity env. where grav>24"
+    metric = "gravity"
+    title = f"Reward vs Context Value Within {metric} env."# where grav>24"
     n_cols = 2
     n_row = int(np.ceil(len(obs_order) / n_cols))
     fig, axes = plt.subplots(n_row, n_cols, figsize=(10, 10), sharex=False)
     for i, group in enumerate(obs_order):
         ax = axes[i // n_cols, i % n_cols]
-        group_vals = record["gravity"]
-        group_index = match(np.array(["gravity"]), np.array(obs_order))
+        group_vals = record[metric]
+        group_index = match(np.array([metric]), np.array(obs_order))
         ns = group_vals["nn"]
         obs = np.array(ns[1])
         x = obs[:, i].squeeze()

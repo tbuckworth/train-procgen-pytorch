@@ -367,6 +367,7 @@ def run_neurosymbolic_search(args):
         name = wandb_name
         wb_resume = "allow"  # if args.model_file is None else "must"
         project = "Symb Reg"
+        cfg["symbdir"] = symbdir
         if args.wandb_group is not None:
             wandb.init(project=project, config=cfg, sync_tensorboard=True,
                        tags=args.wandb_tags, resume=wb_resume, name=name, group=args.wandb_group)
