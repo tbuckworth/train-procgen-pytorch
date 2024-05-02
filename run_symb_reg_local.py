@@ -112,7 +112,7 @@ def run_tests():
     ]
     for symbdir in dirs:
         try:
-            test_saved_model(symbdir, n_envs=1000, n_rounds=1000)
+            test_saved_model(symbdir, n_envs=100, n_rounds=10)
         except Exception as e:
             print(e)
 
@@ -141,7 +141,7 @@ def test_saved_model(symbdir, n_envs=10, n_rounds=10):
     train_params = env.get_params().copy()
     test_params = test_env.get_params().copy()
 
-    if env_name == "cartpole":
+    if env_name == "cartpole" or env_name == "cartpole_swing":
         # test_params["max_gravity"] = 15
         # test_params["max_pole_length"] = 1.5
         groups = ["gravity", "pole_length", "cart_mass", "pole_mass"]
@@ -156,7 +156,7 @@ def test_saved_model(symbdir, n_envs=10, n_rounds=10):
 
         fancy_names = ["Gravity", "1st Link Length", "2nd Link Length", "1st Link Mass", "2nd Link Mass"]
     else:
-        raise NotImplementedError(f"Implement for env {orig_cfg['env_name']}")
+        raise NotImplementedError(f"Implement for env {env_name}")
 
     assert len(fancy_names) == len(groups), "Fancy names must have same length as groups"
 
@@ -259,18 +259,38 @@ def test_saved_model(symbdir, n_envs=10, n_rounds=10):
     # }
 
 
-    caption = (f"{env_name} - Training Environment uses all metrics from Train Range, "
-               "while `All OOD' uses all metrics from Test Range. "
-               "P Value is the probability that the means are different (T-test). "
-               "Bold indicates the winner when P Value is less than 0.05.")
-    label = f"{env_name}-results-table"
-    perf_tab = wrap_latex_in_table(caption, label, [latex, tf_latex])
+
 
 
     # caption = ("Environment Contextual Ranges for Training and Testing.")
     # metr_tab = wrap_latex_in_table(caption, f"{env_name}-range-table", [tf_latex, latex])
 
 
+    #assumes observation order = groups order
+    obs_names = env.get_ob_names()
+
+    latex_eqn = ns_agent.model.latex()
+    # latex_eqn = re.sub(r"x_\{(\d)}",r"x\1", latex_eqn)
+    #
+    # for i, name in enumerate(obs_names):
+    #     name = re.sub("_([^\d])",r"\_\1",name)
+    #     latex_eqn = re.sub(f"x{i}", name, latex_eqn)
+
+    formula = f"${latex_eqn}$"
+    eq_dict = {}
+    for i, name in enumerate(obs_names):
+        name = re.sub("_([^\d])",r"\_\1",name)
+        eq_dict[f"$x_{{{i}}}$"] = name
+
+    dfk = pd.DataFrame.from_dict({"Key": eq_dict})
+    form_latex = dfk.reindex(eq_dict.keys()).to_latex()
+
+    caption = (f"{env_name} - Training Environment uses all metrics from Train Range, "
+               "while `All OOD' uses all metrics from Test Range. "
+               "P Value is the probability that the means are different (T-test). "
+               "Bold indicates the winner when P Value is less than 0.05.")
+    label = f"{env_name}-results-table"
+    perf_tab = wrap_latex_in_table(caption, label, formula, [latex, tf_latex, form_latex])
     write_file(os.path.join(symbdir, f"{env_name}_table.tex"), [perf_tab])
 
 
@@ -474,9 +494,9 @@ def bolden_df(df,
     df[f_greater_col].loc[symb_win] = concat_np_list(["\\textbf{", vals.values, "}"], (len(vals),))
 
 
-def wrap_latex_in_table(caption, label, latex):
+def wrap_latex_in_table(caption, label, formula, latex):
     tabulars = '\n'.join(latex)
-    return f"\\begin{{table}}\n\\caption{{{caption}}}\n\\label{{{label}}}\n\\centering\n{tabulars}\n\\end{{table}}"
+    return f"\\begin{{table}}\n\\caption{{{caption}\\\\\\\\\n\\textbf{{Symbolic Formula: {formula}}}}}\n\\label{{{label}}}\n\\centering\n{tabulars}\n\\end{{table}}"
 
 
 def run_saved_model():

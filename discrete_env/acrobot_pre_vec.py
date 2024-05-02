@@ -317,6 +317,39 @@ class AcrobotVecEnv(PreVecEnv):
                 sin(s[:, self.i_t2]),
             ]), s[:, self.i_d1:].T)).T
 
+    def get_ob_names(self):
+        if self.unprocessed_features:
+            return [
+                "1st Link Angle",
+                "2nd Link Angle",
+                "1st Link Angular Velocity",
+                "2nd Link Angular Velocity"
+                "Gravity",
+                "1st Link Length",
+                "2nd Link Length",
+                "1st Link Mass",
+                "2nd Link Mass",
+                "1st Link Centre of Mass",
+                "2nd Link Centre of Mass",
+                "Moment of Inertia (both links)",
+            ]
+        return ["cos(1st Link Angle)",
+                "sin(1st Link Angle)",
+                "cos(2st Link Angle)",
+                "sin(2st Link Angle)",
+                "1st Link Angular Velocity",
+                "2nd Link Angular Velocity",
+                "Gravity",
+                "1st Link Length",
+                "2nd Link Length",
+                "1st Link Mass",
+                "2nd Link Mass",
+                "1st Link Centre of Mass",
+                "2nd Link Centre of Mass",
+                "Moment of Inertia (both links)",
+                ]
+
+
     def _terminal(self):
         s = self.state
         assert s is not None, "Call reset before using AcrobotEnv object."

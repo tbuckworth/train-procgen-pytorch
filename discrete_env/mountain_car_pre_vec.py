@@ -167,7 +167,12 @@ class MountainCarVecEnv(PreVecEnv):
         ]
 
         super().__init__(n_envs, n_actions, "MountainCar", max_steps, seed, render_mode)
-
+    def get_ob_names(self):
+        return [
+            "Position",
+            "Speed",
+            "Gravity",
+        ]
     def transition_model(self, action: np.array):
         position, velocity, gravity = self.state.T
         velocity += (action - 1) * self.force + np.cos(3 * position) * (-gravity)

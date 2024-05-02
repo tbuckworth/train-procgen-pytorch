@@ -183,6 +183,20 @@ class CartPoleVecEnv(PreVecEnv):
 
         super().__init__(n_envs, n_actions, "CartPole", max_steps, seed, render_mode)
 
+    def get_ob_names(self):
+        return [
+            "Cart Position",
+            "Cart Velocity",
+            "Pole Angle",
+            "Pole Angular Velocity",
+            "Gravity",
+            "Pole Length",
+            "Cart Mass",
+            "Pole Mass",
+            "Action Force",
+        ]
+
+
     def transition_model(self, action):
         x, x_dot, theta, theta_dot, gravity, pole_length, mass_cart, mass_pole, force_mag = self.state.T
         force = np.ones((self.n_envs))
