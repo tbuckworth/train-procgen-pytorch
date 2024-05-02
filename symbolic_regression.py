@@ -218,7 +218,7 @@ def send_full_report(df, logdir, symbdir, model, args, dfs):
             dfl = pd.concat([df0, dfl], ignore_index=True)
 
     # create graph
-    roll_window = 100
+    roll_window = 5
     dfl2 = pd.DataFrame(
         {"Neural Train": dfl["mean_episode_rewards"].rolling(window=roll_window).mean(),
          "Neural Test": dfl["val_mean_episode_rewards"].rolling(window=roll_window).mean()

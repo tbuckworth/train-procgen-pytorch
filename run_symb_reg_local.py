@@ -107,8 +107,7 @@ def test_agent_mean_reward(agent, env, print_name, n=40, return_values=False):
 
 
 def test_saved_model():
-    symbdir = "logs/train/cartpole/test/2024-04-26__12-37-41__seed_40/symbreg/2024-04-27__16-00-09"
-    symbdir = "logs/train/acrobot/test/2024-04-29__18-42-26__seed_40/symbreg/2024-04-30__16-46-13"
+    symbdir = "logs/train/acrobot/test/2024-05-01__12-22-24__seed_6033/symbreg/2024-05-02__02-06-38"
     pickle_filename = os.path.join(symbdir, "symb_reg.pkl")
     logdir = re.search(r"(logs.*)symbreg", symbdir).group(1)
     pysr_model = PySRRegressor.from_file(pickle_filename)
@@ -116,7 +115,7 @@ def test_saved_model():
     env_name = orig_cfg["env_name"]
     cfg = get_config(symbdir)
     cfg["n_envs"] = 100
-    cfg["rounds"] = 300
+    cfg["rounds"] = 1000
     env_cons = get_env_constructor(orig_cfg["env_name"])
     args = DictToArgs(cfg)
     policy, env, symbolic_agent_constructor, test_env = load_nn_policy(logdir, args.n_envs)
@@ -136,7 +135,7 @@ def test_saved_model():
         groups = ["gravity", "pole_length", "cart_mass", "pole_mass"]
         fancy_names = ["Gravity", "Pole Length", "Cart Mass", "Pole Mass"]
     elif env_name == "acrobot":
-        test_params["gravity"] = [5.0, 9.8]
+        # test_params["gravity"] = [5.0, 9.8]
         groups = ["gravity",
                   "link_length_1",
                   "link_length_2",
@@ -153,6 +152,7 @@ def test_saved_model():
 
     ranges = {k: {} for k in groups}
     params = {}
+    params["train"] = train_params
     for group in groups:
         temp_params = train_params.copy()
         keys = temp_params.keys()
@@ -163,10 +163,8 @@ def test_saved_model():
             # ranges[k] = {"train": train_params[k], "test": test_params[k]}
         params[group] = temp_params
 
-    params["train"] = train_params
     params["all"] = test_params
 
-    # TODO: this will have to be different for acrobot:
     if env_name == "cartpole":
         train_ranges = {k: {re.sub(r"(min|max).*", r"train_\1", ks): vs["train"] for ks, vs in v.items()} for k, v in
                         ranges.items()}
@@ -183,8 +181,10 @@ def test_saved_model():
 
                         for k, v in ranges.items()
                         }
-
         tf = pd.DataFrame.from_dict(train_ranges)
+    else:
+        raise NotImplementedError(f"Implement for env {env_name}")
+
     tf["all"] = np.nan
     tf["train"] = np.nan
 
@@ -239,50 +239,146 @@ def test_saved_model():
     output_str = wrap_latex_in_table(caption, label, latex)
     write_file(os.path.join(symbdir, f"{env_name}_table.tex"), [output_str])
 
-    # plot record
+
+    title = "Reward Distributions"
     n_cols = 2
     n_row = int(np.ceil(len(record)/n_cols))
     fig, axes = plt.subplots(n_row, n_cols, figsize=(10, 10), sharex=True)
-    for i, group in enumerate(record):
+    for i, group in enumerate(["train"] +groups +["all"]):
         ax = axes[i // n_cols, i % n_cols]
-        ax.hist(record[group]["ns"][0])
-        ax.hist(record[group]["nn"][0])
-        ax.set_title(group)
-    # plt.savefig(os.path.join(symbdir, f"{env_name}_hist.png"))
+        group_vals = record[group]
+        nn = group_vals["nn"][0]
+        ns = group_vals["ns"][0]
+        ax.hist(nn, label="Neural", alpha=.75)
+        ax.hist(ns, label="Symbolic", alpha=.75)
+        ax.axvline(np.mean(nn), label="Neural Mean", color="blue")
+        ax.axvline(np.mean(ns), label="Symbolic Mean", color="red")
+        # ax.legend(loc="upper left")
+        ax.set_title(new_index[i])
+    # plt.legend()
+    lines_labels = [ax.get_legend_handles_labels()]
+    lines, labels = [sum(lol, []) for lol in zip(*lines_labels)]
+    fig.legend(lines, labels, "upper left")
+    fig.suptitle(title, fontsize=14, fontweight="bold")
+    plt.savefig(os.path.join(symbdir, f"{env_name}_hist.png"))
+
     plt.show()
 
+    title = "Min reward analysis"
+    rew = np.array(record["all"]["ns"][0])
+    obs = np.array(record["all"]["ns"][1])
+    flt = rew == np.min(rew)
+    n_cols = 2
+    n_row = int(np.ceil(len(fancy_names) / n_cols))
+    fig, axes = plt.subplots(n_row, n_cols, figsize=(10, 10), sharex=False)
+    for i, ob in enumerate(obs[flt].T):
+        if i < len(fancy_names):
+            ax = axes[i // n_cols, i % n_cols]
+            ax.hist(obs[flt==False].T[i], label="Non-min Reward",alpha=.75)
+            ax.hist(ob,label="Min Reward", alpha=.75)
+            ax.set_title(fancy_names[i])
+    lines_labels = [ax.get_legend_handles_labels()]
+    lines, labels = [sum(lol, []) for lol in zip(*lines_labels)]
+    fig.legend(lines, labels, "upper left")
+    fig.suptitle(title)
+    plt.show()
+
+
+    title = "Reward vs Context Value"
     obs_order = groups
     n_cols = 2
     n_row = int(np.ceil(len(obs_order)/n_cols))
     fig, axes = plt.subplots(n_row, n_cols, figsize=(10, 10), sharex=False)
-    for i, group in enumerate(record):
-        if group in obs_order:
-            ax = axes[i // n_cols, i % n_cols]
-            obs = np.array(record[group]["ns"][1])
-            x = obs[:, match(np.array([group]), np.array(obs_order))].squeeze()
-            y = np.array(record[group]["ns"][0])
-            # flt = y!=500
-            flt = np.ones_like(y).astype(bool)
-            ax.scatter(
-                x=x[flt],
-                y=y[flt],
-                # c=[i for i in range(np.sum(flt))]
-            )
+    for i, group in enumerate(obs_order):
+        ax = axes[i // n_cols, i % n_cols]
+        group_vals = record[group]
+        ns = group_vals["nn"]
+        obs = np.array(ns[1])
+        x = obs[:, i].squeeze()
+        y = np.array(ns[0])
+        # flt = y!=500
+        flt = np.ones_like(y).astype(bool)
+        ax.scatter(
+            x=x[flt],
+            y=y[flt],
+            label="Neural", alpha=.5
+            # c=[i for i in range(np.sum(flt))]
+        )
 
-            obs = np.array(record[group]["nn"][1])
-            x = obs[:, match(np.array([group]), np.array(obs_order))].squeeze()
-            y = np.array(record[group]["nn"][0])
-            # flt = y!=500
-            flt = np.ones_like(y).astype(bool)
-            ax.scatter(
-                x=x[flt],
-                y=y[flt],
-                # c=[i for i in range(np.sum(flt))]
-            )
-            # ax.hist(record[group]["nn"][0])
-            ax.set_title(group)
-    # plt.savefig(os.path.join(symbdir, f"{env_name}_hist.png"))
+        nn = group_vals["ns"]
+        obs = np.array(nn[1])
+        x = obs[:, i].squeeze()
+        y = np.array(nn[0])
+        # flt = y!=500
+        flt = np.ones_like(y).astype(bool)
+        ax.scatter(
+            x=x[flt],
+            y=y[flt],
+            label = "Symbolic", alpha = .5
+            # c=[i for i in range(np.sum(flt))]
+        )
+        # ax.hist(record[group]["nn"][0])
+        ax.set_title(fancy_names[i])
+    lines_labels = [ax.get_legend_handles_labels()]
+    lines, labels = [sum(lol, []) for lol in zip(*lines_labels)]
+    fig.legend(lines, labels, "upper left")
+    fig.suptitle(title, fontsize=14, fontweight="bold")
+    plt.savefig(os.path.join(symbdir, f"{env_name}_scatter1.png"))
     plt.show()
+
+
+
+    title = "Reward vs Context Value Within Gravity env. where grav>24"
+    n_cols = 2
+    n_row = int(np.ceil(len(obs_order) / n_cols))
+    fig, axes = plt.subplots(n_row, n_cols, figsize=(10, 10), sharex=False)
+    for i, group in enumerate(obs_order):
+        ax = axes[i // n_cols, i % n_cols]
+        group_vals = record["gravity"]
+        group_index = match(np.array(["gravity"]), np.array(obs_order))
+        ns = group_vals["nn"]
+        obs = np.array(ns[1])
+        x = obs[:, i].squeeze()
+        y = np.array(ns[0])
+        # flt = y!=500
+        flt = np.ones_like(y).astype(bool)
+        # flt = y==-500
+        flt = (obs[:,group_index]>24).squeeze()
+        ax.scatter(
+            x=x[flt],
+            y=y[flt],
+            label="Neural", alpha=.5
+            # c=[i for i in range(np.sum(flt))]
+        )
+
+        nn = group_vals["ns"]
+        obs = np.array(nn[1])
+        x = obs[:, i].squeeze()
+        y = np.array(nn[0])
+        # flt = y!=500
+        flt = np.ones_like(y).astype(bool)
+        # flt = y==-500
+        flt = (obs[:,group_index]>24).squeeze()
+        ax.scatter(
+            x=x[flt],
+            y=y[flt],
+            label="Symbolic", alpha=.5
+            # c=[i for i in range(np.sum(flt))]
+        )
+        # ax.hist(record[group]["nn"][0])
+        ax.set_title(fancy_names[i])
+    lines_labels = [ax.get_legend_handles_labels()]
+    lines, labels = [sum(lol, []) for lol in zip(*lines_labels)]
+    fig.legend(lines, labels, "upper left")
+    fig.suptitle(title, fontsize=14, fontweight="bold")
+    plt.savefig(os.path.join(symbdir, f"{env_name}_scatter3.png"))
+    plt.show()
+
+
+
+
+
+
 
 
     fig, axes = plt.subplots(n_row, n_cols, figsize=(10, 10), sharex=False)
@@ -299,7 +395,7 @@ def test_saved_model():
             c=[i for i in range(np.sum(flt))]
         )
         ax.set_title(group)
-    # plt.savefig(os.path.join(symbdir, f"{env_name}_hist.png"))
+    plt.savefig(os.path.join(symbdir, f"{env_name}_scatter2.png"))
     plt.show()
 
     return None

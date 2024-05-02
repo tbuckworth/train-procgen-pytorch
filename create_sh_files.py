@@ -167,13 +167,13 @@ def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_ty
 def symbreg_hparams():
     return {
         "timeout_in_seconds": [3600 * 10],
-        "data_size": [100, 1000],  # , 500, 100, 50],# 5000],
+        "data_size": [100, 1000, 2000],  # , 500, 100, 50],# 5000],
         "iterations": [1, 5, 20],  # 20, 40, 80],
         "n_envs": [100],
         "rounds": [1000],
         "denoise": [True],
-        "populations": [24, 35],
-        "procs": [8, 4],
+        "populations": [24],
+        "procs": [8],
         "ncycles_per_iteration": [4000],
         "bumper": [True],
         "binary_operators": [["+", "-", "greater", "\*", "/"]],
@@ -188,13 +188,18 @@ def symbreg_hparams():
         "loss_function": ['mse', 'capped_sigmoid'],# 'exp', 'sigmoid', 'logitdist', ],
         # "logdir": ["logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"],
         # "logdir": ["logs/train/boxworld/boxworld/2024-04-08__12-29-17__seed_6033"],
+
         # high-entropy one:
         # "logdir": ["logs/train/boxworld/boxworld/2024-04-08__14-52-30__seed_6033"],
         # "logdir": ["logs/train/coinrun/coinrun-hparams/2024-03-27__18-20-55__seed_6033"],
         # "logdir": ["logs/train/coinrun/coinrun-hparams/2024-04-18__08-38-17__seed_6033"],
-        # "logdir": ["logs/train/acrobot/test/2024-04-25__10-03-20__seed_6033"],
-        # "logdir": ["logs/train/cartpole/test/2024-04-26__12-37-41__seed_40"],
-        "logdir": ["logs/train/acrobot/test/2024-05-01__12-22-24__seed_6033"],
+
+        ## Actually working ones:
+        # "logdir": ["logs/train/acrobot/test/2024-05-01__12-22-24__seed_6033"],
+        "logdir": ["logs/train/cartpole_swing/test/2024-05-01__14-19-53__seed_6033",
+                   "logs/train/cartpole/test/2024-05-01__11-17-14__seed_0",
+                   "logs/train/cartpole/test/2024-05-01__11-17-16__seed_6033"],
+
         "use_wandb": [True],
         "stochastic": [True, False],
     }
@@ -414,8 +419,8 @@ if __name__ == '__main__':
     parser.add_argument('--n_gpu', type=int, default=6)
     parser.add_argument('--execute', action="store_true", default=True)
     # parser.add_argument('--cuda', action="store_true", default=False)
-    parser.add_argument('--max_runs', type=int, default=200)
-    parser.add_argument('--hparam_type', type=str, default="train")
+    parser.add_argument('--max_runs', type=int, default=500)
+    parser.add_argument('--hparam_type', type=str, default="symbreg")
 
     re_use_machine = False
     specify_host = None#"gpu33"
