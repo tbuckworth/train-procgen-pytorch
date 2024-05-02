@@ -327,52 +327,52 @@ def test_saved_model():
     plt.show()
 
 
-    metric = "gravity"
-    title = f"Reward vs Context Value Within {metric} env."# where grav>24"
-    n_cols = 2
-    n_row = int(np.ceil(len(obs_order) / n_cols))
-    fig, axes = plt.subplots(n_row, n_cols, figsize=(10, 10), sharex=False)
-    for i, group in enumerate(obs_order):
-        ax = axes[i // n_cols, i % n_cols]
-        group_vals = record[metric]
-        group_index = match(np.array([metric]), np.array(obs_order))
-        ns = group_vals["nn"]
-        obs = np.array(ns[1])
-        x = obs[:, i].squeeze()
-        y = np.array(ns[0])
-        # flt = y!=500
-        flt = np.ones_like(y).astype(bool)
-        # flt = y==-500
-        flt = (obs[:,group_index]>24).squeeze()
-        ax.scatter(
-            x=x[flt],
-            y=y[flt],
-            label="Neural", alpha=.5
-            # c=[i for i in range(np.sum(flt))]
-        )
+    for metric in obs_order:
+        title = f"Reward vs Context Value Within {metric} env."# where grav>24"
+        n_cols = 2
+        n_row = int(np.ceil(len(obs_order) / n_cols))
+        fig, axes = plt.subplots(n_row, n_cols, figsize=(10, 10), sharex=False)
+        for i, group in enumerate(obs_order):
+            ax = axes[i // n_cols, i % n_cols]
+            group_vals = record[metric]
+            group_index = match(np.array([metric]), np.array(obs_order))
+            ns = group_vals["nn"]
+            obs = np.array(ns[1])
+            x = obs[:, i].squeeze()
+            y = np.array(ns[0])
+            # flt = y!=500
+            flt = np.ones_like(y).astype(bool)
+            # flt = y==-500
+            # flt = (obs[:,group_index]>24).squeeze()
+            ax.scatter(
+                x=x[flt],
+                y=y[flt],
+                label="Neural", alpha=.5
+                # c=[i for i in range(np.sum(flt))]
+            )
 
-        nn = group_vals["ns"]
-        obs = np.array(nn[1])
-        x = obs[:, i].squeeze()
-        y = np.array(nn[0])
-        # flt = y!=500
-        flt = np.ones_like(y).astype(bool)
-        # flt = y==-500
-        flt = (obs[:,group_index]>24).squeeze()
-        ax.scatter(
-            x=x[flt],
-            y=y[flt],
-            label="Symbolic", alpha=.5
-            # c=[i for i in range(np.sum(flt))]
-        )
-        # ax.hist(record[group]["nn"][0])
-        ax.set_title(fancy_names[i])
-    lines_labels = [ax.get_legend_handles_labels()]
-    lines, labels = [sum(lol, []) for lol in zip(*lines_labels)]
-    fig.legend(lines, labels, "upper left")
-    fig.suptitle(title, fontsize=14, fontweight="bold")
-    plt.savefig(os.path.join(symbdir, f"{env_name}_scatter3.png"))
-    plt.show()
+            nn = group_vals["ns"]
+            obs = np.array(nn[1])
+            x = obs[:, i].squeeze()
+            y = np.array(nn[0])
+            # flt = y!=500
+            flt = np.ones_like(y).astype(bool)
+            # flt = y==-500
+            # flt = (obs[:,group_index]>24).squeeze()
+            ax.scatter(
+                x=x[flt],
+                y=y[flt],
+                label="Symbolic", alpha=.5
+                # c=[i for i in range(np.sum(flt))]
+            )
+            # ax.hist(record[group]["nn"][0])
+            ax.set_title(fancy_names[i])
+        lines_labels = [ax.get_legend_handles_labels()]
+        lines, labels = [sum(lol, []) for lol in zip(*lines_labels)]
+        fig.legend(lines, labels, "upper left")
+        fig.suptitle(title, fontsize=14, fontweight="bold")
+        # plt.savefig(os.path.join(symbdir, f"{env_name}_scatter3.png"))
+        plt.show()
 
 
 

@@ -207,23 +207,24 @@ def symbreg_hparams():
 
 def mountain_car_hparams():
     return {
-        "exp_name": ["mountain_car_cont_rew"],
+        "exp_name": [None],
         "env_name": ['mountain_car'],
         # "distribution_mode": ['hard'],
         "param_name": ['mlpmodel'],
         "device": ["gpu"],
         "num_timesteps": [int(2e8)],
-        "seed": [6033, 0],
-        "gamma": [0.95],
-        "learning_rate": [0.0001, 0.0005],
-        "entropy_coef": [0.02],
-        "n_envs": [256, 512],
-        "n_steps": [256],
+        "seed": [6033],
+        "gamma": [0.99],#[0.95],# 0.99],
+        "learning_rate": [0.0003],# [0.0005],# 0.0003],
+        "entropy_coef": [0],#[0.02],# 0],
+        "n_envs": [16],#[512, 1024],
+        "n_steps": [16],#[256],
+        "n_epochs": [4],#[3],# 4],
         # "n_minibatch": None,
         # "mini_batch_size": None,
         # "wandb_name": None,
         # "wandb_group": None,
-        "wandb_tags": [["gravity", "smooth rewards", "subtract_one"]],
+        "wandb_tags": [["lesser gravity","sb3 hparams"]],
         # "detect_nan": False,
         "use_wandb": [True],
         "mirror_env": [False],
@@ -319,7 +320,7 @@ def cartpole_hparams():
 
 def train_hparams():
     # return continue_run("logs/train/mountain_car/test/2024-04-25__05-18-36__seed_6033")
-    return cartpole_hparams()
+    return mountain_car_hparams()
 
 
 def continue_run(logdir):
@@ -420,10 +421,10 @@ if __name__ == '__main__':
     parser.add_argument('--execute', action="store_true", default=True)
     # parser.add_argument('--cuda', action="store_true", default=False)
     parser.add_argument('--max_runs', type=int, default=500)
-    parser.add_argument('--hparam_type', type=str, default="symbreg")
+    parser.add_argument('--hparam_type', type=str, default="train")
 
-    re_use_machine = False
-    specify_host = None#"gpu33"
+    re_use_machine = True
+    specify_host = "gpu32"
     if specify_host is not None and not re_use_machine:
         print("Warning - specifying host will re-use that host")
 
