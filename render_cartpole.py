@@ -30,6 +30,16 @@ def acrobot_best(obs, action_mapping):
     out = np.sign((x5 - (np.sin(np.sin(x3)) - x1)) - -0.011042326) * x6
     return match_to_nearest(out, action_mapping)
 
+
+def greater(a, b):
+    return (a > b).astype(np.int32)
+
+def cartpole_swing_func(obs, action_mapping):
+    x0, x1, x2, x3, x4, x5, x6, x7, x8 = obs.T
+    out = np.sign(greater((x0 / x6) * -1.4575042, x5))
+    return match_to_nearest(out, action_mapping)
+
+
 # def temp()
 #     episodes = 0
 #     obs = env.reset()
@@ -52,17 +62,17 @@ if __name__ == "__main__":
 
     # env = CartPoleVecEnv(n_envs, degrees=12, h_range=2.4, max_steps=500, render_mode="human")
     # env = AcrobotVecEnv(n_envs)
-    env = get_env_constructor("acrobot")(DictToArgs({"render": True}), {}, is_valid)
+    env = get_env_constructor("cartpole_swing")(DictToArgs({"render": True, "seed":6033}), {}, is_valid)
     action_mapping = map_actions_to_values(get_actions_from_all(env))
 
-
-
-
     obs = env.reset()
+    cum_rew = []
     while True:
-        act = acrobot_best(obs, action_mapping)
+        act = cartpole_swing_func(obs, action_mapping)
         ep_rew = env.n_steps[0]
         obs, rew, done, info = env.step(act)
+        cum_rew += [rew[0]]
         if done[0]:
-            print("Episode finished after {} timesteps".format(ep_rew))
-            obs = env.reset(seed=np.random.randint(0,5000))
+            print(f"Episode Reward: {np.sum(cum_rew):.2f}")
+            obs = env.reset(seed=np.random.randint(0, 5000))
+            cum_rew = []

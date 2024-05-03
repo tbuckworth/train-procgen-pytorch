@@ -161,7 +161,6 @@ class CartPoleSwingVecEnv(PreVecEnv):
         )
 
         self.customizable_params = [
-            "degrees",
             "h_range",
             "min_gravity",
             "max_gravity",
