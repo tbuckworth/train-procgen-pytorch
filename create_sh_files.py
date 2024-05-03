@@ -88,7 +88,8 @@ def add_boxworld_params(args):
     return args
 
 
-def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_type, re_use_machine=False, specify_host=None):
+def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_type, re_use_machine=False,
+                   specify_host=None):
     hosts = {}
     free_machine = None
     keys, values = zip(*hparams.items())
@@ -167,25 +168,25 @@ def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_ty
 def symbreg_hparams():
     return {
         "timeout_in_seconds": [3600 * 10],
-        "data_size": [100, 1000, 2000, 5000],  # , 500, 100, 50],# 5000],
-        "iterations": [1, 5, 20],  # 20, 40, 80],
+        "data_size": [100, 1000, 2000, 5000, 10000],  # , 500, 100, 50],# 5000],
+        "iterations": [1, 5, 20, 100],  # 20, 40, 80],
         "n_envs": [100],
         "rounds": [1000],
-        "denoise": [True],
+        "denoise": [True, False],
         "populations": [24],
         "procs": [8],
         "ncycles_per_iteration": [4000],
-        "bumper": [True],
+        "bumper": [True, False],
         "binary_operators": [["+", "-", "greater", "\*", "/"]],
         "unary_operators": [  # [],
             ["sin", "relu", "log", "exp", "sign", "sqrt", "square"],
         ],
         "wandb_tags": [["cartpole", "hparam", "multi-extrapolation", "cartpole_swing"]],
-        "model_selection": ["best"],
+        "model_selection": ["best", "accuracy"],
         "weight_metric": [None, "entropy", "value"],
         # "loss_function": ["capped_sigmoid"],
         # "loss_function": ['sigmoid', 'exp', 'logitmarg', 'logitdist', 'mse', 'capped_sigmoid'],
-        "loss_function": ['mse', 'capped_sigmoid', "sigmoid","logitdist"],# 'exp', 'sigmoid', 'logitdist', ],
+        "loss_function": ['mse', 'capped_sigmoid', "logitdist"],  # 'exp', 'sigmoid', 'logitdist', ],
         # "logdir": ["logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"],
         # "logdir": ["logs/train/boxworld/boxworld/2024-04-08__12-29-17__seed_6033"],
 
@@ -195,10 +196,10 @@ def symbreg_hparams():
         # "logdir": ["logs/train/coinrun/coinrun-hparams/2024-04-18__08-38-17__seed_6033"],
 
         ## Actually working ones:
-        # "logdir": ["logs/train/acrobot/test/2024-05-01__12-22-24__seed_6033"],
-        "logdir": ["logs/train/cartpole_swing/test/2024-05-01__14-19-53__seed_6033"],
-                   # "logs/train/cartpole/test/2024-05-01__11-17-14__seed_0",
-                   # "logs/train/cartpole/test/2024-05-01__11-17-16__seed_6033"],
+        "logdir": ["logs/train/acrobot/test/2024-05-01__12-22-24__seed_6033",
+                   "logs/train/cartpole_swing/test/2024-05-01__14-19-53__seed_6033"],
+        # "logs/train/cartpole/test/2024-05-01__11-17-14__seed_0",
+        # "logs/train/cartpole/test/2024-05-01__11-17-16__seed_6033"],
 
         "use_wandb": [True],
         "stochastic": [True, False],
@@ -212,19 +213,19 @@ def mountain_car_hparams():
         # "distribution_mode": ['hard'],
         "param_name": ['mlpmodel'],
         "device": ["gpu"],
-        "num_timesteps": [int(2e8)],
+        "num_timesteps": [int(10e8)],
         "seed": [6033],
-        "gamma": [0.99],#[0.95],# 0.99],
-        "learning_rate": [0.0003],# [0.0005],# 0.0003],
-        "entropy_coef": [0],#[0.02],# 0],
-        "n_envs": [16],#[512, 1024],
-        "n_steps": [16],#[256],
-        "n_epochs": [4],#[3],# 4],
+        "gamma": [0.99],  # [0.95],# 0.99],
+        "learning_rate": [0.0003],  # [0.0005],# 0.0003],
+        "entropy_coef": [0],  # [0.02],# 0],
+        "n_envs": [16],  # [512, 1024],
+        "n_steps": [16],  # [256],
+        "n_epochs": [4],  # [3],# 4],
         # "n_minibatch": None,
         # "mini_batch_size": None,
         # "wandb_name": None,
         # "wandb_group": None,
-        "wandb_tags": [["lesser gravity","sb3 hparams"]],
+        "wandb_tags": [["lesser gravity", "sb3"]],
         # "detect_nan": False,
         "use_wandb": [True],
         "mirror_env": [False],
@@ -261,6 +262,7 @@ def acrobot_hparams():
         # "fs_coef": [0.0001, 0.001, 0.01, 0.1, 0.5, 1.0, 2.0, 5.0, 10.0],
     }
 
+
 def cartpole_hparams_transformer():
     return {
         "exp_name": [None],
@@ -269,7 +271,7 @@ def cartpole_hparams_transformer():
         "param_name": ['cartpole_transform'],
         "device": ["gpu"],
         "num_timesteps": [int(2e8)],
-        "seed": [6033],# 0, 1, 101, 40],
+        "seed": [6033],  # 0, 1, 101, 40],
         "gamma": [0.95, 0.9, 0.99],
         "learning_rate": [0.0005, 0.001, 0.00025, 0.01],
         "entropy_coef": [0, 0.01, 0.02, 0.05],
@@ -288,6 +290,7 @@ def cartpole_hparams_transformer():
         # "fs_coef": [0.0001, 0.001, 0.01, 0.1, 0.5, 1.0, 2.0, 5.0, 10.0],
     }
 
+
 def cartpole_hparams():
     return {
         "exp_name": [None],
@@ -296,7 +299,7 @@ def cartpole_hparams():
         "param_name": ['mlpmodel'],
         "device": ["gpu"],
         "num_timesteps": [int(2e8)],
-        "seed": [6033],# 0, 1, 101, 40],
+        "seed": [6033],  # 0, 1, 101, 40],
         "gamma": [0.95, 0.9],
         "learning_rate": [0.0005, 0.001, 0.00025, 0.01],
         "entropy_coef": [0, 0.02],
@@ -314,8 +317,6 @@ def cartpole_hparams():
         # "output_dim": [256, 1, 9],
         # "fs_coef": [0.0001, 0.001, 0.01, 0.1, 0.5, 1.0, 2.0, 5.0, 10.0],
     }
-
-
 
 
 def train_hparams():
@@ -381,7 +382,7 @@ def add_training_args_dict():
         "num_timesteps": int(25000000),
         "seed": 6033,
         "log_level": int(40),
-        "num_checkpoints": int(1),
+        "num_checkpoints": int(20),
         "model_file": None,
         "mut_info_alpha": None,
         "gamma": None,
@@ -420,7 +421,7 @@ if __name__ == '__main__':
     parser.add_argument('--n_gpu', type=int, default=6)
     parser.add_argument('--execute', action="store_true", default=True)
     # parser.add_argument('--cuda', action="store_true", default=False)
-    parser.add_argument('--max_runs', type=int, default=200)
+    parser.add_argument('--max_runs', type=int, default=1800)
     parser.add_argument('--hparam_type', type=str, default="symbreg")
 
     re_use_machine = False

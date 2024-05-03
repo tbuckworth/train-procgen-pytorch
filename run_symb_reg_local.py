@@ -97,7 +97,7 @@ def test_agent_mean_reward(agent, env, print_name, n=40, return_values=False):
             episodes += np.sum(done)
             episode_rewards += list(cum_rew[done])
             # TODO: make this general:
-            episode_context += obs[done, (env.i_g-env.input_adjust):].tolist()
+            episode_context += obs[done, (env.i_g - env.input_adjust):].tolist()
             cum_rew[done] = 0
     print(f"{print_name}:\tEpisode:{episodes}\tMean Reward:{np.mean(episode_rewards):.2f}")
     if return_values:
@@ -105,16 +105,19 @@ def test_agent_mean_reward(agent, env, print_name, n=40, return_values=False):
         # return {"mean":np.mean(episode_rewards), "std":np.std(episode_rewards)}
     return np.mean(episode_rewards)
 
+
 def run_tests():
     dirs = [
-        "logs/train/acrobot/test/2024-05-01__12-22-24__seed_6033/symbreg/2024-05-02__02-06-38",
-        "logs/train/cartpole/test/2024-05-01__11-17-16__seed_6033/symbreg/2024-05-02__13-37-11"
+        "logs/train/cartpole/test/2024-05-01__11-17-16__seed_6033/symbreg/2024-05-03__11-14-03",
+        # "logs/train/acrobot/test/2024-05-01__12-22-24__seed_6033/symbreg/2024-05-02__02-06-38",
+        # "logs/train/cartpole/test/2024-05-01__11-17-16__seed_6033/symbreg/2024-05-02__13-37-11"
     ]
     for symbdir in dirs:
         try:
             test_saved_model(symbdir, n_envs=1000, n_rounds=1000)
         except Exception as e:
             print(e)
+
 
 def test_saved_model(symbdir, n_envs=10, n_rounds=10):
     # symbdir = "logs/train/acrobot/test/2024-05-01__12-22-24__seed_6033/symbreg/2024-05-02__02-06-38"
@@ -236,14 +239,13 @@ def test_saved_model(symbdir, n_envs=10, n_rounds=10):
     latex = dff.to_latex()  # os.path.join(symbdir, "results_table.tex"))
 
     formatted_vals = {
-            "Train\nRange": concat_np_list([tf.T["train_min"].values, " - ", tf.T["train_max"].values], shape=(len(tf.T),)),
-            "Test\nRange": concat_np_list([tf.T["test_min"].values, " - ", tf.T["test_max"].values], shape=(len(tf.T),)),
+        "Train\nRange": concat_np_list([tf.T["train_min"].values, " - ", tf.T["train_max"].values], shape=(len(tf.T),)),
+        "Test\nRange": concat_np_list([tf.T["test_min"].values, " - ", tf.T["test_max"].values], shape=(len(tf.T),)),
     }
     tff = pd.DataFrame.from_dict(formatted_vals)
     tff.index = fancy_names
 
     tf_latex = tff.to_latex()
-
 
     # dfo = pd.concat([tf.T, df], axis=1).reindex(["train"] + groups + ["all"])
     #
@@ -258,15 +260,10 @@ def test_saved_model(symbdir, n_envs=10, n_rounds=10):
     #     "P Value": dfo["p_value"].values.astype(str),
     # }
 
-
-
-
-
     # caption = ("Environment Contextual Ranges for Training and Testing.")
     # metr_tab = wrap_latex_in_table(caption, f"{env_name}-range-table", [tf_latex, latex])
 
-
-    #assumes observation order = groups order
+    # assumes observation order = groups order
     obs_names = env.get_ob_names()
 
     latex_eqn = ns_agent.model.latex()
@@ -279,7 +276,7 @@ def test_saved_model(symbdir, n_envs=10, n_rounds=10):
     formula = f"${latex_eqn}$"
     eq_dict = {}
     for i, name in enumerate(obs_names):
-        name = re.sub("_([^\d])",r"\_\1",name)
+        name = re.sub("_([^\d])", r"\_\1", name)
         eq_dict[f"$x_{{{i}}}$"] = name
 
     dfk = pd.DataFrame.from_dict({"Key": eq_dict})
@@ -293,39 +290,43 @@ def test_saved_model(symbdir, n_envs=10, n_rounds=10):
     perf_tab = wrap_latex_in_table(caption, label, formula, [latex, tf_latex, form_latex])
     write_file(os.path.join(symbdir, f"{env_name}_table.tex"), [perf_tab])
 
-
     if ns_agent.single_output:
-        title = "Neural vs Symbolic Action Logits In and Out of Distribution"
+        try:
+            title = "Neural vs Symbolic Action Logits In and Out of Distribution"
 
-        x_train, y_train, v_train = generate_data(ns_agent, env, 1000)
-        x_test, y_test, v_test = generate_data(ns_agent, test_env, 1000)
+            x_train, y_train, v_train = generate_data(ns_agent, env, 1000)
+            x_test, y_test, v_test = generate_data(ns_agent, test_env, 1000)
 
-        l_train_ns = ns_agent.model.predict(x_train)
-        l_test_ns = ns_agent.model.predict(x_test)
-        min_x = min(np.min(y_test),np.min(y_train))
-        max_x = max(np.max(y_test),np.max(y_train))
-        min_y = min(np.min(l_test_ns),np.min(l_train_ns))
-        max_y = max(np.max(l_test_ns),np.max(l_train_ns))
-        plt.axline(xy1=(0,min_y),xy2=(0,max_y),color="black", linestyle="dashed", alpha=0.3)
-        plt.axline(xy1=(min_x,0),xy2=(max_x,0),color="black",linestyle="dashed", alpha=0.3)
-        plt.scatter(y_test, l_test_ns, label="Test", alpha=0.5)
-        plt.scatter(y_train, l_train_ns, label="Train", alpha=0.5)
-        plt.xlabel("Neural Logits")
-        plt.ylabel("Symbolic Logits")
-        plt.legend()
-        plt.title(title)
-        plt.savefig(os.path.join(symbdir, f"{env_name}_logit.png"))
-        plt.show()
+            if not args.stochastic:
+                y_test = action_mapping[y_test.argmax(1)]
+                y_train = action_mapping[y_train.argmax(1)]
 
-
+            l_train_ns = ns_agent.model.predict(x_train)
+            l_test_ns = ns_agent.model.predict(x_test)
+            min_x = min(np.min(y_test), np.min(y_train))
+            max_x = max(np.max(y_test), np.max(y_train))
+            min_y = min(np.min(l_test_ns), np.min(l_train_ns))
+            max_y = max(np.max(l_test_ns), np.max(l_train_ns))
+            plt.axline(xy1=(0, min_y), xy2=(0, max_y), color="black", linestyle="dashed", alpha=0.3)
+            plt.axline(xy1=(min_x, 0), xy2=(max_x, 0), color="black", linestyle="dashed", alpha=0.3)
+            plt.scatter(y_test, l_test_ns, label="Test", alpha=0.5)
+            plt.scatter(y_train, l_train_ns, label="Train", alpha=0.5)
+            plt.xlabel("Neural Logits")
+            plt.ylabel("Symbolic Logits")
+            plt.legend()
+            plt.title(title)
+            plt.savefig(os.path.join(symbdir, f"{env_name}_logit.png"))
+            plt.show()
+        except Exception as e:
+            pass
 
     ############################## graphs ###############################################
 
     title = "Reward Distributions"
     n_cols = 2
-    n_row = int(np.ceil(len(record)/n_cols))
+    n_row = int(np.ceil(len(record) / n_cols))
     fig, axes = plt.subplots(n_row, n_cols, figsize=(10, 10), sharex=True)
-    for i, group in enumerate(["train"] +groups +["all"]):
+    for i, group in enumerate(["train"] + groups + ["all"]):
         ax = axes[i // n_cols, i % n_cols]
         group_vals = record[group]
         nn = group_vals["nn"][0]
@@ -355,8 +356,8 @@ def test_saved_model(symbdir, n_envs=10, n_rounds=10):
     for i, ob in enumerate(obs[flt].T):
         if i < len(fancy_names):
             ax = axes[i // n_cols, i % n_cols]
-            ax.hist(obs[flt==False].T[i], label="Non-min Reward",alpha=.75)
-            ax.hist(ob,label="Min Reward", alpha=.75)
+            ax.hist(obs[flt == False].T[i], label="Non-min Reward", alpha=.75)
+            ax.hist(ob, label="Min Reward", alpha=.75)
             ax.set_title(fancy_names[i])
     lines_labels = [ax.get_legend_handles_labels()]
     lines, labels = [sum(lol, []) for lol in zip(*lines_labels)]
@@ -364,11 +365,10 @@ def test_saved_model(symbdir, n_envs=10, n_rounds=10):
     fig.suptitle(title)
     plt.show()
 
-
     title = "Reward vs Context Value"
     obs_order = groups
     n_cols = 2
-    n_row = int(np.ceil(len(obs_order)/n_cols))
+    n_row = int(np.ceil(len(obs_order) / n_cols))
     fig, axes = plt.subplots(n_row, n_cols, figsize=(10, 10), sharex=False)
     for i, group in enumerate(obs_order):
         ax = axes[i // n_cols, i % n_cols]
@@ -395,7 +395,7 @@ def test_saved_model(symbdir, n_envs=10, n_rounds=10):
         ax.scatter(
             x=x[flt],
             y=y[flt],
-            label = "Symbolic", alpha = .5
+            label="Symbolic", alpha=.5
             # c=[i for i in range(np.sum(flt))]
         )
         # ax.hist(record[group]["nn"][0])
@@ -407,9 +407,8 @@ def test_saved_model(symbdir, n_envs=10, n_rounds=10):
     plt.savefig(os.path.join(symbdir, f"{env_name}_scatter1.png"))
     plt.show()
 
-
     for metric in obs_order:
-        title = f"Reward vs Context Value Within {metric} env."# where grav>24"
+        title = f"Reward vs Context Value Within {metric} env."  # where grav>24"
         n_cols = 2
         n_row = int(np.ceil(len(obs_order) / n_cols))
         fig, axes = plt.subplots(n_row, n_cols, figsize=(10, 10), sharex=False)
@@ -454,13 +453,6 @@ def test_saved_model(symbdir, n_envs=10, n_rounds=10):
         fig.suptitle(title, fontsize=14, fontweight="bold")
         # plt.savefig(os.path.join(symbdir, f"{env_name}_scatter3.png"))
         plt.show()
-
-
-
-
-
-
-
 
     fig, axes = plt.subplots(n_row, n_cols, figsize=(10, 10), sharex=False)
     for i, group in enumerate(obs_order):

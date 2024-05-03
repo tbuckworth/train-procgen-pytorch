@@ -300,8 +300,8 @@ def create_mountain_car(args, hyperparameters, is_valid=False):
         "max_speed": [0.07],
         "goal_position": [0.5],
         "force": [0.001],
-        "min_gravity": [0.0015, 0.001],
-        "max_gravity": [0.0025, 0.0015],
+        "min_gravity": [0.001, 0.0015],
+        "max_gravity": [0.0015, 0.0025],
         "sparse_rewards": [True],
     }
     return create_pre_vec(args, hyperparameters, param_range, MountainCarVecEnv, is_valid)

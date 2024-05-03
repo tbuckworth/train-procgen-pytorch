@@ -141,6 +141,7 @@ def test_agent_balanced_reward(agent, env, print_name, n=40):
 
 
 def test_agent_mean_reward(agent, env, print_name, n=40, return_values=False):
+    print(print_name)
     episodes = 0
     obs = env.reset()
     act = agent.forward(obs)
