@@ -340,9 +340,9 @@ def get_entropy(Y):
     if len(Y.shape) == 1:
         p = sigmoid(Y)
         q = 1 - p
-        return np.mean(-p * np.log(p) - q * np.log(q))
+        return -p * np.log(p) - q * np.log(q)
     ents = -(np.exp(Y) * Y).sum(-1)
-    return ents.mean()
+    return ents
 
 
 def one_hot(targets, nb_classes):
@@ -400,7 +400,8 @@ def run_neurosymbolic_search(args):
         weights = None
         if args.weight_metric is not None:
             if args.weight_metric == "entropy":
-                weights = e
+                weights = 1/e
+                weights[np.isinf(weights)] = weights[np.isinf(weights)==False].max()
             elif args.weight_metric == "value":
                 weights = V
         pysr_model, elapsed = find_model(X, Y, symbdir, save_file, weights, args)

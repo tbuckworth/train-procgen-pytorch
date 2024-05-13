@@ -604,7 +604,7 @@ def run_symb_reg_local():
     args.denoise = False
     args.use_wandb = True
     args.wandb_tags = ["test"]
-    args.weight_metric = "value"
+    args.weight_metric = "entropy"
     args.wandb_name = "manual"
     # args.populations = 24
     args.model_selection = "best"
