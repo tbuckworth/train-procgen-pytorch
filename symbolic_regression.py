@@ -38,6 +38,7 @@ pysr_loss_functions = {
     "perceptron": "PerceptronLoss()",
     "logitdist": "LogitDistLoss()",
     "mse": "loss(prediction, target) = (prediction - target)^2",
+    "mce": "loss(prediction, target) = (prediction - target)^3",
     "capped_sigmoid": "loss(y_hat, y) = 1 - tanh(y*y_hat) + abs(y_hat-y)",
 }
 
@@ -436,13 +437,22 @@ def run_neurosymbolic_search(args):
         }
 
         Y_hat = pysr_model.predict(X)
+        # TODO: Use agent methods to clean this all up:
         if ns_agent.single_output:
-            p = sigmoid(Y)
-            Y_act = sample_from_sigmoid(p)
-            p_hat = sigmoid(Y_hat)
-            Y_hat_act = sample_from_sigmoid(p)
-            ent = entropy_from_binary_prob(p)
-            ent_hat = entropy_from_binary_prob(p_hat)
+            if args.stochastic:
+                p = sigmoid(Y)
+                Y_act = sample_from_sigmoid(p)
+                p_hat = sigmoid(Y_hat)
+                Y_hat_act = sample_from_sigmoid(p)
+                ent = entropy_from_binary_prob(p)
+                ent_hat = entropy_from_binary_prob(p_hat)
+            else:
+                Y_act = Y
+                p = Y
+                p_hat = Y_hat
+                Y_hat_act = Y_hat
+                ent = np.zeros_like(p)
+                ent_hat = np.zeros_like(p_hat)
         else:
             if not args.stochastic:
                 p = softmax(save_Y)

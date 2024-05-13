@@ -108,7 +108,8 @@ def test_agent_mean_reward(agent, env, print_name, n=40, return_values=False):
 
 def run_tests():
     dirs = [
-        "logs/train/cartpole/test/2024-05-01__11-17-16__seed_6033/symbreg/2024-05-03__11-14-03",
+        "logs/train/acrobot/test/2024-05-01__12-22-24__seed_6033/symbreg/2024-05-08__13-36-18",
+        # "logs/train/cartpole/test/2024-05-01__11-17-16__seed_6033/symbreg/2024-05-03__11-14-03",
         # "logs/train/acrobot/test/2024-05-01__12-22-24__seed_6033/symbreg/2024-05-02__02-06-38",
         # "logs/train/cartpole/test/2024-05-01__11-17-16__seed_6033/symbreg/2024-05-02__13-37-11"
     ]
@@ -594,7 +595,7 @@ def run_symb_reg_local():
     # args.logdir = "logs/train/coinrun/coinrun-hparams/2024-03-27__18-20-55__seed_6033"
     # args.logdir = "logs/train/acrobot/test/2024-04-25__10-03-20__seed_6033"
     args.logdir = "logs/train/cartpole/test/2024-04-26__12-37-41__seed_40"
-    args.logdir = "logs/train/cartpole_swing/test/2024-05-01__14-19-53__seed_6033"
+    # args.logdir = "logs/train/cartpole_swing/test/2024-05-01__14-19-53__seed_6033"
     args.n_envs = 100
     args.rounds = 300
     args.binary_operators = ["+", "-", "*", "greater", "/"]
@@ -610,16 +611,16 @@ def run_symb_reg_local():
     args.ncycles_per_iteration = 2000
     args.bumper = True
     args.loss_function = "capped_sigmoid"
-    for stoch in [True, False]:
+    for stoch in [False]:
         args.stochastic = stoch
         run_neurosymbolic_search(args)
 
 
 if __name__ == "__main__":
-    run_tests()
+    # run_tests()
     # format_results()
     # test_saved_model()
     # test_agent_specific_environment()
     # run_saved_model()
     # run_deterministic_agent()
-    # run_symb_reg_local()
+    run_symb_reg_local()
