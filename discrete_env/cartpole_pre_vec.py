@@ -286,6 +286,76 @@ class CartPoleVecEnv(PreVecEnv):
         self.gfxdraw.hline(self.surf, 0, self.screen_width, carty, (0, 0, 0))
         return True
 
+    def generate_pixels(self):
+        if self.state is None:
+            return False
+        x = self.state
+        pole_length = x[:, self.i_pl]
+
+        world_width = self.x_threshold * 2
+        scale = 64 / world_width
+        polewidth = np.full((self.n_envs,), 10.0*.16)
+        polelen = scale * (2 * pole_length)
+        cartwidth = np.full((self.n_envs,), 50.0*.16)
+        cartheight = np.full((self.n_envs,), 30.0*.16)
+        self.surf = np.full((self.n_envs, 64, 64, 3), 255)
+        # self.surf.fill((255, 255, 255))
+        l, r, t, b = -cartwidth / 2, cartwidth / 2, cartheight / 2, -cartheight / 2
+        axleoffset = cartheight / 4.0
+        cartx = x[:,0] * scale + 64 / 2.0  # MIDDLE OF CART
+        carty = np.full((self.n_envs,), 100*.16)  # TOP OF CART
+
+        l = np.tile(l, (self.n_envs, 64, 64))
+        r = np.tile(r, (1, 64, 64))
+        t = np.tile(t, (1, 64, 64))
+        b = np.tile(b, (1, 64, 64))
+
+        raw_index = np.arange(64)
+        col_index = np.tile(raw_index, (self.n_envs, 64, 1))
+        row_index = col_index.transpose((0, 2, 1))
+
+        row_index>=l
+
+
+
+        cart_coords = [(l, b), (l, t), (r, t), (r, b)]
+        cart_coords = [(c[0] + cartx, c[1] + carty) for c in cart_coords]
+
+
+
+        self.gfxdraw.aapolygon(self.surf, cart_coords, (0, 0, 0))
+        self.gfxdraw.filled_polygon(self.surf, cart_coords, (0, 0, 0))
+        l, r, t, b = (
+            -polewidth / 2,
+            polewidth / 2,
+            polelen - polewidth / 2,
+            -polewidth / 2,
+        )
+        pole_coords = []
+        for coord in [(l, b), (l, t), (r, t), (r, b)]:
+            coord = self.pygame.math.Vector2(coord).rotate_rad(-x[2])
+            coord = (coord[0] + cartx, coord[1] + carty + axleoffset)
+            pole_coords.append(coord)
+        self.gfxdraw.aapolygon(self.surf, pole_coords, (202, 152, 101))
+        self.gfxdraw.filled_polygon(self.surf, pole_coords, (202, 152, 101))
+        self.gfxdraw.aacircle(
+            self.surf,
+            int(cartx),
+            int(carty + axleoffset),
+            int(polewidth / 2),
+            (129, 132, 203),
+        )
+        self.gfxdraw.filled_circle(
+            self.surf,
+            int(cartx),
+            int(carty + axleoffset),
+            int(polewidth / 2),
+            (129, 132, 203),
+        )
+        self.gfxdraw.hline(self.surf, 0, self.screen_width, carty, (0, 0, 0))
+        return True
+
+
     def get_action_lookup(self):
         return {
             0: "push left",

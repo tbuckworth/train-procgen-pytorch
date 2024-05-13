@@ -108,7 +108,8 @@ def test_agent_mean_reward(agent, env, print_name, n=40, return_values=False):
 
 def run_tests():
     dirs = [
-        "logs/train/acrobot/test/2024-05-01__12-22-24__seed_6033/symbreg/2024-05-08__13-36-18",
+        "logs/train/mountain_car/test/2024-05-03__15-46-58__seed_6033/symbreg/2024-05-13__10-50-45",
+        # "logs/train/acrobot/test/2024-05-01__12-22-24__seed_6033/symbreg/2024-05-08__13-36-18",
         # "logs/train/cartpole/test/2024-05-01__11-17-16__seed_6033/symbreg/2024-05-03__11-14-03",
         # "logs/train/acrobot/test/2024-05-01__12-22-24__seed_6033/symbreg/2024-05-02__02-06-38",
         # "logs/train/cartpole/test/2024-05-01__11-17-16__seed_6033/symbreg/2024-05-02__13-37-11"
@@ -159,6 +160,9 @@ def test_saved_model(symbdir, n_envs=10, n_rounds=10):
                   "link_mass_2"]
 
         fancy_names = ["Gravity", "1st Link Length", "2nd Link Length", "1st Link Mass", "2nd Link Mass"]
+    elif env_name == "mountain_car":
+        groups = ["gravity"]
+        fancy_names = ["Gravity"]
     else:
         raise NotImplementedError(f"Implement for env {env_name}")
 
@@ -181,7 +185,7 @@ def test_saved_model(symbdir, n_envs=10, n_rounds=10):
 
     params["all"] = test_params
 
-    if env_name == "cartpole":
+    if env_name in ["cartpole", "mountain_car"]:
         train_ranges = {k: {re.sub(r"(min|max).*", r"train_\1", ks): vs["train"] for ks, vs in v.items()} for k, v in
                         ranges.items()}
         test_ranges = {k: {re.sub(r"(min|max).*", r"test_\1", ks): vs["test"] for ks, vs in v.items()} for k, v in
@@ -356,7 +360,10 @@ def test_saved_model(symbdir, n_envs=10, n_rounds=10):
     fig, axes = plt.subplots(n_row, n_cols, figsize=(10, 10), sharex=False)
     for i, ob in enumerate(obs[flt].T):
         if i < len(fancy_names):
-            ax = axes[i // n_cols, i % n_cols]
+            if len(axes.shape) == 1:
+                ax = axes[i]
+            else:
+                ax = axes[i // n_cols, i % n_cols]
             ax.hist(obs[flt == False].T[i], label="Non-min Reward", alpha=.75)
             ax.hist(ob, label="Min Reward", alpha=.75)
             ax.set_title(fancy_names[i])
@@ -372,7 +379,10 @@ def test_saved_model(symbdir, n_envs=10, n_rounds=10):
     n_row = int(np.ceil(len(obs_order) / n_cols))
     fig, axes = plt.subplots(n_row, n_cols, figsize=(10, 10), sharex=False)
     for i, group in enumerate(obs_order):
-        ax = axes[i // n_cols, i % n_cols]
+        if len(axes.shape) == 1:
+            ax = axes[i]
+        else:
+            ax = axes[i // n_cols, i % n_cols]
         group_vals = record[group]
         ns = group_vals["nn"]
         obs = np.array(ns[1])
@@ -414,7 +424,10 @@ def test_saved_model(symbdir, n_envs=10, n_rounds=10):
         n_row = int(np.ceil(len(obs_order) / n_cols))
         fig, axes = plt.subplots(n_row, n_cols, figsize=(10, 10), sharex=False)
         for i, group in enumerate(obs_order):
-            ax = axes[i // n_cols, i % n_cols]
+            if len(axes.shape) == 1:
+                ax = axes[i]
+            else:
+                ax = axes[i // n_cols, i % n_cols]
             group_vals = record[metric]
             group_index = match(np.array([metric]), np.array(obs_order))
             ns = group_vals["nn"]
@@ -457,7 +470,10 @@ def test_saved_model(symbdir, n_envs=10, n_rounds=10):
 
     fig, axes = plt.subplots(n_row, n_cols, figsize=(10, 10), sharex=False)
     for i, group in enumerate(obs_order):
-        ax = axes[i // n_cols, i % n_cols]
+        if len(axes.shape) == 1:
+            ax = axes[i]
+        else:
+            ax = axes[i // n_cols, i % n_cols]
         obs = np.array(record["all"]["nn"][1])
         x = obs[:, i].squeeze()
         y = np.array(record["all"]["nn"][0])
@@ -595,6 +611,7 @@ def run_symb_reg_local():
     # args.logdir = "logs/train/coinrun/coinrun-hparams/2024-03-27__18-20-55__seed_6033"
     # args.logdir = "logs/train/acrobot/test/2024-04-25__10-03-20__seed_6033"
     args.logdir = "logs/train/cartpole/test/2024-04-26__12-37-41__seed_40"
+    args.logdir = "logs/train/mountain_car/test/2024-05-03__15-46-58__seed_6033"
     # args.logdir = "logs/train/cartpole_swing/test/2024-05-01__14-19-53__seed_6033"
     args.n_envs = 100
     args.rounds = 300
@@ -611,7 +628,7 @@ def run_symb_reg_local():
     args.ncycles_per_iteration = 2000
     args.bumper = True
     args.loss_function = "capped_sigmoid"
-    for stoch in [False]:
+    for stoch in [True]:
         args.stochastic = stoch
         run_neurosymbolic_search(args)
 

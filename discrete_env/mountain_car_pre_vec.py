@@ -140,7 +140,7 @@ class MountainCarVecEnv(PreVecEnv):
         self.goal_velocity = goal_velocity
 
         self.force = force
-
+        self.i_g = 2
         self.low = np.array([self.min_position, -self.max_speed, self.min_gravity], dtype=np.float32)
         self.high = np.array([self.max_position, self.max_speed, self.max_gravity], dtype=np.float32)
 
