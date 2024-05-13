@@ -168,8 +168,8 @@ def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_ty
 def symbreg_hparams():
     return {
         "timeout_in_seconds": [3600 * 10],
-        "data_size": [10000, 15000, 20000],  # , 500, 100, 50],# 5000],
-        "iterations": [100, 200, 1000],  # 20, 40, 80],
+        "data_size": [1000, 2000],  # , 500, 100, 50],# 5000],
+        "iterations": [1, 5, 20],  # 20, 40, 80],
         "n_envs": [100],
         "rounds": [1000],
         "denoise": [False, True],
@@ -182,7 +182,7 @@ def symbreg_hparams():
             ["sin", "relu", "log", "exp", "sign", "sqrt", "square"],
         ],
         "wandb_tags": [["cartpole", "hparam", "multi-extrapolation", "cartpole_swing"]],
-        "model_selection": ["accuracy"],
+        "model_selection": ["accuracy", "best"],
         "weight_metric": [None, "entropy", "value"],
         # "loss_function": ["capped_sigmoid"],
         # "loss_function": ['sigmoid', 'exp', 'logitmarg', 'logitdist', 'mse', 'capped_sigmoid'],
@@ -196,8 +196,11 @@ def symbreg_hparams():
         # "logdir": ["logs/train/coinrun/coinrun-hparams/2024-04-18__08-38-17__seed_6033"],
 
         ## Actually working ones:
-        "logdir": [#"logs/train/acrobot/test/2024-05-01__12-22-24__seed_6033",
-                   "logs/train/cartpole_swing/test/2024-05-01__14-19-53__seed_6033"],
+        "logdir": [
+            # "logs/train/acrobot/test/2024-05-01__12-22-24__seed_6033",
+            "logs/train/mountain_car/test/2024-05-03__15-46-58__seed_6033",
+            # "logs/train/cartpole_swing/test/2024-05-01__14-19-53__seed_6033",
+        ],
         # "logs/train/cartpole/test/2024-05-01__11-17-14__seed_0",
         # "logs/train/cartpole/test/2024-05-01__11-17-16__seed_6033"],
 
@@ -425,7 +428,7 @@ if __name__ == '__main__':
     parser.add_argument('--hparam_type', type=str, default="symbreg")
 
     re_use_machine = False
-    specify_host = None#"gpu32"
+    specify_host = None  # "gpu32"
     if specify_host is not None and not re_use_machine:
         print("Warning - specifying host will re-use that host")
 
