@@ -172,7 +172,7 @@ def symbreg_hparams():
         "iterations": [100, 200, 1000],  # 20, 40, 80],
         "n_envs": [100],
         "rounds": [1000],
-        "denoise": [False],
+        "denoise": [False, True],
         "populations": [24],
         "procs": [8],
         "ncycles_per_iteration": [4000],
