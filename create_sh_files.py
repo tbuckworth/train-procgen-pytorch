@@ -177,7 +177,7 @@ def symbreg_hparams():
         "procs": [8],
         "ncycles_per_iteration": [4000],
         "bumper": [False],
-        "binary_operators": [["+", "-", "greater", "\*", "/"]],
+        "binary_operators": [["+", "-", "greater", "\*", "/", "cond"]],
         "unary_operators": [  # [],
             ["sin", "relu", "log", "exp", "sign", "sqrt", "square"],
         ],

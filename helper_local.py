@@ -762,7 +762,11 @@ def softmax(Y):
 
 def sample_numpy_probs(p):
     r = np.random.random(p.shape[0]).repeat(p.shape[-1]).reshape(p.shape)
-    Y_act = p.shape[-1] - (p.cumsum(1) > r).sum(1)
+    from_last = (p.cumsum(1) > r).sum(1)
+    nones = from_last == 0
+    if np.any(nones):
+        from_last[nones] = np.random.random_integers(1, p.shape[-1], sum(nones))
+    Y_act = p.shape[-1] - from_last
     return Y_act
 
 
