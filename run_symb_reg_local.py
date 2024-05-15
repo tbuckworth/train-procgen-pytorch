@@ -108,7 +108,8 @@ def test_agent_mean_reward(agent, env, print_name, n=40, return_values=False):
 
 def run_tests():
     dirs = [
-        "logs/train/mountain_car/test/2024-05-03__15-46-58__seed_6033/symbreg/2024-05-14__00-45-59",
+        "logs/train/cartpole_swing/test/2024-05-01__14-19-53__seed_6033/symbreg/2024-05-13__10-27-13",
+        #"logs/train/mountain_car/test/2024-05-03__15-46-58__seed_6033/symbreg/2024-05-14__00-45-59",
         # "logs/train/acrobot/test/2024-05-01__12-22-24__seed_6033/symbreg/2024-05-08__13-36-18",
         # "logs/train/cartpole/test/2024-05-01__11-17-16__seed_6033/symbreg/2024-05-03__11-14-03",
         # "logs/train/acrobot/test/2024-05-01__12-22-24__seed_6033/symbreg/2024-05-02__02-06-38",
@@ -185,7 +186,7 @@ def test_saved_model(symbdir, n_envs=10, n_rounds=10):
 
     params["all"] = test_params
 
-    if env_name in ["cartpole", "mountain_car"]:
+    if env_name in ["cartpole", "cartpole_swing", "mountain_car"]:
         train_ranges = {k: {re.sub(r"(min|max).*", r"train_\1", ks): vs["train"] for ks, vs in v.items()} for k, v in
                         ranges.items()}
         test_ranges = {k: {re.sub(r"(min|max).*", r"test_\1", ks): vs["test"] for ks, vs in v.items()} for k, v in
