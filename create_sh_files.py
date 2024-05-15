@@ -205,7 +205,7 @@ def symbreg_hparams():
         # "logs/train/cartpole/test/2024-05-01__11-17-16__seed_6033"],
 
         "use_wandb": [True],
-        "stochastic": [True, False],
+        "stochastic": [False],
     }
 
 
