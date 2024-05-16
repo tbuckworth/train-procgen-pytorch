@@ -5,6 +5,8 @@ from common.env.env_constructor import get_env_constructor
 from discrete_env.acrobot_pre_vec import AcrobotVecEnv
 from helper_local import sigmoid, sample_from_sigmoid, DictToArgs, map_actions_to_values, get_actions_from_all, match, \
     match_to_nearest
+from symbolic_regression import load_nn_policy
+from symbreg.agents import CustomModel, SymbolicAgent
 
 
 def symbolic_regression_function(obs):
@@ -60,19 +62,28 @@ if __name__ == "__main__":
     is_valid = False
     n_envs = 2
 
+    logdir = "logs/train/cartpole_swing/test/2024-05-01__14-19-53__seed_6033/"
+    policy, _, symbolic_agent_constructor, test_env = load_nn_policy(logdir, n_envs)
     # env = CartPoleVecEnv(n_envs, degrees=12, h_range=2.4, max_steps=500, render_mode="human")
     # env = AcrobotVecEnv(n_envs)
     env = get_env_constructor("cartpole_swing")(DictToArgs({"render": True, "seed":6033}), {}, is_valid)
     action_mapping = map_actions_to_values(get_actions_from_all(env))
 
+    cust_model = CustomModel()
+    s_agent = symbolic_agent_constructor(cust_model, policy, False, action_mapping)
+
     obs = env.reset()
     cum_rew = []
     while True:
-        act = cartpole_swing_func(obs, action_mapping)
+        # act = cartpole_swing_func(obs, action_mapping)
+        act = s_agent.forward(obs)
         ep_rew = env.n_steps[0]
         obs, rew, done, info = env.step(act)
         cum_rew += [rew[0]]
+        rewards = []
         if done[0]:
-            print(f"Episode Reward: {np.sum(cum_rew):.2f}")
+            episode_reward = np.sum(cum_rew)
+            print(f"Episode Reward: {episode_reward :.2f}")
             obs = env.reset(seed=np.random.randint(0, 5000))
             cum_rew = []
+            rewards.append(episode_reward)

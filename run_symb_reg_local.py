@@ -17,7 +17,7 @@ if os.name != "nt":
 from helper_local import add_symbreg_args, get_config, DictToArgs, sigmoid, entropy_from_binary_prob, \
     get_actions_from_all, map_actions_to_values, concat_np_list, match
 from symbolic_regression import run_neurosymbolic_search, load_nn_policy, generate_data  # , test_agent_mean_reward
-from symbreg.agents import NeuralAgent, DeterministicNeuralAgent
+from symbreg.agents import NeuralAgent, DeterministicNeuralAgent, CustomModel
 
 
 def run_deterministic_agent():
@@ -117,18 +117,23 @@ def run_tests():
     ]
     for symbdir in dirs:
         try:
-            test_saved_model(symbdir, n_envs=1000, n_rounds=1000)
+            test_saved_model(symbdir, n_envs=1000, n_rounds=1000)#, override_model=CustomModel(degrees=16))
         except Exception as e:
             print(e)
 
 
-def test_saved_model(symbdir, n_envs=10, n_rounds=10):
+def test_saved_model(symbdir, n_envs=10, n_rounds=10, override_model=None):
     # symbdir = "logs/train/acrobot/test/2024-05-01__12-22-24__seed_6033/symbreg/2024-05-02__02-06-38"
     # symbdir = "logs/train/cartpole/test/2024-05-01__11-17-16__seed_6033/symbreg/2024-05-02__12-03-40"
     # symbdir = "logs/train/cartpole/test/2024-05-01__11-17-16__seed_6033/symbreg/2024-05-02__13-37-11"
     pickle_filename = os.path.join(symbdir, "symb_reg.pkl")
     logdir = re.search(r"(logs.*)symbreg", symbdir).group(1)
     pysr_model = PySRRegressor.from_file(pickle_filename)
+    if override_model is not None:
+        pysr_model = override_model
+        name_suffix = "_cust"
+    else:
+        name_suffix = ""
     orig_cfg = get_config(logdir)
     env_name = orig_cfg["env_name"]
     cfg = get_config(symbdir)
@@ -150,6 +155,16 @@ def test_saved_model(symbdir, n_envs=10, n_rounds=10):
     if env_name == "cartpole" or env_name == "cartpole_swing":
         # test_params["max_gravity"] = 15
         # test_params["max_pole_length"] = 1.5
+        # name_suffix = "_low"
+        # test_params['min_gravity'] = 5
+        # test_params['max_gravity'] = 9.8
+        # test_params['min_cart_mass'] = 0.5
+        # test_params['max_cart_mass'] = 1.0
+        # test_params['min_pole_mass'] = 0.05
+        # test_params['max_pole_mass'] = 0.1
+        # test_params['min_pole_length'] = 0.25
+        # test_params['max_pole_length'] = 0.5
+
         groups = ["gravity", "pole_length", "cart_mass", "pole_mass"]
         fancy_names = ["Gravity", "Pole Length", "Cart Mass", "Pole Mass"]
     elif env_name == "acrobot":
@@ -267,7 +282,7 @@ def test_saved_model(symbdir, n_envs=10, n_rounds=10):
     # }
 
     # caption = ("Environment Contextual Ranges for Training and Testing.")
-    # metr_tab = wrap_latex_in_table(caption, f"{env_name}-range-table", [tf_latex, latex])
+    # metr_tab = wrap_latex_in_table(caption, f"{env_name}{name_suffix}-range-table", [tf_latex, latex])
 
     # assumes observation order = groups order
     obs_names = env.get_ob_names()
@@ -288,13 +303,13 @@ def test_saved_model(symbdir, n_envs=10, n_rounds=10):
     dfk = pd.DataFrame.from_dict({"Key": eq_dict})
     form_latex = dfk.reindex(eq_dict.keys()).to_latex()
 
-    caption = (f"{env_name} - Training Environment uses all metrics from Train Range, "
+    caption = (f"{env_name}{name_suffix} - Training Environment uses all metrics from Train Range, "
                "while `All OOD' uses all metrics from Test Range. "
                "P Value is the probability that the means are different (T-test). "
                "Bold indicates the winner when P Value is less than 0.05.")
-    label = f"{env_name}-results-table"
+    label = f"{env_name}{name_suffix}-results-table"
     perf_tab = wrap_latex_in_table(caption, label, formula, [latex, tf_latex, form_latex])
-    write_file(os.path.join(symbdir, f"{env_name}_table.tex"), [perf_tab])
+    write_file(os.path.join(symbdir, f"{env_name}{name_suffix}_table.tex"), [perf_tab])
 
     if ns_agent.single_output:
         try:
@@ -321,7 +336,7 @@ def test_saved_model(symbdir, n_envs=10, n_rounds=10):
             plt.ylabel("Symbolic Logits")
             plt.legend()
             plt.title(title)
-            plt.savefig(os.path.join(symbdir, f"{env_name}_logit.png"))
+            plt.savefig(os.path.join(symbdir, f"{env_name}{name_suffix}_logit.png"))
             plt.show()
         except Exception as e:
             pass
@@ -348,7 +363,7 @@ def test_saved_model(symbdir, n_envs=10, n_rounds=10):
     lines, labels = [sum(lol, []) for lol in zip(*lines_labels)]
     fig.legend(lines, labels, "upper left")
     fig.suptitle(title, fontsize=14, fontweight="bold")
-    plt.savefig(os.path.join(symbdir, f"{env_name}_hist.png"))
+    plt.savefig(os.path.join(symbdir, f"{env_name}{name_suffix}_hist.png"))
 
     plt.show()
 
@@ -416,7 +431,7 @@ def test_saved_model(symbdir, n_envs=10, n_rounds=10):
     lines, labels = [sum(lol, []) for lol in zip(*lines_labels)]
     fig.legend(lines, labels, "upper left")
     fig.suptitle(title, fontsize=14, fontweight="bold")
-    plt.savefig(os.path.join(symbdir, f"{env_name}_scatter1.png"))
+    plt.savefig(os.path.join(symbdir, f"{env_name}{name_suffix}_scatter1.png"))
     plt.show()
 
     for metric in obs_order:
@@ -466,7 +481,7 @@ def test_saved_model(symbdir, n_envs=10, n_rounds=10):
         lines, labels = [sum(lol, []) for lol in zip(*lines_labels)]
         fig.legend(lines, labels, "upper left")
         fig.suptitle(title, fontsize=14, fontweight="bold")
-        # plt.savefig(os.path.join(symbdir, f"{env_name}_scatter3.png"))
+        # plt.savefig(os.path.join(symbdir, f"{env_name}{name_suffix}_scatter3.png"))
         plt.show()
 
     fig, axes = plt.subplots(n_row, n_cols, figsize=(10, 10), sharex=False)
@@ -486,7 +501,7 @@ def test_saved_model(symbdir, n_envs=10, n_rounds=10):
             c=[i for i in range(np.sum(flt))]
         )
         ax.set_title(group)
-    plt.savefig(os.path.join(symbdir, f"{env_name}_scatter2.png"))
+    plt.savefig(os.path.join(symbdir, f"{env_name}{name_suffix}_scatter2.png"))
     plt.show()
 
     return None

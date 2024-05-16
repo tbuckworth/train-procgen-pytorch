@@ -6,6 +6,28 @@ from torch.nn import functional as F
 from helper_local import sigmoid, inverse_sigmoid, softmax, sample_numpy_probs, \
     match_to_nearest
 
+def greater(a, b):
+    return (a > b).astype(np.int32)
+
+class CustomModel:
+    def __init__(self, degrees=12):
+        self.theta_threshold_radians = degrees * 2 * np.pi / 360
+    def swing(self, obs):
+        x0, x1, x2, x3, x4, x5, x6, x7, x8 = obs.T
+        return np.sin(greater(np.sin(((np.sign(x3 + (np.sin(x2) / np.sin(x5))) + -0.06463726) + x2) + x2), x0) + 0.04201813)
+
+    def balance(self, obs):
+        x0, x1, x2, x3, x4, x5, x6, x7, x8 = obs.T
+        return greater(x1 + (x2+2*x3)/x7, -0.165)
+
+    def predict(self, obs):
+        x0, x1, x2, x3, x4, x5, x6, x7, x8 = obs.T
+        theta_ib = np.bitwise_and(x2 >= -self.theta_threshold_radians,
+                                  x2 <= self.theta_threshold_radians)
+        predictions = self.swing(obs)
+        predictions[theta_ib] = self.balance(obs[theta_ib])
+        return predictions
+
 
 class SymbolicAgent:
     def __init__(self, model, policy, stochastic, action_mapping):
