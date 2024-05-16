@@ -183,7 +183,7 @@ class MountainCarVecEnv(PreVecEnv):
     def get_ob_names(self):
         return [
             "Position",
-            "Speed",
+            "Velocity",
             "Gravity",
             "Right Boundary",
             "Goal Position",
