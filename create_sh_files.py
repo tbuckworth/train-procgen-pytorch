@@ -168,7 +168,7 @@ def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_ty
 def symbreg_hparams():
     return {
         "timeout_in_seconds": [3600 * 10],
-        "data_size": [1000, 2000],  # , 500, 100, 50],# 5000],
+        "data_size": [1000, 2000, 10000],  # , 500, 100, 50],# 5000],
         "iterations": [1, 5, 20],  # 20, 40, 80],
         "n_envs": [100],
         "rounds": [1000],
@@ -198,8 +198,14 @@ def symbreg_hparams():
         ## Actually working ones:
         "logdir": [
             # "logs/train/acrobot/test/2024-05-01__12-22-24__seed_6033",
-            "logs/train/mountain_car/test/2024-05-03__15-46-58__seed_6033",
-            # "logs/train/cartpole_swing/test/2024-05-01__14-19-53__seed_6033",
+            # "logs/train/mountain_car/test/2024-05-03__15-46-58__seed_6033",
+            # Best generalizer:
+            "logs/train/cartpole_swing/test/2024-05-01__14-19-53__seed_6033",
+            # low test ep reward and length:
+            "logs/train/cartpole_swing/test/2024-05-01__14-19-59__seed_6033",
+            # low test ep reward, high length:
+            "logs/train/cartpole_swing/test/2024-05-01__14-19-58__seed_6033",
+
         ],
         # "logs/train/cartpole/test/2024-05-01__11-17-14__seed_0",
         # "logs/train/cartpole/test/2024-05-01__11-17-16__seed_6033"],
