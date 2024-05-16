@@ -43,7 +43,7 @@ def cartpole_swing_func(obs, action_mapping):
     return match_to_nearest(out, action_mapping)
 
 def mountain_car_func(obs, action_mapping):
-    x0, x1, x2 = obs.T
+    x0, x1, x2, x3, x4 = obs.T
     return match_to_nearest(np.sign(x1), action_mapping)
 
 # def temp()
@@ -93,7 +93,7 @@ if __name__ == "__main__":
     # policy, _, symbolic_agent_constructor, test_env = load_nn_policy(logdir, n_envs)
     # env = CartPoleVecEnv(n_envs, degrees=12, h_range=2.4, max_steps=500, render_mode="human")
     # env = AcrobotVecEnv(n_envs)
-    env = MountainCarVecEnv(n_envs=n_envs, goal_position=0.5, render_mode="human", sparse_rewards=True)
+    env = MountainCarVecEnv(n_envs=n_envs, render_mode="human", sparse_rewards=True)
     # env = get_env_constructor("cartpole_swing")(DictToArgs({"render": True, "seed":6033}), {}, is_valid)
     action_mapping = map_actions_to_values(get_actions_from_all(env))
 

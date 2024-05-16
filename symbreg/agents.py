@@ -40,13 +40,13 @@ class SymbolicAgent:
 
 
     def forward(self, observation):
-        with torch.no_grad():
+        with (torch.no_grad()):
             h = self.model.predict(observation)
             if self.single_output:
                 if self.stochastic:
                     p = sigmoid(h)
                     return np.int32(np.random.random(len(h)) < p)
-                return np.round(h, 0)
+                return match_to_nearest(h, self.action_mapping)
             return self.pred_to_action(h)
 
     def sample(self, observation):

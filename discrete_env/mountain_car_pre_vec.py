@@ -107,17 +107,19 @@ class MountainCarVecEnv(PreVecEnv):
     def __init__(self,
                  n_envs=2,
                  goal_velocity=0,
-                 min_position=-1.2,
-                 max_position=0.6,
+                 left_boundary=-1.2,
                  min_start_position=-0.6,
                  max_start_position=-0.4,
                  max_speed=0.07,
-                 goal_position=0.5,
-                 force=0.001,
-                 max_steps=500,
+                 min_goal_position=0.5,
+                 max_goal_position=3,
                  min_gravity=0.001,
                  max_gravity=0.0025,
-                 sparse_rewards=False,
+                 min_right_boundary=0.6,
+                 max_right_boundary=5,
+                 force=0.001,
+                 max_steps=500,
+                 sparse_rewards=True,
                  seed=0,
                  render_mode: Optional[str] = None,
                  ):
@@ -126,27 +128,35 @@ class MountainCarVecEnv(PreVecEnv):
         self.sparse_rewards = sparse_rewards
         self.max_gravity = max_gravity
         self.min_gravity = min_gravity
-        self.min_position = min_position
-        self.max_position = max_position
+        self.left_boundary = left_boundary
+        self.min_right_boundary = min_right_boundary
+        self.max_right_boundary = max_right_boundary
+        self.min_goal_position = min_goal_position
+        self.max_goal_position = max_goal_position
+
         self.min_start_position = min_start_position
         self.max_start_position = max_start_position
-        assert self.min_start_position >= self.min_position, \
-            f"min_start_position ({self.min_start_position}) must be >= min_position ({self.min_position})"
-        assert self.max_start_position <= self.max_position, \
-            f"max_start_position ({self.max_start_position}) must be <= max_position ({self.max_position})"
-
+        assert self.min_start_position >= self.left_boundary, \
+            f"min_start_position ({self.min_start_position}) must be >= left_boundary ({self.left_boundary})"
+        assert self.max_start_position <= self.min_right_boundary, \
+            f"max_start_position ({self.max_start_position}) must be <= min_right_boundary ({self.min_right_boundary})"
+        assert self.max_goal_position < self.max_right_boundary, \
+            f"max_goal_postiion ({self.max_goal_position}) must be <= max_right_boundary ({self.max_right_boundary})"
         self.max_speed = max_speed
-        self.goal_position = goal_position
+        # self.goal_position = goal_position
         self.goal_velocity = goal_velocity
 
         self.force = force
         self.i_g = 2
-        self.low = np.array([self.min_position, -self.max_speed, self.min_gravity], dtype=np.float32)
-        self.high = np.array([self.max_position, self.max_speed, self.max_gravity], dtype=np.float32)
+        self.i_rb = 3
+        self.i_gp = 4
+        self.low = np.array([self.left_boundary, -self.max_speed, self.min_gravity, self.min_right_boundary, self.min_goal_position], dtype=np.float32)
+        self.high = np.array([self.max_right_boundary, self.max_speed, self.max_gravity, self.max_right_boundary, self.max_goal_position], dtype=np.float32)
 
-        self.start_space = StartSpace(low=[self.min_start_position, 0, self.min_gravity],
-                                      high=[self.max_start_position, 0, self.max_gravity],
-                                      np_random=self._np_random)
+        self.start_space = StartSpace(low=[self.min_start_position, 0, self.min_gravity, self.min_right_boundary, self.min_goal_position],
+                                      high=[self.max_start_position, 0, self.max_gravity, self.max_right_boundary, self.max_goal_position],
+                                      np_random=self._np_random,
+                                      condition=lambda x: x[:, self.i_gp] > x[:, self.i_rb])
         if self.sparse_rewards:
             self.reward = np.full(n_envs, -1.0)
             self.info = [{"env_reward": self.reward[i]} for i in range(n_envs)]
@@ -155,8 +165,11 @@ class MountainCarVecEnv(PreVecEnv):
             "goal_velocity",
             "min_position",
             "max_position",
-            "min_start_position",
-            "max_start_position",
+            "left_boundary",
+            "min_right_boundary",
+            "max_right_boundary",
+            "min_goal_position",
+            "max_goal_position",
             "max_speed",
             "goal_position",
             "force",
@@ -172,19 +185,21 @@ class MountainCarVecEnv(PreVecEnv):
             "Position",
             "Speed",
             "Gravity",
+            "Right Boundary",
+            "Goal Position",
         ]
     def transition_model(self, action: np.array):
-        position, velocity, gravity = self.state.T
+        position, velocity, gravity, right_boundary, goal_position = self.state.T
         velocity += (action - 1) * self.force + np.cos(3 * position) * (-gravity)
         velocity = np.clip(velocity, -self.max_speed, self.max_speed)
         position += velocity
-        position = np.clip(position, self.min_position, self.max_position)
+        position = np.clip(position, self.left_boundary, right_boundary)
 
-        velocity[np.bitwise_and(position == self.min_position, velocity < 0)] = 0
+        velocity[np.bitwise_and(position == self.left_boundary, velocity < 0)] = 0
 
-        self.terminated = np.bitwise_and(position >= self.goal_position, velocity >= self.goal_velocity)
+        self.terminated = np.bitwise_and(position >= goal_position, velocity >= self.goal_velocity)
 
-        self.state = np.vstack((position, velocity, gravity)).T
+        self.state = np.vstack((position, velocity, gravity, right_boundary, goal_position)).T
 
         if not self.sparse_rewards:
             self.reward = self._height(position) - 1
@@ -201,7 +216,8 @@ class MountainCarVecEnv(PreVecEnv):
         return np.sin(3 * xs) * 0.45 + 0.55
 
     def render_unique(self):
-        world_width = self.max_position - self.min_position
+        pos, velocity, gravity, right_boundary, goal_position = self.state[0].T
+        world_width = right_boundary - self.left_boundary
         scale = self.screen_width / world_width
         carwidth = 40
         carheight = 20
@@ -209,12 +225,12 @@ class MountainCarVecEnv(PreVecEnv):
         self.surf = self.pygame.Surface((self.screen_width, self.screen_height))
         self.surf.fill((255, 255, 255))
 
-        # This is where we pick the first environment:
-        pos = self.state[0, 0]
+        # # This is where we pick the first environment:
+        # pos = self.state[0, 0]
 
-        xs = np.linspace(self.min_position, self.max_position, 100)
+        xs = np.linspace(self.left_boundary, right_boundary, 100)
         ys = self._height(xs)
-        xys = list(zip((xs - self.min_position) * scale, ys * scale))
+        xys = list(zip((xs - self.left_boundary) * scale, ys * scale))
 
         self.pygame.draw.aalines(self.surf, points=xys, closed=False, color=(0, 0, 0))
 
@@ -226,7 +242,7 @@ class MountainCarVecEnv(PreVecEnv):
             c = self.pygame.math.Vector2(c).rotate_rad(math.cos(3 * pos))
             coords.append(
                 (
-                    c[0] + (pos - self.min_position) * scale,
+                    c[0] + (pos - self.left_boundary) * scale,
                     c[1] + clearance + self._height(pos) * scale,
                 )
             )
@@ -237,7 +253,7 @@ class MountainCarVecEnv(PreVecEnv):
         for c in [(carwidth / 4, 0), (-carwidth / 4, 0)]:
             c = self.pygame.math.Vector2(c).rotate_rad(math.cos(3 * pos))
             wheel = (
-                int(c[0] + (pos - self.min_position) * scale),
+                int(c[0] + (pos - self.left_boundary) * scale),
                 int(c[1] + clearance + self._height(pos) * scale),
             )
 
@@ -248,8 +264,8 @@ class MountainCarVecEnv(PreVecEnv):
                 self.surf, wheel[0], wheel[1], int(carheight / 2.5), (128, 128, 128)
             )
 
-        flagx = int((self.goal_position - self.min_position) * scale)
-        flagy1 = int(self._height(self.goal_position) * scale)
+        flagx = int((goal_position - self.left_boundary) * scale)
+        flagy1 = int(self._height(goal_position) * scale)
         flagy2 = flagy1 + 50
         self.gfxdraw.vline(self.surf, flagx, flagy1, flagy2, (0, 0, 0))
 
@@ -293,12 +309,14 @@ class MountainCarVecEnv(PreVecEnv):
 def create_mountain_car(args, hyperparameters, is_valid=False):
     param_range = {
         "goal_velocity": [0],
-        "min_position": [-1.2],
-        "max_position": [0.6],
-        "min_start_position": [-0.6],
-        "max_start_position": [-0.4],
+        "left_boundary": [-1.2],
+        # "min_start_position": [],
+        # "max_start_position": [],
+        "min_right_boundary": [0.6, 1.],
+        "max_right_boundary": [1., 5.],
         "max_speed": [0.07],
-        "goal_position": [0.5],
+        "min_goal_position": [0, 0.6],
+        "max_goal_position": [0.6, 3],
         "force": [0.001],
         "min_gravity": [0.001, 0.0015],
         "max_gravity": [0.0015, 0.0025],

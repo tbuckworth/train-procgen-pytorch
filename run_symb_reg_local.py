@@ -108,16 +108,17 @@ def test_agent_mean_reward(agent, env, print_name, n=40, return_values=False):
 
 def run_tests():
     dirs = [
-        # "logs/train/cartpole_swing/test/2024-05-01__14-19-53__seed_6033/symbreg/2024-05-13__10-27-13",
-        "logs/train/mountain_car/test/2024-05-03__15-46-58__seed_6033/symbreg/2024-05-14__00-45-59",
+        "logs/train/cartpole_swing/test/2024-05-01__14-19-53__seed_6033/symbreg/2024-05-13__10-27-13",
+        # "logs/train/mountain_car/test/2024-05-03__15-46-58__seed_6033/symbreg/2024-05-14__00-45-59",
         # "logs/train/acrobot/test/2024-05-01__12-22-24__seed_6033/symbreg/2024-05-08__13-36-18",
         # "logs/train/cartpole/test/2024-05-01__11-17-16__seed_6033/symbreg/2024-05-03__11-14-03",
         # "logs/train/acrobot/test/2024-05-01__12-22-24__seed_6033/symbreg/2024-05-02__02-06-38",
-        # "logs/train/cartpole/test/2024-05-01__11-17-16__seed_6033/symbreg/2024-05-02__13-37-11"
+        # "logs/train/cartpole/test/2024-05-01__11-17-16__seed_6033/symbreg/2024-05-02__13-37-11",
+
     ]
     for symbdir in dirs:
         try:
-            test_saved_model(symbdir, n_envs=1000, n_rounds=1000)#, override_model=CustomModel(degrees=16))
+            test_saved_model(symbdir, n_envs=1000, n_rounds=10)#, override_model=CustomModel(degrees=16))
         except Exception as e:
             print(e)
 
