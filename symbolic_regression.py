@@ -38,7 +38,7 @@ pysr_loss_functions = {
     "perceptron": "PerceptronLoss()",
     "logitdist": "LogitDistLoss()",
     "mse": "loss(prediction, target) = (prediction - target)^2",
-    "mce": "loss(prediction, target) = (prediction - target)^3",
+    "mce": "loss(prediction, target) = abs(prediction - target)^3",
     "capped_sigmoid": "loss(y_hat, y) = 1 - tanh(y*y_hat) + abs(y_hat-y)",
 }
 
