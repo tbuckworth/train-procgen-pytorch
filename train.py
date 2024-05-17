@@ -51,6 +51,7 @@ def train_ppo(args):
         "sparsity_coef",
         "normalize_rew",
         "gamma",
+        "lmbda",
         "learning_rate",
         "entropy_coef",
         "fs_coef",
