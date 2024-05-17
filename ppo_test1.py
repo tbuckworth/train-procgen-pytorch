@@ -55,7 +55,7 @@ class TestPPO(unittest.TestCase):
         env = MountainCarVecEnv(n_envs=n_envs)
         env.reset()
 
-        hyperparameters = {"n_envs": n_envs, "architecture": "mlpmodel", "n_steps": self.n_steps}
+        hyperparameters = {"n_envs": n_envs, "architecture": "mlpmodel", "n_steps": self.n_steps, "lmbda":0.98}
         model, obs_shape, policy = initialize_model(self.device, env, hyperparameters)
         logger = Logger(hyperparameters.get("n_envs"), self.logdir, use_wandb=False, has_vq=False)
         logger.max_steps = 1000
