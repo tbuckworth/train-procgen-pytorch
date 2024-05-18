@@ -51,7 +51,12 @@ def find_model(X, Y, symbdir, save_file, weights, args):
         unary_operators=args.unary_operators,
         weights=weights,
         denoise=args.denoise,
-        extra_sympy_mappings={"greater": lambda x, y: sympy.Piecewise((1.0, x > y), (0.0, True))},
+        extra_sympy_mappings={"greater": lambda x, y: sympy.Piecewise((1.0, x > y), (0.0, True)),
+                              "bal1": lambda x2, x3: x2+2*x3,
+                              "bal2": lambda x1, x2: sympy.Piecewise((1.0, x1 + x2 > -0.165), (0.0, True)),
+                              },
+
+        # "balance": lambda x1, x2, x3, x7: sympy.Piecewise((1.0, x1 + (x2+2*x3)/x7 > -0.165), (0.0, True))},
         elementwise_loss=pysr_loss_functions[args.loss_function],
         timeout_in_seconds=args.timeout_in_seconds,
         populations=args.populations,

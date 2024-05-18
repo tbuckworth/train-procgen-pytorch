@@ -168,22 +168,22 @@ def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_ty
 def symbreg_hparams():
     return {
         "timeout_in_seconds": [3600 * 10],
-        "data_size": [1000, 2000, 10000],  # , 500, 100, 50],# 5000],
-        "iterations": [1, 5, 20],  # 20, 40, 80],
+        "data_size": [10000],  # , 500, 100, 50],# 5000],
+        "iterations": [200],  # 20, 40, 80],
         "n_envs": [100],
         "rounds": [1000],
-        "denoise": [False, True],
+        "denoise": [True],
         "populations": [24],
         "procs": [8],
         "ncycles_per_iteration": [4000],
         "bumper": [False],
-        "binary_operators": [["+", "-", "greater", "\*", "/", "cond"]],
+        "binary_operators": [["+", "-", "greater", "\*", "/", "cond", "bal1", "bal2"]],
         "unary_operators": [  # [],
             ["sin", "relu", "log", "exp", "sign", "sqrt", "square"],
         ],
         "wandb_tags": [["cartpole", "hparam", "multi-extrapolation", "cartpole_swing"]],
-        "model_selection": ["accuracy", "best"],
-        "weight_metric": [None, "entropy", "value"],
+        "model_selection": ["accuracy"],
+        "weight_metric": ["value"],
         # "loss_function": ["capped_sigmoid"],
         # "loss_function": ['sigmoid', 'exp', 'logitmarg', 'logitdist', 'mse', 'capped_sigmoid'],
         "loss_function": ['mse', 'capped_sigmoid', "logitdist", "sigmoid", "mce"],  # 'exp', 'sigmoid', 'logitdist', ],
@@ -432,11 +432,11 @@ if __name__ == '__main__':
     parser.add_argument('--n_gpu', type=int, default=6)
     parser.add_argument('--execute', action="store_true", default=True)
     # parser.add_argument('--cuda', action="store_true", default=False)
-    parser.add_argument('--max_runs', type=int, default=1800)
+    parser.add_argument('--max_runs', type=int, default=200)
     parser.add_argument('--hparam_type', type=str, default="symbreg")
 
-    re_use_machine = True
-    specify_host = "gpu34"
+    re_use_machine = False
+    specify_host = None #"gpu34"
     if specify_host is not None and not re_use_machine:
         print("Warning - specifying host will re-use that host")
 
