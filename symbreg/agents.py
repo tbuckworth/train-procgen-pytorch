@@ -204,3 +204,42 @@ class NeuroSymbolicAgent:
             y = z[:, (1, 3)]
             act = dist.sample()
         return x.cpu().numpy(), y, act.cpu().numpy(), value.cpu().numpy()
+
+
+
+
+class MostlyNeuralAgent:
+    def __init__(self, model, policy, stochastic, action_mapping):
+        self.model = model
+        self.policy = policy
+        self.stochastic = stochastic
+        self.action_mapping = action_mapping
+        self.single_output = self.policy.action_size <= 2
+        self.n = len(np.unique(self.action_mapping)) // 2
+
+    def forward(self, observation):
+        with torch.no_grad():
+            obs = torch.FloatTensor(observation).to(self.policy.device)
+            x = self.policy.embedder(obs)
+            h = self.model.predict(x)
+            return self.pred_to_action(h)
+
+    def pred_to_action(self, h):
+        if self.stochastic:
+            logits = torch.FloatTensor(h).to(self.policy.device)
+            log_probs = F.log_softmax(logits, dim=1)
+            p = Categorical(logits=log_probs)
+            act = p.sample()
+            return act.cpu().numpy()
+        return match_to_nearest(h, self.action_mapping)
+
+    def sample(self, observation):
+        with torch.no_grad():
+            obs = torch.FloatTensor(observation).to(self.policy.device)
+            x = self.policy.embedder(obs)
+            dist, value = self.policy.hidden_to_output(x)
+            y = dist.logits.detach().cpu().numpy()
+            act = dist.sample().cpu().numpy()
+            if not self.stochastic:
+                act = y.argmax(axis=1)
+        return x.cpu().numpy(), y, act, value.cpu().numpy()

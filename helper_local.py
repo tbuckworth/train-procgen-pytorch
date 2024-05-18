@@ -215,7 +215,8 @@ def initialize_model(device, env, hyperparameters):
         model = NatureModel(in_channels=in_channels)
     elif architecture == 'impala':
         output_dim = hyperparameters.get("output_dim", 256)
-        model = ImpalaModel(in_channels=in_channels, output_dim=output_dim)
+        latent_dim = hyperparameters.get("latent_dim", 32)
+        model = ImpalaModel(in_channels=in_channels, output_dim=output_dim, latent_dim=latent_dim)
     elif architecture == 'vqmha':
         has_vq = False
         mha_layers = hyperparameters.get("mha_layers", 1)
@@ -254,17 +255,20 @@ def initialize_model(device, env, hyperparameters):
         reduce = hyperparameters.get('pool_direction', 'feature_wise')
         levels = hyperparameters.get('levels')
         n_impala_blocks = hyperparameters.get("n_impala_blocks", 3)
+        latent_override = hyperparameters.get("latent_dim", 16)
         model = ImpalaFSQMHAModel(in_channels, mha_layers, device, observation_shape, reduce,
-                                  n_impala_blocks=n_impala_blocks, levels=levels, no_quant=True)
+                                  n_impala_blocks=n_impala_blocks, levels=levels, no_quant=True,
+                                  latent_override=latent_override)
     elif architecture == 'impalaitn':
         mha_layers = hyperparameters.get("mha_layers", 2)
         reduce = hyperparameters.get('pool_direction', 'feature_wise')
         levels = hyperparameters.get('levels')
         n_impala_blocks = hyperparameters.get("n_impala_blocks", 3)
         use_intention = hyperparameters.get("use_intention", True)
+        latent_override = hyperparameters.get("latent_dim", 16)
         model = ImpalaFSQMHAModel(in_channels, mha_layers, device, observation_shape, reduce,
                                   n_impala_blocks=n_impala_blocks, levels=levels, use_intention=use_intention,
-                                  no_quant=True)
+                                  no_quant=True, latent_override=latent_override)
     elif architecture == 'ribmha':
         model = ribMHA(in_channels, device, observation_shape)
     elif architecture == 'ribfsqmha':

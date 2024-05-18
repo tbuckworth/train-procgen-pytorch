@@ -99,6 +99,7 @@ hard-500-impala:
     recurrent: False
     output_dim: 256
     fs_coef: 0.
+    latent_dim: 32
 
 hard-500-impalavq:
     algo: ppo
@@ -308,6 +309,7 @@ hard-500-impalamha:
     pool_direction: dim_wise
     levels: [9, 9, 9]
     n_impala_blocks: 3
+    latent_override: 3
 
 hard-500-impalaitn:
     algo: ppo

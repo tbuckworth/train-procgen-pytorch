@@ -328,10 +328,30 @@ def cartpole_hparams():
         # "fs_coef": [0.0001, 0.001, 0.01, 0.1, 0.5, 1.0, 2.0, 5.0, 10.0],
     }
 
+def coinrun_mostlyneural_hparams():
+    return {
+        "exp_name": ['coinrun-hparams'],
+        "env_name": ['coinrun'],
+        # "distribution_mode": ['hard'],
+        "param_name": ['hard-500-impala'],
+        "device": ["gpu"],
+        "num_timesteps": [int(20e8)],
+        "seed": [6033],
+        # "n_minibatch": None,
+        # "mini_batch_size": None,
+        # "wandb_name": None,
+        # "wandb_group": None,
+        "wandb_tags": [["mostly-neural", "impala"]],
+        # "detect_nan": False,
+        "use_wandb": [True],
+        "mirror_env": [False],
+        "use_valid_env": [True],
+        "output_dim": [12, 24],
+    }
 
 def train_hparams():
     # return continue_run("logs/train/mountain_car/test/2024-04-25__05-18-36__seed_6033")
-    return mountain_car_hparams()
+    return coinrun_mostlyneural_hparams()
 
 
 def continue_run(logdir):

@@ -160,13 +160,13 @@ scale = 1
 
 class ImpalaModel(nn.Module):
     def __init__(self,
-                 in_channels, output_dim=256,
+                 in_channels, output_dim=256, latent_dim=32,
                  **kwargs):
         super(ImpalaModel, self).__init__()
         self.block1 = ImpalaBlock(in_channels=in_channels, out_channels=16 * scale)
         self.block2 = ImpalaBlock(in_channels=16 * scale, out_channels=32 * scale)
-        self.block3 = ImpalaBlock(in_channels=32 * scale, out_channels=32 * scale)
-        self.fc = nn.Linear(in_features=32 * scale * 8 * 8, out_features=output_dim)
+        self.block3 = ImpalaBlock(in_channels=32 * scale, out_channels=latent_dim * scale)
+        self.fc = nn.Linear(in_features=latent_dim * scale * 8 * 8, out_features=output_dim)
 
         self.output_dim = output_dim
         self.apply(xavier_uniform_init)
@@ -552,7 +552,7 @@ class ImpalaVQMHAModel(QuantizedMHAModel):
 
 class FSQMHAModel(QuantizedMHAModel):
     def __init__(self, in_channels, hid_channels, mha_layers, device, obs_shape, reduce, encoder_constructor,
-                 levels=[8, 5, 5, 5], n_blocks=3, use_intention=False, no_quant=False, **kwargs):
+                 levels=[8, 5, 5, 5], n_blocks=3, use_intention=False, no_quant=False, latent_override=16, **kwargs):
         input_shape = obs_shape
         self.device = device
         self.mha_layers = mha_layers
@@ -562,7 +562,7 @@ class FSQMHAModel(QuantizedMHAModel):
         latent_dim = len(levels) + 2
         if no_quant:
             quantizer = None
-            latent_dim = 16
+            latent_dim = latent_override
         encoder = encoder_constructor(in_channels, hid_channels, latent_dim, n_blocks)
         n_latents = encoder.get_n_latents(input_shape)
 
@@ -573,12 +573,12 @@ class FSQMHAModel(QuantizedMHAModel):
 
 class ImpalaFSQMHAModel(FSQMHAModel):
     def __init__(self, in_channels, mha_layers, device, obs_shape, reduce, n_impala_blocks=3, levels=[8, 5, 5, 5],
-                 use_intention=False, no_quant=False,
+                 use_intention=False, no_quant=False, latent_override=16,
                  **kwargs):
         hid_channels = 16
         encoder_constructor = ImpalaCNN
         super(ImpalaFSQMHAModel, self).__init__(in_channels, hid_channels, mha_layers, device, obs_shape, reduce,
-                                                encoder_constructor, levels, n_impala_blocks, use_intention, no_quant)
+                                                encoder_constructor, levels, n_impala_blocks, use_intention, no_quant, latent_override)
 
 
 class RibFSQMHAModel(FSQMHAModel):
