@@ -578,7 +578,8 @@ class ImpalaFSQMHAModel(FSQMHAModel):
         hid_channels = 16
         encoder_constructor = ImpalaCNN
         super(ImpalaFSQMHAModel, self).__init__(in_channels, hid_channels, mha_layers, device, obs_shape, reduce,
-                                                encoder_constructor, levels, n_impala_blocks, use_intention, no_quant, latent_override)
+                                                encoder_constructor, levels, n_impala_blocks, use_intention, no_quant,
+                                                latent_override)
 
 
 class RibFSQMHAModel(FSQMHAModel):
@@ -953,3 +954,46 @@ class MLPModel(nn.Module):
 
     def forward(self, x):
         return self.model(x)
+
+
+class GraphTransitionModel(nn.Module):
+    def __init__(self, in_channels, depth, mid_weight, latent_size):
+        super(GraphTransitionModel, self).__init__()
+        self.input_size = in_channels
+        self.depth = depth
+        self.mid_weight = mid_weight
+        self.output_dim = latent_size
+
+        self.messenger = MLPModel(5, depth, mid_weight, latent_size)
+        self.updater = MLPModel(3, depth, mid_weight, latent_size)
+
+        self.apply(xavier_uniform_init)
+
+    def concater(self, x, y, axis):
+        return torch.concat([x.unsqueeze(axis), y.unsqueeze(axis)], axis=axis)
+
+    def msg_pass(self, x, y, action):
+        h = torch.concat([x, y, action.unsqueeze(-1)], -1)
+        return self.messenger(h)
+
+    def update(self, x, y):
+        h = torch.concat([x, y.unsqueeze(-1)], -1)
+        return self.updater(h)
+
+    def forward(self, obs, action):
+        # Normalize actions?
+        x = self.append_index(obs)
+        n = x.shape[-2]
+        updates = [self.update(x[:, i], self.sum_messages(i, n, x, action)) for i in range(n)]
+        return torch.concat(updates, dim=-1)
+
+    def sum_messages(self, i, n, x, action):
+        messages = [self.msg_pass(x[:, i], x[:, j], action) for j in range(n)]
+        h = torch.sum(torch.concat(messages, -1), dim=-1)
+        return h
+
+    def append_index(self, x):
+        n = x.shape[-1]
+        coor = torch.FloatTensor([i / n for i in range(n)])
+        all_coor = torch.tile(coor, (x.shape[0], 1))
+        return self.concater(x, all_coor, -1)

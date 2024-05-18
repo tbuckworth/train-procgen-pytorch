@@ -18,7 +18,7 @@ import platform
 from matplotlib import pyplot as plt
 
 from common.model import NatureModel, ImpalaModel, MHAModel, ImpalaVQModel, ImpalaVQMHAModel, ImpalaFSQModel, ribMHA, \
-    ImpalaFSQMHAModel, RibFSQMHAModel, MLPModel, TransformoBot
+    ImpalaFSQMHAModel, RibFSQMHAModel, MLPModel, TransformoBot, GraphTransitionModel
 from common.policy import CategoricalPolicy
 from moviepy.editor import ImageSequenceClip
 
@@ -285,6 +285,11 @@ def initialize_model(device, env, hyperparameters):
         n_layers = hyperparameters.get("n_layers", 2)
         # n_heads = hyperparameters.get("n_heads", 1)
         model = TransformoBot(in_channels, n_layers)
+    elif architecture == "graph-transition":
+        depth = hyperparameters.get("depth", 4)
+        mid_weight = hyperparameters.get("mid_weight", 64)
+        latent_size = hyperparameters.get("latent_size", 256)
+        model = GraphTransitionModel(in_channels, depth, mid_weight, latent_size)
     else:
         raise NotImplementedError(f"Architecture:{architecture} not found in helper.py")
     # Discrete action space

@@ -194,6 +194,8 @@ def train_ppo(args):
     algo = hyperparameters.get('algo', 'ppo')
     if algo == 'ppo':
         from agents.ppo import PPO as AGENT
+    if algo == 'ppo_model':
+        from agents.ppo_model import PPOModel as AGENT
     else:
         raise NotImplementedError
 

@@ -4,11 +4,12 @@ import numpy as np
 from numpy import cos,sin,pi
 
 from common.env.env_constructor import get_env_constructor
+from create_sh_files import train_hparams, symbreg_hparams
 from helper_local import free_gpu
 from cartpole.cartpole_pre_vec import CartPoleVecEnv
 import gymnasium
 from discrete_env.acrobot_pre_vec import rk4 as rk4_pre_vec
-from discrete_env.acrobot import rk4 as rk4_gymnasium
+# from discrete_env.acrobot import rk4 as rk4_gymnasium
 
 def compute_pairwise_affinities(X, perplexity=30.0, epsilon=1e-8):
     # Compute pairwise Euclidean distances
@@ -283,6 +284,15 @@ def acrobot_gymnasium():
     test_func = lambda y0: np.allclose(np.asarray(dsdt_pre_vec(env_pv,y0)).T[0],
                                        dsdt_gymnasium(env, y0[0]))
 
+def get_n_create_sh_files():
+    hparams = train_hparams()
+    n_experiments = np.prod([len(hparams[x]) for x in hparams.keys()])
+    print(f"Train experiments: {n_experiments}.")
+    hparams = symbreg_hparams()
+    n_experiments = np.prod([len(hparams[x]) for x in hparams.keys()])
+    print(f"Symbreg experiments: {n_experiments}.")
+
+
 
 if __name__ == "__main__":
-    acrobot_gymnasium()
+    get_n_create_sh_files()

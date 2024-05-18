@@ -1,3 +1,5 @@
+from torch.nn import MSELoss
+
 from .base_agent import BaseAgent
 from common.misc_util import adjust_lr, get_n_params, cross_batch_entropy, attention_entropy, adjust_lr_grok, \
     sparsity_loss
@@ -16,6 +18,7 @@ class PPOModel(BaseAgent):
                  n_checkpoints,
                  env_valid=None,
                  storage_valid=None,
+                 transition_model=None,
                  n_steps=128,
                  n_envs=8,
                  epoch=3,
@@ -40,6 +43,8 @@ class PPOModel(BaseAgent):
         super(PPOModel, self).__init__(env, policy, logger, storage, device,
                                        n_checkpoints, env_valid, storage_valid)
 
+        self.transition_model = transition_model
+        self.t_optimizer = optim.Adam(self.transition_model.parameters(), lr=learning_rate, eps=1e-5)
         self.fs_coef = fs_coef
         self.total_timesteps = 0
         self.entropy_scaling = entropy_scaling
@@ -127,7 +132,11 @@ class PPOModel(BaseAgent):
                 # remove atn_batch_list from gpu?
                 dist_batch, value_batch = self.policy.hidden_to_output(feature_batch)
 
-                self.transition_model(feature_batch, act_batch)
+                obs_guess = self.transition_model(obs_batch, act_batch)
+                t_loss = MSELoss()(obs_guess, act_batch)
+                t_loss.backward()
+                self.t_optimizer.step()
+                self.t_optimizer.zero_grad()
 
                 # Clipped Surrogate Objective
                 log_prob_act_batch = dist_batch.log_prob(act_batch)
