@@ -19,11 +19,11 @@ if __name__ == '__main__':
     # args.use_valid_env = False
     # args.render = True
     
-    args.env_name = "mountain_car"
+    args.env_name = "cartpole"
     args.start_level = 0
     args.num_levels = 500
     args.distribution_mode = "easy"
-    args.param_name = "mlpmodel"
+    args.param_name = "graph-transition"
     args.device = "cpu"
     args.gpu_device = 0
     args.num_timesteps = 200000000
