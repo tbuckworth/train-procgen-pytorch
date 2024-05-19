@@ -76,12 +76,15 @@ class TransitionPolicy(nn.Module):
     def is_recurrent(self):
         return False
 
+    def actions_like(self, s, i):
+        return torch.full((s.shape[:-1]), i).to(device=self.device)
+
     def forward(self, x):
         v = self.value(x)
 
         s = x
         for _ in range(self.n_rollouts):
-            next_states = [self.transition_model(s, torch.full((s.shape[:-1]), i)).unsqueeze(1) for i in range(self.action_size)]
+            next_states = [self.transition_model(s, self.actions_like(s, i)).unsqueeze(1) for i in range(self.action_size)]
             s = torch.concat(next_states, dim=1)
 
         vs = self.value(s).squeeze()
