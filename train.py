@@ -1,5 +1,5 @@
 from common.logger import Logger
-from common.storage import Storage
+from common.storage import Storage, BasicStorage
 from common import set_global_seeds, set_global_log_levels
 
 import os, time, argparse
@@ -175,9 +175,11 @@ def train_ppo(args):
     ###########
     ## MODEL ##
     ###########
+    algo = hyperparameters.get('algo', 'ppo')
+
     print('INTIALIZING MODEL...')
     model, observation_shape, policy = initialize_model(device, env, hyperparameters)
-    logger = Logger(n_envs, logdir, use_wandb=args.use_wandb, has_vq=policy.has_vq)
+    logger = Logger(n_envs, logdir, use_wandb=args.use_wandb, has_vq=policy.has_vq, transition_model=algo=="ppo_model")
     logger.max_steps = max_steps
     #############
     ## STORAGE ##
@@ -187,11 +189,15 @@ def train_ppo(args):
     storage = Storage(observation_shape, hidden_state_dim, n_steps, n_envs, device)
     storage_valid = Storage(observation_shape, hidden_state_dim, n_steps, n_envs,
                             device) if args.use_valid_env else None
+    if algo == "ppo_model":
+        storage = BasicStorage(observation_shape, n_steps, n_envs, device)
+        storage_valid = BasicStorage(observation_shape, n_steps, n_envs,
+                                device) if args.use_valid_env else None
+
     ###########
     ## AGENT ##
     ###########
     print('INTIALIZING AGENT...')
-    algo = hyperparameters.get('algo', 'ppo')
     if algo == 'ppo':
         from agents.ppo import PPO as AGENT
     if algo == 'ppo_model':
