@@ -485,8 +485,8 @@ if __name__ == '__main__':
     parser.add_argument('--max_runs', type=int, default=200)
     parser.add_argument('--hparam_type', type=str, default="symbreg")
 
-    re_use_machine = False
-    specify_host = None #"gpu34"
+    re_use_machine = True
+    specify_host = "gpu29"#None #"gpu34"
     if specify_host is not None and not re_use_machine:
         print("Warning - specifying host will re-use that host")
 
