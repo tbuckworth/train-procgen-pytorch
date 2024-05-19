@@ -440,6 +440,7 @@ def add_training_args(parser):
     parser.add_argument('--gamma', type=float, default=None)
     parser.add_argument('--lmbda', type=float, default=None)
     parser.add_argument('--learning_rate', type=float, default=None)
+    parser.add_argument('--t_learning_rate', type=float, default=None)
     parser.add_argument('--entropy_coef', type=float, default=None)
     parser.add_argument('--n_envs', type=int, default=None)
     parser.add_argument('--n_steps', type=int, default=None)

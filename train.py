@@ -53,6 +53,7 @@ def train_ppo(args):
         "gamma",
         "lmbda",
         "learning_rate",
+        "t_learning_rate",
         "entropy_coef",
         "fs_coef",
         "output_dim",
