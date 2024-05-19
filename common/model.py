@@ -996,5 +996,5 @@ class GraphTransitionModel(nn.Module):
         n = x.shape[-1]
         coor = torch.FloatTensor([i / n for i in range(n)])
         shp = [i for i in x.shape[:-1]] + [1]
-        all_coor = torch.tile(coor, shp)
+        all_coor = torch.tile(coor, shp).to(device=self.device)
         return self.concater(x, all_coor, -1)
