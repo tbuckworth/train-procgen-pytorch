@@ -103,12 +103,12 @@ class PPOModel(BaseAgent):
             generator = self.storage.fetch_train_generator(mini_batch_size=self.mini_batch_size,
                                                            recurrent=recurrent)
             for sample in generator:
-                obs_batch, hidden_state_batch, act_batch, done_batch, \
-                    old_log_prob_act_batch, old_value_batch, return_batch, adv_batch = sample
+                obs_batch, nobs_batch, act_batch, done_batch, \
+                    old_value_batch, return_batch, adv_batch = sample
                 dist_batch, value_batch = self.policy(obs_batch)
 
-                obs_guess = self.policy.transition_model(obs_batch, act_batch)
-                t_loss = MSELoss()(obs_guess, act_batch)
+                nobs_guess = self.policy.transition_model(obs_batch, act_batch)
+                t_loss = MSELoss()(nobs_guess, nobs_batch)
                 t_loss.backward()
                 self.t_optimizer.step()
                 self.t_optimizer.zero_grad()

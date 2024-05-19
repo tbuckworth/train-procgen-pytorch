@@ -6,7 +6,7 @@ from agents.ppo_model import PPOModel
 from common.env.env_constructor import get_env_constructor
 from common.env.procgen_wrappers import create_env
 from common.logger import Logger
-from common.storage import Storage
+from common.storage import Storage, BasicStorage
 from discrete_env.mountain_car_pre_vec import MountainCarVecEnv
 from helper_local import initialize_model, get_hyperparams
 
@@ -80,7 +80,8 @@ class TestPPOModel(unittest.TestCase):
         n_envs = 2
         cls.device = torch.device('cpu')
         env_con = get_env_constructor("cartpole")
-        cls.env = env_con()
+        hyperparameters = {"n_envs": n_envs}
+        cls.env = env_con(None, hyperparameters)
         cls.in_channels = cls.env.observation_space.shape[0]
         cls.obs = torch.FloatTensor(cls.env.reset())
         cls.obs_shape = cls.env.observation_space.shape
@@ -93,11 +94,10 @@ class TestPPOModel(unittest.TestCase):
         cls.n_steps = hyperparameters.get("n_steps", 256)
         hyperparameters["n_envs"] = n_envs
         model, obs_shape, policy = initialize_model(cls.device, cls.env, hyperparameters)
-        logger = Logger(n_envs, logdir, use_wandb=False, has_vq=False)
+        logger = Logger(n_envs, logdir, use_wandb=False, has_vq=False, transition_model=True)
         logger.max_steps = 500
 
-        hidden_state_dim = model.output_dim
-        storage = Storage(cls.obs_shape, hidden_state_dim, cls.n_steps, n_envs, cls.device)
+        storage = BasicStorage(cls.obs_shape, cls.n_steps, n_envs, cls.device)
 
         cls.agent = PPOModel(cls.env, policy, logger, storage, cls.device,
                     1, **hyperparameters)
