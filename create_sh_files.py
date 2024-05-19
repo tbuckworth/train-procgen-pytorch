@@ -349,9 +349,39 @@ def coinrun_mostlyneural_hparams():
         "output_dim": [12, 24],
     }
 
+
+def cartpole_graph_transition_hparams():
+    return {
+        "exp_name": [None],
+        "env_name": ['cartpole'],
+        # "distribution_mode": ['hard'],
+        "param_name": ['graph-transition'],
+        "device": ["gpu"],
+        "num_timesteps": [int(2e7)],
+        "seed": [6033],  # 0, 1, 101, 40],
+        "gamma": [0.95],# 0.9],
+        "learning_rate": [0.0005],# 0.001, 0.00025, 0.01],
+        "t_learning_rate": [0.0005],# 0.001, 0.00025, 0.01],
+        "n_envs": [512],#[1024, 512, 32],
+        "n_steps": [256],
+        # "n_minibatch": None,
+        # "mini_batch_size": None,
+        # "wandb_name": None,
+        # "wandb_group": None,
+        "wandb_tags": [["graph-transition", "multi-extrapolation"]],
+        # "detect_nan": False,
+        "use_wandb": [True],
+        "mirror_env": [False],
+        "use_valid_env": [True],
+        # "output_dim": [256, 1, 9],
+        # "fs_coef": [0.0001, 0.001, 0.01, 0.1, 0.5, 1.0, 2.0, 5.0, 10.0],
+    }
+
+
+
 def train_hparams():
     # return continue_run("logs/train/mountain_car/test/2024-04-25__05-18-36__seed_6033")
-    return coinrun_mostlyneural_hparams()
+    return cartpole_graph_transition_hparams()
 
 
 def continue_run(logdir):

@@ -26,6 +26,7 @@ class PPOModel(BaseAgent):
                  gamma=0.99,
                  lmbda=0.95,
                  learning_rate=2.5e-4,
+                 t_learning_rate=2.5e-4,
                  grad_clip_norm=0.5,
                  eps_clip=0.2,
                  value_coef=0.5,
@@ -43,7 +44,7 @@ class PPOModel(BaseAgent):
                                        n_checkpoints, env_valid, storage_valid)
 
         # self.transition_model = transition_model
-        self.t_optimizer = optim.Adam(self.policy.transition_model.parameters(), lr=learning_rate, eps=1e-5)
+        self.t_optimizer = optim.Adam(self.policy.transition_model.parameters(), lr=t_learning_rate, eps=1e-5)
         self.fs_coef = fs_coef
         self.total_timesteps = 0
         self.entropy_scaling = entropy_scaling
