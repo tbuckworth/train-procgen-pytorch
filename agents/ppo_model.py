@@ -18,7 +18,6 @@ class PPOModel(BaseAgent):
                  n_checkpoints,
                  env_valid=None,
                  storage_valid=None,
-                 transition_model=None,
                  n_steps=128,
                  n_envs=8,
                  epoch=3,
@@ -43,8 +42,8 @@ class PPOModel(BaseAgent):
         super(PPOModel, self).__init__(env, policy, logger, storage, device,
                                        n_checkpoints, env_valid, storage_valid)
 
-        self.transition_model = transition_model
-        self.t_optimizer = optim.Adam(self.transition_model.parameters(), lr=learning_rate, eps=1e-5)
+        # self.transition_model = transition_model
+        self.t_optimizer = optim.Adam(self.policy.transition_model.parameters(), lr=learning_rate, eps=1e-5)
         self.fs_coef = fs_coef
         self.total_timesteps = 0
         self.entropy_scaling = entropy_scaling
@@ -60,7 +59,7 @@ class PPOModel(BaseAgent):
         self.gamma = gamma
         self.lmbda = lmbda
         self.learning_rate = learning_rate
-        self.optimizer = optim.Adam(self.policy.parameters(), lr=learning_rate, eps=1e-5)
+        self.optimizer = optim.Adam(self.policy.value.parameters(), lr=learning_rate, eps=1e-5)
         self.grad_clip_norm = grad_clip_norm
         self.eps_clip = eps_clip
         self.value_coef = value_coef
@@ -77,22 +76,10 @@ class PPOModel(BaseAgent):
     def predict(self, obs):
         with torch.no_grad():
             obs = torch.FloatTensor(obs).to(device=self.device)
-            dist, value, _ = self.policy(obs, None, None)
+            dist, value = self.policy(obs)
             act = dist.sample()
         return act.cpu().numpy(), value.cpu().numpy()
 
-    def predict_w_value_saliency(self, obs, hidden_state, done):
-        obs = torch.FloatTensor(obs).to(device=self.device)
-        obs.requires_grad_()
-        obs.retain_grad()
-        hidden_state = torch.FloatTensor(hidden_state).to(device=self.device)
-        mask = torch.FloatTensor(1 - done).to(device=self.device)
-        dist, value, hidden_state = self.policy(obs, hidden_state, mask)
-        value.backward(retain_graph=True)
-        act = dist.sample()
-        log_prob_act = dist.log_prob(act)
-
-        return act.detach().cpu().numpy(), log_prob_act.detach().cpu().numpy(), value.detach().cpu().numpy(), hidden_state.detach().cpu().numpy(), obs.grad.data.detach().cpu().numpy()
 
     def optimize(self):
         mean_rew = np.mean(self.logger.episode_reward_buffer)
@@ -120,7 +107,7 @@ class PPOModel(BaseAgent):
                     old_log_prob_act_batch, old_value_batch, return_batch, adv_batch = sample
                 dist_batch, value_batch = self.policy(obs_batch)
 
-                obs_guess = self.transition_model(obs_batch, act_batch)
+                obs_guess = self.policy.transition_model(obs_batch, act_batch)
                 t_loss = MSELoss()(obs_guess, act_batch)
                 t_loss.backward()
                 self.t_optimizer.step()
@@ -164,13 +151,12 @@ class PPOModel(BaseAgent):
             # Run Policy
             self.policy.eval()
             for _ in range(self.n_steps):
-                act, value = self.sample_action(obs)
-                # act, value = self.predict(obs, None, None)
+                act, value = self.predict(obs)
                 next_obs, rew, done, info = self.env.step(act)
                 self.storage.store(obs, act, rew, done, info, value)
                 obs = next_obs
             value_batch = self.storage.value_batch[:self.n_steps]
-            _, last_val = self.predict(obs, None, None)
+            _, last_val = self.predict(obs)
             self.storage.store_last(obs, last_val)
             # Compute advantage estimates
             self.storage.compute_estimates(self.gamma, self.lmbda, self.use_gae, self.normalize_adv)
@@ -178,13 +164,13 @@ class PPOModel(BaseAgent):
             # valid
             if self.env_valid is not None:
                 for _ in range(self.n_steps):
-                    act_v, value_v = self.predict(obs_v, None, None)
+                    act_v, value_v = self.predict(obs_v)
                     next_obs_v, rew_v, done_v, info_v = self.env_valid.step(act_v)
                     self.storage_valid.store(obs_v, act_v,
                                              rew_v, done_v, info_v,
                                              value_v)
                     obs_v = next_obs_v
-                _, last_val_v = self.predict(obs_v, None, None)
+                _, last_val_v = self.predict(obs_v)
                 self.storage_valid.store_last(obs_v, last_val_v)
                 self.storage_valid.compute_estimates(self.gamma, self.lmbda, self.use_gae, self.normalize_adv)
 
@@ -214,10 +200,6 @@ class PPOModel(BaseAgent):
         self.env.close()
         if self.env_valid is not None:
             self.env_valid.close()
-
-    def sample_action(self, obs):
-
-        obs_2 = self.transition_model(obs, actions)
 
 
 

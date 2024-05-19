@@ -19,7 +19,7 @@ from matplotlib import pyplot as plt
 
 from common.model import NatureModel, ImpalaModel, MHAModel, ImpalaVQModel, ImpalaVQMHAModel, ImpalaFSQModel, ribMHA, \
     ImpalaFSQMHAModel, RibFSQMHAModel, MLPModel, TransformoBot, GraphTransitionModel
-from common.policy import CategoricalPolicy
+from common.policy import CategoricalPolicy, TransitionPolicy
 from moviepy.editor import ImageSequenceClip
 
 from common.storage import Storage
@@ -289,7 +289,19 @@ def initialize_model(device, env, hyperparameters):
         depth = hyperparameters.get("depth", 4)
         mid_weight = hyperparameters.get("mid_weight", 64)
         latent_size = hyperparameters.get("latent_size", 256)
-        model = GraphTransitionModel(in_channels, depth, mid_weight, latent_size)
+        model = MLPModel(in_channels, depth, mid_weight, latent_size)
+
+
+
+        depth = hyperparameters.get("depth", 4)
+        mid_weight = hyperparameters.get("mid_weight", 64)
+        latent_size = hyperparameters.get("latent_size", 256)
+        transition_model = GraphTransitionModel(in_channels, depth, mid_weight, latent_size)
+        action_size = action_space.n
+        policy = TransitionPolicy(model, transition_model, action_size)
+        policy.to(device)
+        policy.device = device
+        return model, observation_shape, policy
     else:
         raise NotImplementedError(f"Architecture:{architecture} not found in helper.py")
     # Discrete action space

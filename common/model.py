@@ -984,16 +984,17 @@ class GraphTransitionModel(nn.Module):
         # Normalize actions?
         x = self.append_index(obs)
         n = x.shape[-2]
-        updates = [self.update(x[:, i], self.sum_messages(i, n, x, action)) for i in range(n)]
+        updates = [self.update(x[..., i, :], self.sum_messages(i, n, x, action)) for i in range(n)]
         return torch.concat(updates, dim=-1)
 
     def sum_messages(self, i, n, x, action):
-        messages = [self.msg_pass(x[:, i], x[:, j], action) for j in range(n)]
+        messages = [self.msg_pass(x[..., i, :], x[..., j, :], action) for j in range(n)]
         h = torch.sum(torch.concat(messages, -1), dim=-1)
         return h
 
     def append_index(self, x):
         n = x.shape[-1]
         coor = torch.FloatTensor([i / n for i in range(n)])
-        all_coor = torch.tile(coor, (x.shape[0], 1))
+        shp = [i for i in x.shape[:-1]] + [1]
+        all_coor = torch.tile(coor, shp)
         return self.concater(x, all_coor, -1)
