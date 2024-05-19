@@ -74,16 +74,12 @@ class PPOModel(BaseAgent):
         else:
             self.adjust_lr = adjust_lr
 
-    def predict(self, obs, hidden_state, done):
+    def predict(self, obs):
         with torch.no_grad():
             obs = torch.FloatTensor(obs).to(device=self.device)
-            hidden_state = torch.FloatTensor(hidden_state).to(device=self.device)
-            mask = torch.FloatTensor(1 - done).to(device=self.device)
-            dist, value, hidden_state = self.policy(obs, hidden_state, mask)
+            dist, value, _ = self.policy(obs, None, None)
             act = dist.sample()
-            log_prob_act = dist.log_prob(act)
-
-        return act.cpu().numpy(), log_prob_act.cpu().numpy(), value.cpu().numpy(), hidden_state.cpu().numpy()
+        return act.cpu().numpy(), value.cpu().numpy()
 
     def predict_w_value_saliency(self, obs, hidden_state, done):
         obs = torch.FloatTensor(obs).to(device=self.device)
@@ -106,9 +102,7 @@ class PPOModel(BaseAgent):
             self.entropy_multiplier = 1 - (self.t / self.total_timesteps)
 
         # Original PPO losses:
-        pi_loss_list, value_loss_list, entropy_loss_list, total_loss_list = [], [], [], []
-        # Extra losses/metrics:
-        x_ent_loss_list, atn_entropy_list, atn_entropy_list2, fs_loss_list, s_loss_list = [], [], [], [], []
+        t_loss_list, value_loss_list = [], []
 
         batch_size = self.n_steps * self.n_envs // self.n_minibatch
         if batch_size < self.mini_batch_size:
@@ -124,13 +118,7 @@ class PPOModel(BaseAgent):
             for sample in generator:
                 obs_batch, hidden_state_batch, act_batch, done_batch, \
                     old_log_prob_act_batch, old_value_batch, return_batch, adv_batch = sample
-                mask_batch = (1 - done_batch)
-                # dist_batch, value_batch, _ = self.policy(obs_batch, hidden_state_batch, mask_batch)
-                # layer 2
-                feature_batch, atn_batch_list, fi_or_tube_loss, codes = self.policy.embedder.forward_with_attn_indices(
-                    obs_batch)
-                # remove atn_batch_list from gpu?
-                dist_batch, value_batch = self.policy.hidden_to_output(feature_batch)
+                dist_batch, value_batch = self.policy(obs_batch)
 
                 obs_guess = self.transition_model(obs_batch, act_batch)
                 t_loss = MSELoss()(obs_guess, act_batch)
@@ -138,47 +126,13 @@ class PPOModel(BaseAgent):
                 self.t_optimizer.step()
                 self.t_optimizer.zero_grad()
 
-                # Clipped Surrogate Objective
-                log_prob_act_batch = dist_batch.log_prob(act_batch)
-                ratio = torch.exp(log_prob_act_batch - old_log_prob_act_batch)
-                surr1 = ratio * adv_batch
-                surr2 = torch.clamp(ratio, 1.0 - self.eps_clip, 1.0 + self.eps_clip) * adv_batch
-                pi_loss = -torch.min(surr1, surr2).mean()
-
                 # Clipped Bellman-Error
                 clipped_value_batch = old_value_batch + (value_batch - old_value_batch).clamp(-self.eps_clip,
                                                                                               self.eps_clip)
                 v_surr1 = (value_batch - return_batch).pow(2)
                 v_surr2 = (clipped_value_batch - return_batch).pow(2)
                 value_loss = 0.5 * torch.max(v_surr1, v_surr2).mean()
-
-                # Policy Entropy
-                # entropy_loss = dist_batch.entropy().mean()
-                x_batch_ent_loss, entropy_loss, = cross_batch_entropy(dist_batch)
-
-                # Sparsity Loss (FSQ Codes)
-                if codes is not None:
-                    s_loss = sparsity_loss(codes)
-                else:
-                    s_loss = 0
-
-                # Sparsity Loss X-batch (encourage switching off specific activations)
-                if fi_or_tube_loss is not None and len(fi_or_tube_loss.shape) == 0:
-                    feature_sparsity_loss = fi_or_tube_loss
-                else:
-                    feature_sparsity_loss = 0
-
-                # Attention Entropy
-                atn_ents = [attention_entropy(atn) for atn in atn_batch_list]
-                # atn_entropy = attention_entropy(atn_batch)
-
-                loss = (pi_loss
-                        + self.value_coef * value_loss
-                        - self.entropy_coef * entropy_loss * self.entropy_multiplier
-                        - self.x_entropy_coef * x_batch_ent_loss
-                        + self.s_loss_coef * s_loss
-                        + self.fs_coef * feature_sparsity_loss)
-                loss.backward()
+                value_loss.backward()
 
                 # Let model to handle the large batch-size with small gpu-memory
                 if grad_accumulation_cnt % grad_accumulation_steps == 0:
@@ -186,36 +140,11 @@ class PPOModel(BaseAgent):
                     self.optimizer.step()
                     self.optimizer.zero_grad()
                 grad_accumulation_cnt += 1
-                pi_loss_list.append(-pi_loss.item())
-                value_loss_list.append(-value_loss.item())
-                entropy_loss_list.append(entropy_loss.item())
-                x_ent_loss_list.append(x_batch_ent_loss.item())
-                total_loss_list.append(loss.item())
-                # TODO: generalize this
-                try:
-                    atn_entropy_list.append(atn_ents[0].item())
-                    atn_entropy_list2.append(atn_ents[1].item())
-                except Exception:
-                    pass
-                try:
-                    s_loss_list.append(s_loss.item())
-                except Exception:
-                    pass
-                try:
-                    fs_loss_list.append(feature_sparsity_loss.item())
-                except Exception:
-                    pass
-
+                value_loss_list.append(value_loss.item())
+                t_loss_list.append(t_loss.item())
         # Adjust common/Logger.__init__ if you add/remove from summary:
-        summary = {'Loss/pi': np.mean(pi_loss_list),
-                   'Loss/v': np.mean(value_loss_list),
-                   'Loss/entropy': np.mean(entropy_loss_list),
-                   'Loss/x_entropy': np.mean(x_ent_loss_list),
-                   'Loss/atn_entropy': np.mean(atn_entropy_list),
-                   'Loss/atn_entropy2': np.mean(atn_entropy_list2),
-                   'Loss/sparsity': np.mean(s_loss_list),
-                   'Loss/feature_sparsity': np.mean(fs_loss_list),
-                   'Loss/total': np.mean(total_loss_list)}
+        summary = {'Loss/v': np.mean(value_loss_list),
+                   'Loss/transition': np.mean(t_loss_list)}
         return summary
 
     def train(self, num_timesteps):
@@ -225,41 +154,38 @@ class PPOModel(BaseAgent):
         checkpoints = [(i + 1) * save_every for i in range(self.num_checkpoints)]
         checkpoints.sort()
         obs = self.env.reset()
-        hidden_state = np.zeros((self.n_envs, self.storage.hidden_state_size))
         done = np.zeros(self.n_envs)
 
         if self.env_valid is not None:
             obs_v = self.env_valid.reset()
-            hidden_state_v = np.zeros((self.n_envs, self.storage.hidden_state_size))
             done_v = np.zeros(self.n_envs)
 
         while self.t < num_timesteps:
             # Run Policy
             self.policy.eval()
             for _ in range(self.n_steps):
-                act, log_prob_act, value, next_hidden_state = self.predict(obs, hidden_state, done)
+                act, value = self.sample_action(obs)
+                # act, value = self.predict(obs, None, None)
                 next_obs, rew, done, info = self.env.step(act)
-                self.storage.store(obs, hidden_state, act, rew, done, info, log_prob_act, value)
+                self.storage.store(obs, act, rew, done, info, value)
                 obs = next_obs
-                hidden_state = next_hidden_state
             value_batch = self.storage.value_batch[:self.n_steps]
-            _, _, last_val, hidden_state = self.predict(obs, hidden_state, done)
-            self.storage.store_last(obs, hidden_state, last_val)
+            _, last_val = self.predict(obs, None, None)
+            self.storage.store_last(obs, last_val)
             # Compute advantage estimates
             self.storage.compute_estimates(self.gamma, self.lmbda, self.use_gae, self.normalize_adv)
 
             # valid
             if self.env_valid is not None:
                 for _ in range(self.n_steps):
-                    act_v, log_prob_act_v, value_v, next_hidden_state_v = self.predict(obs_v, hidden_state_v, done_v)
+                    act_v, value_v = self.predict(obs_v, None, None)
                     next_obs_v, rew_v, done_v, info_v = self.env_valid.step(act_v)
-                    self.storage_valid.store(obs_v, hidden_state_v, act_v,
+                    self.storage_valid.store(obs_v, act_v,
                                              rew_v, done_v, info_v,
-                                             log_prob_act_v, value_v)
+                                             value_v)
                     obs_v = next_obs_v
-                    hidden_state_v = next_hidden_state_v
-                _, _, last_val_v, hidden_state_v = self.predict(obs_v, hidden_state_v, done_v)
-                self.storage_valid.store_last(obs_v, hidden_state_v, last_val_v)
+                _, last_val_v = self.predict(obs_v, None, None)
+                self.storage_valid.store_last(obs_v, last_val_v)
                 self.storage_valid.compute_estimates(self.gamma, self.lmbda, self.use_gae, self.normalize_adv)
 
             # Optimize policy & valueq
@@ -288,3 +214,10 @@ class PPOModel(BaseAgent):
         self.env.close()
         if self.env_valid is not None:
             self.env_valid.close()
+
+    def sample_action(self, obs):
+
+        obs_2 = self.transition_model(obs, actions)
+
+
+

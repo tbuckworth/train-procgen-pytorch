@@ -12,7 +12,7 @@ except ImportError:
 
 class Logger(object):
 
-    def __init__(self, n_envs, logdir, use_wandb=False, has_vq=False):
+    def __init__(self, n_envs, logdir, use_wandb=False, has_vq=False, transition_model=False):
         self.true_mean_reward_v = None
         self.true_mean_reward = None
         self.start_time = time.time()
@@ -41,6 +41,8 @@ class Logger(object):
         time_metrics = ["timesteps", "wall_time", "num_episodes"]  # only collected once
         loss_metrics = ["loss_pi", "loss_v", "loss_entropy", "loss_x_entropy", "atn_entropy", "atn_entropy2",
                         "loss_sparsity", "loss_feature_sparsity", "loss_total"]
+        if transition_model:
+            loss_metrics = ["loss_v", "loss_transition"]
         if has_vq:
             loss_metrics = ["loss_pi", "loss_v", "loss_entropy", "loss_x_entropy", "loss_commit", "loss_total"]
         # Make sure this is consistent with _get_episode_statistics:
