@@ -296,7 +296,7 @@ def initialize_model(device, env, hyperparameters):
         depth = hyperparameters.get("depth", 4)
         mid_weight = hyperparameters.get("mid_weight", 64)
         latent_size = hyperparameters.get("latent_size", 256)
-        transition_model = GraphTransitionModel(in_channels, depth, mid_weight, latent_size)
+        transition_model = GraphTransitionModel(in_channels, depth, mid_weight, latent_size, device)
         action_size = action_space.n
         policy = TransitionPolicy(model, transition_model, action_size)
         policy.to(device)

@@ -957,12 +957,13 @@ class MLPModel(nn.Module):
 
 
 class GraphTransitionModel(nn.Module):
-    def __init__(self, in_channels, depth, mid_weight, latent_size):
+    def __init__(self, in_channels, depth, mid_weight, latent_size, device):
         super(GraphTransitionModel, self).__init__()
         self.input_size = in_channels
         self.depth = depth
         self.mid_weight = mid_weight
         self.output_dim = latent_size
+        self.device = device
 
         self.messenger = MLPModel(5, depth, mid_weight, latent_size)
         self.updater = MLPModel(3, depth, mid_weight, latent_size)
