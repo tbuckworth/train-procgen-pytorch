@@ -235,7 +235,7 @@ class CartPoleTestModel(unittest.TestCase):
         hyperparameters = get_hyperparams("graph-transition")
         model, obs_shape, policy = initialize_model(self.device, self.env, hyperparameters)
         action = torch.FloatTensor([self.env.action_space.sample() for _ in range(self.n_envs)])
-        # model.forward(self.obs, action)
+        # model.forward(self.obs)
         # summary(model, self.obs.shape)
         policy.forward(self.obs)
 

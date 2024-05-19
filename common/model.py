@@ -989,6 +989,13 @@ class GraphTransitionModel(nn.Module):
         return torch.concat(updates, dim=-1)
 
     def sum_messages(self, i, n, x, action):
+        xi = x[..., i, :].unsqueeze(-2).tile([n, 1])
+        a = action.unsqueeze(-1).tile([n]).unsqueeze(-1)
+        msg_in = torch.concat([xi,x,a],dim=-1)
+        messages = self.messenger(msg_in)
+        return torch.sum(messages,dim=-2).squeeze()
+
+    def sum_messages_old(self, i, n, x, action):
         messages = [self.msg_pass(x[..., i, :], x[..., j, :], action) for j in range(n)]
         h = torch.sum(torch.concat(messages, -1), dim=-1)
         return h
