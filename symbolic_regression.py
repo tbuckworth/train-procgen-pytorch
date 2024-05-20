@@ -360,7 +360,7 @@ def run_neurosymbolic_search(args):
     n_envs = args.n_envs
     if n_envs < 2:
         raise Exception("n_envs must be at least 2")
-    rounds = args.rounds
+    rounds = args.rounds_per_epoch
     symbdir, save_file = create_symb_dir_if_exists(logdir)
     cfg = vars(args)
     np.save(os.path.join(symbdir, "config.npy"), cfg)
