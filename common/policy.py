@@ -1,3 +1,5 @@
+import time
+
 from .misc_util import orthogonal_init
 from .model import GRU, GraphTransitionModel
 import torch
@@ -79,6 +81,10 @@ class TransitionPolicy(nn.Module):
     def actions_like(self, s, i):
         return torch.full((s.shape[:-1]), i).to(device=self.device)
 
+    def all_actions_like(self, s):
+        a = torch.FloatTensor([i for i in range(self.action_size)])
+        return a.tile((*s.shape[:-1], 1)).to(device=self.device)
+
     def forward(self, x):
         v = self.value(x)
 
@@ -90,14 +96,23 @@ class TransitionPolicy(nn.Module):
         vs = self.value(s).squeeze()
         for _ in range(self.n_rollouts-1):
             vs = vs.max(-1)[0]
-        # if self.greedy:
-        #     actions = vs.argmax(-1)
-        # else:
+
         log_probs = F.log_softmax(vs, dim=1)
         p = Categorical(logits=log_probs)
         return p, v.squeeze()
 
-    # def value(self, x):
-    #     hidden = self.embedder(x)
-    #     return self.fc_value(hidden)#.reshape(-1)
+    def vectorized_attempt(self, x):
+        s1 = x
+        for _ in range(self.n_rollouts):
+            s1 = self.transition_model(self.expand_for_actions(s1), self.all_actions_like(s1))
+    def expand_for_actions(self, s1):
+        k = len(s1.shape)
+        shp = [self.action_size] + [1 for _ in range(k-1)]
+        return s1.unsqueeze(1).tile(shp)
+        shp = [1 for _ in range(k+1)]
+        shp[1] = self.action_size
+        return s1.unsqueeze(1).repeat(shp)
+
+    # def old_forward(self, obs):
+
 
