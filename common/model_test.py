@@ -1,3 +1,4 @@
+import time
 import unittest
 
 import numpy as np
@@ -238,7 +239,17 @@ class CartPoleTestModel(unittest.TestCase):
         # model.forward(self.obs)
         # summary(model, self.obs.shape)
         policy.forward(self.obs)
-
+        n = 100
+        start = time.time()
+        for _ in range(n):
+            policy.transition_model.forward(self.obs, policy.actions_like(self.obs, 0))
+        mid = time.time()
+        for _ in range(n):
+            policy.transition_model.old_forward(self.obs, policy.actions_like(self.obs, 0))
+        end = time.time()
+        print(f"Vectorized:\t{mid-start:.4f}")
+        print(f"Looped:\t{end-mid:.4f}")
+        print(f"Ratio:\t{(end-mid)/(mid-start):.2f}")
 
 if __name__ == '__main__':
     unittest.main()

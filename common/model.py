@@ -983,17 +983,34 @@ class GraphTransitionModel(nn.Module):
 
     def forward(self, obs, action):
         # Normalize actions?
+        x = self.append_index(obs.squeeze())
+        n = x.shape[-2]
+        msg = self.sum_all_messages(n, x, action)
+        return self.update(x, msg).squeeze()
+
+    def old_forward(self, obs, action):
         x = self.append_index(obs)
         n = x.shape[-2]
-        updates = [self.update(x[..., i, :], self.sum_messages(i, n, x, action)) for i in range(n)]
+        updates = [self.update(x[..., i, :], self.sum_messages_old(i, n, x, action)) for i in range(n)]
         return torch.concat(updates, dim=-1)
+
+    def sum_all_messages(self, n, x, action):
+        xi = x.unsqueeze(-2).tile([n, 1])
+        xj = x.unsqueeze(-3).tile([n, 1, 1])
+        # if len(action.shape) == 1:
+        a = action.unsqueeze(-1).unsqueeze(-1).tile([n, n]).unsqueeze(-1)
+        # else:
+        #     a = action.unsqueeze(-1).tile([n]).unsqueeze(-1)
+        msg_in = torch.concat([xi, xj, a], dim=-1)
+        messages = self.messenger(msg_in)
+        return torch.sum(messages, dim=-2).squeeze()
 
     def sum_messages(self, i, n, x, action):
         xi = x[..., i, :].unsqueeze(-2).tile([n, 1])
         a = action.unsqueeze(-1).tile([n]).unsqueeze(-1)
-        msg_in = torch.concat([xi,x,a],dim=-1)
+        msg_in = torch.concat([xi, x, a], dim=-1)
         messages = self.messenger(msg_in)
-        return torch.sum(messages,dim=-2).squeeze()
+        return torch.sum(messages, dim=-2).squeeze()
 
     def sum_messages_old(self, i, n, x, action):
         messages = [self.msg_pass(x[..., i, :], x[..., j, :], action) for j in range(n)]
