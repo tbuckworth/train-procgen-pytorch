@@ -60,6 +60,7 @@ class TransitionPolicy(nn.Module):
                  transition_model,
                  action_size,
                  n_rollouts,
+                 temperature,
                  ):
         """
         embedder: (torch.Tensor) model to extract the embedding for observation
@@ -67,7 +68,7 @@ class TransitionPolicy(nn.Module):
         """
         super(TransitionPolicy, self).__init__()
         self.n_rollouts = n_rollouts
-        self.temperature = 1
+        self.temperature = temperature
         self.embedder = embedder
         self.has_vq = False
         self.action_size = action_size

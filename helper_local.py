@@ -292,14 +292,14 @@ def initialize_model(device, env, hyperparameters):
         latent_size = hyperparameters.get("latent_size", 256)
         model = MLPModel(in_channels, depth, mid_weight, latent_size)
 
-
+        temperature = hyperparameters.get("temperature", 1)
         n_rollouts = hyperparameters.get("n_rollouts", 3)
         depth = hyperparameters.get("depth", 4)
         mid_weight = hyperparameters.get("mid_weight", 64)
         latent_size = hyperparameters.get("latent_size", 256)
         transition_model = GraphTransitionModel(in_channels, depth, mid_weight, latent_size, device)
         action_size = action_space.n
-        policy = TransitionPolicy(model, transition_model, action_size, n_rollouts)
+        policy = TransitionPolicy(model, transition_model, action_size, n_rollouts, temperature)
         policy.to(device)
         policy.device = device
         return model, observation_shape, policy
@@ -448,6 +448,8 @@ def add_training_args(parser):
     parser.add_argument('--n_minibatch', type=int, default=None)
     parser.add_argument('--n_epochs', type=int, default=None)
     parser.add_argument('--n_rollouts', type=int, default=None)
+    parser.add_argument('--temperature', type=float, default=None)
+
     parser.add_argument('--mini_batch_size', type=int, default=None)
     parser.add_argument('--wandb_name', type=str, default=None)
     parser.add_argument('--wandb_group', type=str, default=None)
