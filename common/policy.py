@@ -101,7 +101,6 @@ class TransitionPolicy(nn.Module):
         for _ in range(self.n_rollouts-1):
             # vs = vs.max(-1)[0]
             vs = ((vs/self.temperature).softmax(-1)*vs).sum(-1)
-
         log_probs = F.log_softmax(vs, dim=1)
         p = Categorical(logits=log_probs)
         return p, v.squeeze()

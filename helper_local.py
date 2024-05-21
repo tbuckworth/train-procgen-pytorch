@@ -480,6 +480,7 @@ def add_training_args(parser):
     parser.add_argument('--use_wandb', action="store_true")
     parser.add_argument('--real_procgen', action="store_true")
     parser.add_argument('--mirror_env', action="store_true")
+    parser.add_argument('--use_gae', action="store_true")
 
     parser.add_argument('--no-detect_nan', dest='detect_nan', action="store_false")
     parser.add_argument('--no-use_valid_env', dest='use_valid_env', action="store_false")
@@ -490,6 +491,8 @@ def add_training_args(parser):
     parser.add_argument('--no-use_wandb', dest='use_wandb', action="store_false")
     parser.add_argument('--no-real_procgen', dest='real_procgen', action="store_false")
     parser.add_argument('--no-mirror_env', dest='mirror_env', action="store_false")
+    parser.add_argument('--no-use_gae', dest='use_gae', action="store_false")
+
 
     parser.set_defaults(detect_nan=False,
                         use_valid_env=True,
@@ -499,7 +502,8 @@ def add_training_args(parser):
                         reduce_duplicate_actions=True,
                         use_wandb=False,
                         real_procgen=True,
-                        mirror_env=False
+                        mirror_env=False,
+                        use_gae=True,
                         )
 
     return parser
