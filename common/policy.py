@@ -58,13 +58,16 @@ class TransitionPolicy(nn.Module):
     def __init__(self,
                  embedder,
                  transition_model,
-                 action_size):
+                 action_size,
+                 n_rollouts,
+                 ):
         """
         embedder: (torch.Tensor) model to extract the embedding for observation
         action_size: number of the categorical actions
         """
         super(TransitionPolicy, self).__init__()
-        self.n_rollouts = 3
+        self.n_rollouts = n_rollouts
+        self.temperature = 1
         self.embedder = embedder
         self.has_vq = False
         self.action_size = action_size
@@ -95,7 +98,8 @@ class TransitionPolicy(nn.Module):
 
         vs = self.value(s).squeeze()
         for _ in range(self.n_rollouts-1):
-            vs = vs.max(-1)[0]
+            # vs = vs.max(-1)[0]
+            vs = ((vs/self.temperature).softmax(-1)*vs).sum(-1)
 
         log_probs = F.log_softmax(vs, dim=1)
         p = Categorical(logits=log_probs)

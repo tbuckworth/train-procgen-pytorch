@@ -364,6 +364,7 @@ def cartpole_graph_transition_hparams():
         "t_learning_rate": [0.0005, 0.001, 0.00025, 0.01],
         "n_envs": [64, 16, 32],
         "n_steps": [256],
+        "n_rollouts": [0, 1, 2, 3],
         # "n_minibatch": None,
         # "mini_batch_size": None,
         # "wandb_name": None,
@@ -486,7 +487,7 @@ if __name__ == '__main__':
     parser.add_argument('--hparam_type', type=str, default="symbreg")
 
     re_use_machine = True
-    specify_host = "gpu33"#"gpu29"#None #"gpu34"
+    specify_host = "gpu29"#"gpu29"#None #"gpu34"
     if specify_host is not None and not re_use_machine:
         print("Warning - specifying host will re-use that host")
 

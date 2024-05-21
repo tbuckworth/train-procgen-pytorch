@@ -58,6 +58,7 @@ def train_ppo(args):
         "fs_coef",
         "output_dim",
         "n_epochs",
+        "n_rollouts",
     ]:
         if var_name in args.__dict__.keys() and args.__dict__[var_name] is not None:
             hyperparameters[var_name] = args.__dict__[var_name]

@@ -89,8 +89,8 @@ class PPOModel(BaseAgent):
         elif self.entropy_scaling == "time_based":
             self.entropy_multiplier = 1 - (self.t / self.total_timesteps)
 
-        # Original PPO losses:
-        t_loss_list, value_loss_list = [], []
+        #Losses:
+        t_loss_list, value_loss_list, ent_loss_list, x_ent_loss_list = [], [], [], []
 
         batch_size = self.n_steps * self.n_envs // self.n_minibatch
         if batch_size < self.mini_batch_size:
@@ -107,6 +107,8 @@ class PPOModel(BaseAgent):
                 obs_batch, nobs_batch, act_batch, done_batch, \
                     old_value_batch, return_batch, adv_batch = sample
                 dist_batch, value_batch = self.policy(obs_batch)
+
+                x_batch_ent_loss, entropy_loss, = cross_batch_entropy(dist_batch)
 
                 nobs_guess = self.policy.transition_model(obs_batch, act_batch)
                 t_loss = MSELoss()(nobs_guess, nobs_batch)
@@ -130,9 +132,14 @@ class PPOModel(BaseAgent):
                 grad_accumulation_cnt += 1
                 value_loss_list.append(value_loss.item())
                 t_loss_list.append(t_loss.item())
+                ent_loss_list.append(entropy_loss.item())
+                x_ent_loss_list.append(x_batch_ent_loss.item())
         # Adjust common/Logger.__init__ if you add/remove from summary:
         summary = {'Loss/v': np.mean(value_loss_list),
-                   'Loss/transition': np.mean(t_loss_list)}
+                   'Loss/transition': np.mean(t_loss_list),
+                   'Loss/entropy': np.mean(ent_loss_list),
+                   'Loss/x_entropy': np.mean(x_ent_loss_list),
+                   }
         return summary
 
     def train(self, num_timesteps):
