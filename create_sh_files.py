@@ -328,6 +328,7 @@ def cartpole_hparams():
         # "fs_coef": [0.0001, 0.001, 0.01, 0.1, 0.5, 1.0, 2.0, 5.0, 10.0],
     }
 
+
 def coinrun_mostlyneural_hparams():
     return {
         "exp_name": ['coinrun-hparams'],
@@ -357,14 +358,15 @@ def cartpole_graph_transition_hparams():
         # "distribution_mode": ['hard'],
         "param_name": ['graph-transition'],
         "device": ["gpu"],
-        "num_timesteps": [int(2e8)],
+        "num_timesteps": [int(2e6)],
         "seed": [6033],  # 0, 1, 101, 40],
-        "gamma": [0.95],# 0.9],
+        "gamma": [0.95],  # 0.9],
         "learning_rate": [0.0005, 0.001, 0.00025, 0.01],
         "t_learning_rate": [0.0005, 0.001, 0.00025, 0.01],
         "n_envs": [64, 16, 32],
         "n_steps": [256],
         "n_rollouts": [0, 1, 2, 3],
+        "temperature": [1, 10, 100, 1000, 100000],
         # "n_minibatch": None,
         # "mini_batch_size": None,
         # "wandb_name": None,
@@ -377,7 +379,6 @@ def cartpole_graph_transition_hparams():
         # "output_dim": [256, 1, 9],
         # "fs_coef": [0.0001, 0.001, 0.01, 0.1, 0.5, 1.0, 2.0, 5.0, 10.0],
     }
-
 
 
 def train_hparams():
@@ -487,7 +488,7 @@ if __name__ == '__main__':
     parser.add_argument('--hparam_type', type=str, default="symbreg")
 
     re_use_machine = True
-    specify_host = "gpu29"#"gpu29"#None #"gpu34"
+    specify_host = "gpu29"  # "gpu29"#None #"gpu34"
     if specify_host is not None and not re_use_machine:
         print("Warning - specifying host will re-use that host")
 
