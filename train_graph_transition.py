@@ -54,7 +54,7 @@ if __name__ == "__main__":
         dict(n_envs=32,
              learning_rate=5e-4,
              rounds_per_epoch=1000,
-             epochs=100,
+             epochs=10000,
              num_checkpoints=10,
              seed=6033,
              use_wandb=True,
@@ -78,7 +78,7 @@ if __name__ == "__main__":
     checkpoints.sort()
 
     logdir = create_logdir(args, 'train-transition', 'cartpole', f'graph-transition')
-    log = pd.DataFrame(columns=["Epoch", "Loss", "Mean_Episode_Reward"])
+    log = pd.DataFrame(columns=["Epoch", "Loss", "Mean_Episode_Reward", "Timesteps"])
 
     if args.use_wandb:
         wandb.login(key="cfc00eee102a1e9647b244a40066bfc5f1a96610")
@@ -87,10 +87,10 @@ if __name__ == "__main__":
         name = f"{hyperparameters['architecture']}{np.random.randint(1e5)}"
         wandb.init(project="Supervised Graph", config=cfg, sync_tensorboard=True,
                    tags=args.wandb_tags, resume="allow", name=name)
-
+    timesteps = 0
     for epoch in range(args.epochs):
         obs_batch, act_batch, val_batch, done_batch, mean_rewards = collect_data(temp_policy, env, args.rounds_per_epoch)
-
+        timesteps += len(obs_batch)
         flt = done_batch[:-n_envs] == 0
 
         nobs_guess = transition_model(obs_batch[:-n_envs][flt], act_batch[:-n_envs][flt])
@@ -100,7 +100,11 @@ if __name__ == "__main__":
         optimizer.zero_grad()
 
         if args.use_wandb:
-            perf_dict = {"Epoch": epoch, "Loss": t_loss.item(), "Mean_Episode_Reward": mean_rewards}
+            perf_dict = {"Epoch": epoch,
+                         "Loss": t_loss.item(),
+                         "Mean_Episode_Reward": mean_rewards,
+                         "Timesteps": timesteps,
+                         }
             wandb.log(perf_dict)
         log.loc[len(log)] = perf_dict.values()
         with open(logdir + '/log-append.csv', 'a') as f:
