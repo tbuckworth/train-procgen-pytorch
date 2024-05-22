@@ -361,18 +361,18 @@ def cartpole_graph_transition_hparams():
         "num_timesteps": [int(4e6)],
         "seed": [6033],  # 0, 1, 101, 40],
         "gamma": [0.95],  # 0.9],
-        "learning_rate": [0.00025],
-        "t_learning_rate": [0.00025],
+        "learning_rate": [0.00025, 0.0005],
+        "t_learning_rate": [0.00025, 0.001],
         "n_envs": [64, 32],
         "n_steps": [256],
-        "n_rollouts": [0, 1, 2, 3],
+        "n_rollouts": [1, 2, 3],
         "temperature": [1, 10, 100, 1000, 100000],
-        "use_gae": [False, True],
+        "use_gae": [True],
         # "n_minibatch": None,
         # "mini_batch_size": None,
         # "wandb_name": None,
         # "wandb_group": None,
-        "wandb_tags": [["graph-transition", "multi-extrapolation"]],
+        "wandb_tags": [["graph-transition", "multi-extrapolation", "fixed-dones"]],
         # "detect_nan": False,
         "use_wandb": [True],
         "mirror_env": [False],
@@ -482,7 +482,7 @@ def add_training_args_dict():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--n_gpu', type=int, default=3)
+    parser.add_argument('--n_gpu', type=int, default=2)
     parser.add_argument('--execute', action="store_true", default=True)
     # parser.add_argument('--cuda', action="store_true", default=False)
     parser.add_argument('--max_runs', type=int, default=200)

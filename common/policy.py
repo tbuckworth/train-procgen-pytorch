@@ -7,8 +7,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions import Categorical, Normal
 
+
 class CategoricalPolicy(nn.Module):
-    def __init__(self, 
+    def __init__(self,
                  embedder,
                  recurrent,
                  action_size,
@@ -16,7 +17,7 @@ class CategoricalPolicy(nn.Module):
         """
         embedder: (torch.Tensor) model to extract the embedding for observation
         action_size: number of the categorical actions
-        """ 
+        """
         super(CategoricalPolicy, self).__init__()
         self.embedder = embedder
         self.has_vq = has_vq
@@ -53,7 +54,6 @@ class CategoricalPolicy(nn.Module):
         return p, v
 
 
-
 class TransitionPolicy(nn.Module):
     def __init__(self,
                  embedder,
@@ -67,6 +67,7 @@ class TransitionPolicy(nn.Module):
         action_size: number of the categorical actions
         """
         super(TransitionPolicy, self).__init__()
+        assert n_rollouts > 0, "n_rollouts must be > 0"
         self.n_rollouts = n_rollouts
         self.temperature = temperature
         self.embedder = embedder
@@ -94,13 +95,14 @@ class TransitionPolicy(nn.Module):
 
         s = x
         for _ in range(self.n_rollouts):
-            next_states = [self.transition_model(s, self.actions_like(s, i)).unsqueeze(1) for i in range(self.action_size)]
+            next_states = [self.transition_model(s, self.actions_like(s, i)).unsqueeze(1) for i in
+                           range(self.action_size)]
             s = torch.concat(next_states, dim=1)
 
         vs = self.value(s).squeeze()
-        for _ in range(self.n_rollouts-1):
+        for _ in range(self.n_rollouts - 1):
             # vs = vs.max(-1)[0]
-            vs = ((vs/self.temperature).softmax(-1)*vs).sum(-1)
+            vs = ((vs / self.temperature).softmax(-1) * vs).sum(-1)
         log_probs = F.log_softmax(vs, dim=1)
         p = Categorical(logits=log_probs)
         return p, v.squeeze()
@@ -109,14 +111,13 @@ class TransitionPolicy(nn.Module):
         s1 = x
         for _ in range(self.n_rollouts):
             s1 = self.transition_model(self.expand_for_actions(s1), self.all_actions_like(s1))
+
     def expand_for_actions(self, s1):
         k = len(s1.shape)
-        shp = [self.action_size] + [1 for _ in range(k-1)]
+        shp = [self.action_size] + [1 for _ in range(k - 1)]
         return s1.unsqueeze(1).tile(shp)
-        shp = [1 for _ in range(k+1)]
+        shp = [1 for _ in range(k + 1)]
         shp[1] = self.action_size
         return s1.unsqueeze(1).repeat(shp)
 
     # def old_forward(self, obs):
-
-

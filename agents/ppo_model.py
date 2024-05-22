@@ -110,8 +110,9 @@ class PPOModel(BaseAgent):
 
                 x_batch_ent_loss, entropy_loss, = cross_batch_entropy(dist_batch)
 
-                nobs_guess = self.policy.transition_model(obs_batch, act_batch)
-                t_loss = MSELoss()(nobs_guess, nobs_batch)
+                flt = done_batch == 0
+                nobs_guess = self.policy.transition_model(obs_batch[flt], act_batch[flt])
+                t_loss = MSELoss()(nobs_guess, nobs_batch[flt])
                 t_loss.backward()
                 self.t_optimizer.step()
                 self.t_optimizer.zero_grad()
