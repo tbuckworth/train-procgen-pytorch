@@ -448,9 +448,13 @@ def add_training_args(parser):
     parser.add_argument('--n_steps', type=int, default=None)
     parser.add_argument('--n_minibatch', type=int, default=None)
     parser.add_argument('--n_epochs', type=int, default=None)
+    parser.add_argument('--dyn_epochs', type=int, default=None)
+    parser.add_argument('--val_epochs', type=int, default=None)
+
     parser.add_argument('--n_rollouts', type=int, default=None)
     parser.add_argument('--temperature', type=float, default=None)
     parser.add_argument('--done_coef', type=float, default=None)
+    parser.add_argument('--rew_coef', type=float, default=None)
 
 
 

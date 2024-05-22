@@ -893,7 +893,8 @@ graph-transition:
     algo: ppo-model
     n_envs: 256
     n_steps: 256
-    epoch: 3
+    val_epochs: 3
+    dyn_epochs: 3
     n_minibatch: 16
     mini_batch_size: 8192
     gamma: 0.99
@@ -903,6 +904,8 @@ graph-transition:
     grad_clip_norm: 0.5
     eps_clip: 0.2
     value_coef: 0.5
+    rew_coef: 1.
+    done_coef: 1.
     entropy_coef: 0.02
     normalize_adv: True
     normalize_rew: False

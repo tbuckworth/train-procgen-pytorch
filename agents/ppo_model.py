@@ -20,7 +20,6 @@ class PPOModel(BaseAgent):
                  storage_valid=None,
                  n_steps=128,
                  n_envs=8,
-                 epoch=3,
                  n_minibatch=8,
                  mini_batch_size=32 * 8,
                  gamma=0.99,
@@ -42,11 +41,15 @@ class PPOModel(BaseAgent):
                  rew_coef=.5,
                  clip_value=True,
                  done_coef=5.,
+                 val_epochs=3,
+                 dyn_epochs=3,
                  **kwargs):
         super(PPOModel, self).__init__(env, policy, logger, storage, device,
                                        n_checkpoints, env_valid, storage_valid)
 
         # self.transition_model = transition_model
+        self.val_epochs = val_epochs
+        self.dyn_epochs = dyn_epochs
         self.done_coef = done_coef
         self.t_optimizer = optim.Adam(self.policy.transition_model.parameters(), lr=t_learning_rate, eps=1e-5)
         self.fs_coef = fs_coef
@@ -59,7 +62,7 @@ class PPOModel(BaseAgent):
         self.max_rew = 11.
         self.n_steps = n_steps
         self.n_envs = n_envs
-        self.epoch = epoch
+        self.epoch = max(val_epochs, dyn_epochs)
         self.n_minibatch = n_minibatch
         self.mini_batch_size = mini_batch_size
         self.gamma = gamma
@@ -117,31 +120,33 @@ class PPOModel(BaseAgent):
 
                 x_batch_ent_loss, entropy_loss, = cross_batch_entropy(dist_batch)
 
-                flt = done_batch == 0
-                nobs_guess = self.policy.transition_model(obs_batch[flt], act_batch[flt])
-                t_loss = MSELoss()(nobs_guess, nobs_batch[flt])
-                t_loss.backward()
-                self.t_optimizer.step()
-                self.t_optimizer.zero_grad()
+                if e < self.dyn_epochs:
+                    flt = done_batch == 0
+                    nobs_guess = self.policy.transition_model(obs_batch[flt], act_batch[flt])
+                    t_loss = MSELoss()(nobs_guess, nobs_batch[flt])
+                    t_loss.backward()
+                    self.t_optimizer.step()
+                    self.t_optimizer.zero_grad()
 
-                # Clipped Bellman-Error
-                clipped_value_batch = old_value_batch + (value_batch - old_value_batch).clamp(-self.eps_clip,
-                                                                                              self.eps_clip)
-                v_surr1 = (value_batch - return_batch).pow(2)
-                v_surr2 = (clipped_value_batch - return_batch).pow(2)
-                value_loss = 0.5 * torch.max(v_surr1, v_surr2).mean()
-                # value_loss.backward()
-                if not self.clip_value:
-                    value_loss = v_surr1
+                if e < self.val_epochs:
+                    # Clipped Bellman-Error
+                    clipped_value_batch = old_value_batch + (value_batch - old_value_batch).clamp(-self.eps_clip,
+                                                                                                  self.eps_clip)
+                    v_surr1 = (value_batch - return_batch).pow(2)
+                    v_surr2 = (clipped_value_batch - return_batch).pow(2)
+                    value_loss = 0.5 * torch.max(v_surr1, v_surr2).mean()
+                    # value_loss.backward()
+                    if not self.clip_value:
+                        value_loss = v_surr1
 
-                reward_loss = MSELoss()(reward_guess, rew_batch)
+                    reward_loss = MSELoss()(reward_guess, rew_batch)
 
-                done_guess = self.policy.dones(obs_batch, act_batch)
+                    done_guess = self.policy.dones(obs_batch, act_batch)
 
-                done_loss = BCELoss()(done_guess, done_batch)
+                    done_loss = BCELoss()(done_guess, done_batch)
 
-                loss = value_loss * self.value_coef + reward_loss * self.rew_coef + done_loss * self.done_coef
-                loss.backward()
+                    loss = value_loss * self.value_coef + reward_loss * self.rew_coef + done_loss * self.done_coef
+                    loss.backward()
 
                 # Let model to handle the large batch-size with small gpu-memory
                 if grad_accumulation_cnt % grad_accumulation_steps == 0:
