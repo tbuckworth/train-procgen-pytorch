@@ -209,7 +209,7 @@ def train_ppo(args):
     print('INTIALIZING AGENT...')
     if algo == 'ppo':
         from agents.ppo import PPO as AGENT
-    if algo == 'ppo-model':
+    elif algo == 'ppo-model':
         from agents.ppo_model import PPOModel as AGENT
     else:
         raise NotImplementedError
