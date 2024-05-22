@@ -450,6 +450,8 @@ def add_training_args(parser):
     parser.add_argument('--n_epochs', type=int, default=None)
     parser.add_argument('--n_rollouts', type=int, default=None)
     parser.add_argument('--temperature', type=float, default=None)
+    parser.add_argument('--done_coef', type=float, default=None)
+
 
 
     parser.add_argument('--mini_batch_size', type=int, default=None)

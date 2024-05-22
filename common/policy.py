@@ -79,10 +79,17 @@ class TransitionPolicy(nn.Module):
         # self.fc_policy = orthogonal_init(nn.Linear(self.embedder.output_dim, action_size), gain=0.01)
         self.fc_value = orthogonal_init(nn.Linear(self.embedder.output_dim, 1), gain=1.0)
         self.fc_reward = orthogonal_init(nn.Linear(self.embedder.output_dim, 1), gain=1.0)
+        self.fc_continuation = orthogonal_init(nn.Linear(self.embedder.output_dim + 1, 1), gain=1.0)
 
         self.value = nn.Sequential(self.embedder, self.fc_value)
         self.reward = nn.Sequential(self.embedder, self.fc_reward)
+
         self.transition_model = transition_model
+
+    def dones(self, s, a):
+        h = self.embedder(s).unsqueeze(-1).tile([1,2,1])
+        d = self.fc_continuation(torch.concat([h, a.unsqueeze(-1)], dim=-1)).squeeze()
+        return nn.Sigmoid()(d)
 
     def value_reward(self, x):
         h = self.embedder(x)
@@ -103,12 +110,16 @@ class TransitionPolicy(nn.Module):
     def forward(self, x):
         v, r = self.value_reward(x)
         rews = []
+        cont = []
         s = x
         for _ in range(self.n_rollouts):
+            a = self.all_actions_like(s)
+            cont.append(self.dones(s, a))
             next_states = [self.transition_model(s, self.actions_like(s, i)).unsqueeze(1) for i in
                            range(self.action_size)]
             s = torch.concat(next_states, dim=1)
             rews.append(self.reward(s))
+
 
         # adding discounted rewards
         cum = torch.zeros_like(rews[0])
@@ -120,8 +131,9 @@ class TransitionPolicy(nn.Module):
         vs *= self.gamma**self.n_rollouts
         vs += cum.squeeze()
         for i in range(self.n_rollouts - 1):
-            # vs = vs.max(-1)[0]
+            vs[cont[-(i+1)].round(decimals=0) == 1] = 0
             vs = ((vs / self.temperature).softmax(-1) * vs).sum(-1)
+
         log_probs = F.log_softmax(vs, dim=1)
         p = Categorical(logits=log_probs)
         return p, v.squeeze(), r.squeeze()

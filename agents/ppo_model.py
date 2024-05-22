@@ -1,4 +1,4 @@
-from torch.nn import MSELoss
+from torch.nn import MSELoss, BCELoss
 
 from .base_agent import BaseAgent
 from common.misc_util import adjust_lr, get_n_params, cross_batch_entropy, attention_entropy, adjust_lr_grok, \
@@ -41,11 +41,13 @@ class PPOModel(BaseAgent):
                  fs_coef=0.,
                  rew_coef=.5,
                  clip_value=True,
+                 done_coef=.5,
                  **kwargs):
         super(PPOModel, self).__init__(env, policy, logger, storage, device,
                                        n_checkpoints, env_valid, storage_valid)
 
         # self.transition_model = transition_model
+        self.done_coef = done_coef
         self.t_optimizer = optim.Adam(self.policy.transition_model.parameters(), lr=t_learning_rate, eps=1e-5)
         self.fs_coef = fs_coef
         self.clip_value = clip_value
@@ -94,7 +96,7 @@ class PPOModel(BaseAgent):
             self.entropy_multiplier = 1 - (self.t / self.total_timesteps)
 
         #Losses:
-        total_loss_list, rew_loss_list = [], []
+        total_loss_list, rew_loss_list, cont_loss_list = [], [], []
         t_loss_list, value_loss_list, ent_loss_list, x_ent_loss_list = [], [], [], []
 
         batch_size = self.n_steps * self.n_envs // self.n_minibatch
@@ -134,7 +136,11 @@ class PPOModel(BaseAgent):
 
                 reward_loss = (reward_guess - rew_batch).pow(2)
 
-                loss = value_loss * self.value_coef + reward_loss * self.rew_coef
+                done_guess = self.policy.dones(obs_batch, act_batch)
+
+                done_loss = BCELoss()(done_guess, done_batch)
+
+                loss = value_loss * self.value_coef + reward_loss * self.rew_coef + done_loss * self.done_coef
                 loss.backward()
 
                 # Let model to handle the large batch-size with small gpu-memory
@@ -146,6 +152,7 @@ class PPOModel(BaseAgent):
                 total_loss_list.append(loss.item())
                 value_loss_list.append(value_loss.item())
                 rew_loss_list.append(reward_loss.item())
+                cont_loss_list.append(done_loss.item())
                 t_loss_list.append(t_loss.item())
                 ent_loss_list.append(entropy_loss.item())
                 x_ent_loss_list.append(x_batch_ent_loss.item())
@@ -155,6 +162,7 @@ class PPOModel(BaseAgent):
                    'Loss/entropy': np.mean(ent_loss_list),
                    'Loss/x_entropy': np.mean(x_ent_loss_list),
                    'Loss/reward': np.mean(rew_loss_list),
+                   'Loss/continuation': np.mean(cont_loss_list),
                    'Loss/total': np.mean(total_loss_list),
                    }
         return summary
