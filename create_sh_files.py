@@ -492,7 +492,7 @@ if __name__ == '__main__':
     parser.add_argument('--hparam_type', type=str, default="train")
 
     re_use_machine = True
-    specify_host = "gpu31"  # "gpu29"#None #"gpu34"
+    specify_host = "gpu36"  # "gpu29"#None #"gpu34"
     if specify_host is not None and not re_use_machine:
         print("Warning - specifying host will re-use that host")
 
