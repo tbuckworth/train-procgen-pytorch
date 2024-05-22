@@ -87,7 +87,7 @@ class TransitionPolicy(nn.Module):
         self.transition_model = transition_model
 
     def dones(self, s, a):
-        h = self.embedder(s).unsqueeze(-1).tile([1,2,1])
+        h = self.embedder(s)
         d = self.fc_continuation(torch.concat([h, a.unsqueeze(-1)], dim=-1)).squeeze()
         return nn.Sigmoid()(d)
 
@@ -108,13 +108,12 @@ class TransitionPolicy(nn.Module):
         return a.tile((*s.shape[:-1], 1)).to(device=self.device)
 
     def forward(self, x):
-        v, r = self.value_reward(x)
+        v, reward = self.value_reward(x)
         rews = []
         cont = []
         s = x
         for _ in range(self.n_rollouts):
-            a = self.all_actions_like(s)
-            cont.append(self.dones(s, a))
+            cont.append(self.all_dones(s))
             next_states = [self.transition_model(s, self.actions_like(s, i)).unsqueeze(1) for i in
                            range(self.action_size)]
             s = torch.concat(next_states, dim=1)
@@ -136,7 +135,13 @@ class TransitionPolicy(nn.Module):
 
         log_probs = F.log_softmax(vs, dim=1)
         p = Categorical(logits=log_probs)
-        return p, v.squeeze(), r.squeeze()
+        return p, v.squeeze(), reward.squeeze()
+
+    def all_dones(self, s):
+        s1 = s.unsqueeze(-2).tile([self.action_size, 1])
+        a = self.all_actions_like(s)
+        dones = self.dones(s1, a)
+        return dones
 
     def vectorized_attempt(self, x):
         s1 = x

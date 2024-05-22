@@ -41,7 +41,7 @@ class PPOModel(BaseAgent):
                  fs_coef=0.,
                  rew_coef=.5,
                  clip_value=True,
-                 done_coef=.5,
+                 done_coef=5.,
                  **kwargs):
         super(PPOModel, self).__init__(env, policy, logger, storage, device,
                                        n_checkpoints, env_valid, storage_valid)
@@ -65,6 +65,7 @@ class PPOModel(BaseAgent):
         self.gamma = gamma
         self.lmbda = lmbda
         self.learning_rate = learning_rate
+        self.t_learning_rate = t_learning_rate
         self.optimizer = optim.Adam(self.policy.value.parameters(), lr=learning_rate, eps=1e-5)
         self.grad_clip_norm = grad_clip_norm
         self.eps_clip = eps_clip
@@ -87,7 +88,6 @@ class PPOModel(BaseAgent):
             act = dist.sample()
         return act.cpu().numpy(), value.cpu().numpy()
 
-
     def optimize(self):
         mean_rew = np.mean(self.logger.episode_reward_buffer)
         if self.entropy_scaling == "reward_based":
@@ -95,7 +95,7 @@ class PPOModel(BaseAgent):
         elif self.entropy_scaling == "time_based":
             self.entropy_multiplier = 1 - (self.t / self.total_timesteps)
 
-        #Losses:
+        # Losses:
         total_loss_list, rew_loss_list, cont_loss_list = [], [], []
         t_loss_list, value_loss_list, ent_loss_list, x_ent_loss_list = [], [], [], []
 
@@ -134,7 +134,7 @@ class PPOModel(BaseAgent):
                 if not self.clip_value:
                     value_loss = v_surr1
 
-                reward_loss = (reward_guess - rew_batch).pow(2)
+                reward_loss = MSELoss()(reward_guess, rew_batch)
 
                 done_guess = self.policy.dones(obs_batch, act_batch)
 
@@ -235,6 +235,3 @@ class PPOModel(BaseAgent):
         self.env.close()
         if self.env_valid is not None:
             self.env_valid.close()
-
-
-
