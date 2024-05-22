@@ -222,8 +222,8 @@ def mountain_car_hparams():
         # "distribution_mode": ['hard'],
         "param_name": ['mlpmodel'],
         "device": ["gpu"],
-        "num_timesteps": [int(10e8)],
-        "seed": [6033],
+        "num_timesteps": [int(1e6)],
+        "seed": [6033, 0, 4, 5, 1, 42, 30],
         "gamma": [0.99],  # [0.95],# 0.99],
         "lmbda": [0.98],
         "learning_rate": [0.0003],  # [0.0005],# 0.0003],
@@ -389,7 +389,7 @@ def cartpole_graph_transition_hparams():
 
 def train_hparams():
     # return continue_run("logs/train/mountain_car/test/2024-04-25__05-18-36__seed_6033")
-    return cartpole_graph_transition_hparams()
+    return mountain_car_hparams()
 
 
 def continue_run(logdir):
@@ -450,7 +450,7 @@ def add_training_args_dict():
         "num_timesteps": int(25000000),
         "seed": 6033,
         "log_level": int(40),
-        "num_checkpoints": int(1),
+        "num_checkpoints": int(10),
         "model_file": None,
         "mut_info_alpha": None,
         "gamma": None,
@@ -494,7 +494,7 @@ if __name__ == '__main__':
     parser.add_argument('--hparam_type', type=str, default="train")
 
     re_use_machine = True
-    specify_host = "gpu03"  # "gpu29"#None #"gpu34"
+    specify_host = "gpu18"  # "gpu29"#None #"gpu34"
     if specify_host is not None and not re_use_machine:
         print("Warning - specifying host will re-use that host")
 
