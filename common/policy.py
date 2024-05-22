@@ -61,6 +61,7 @@ class TransitionPolicy(nn.Module):
                  action_size,
                  n_rollouts,
                  temperature,
+                 gamma,
                  ):
         """
         embedder: (torch.Tensor) model to extract the embedding for observation
@@ -70,15 +71,24 @@ class TransitionPolicy(nn.Module):
         assert n_rollouts > 0, "n_rollouts must be > 0"
         self.n_rollouts = n_rollouts
         self.temperature = temperature
+        self.gamma = gamma
         self.embedder = embedder
         self.has_vq = False
         self.action_size = action_size
         # small scale weight-initialization in policy enhances the stability
         # self.fc_policy = orthogonal_init(nn.Linear(self.embedder.output_dim, action_size), gain=0.01)
         self.fc_value = orthogonal_init(nn.Linear(self.embedder.output_dim, 1), gain=1.0)
+        self.fc_reward = orthogonal_init(nn.Linear(self.embedder.output_dim, 1), gain=1.0)
 
         self.value = nn.Sequential(self.embedder, self.fc_value)
+        self.reward = nn.Sequential(self.embedder, self.fc_reward)
         self.transition_model = transition_model
+
+    def value_reward(self, x):
+        h = self.embedder(x)
+        v = self.fc_value(h).reshape(-1)
+        r = self.fc_reward(h).reshape(-1)
+        return v, r
 
     def is_recurrent(self):
         return False
@@ -91,21 +101,30 @@ class TransitionPolicy(nn.Module):
         return a.tile((*s.shape[:-1], 1)).to(device=self.device)
 
     def forward(self, x):
-        v = self.value(x)
-
+        v, r = self.value_reward(x)
+        rews = []
         s = x
         for _ in range(self.n_rollouts):
             next_states = [self.transition_model(s, self.actions_like(s, i)).unsqueeze(1) for i in
                            range(self.action_size)]
             s = torch.concat(next_states, dim=1)
+            rews.append(self.reward(s))
+
+        # adding discounted rewards
+        cum = torch.zeros_like(rews[0])
+        for r in rews[:-1]:
+            # cum = cum.unsqueeze(-2).tile([self.action_size, 1])
+            cum = ((cum + r) * self.gamma).unsqueeze(-2).tile([self.action_size, 1])
 
         vs = self.value(s).squeeze()
-        for _ in range(self.n_rollouts - 1):
+        vs *= self.gamma**self.n_rollouts
+        vs += cum.squeeze()
+        for i in range(self.n_rollouts - 1):
             # vs = vs.max(-1)[0]
             vs = ((vs / self.temperature).softmax(-1) * vs).sum(-1)
         log_probs = F.log_softmax(vs, dim=1)
         p = Categorical(logits=log_probs)
-        return p, v.squeeze()
+        return p, v.squeeze(), r.squeeze()
 
     def vectorized_attempt(self, x):
         s1 = x

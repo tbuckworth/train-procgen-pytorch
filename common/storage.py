@@ -221,7 +221,8 @@ class BasicStorage():
             value_batch = torch.FloatTensor(self.value_batch[:-1]).reshape(-1)[indices].to(self.device)
             return_batch = torch.FloatTensor(self.return_batch).reshape(-1)[indices].to(self.device)
             adv_batch = torch.FloatTensor(self.adv_batch).reshape(-1)[indices].to(self.device)
-            yield obs_batch, nobs_batch, act_batch, done_batch, value_batch, return_batch, adv_batch
+            rew_batch = torch.FloatTensor(self.rew_batch[:-1]).reshape(-1)[indices].to(self.device)
+            yield obs_batch, nobs_batch, act_batch, done_batch, value_batch, return_batch, adv_batch, rew_batch
 
     def fetch_log_data(self):
         if 'env_reward' in self.info_batch[0][0]:

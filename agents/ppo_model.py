@@ -39,6 +39,8 @@ class PPOModel(BaseAgent):
                  increasing_lr=False,
                  sparsity_coef=0.,
                  fs_coef=0.,
+                 rew_coef=.5,
+                 clip_value=True,
                  **kwargs):
         super(PPOModel, self).__init__(env, policy, logger, storage, device,
                                        n_checkpoints, env_valid, storage_valid)
@@ -46,6 +48,7 @@ class PPOModel(BaseAgent):
         # self.transition_model = transition_model
         self.t_optimizer = optim.Adam(self.policy.transition_model.parameters(), lr=t_learning_rate, eps=1e-5)
         self.fs_coef = fs_coef
+        self.clip_value = clip_value
         self.total_timesteps = 0
         self.entropy_scaling = entropy_scaling
         self.entropy_multiplier = 1.
@@ -64,6 +67,7 @@ class PPOModel(BaseAgent):
         self.grad_clip_norm = grad_clip_norm
         self.eps_clip = eps_clip
         self.value_coef = value_coef
+        self.rew_coef = rew_coef
         self.entropy_coef = entropy_coef
         self.x_entropy_coef = x_entropy_coef
         self.normalize_adv = normalize_adv
@@ -77,7 +81,7 @@ class PPOModel(BaseAgent):
     def predict(self, obs):
         with torch.no_grad():
             obs = torch.FloatTensor(obs).to(device=self.device)
-            dist, value = self.policy(obs)
+            dist, value, _ = self.policy(obs)
             act = dist.sample()
         return act.cpu().numpy(), value.cpu().numpy()
 
@@ -90,6 +94,7 @@ class PPOModel(BaseAgent):
             self.entropy_multiplier = 1 - (self.t / self.total_timesteps)
 
         #Losses:
+        total_loss_list, rew_loss_list = [], []
         t_loss_list, value_loss_list, ent_loss_list, x_ent_loss_list = [], [], [], []
 
         batch_size = self.n_steps * self.n_envs // self.n_minibatch
@@ -105,8 +110,8 @@ class PPOModel(BaseAgent):
                                                            recurrent=recurrent)
             for sample in generator:
                 obs_batch, nobs_batch, act_batch, done_batch, \
-                    old_value_batch, return_batch, adv_batch = sample
-                dist_batch, value_batch = self.policy(obs_batch)
+                    old_value_batch, return_batch, adv_batch, rew_batch = sample
+                dist_batch, value_batch, reward_guess = self.policy(obs_batch)
 
                 x_batch_ent_loss, entropy_loss, = cross_batch_entropy(dist_batch)
 
@@ -123,7 +128,14 @@ class PPOModel(BaseAgent):
                 v_surr1 = (value_batch - return_batch).pow(2)
                 v_surr2 = (clipped_value_batch - return_batch).pow(2)
                 value_loss = 0.5 * torch.max(v_surr1, v_surr2).mean()
-                value_loss.backward()
+                # value_loss.backward()
+                if not self.clip_value:
+                    value_loss = v_surr1
+
+                reward_loss = (reward_guess - rew_batch).pow(2)
+
+                loss = value_loss * self.value_coef + reward_loss * self.rew_coef
+                loss.backward()
 
                 # Let model to handle the large batch-size with small gpu-memory
                 if grad_accumulation_cnt % grad_accumulation_steps == 0:
@@ -131,7 +143,9 @@ class PPOModel(BaseAgent):
                     self.optimizer.step()
                     self.optimizer.zero_grad()
                 grad_accumulation_cnt += 1
+                total_loss_list.append(loss.item())
                 value_loss_list.append(value_loss.item())
+                rew_loss_list.append(reward_loss.item())
                 t_loss_list.append(t_loss.item())
                 ent_loss_list.append(entropy_loss.item())
                 x_ent_loss_list.append(x_batch_ent_loss.item())
@@ -140,6 +154,8 @@ class PPOModel(BaseAgent):
                    'Loss/transition': np.mean(t_loss_list),
                    'Loss/entropy': np.mean(ent_loss_list),
                    'Loss/x_entropy': np.mean(x_ent_loss_list),
+                   'Loss/reward': np.mean(rew_loss_list),
+                   'Loss/total': np.mean(total_loss_list),
                    }
         return summary
 

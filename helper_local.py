@@ -292,6 +292,7 @@ def initialize_model(device, env, hyperparameters):
         latent_size = hyperparameters.get("latent_size", 256)
         model = MLPModel(in_channels, depth, mid_weight, latent_size)
 
+        gamma = hyperparameters.get("gamma", 0.99)
         temperature = hyperparameters.get("temperature", 1)
         n_rollouts = hyperparameters.get("n_rollouts", 3)
         depth = hyperparameters.get("depth", 4)
@@ -299,7 +300,7 @@ def initialize_model(device, env, hyperparameters):
         latent_size = hyperparameters.get("latent_size", 256)
         transition_model = GraphTransitionModel(in_channels, depth, mid_weight, latent_size, device)
         action_size = action_space.n
-        policy = TransitionPolicy(model, transition_model, action_size, n_rollouts, temperature)
+        policy = TransitionPolicy(model, transition_model, action_size, n_rollouts, temperature, gamma)
         policy.to(device)
         policy.device = device
         return model, observation_shape, policy
@@ -450,6 +451,7 @@ def add_training_args(parser):
     parser.add_argument('--n_rollouts', type=int, default=None)
     parser.add_argument('--temperature', type=float, default=None)
 
+
     parser.add_argument('--mini_batch_size', type=int, default=None)
     parser.add_argument('--wandb_name', type=str, default=None)
     parser.add_argument('--wandb_group', type=str, default=None)
@@ -481,6 +483,7 @@ def add_training_args(parser):
     parser.add_argument('--real_procgen', action="store_true")
     parser.add_argument('--mirror_env', action="store_true")
     parser.add_argument('--use_gae', action="store_true")
+    parser.add_argument('--clip_value', action="store_true")
 
     parser.add_argument('--no-detect_nan', dest='detect_nan', action="store_false")
     parser.add_argument('--no-use_valid_env', dest='use_valid_env', action="store_false")
@@ -492,6 +495,7 @@ def add_training_args(parser):
     parser.add_argument('--no-real_procgen', dest='real_procgen', action="store_false")
     parser.add_argument('--no-mirror_env', dest='mirror_env', action="store_false")
     parser.add_argument('--no-use_gae', dest='use_gae', action="store_false")
+    parser.add_argument('--no-clip_value', dest='clip_value', action="store_false")
 
 
     parser.set_defaults(detect_nan=False,
@@ -504,6 +508,7 @@ def add_training_args(parser):
                         real_procgen=True,
                         mirror_env=False,
                         use_gae=True,
+                        clip_value=True,
                         )
 
     return parser

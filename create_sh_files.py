@@ -368,6 +368,8 @@ def cartpole_graph_transition_hparams():
         "n_rollouts": [1, 2, 3],
         "temperature": [1, 10, 100, 1000, 100000],
         "use_gae": [True],
+        # "rew_coef":[.5],
+        "clip_value": [False, True],
         # "n_minibatch": None,
         # "mini_batch_size": None,
         # "wandb_name": None,

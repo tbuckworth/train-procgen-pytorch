@@ -989,6 +989,7 @@ class GraphTransitionModel(nn.Module):
         return self.update(x, msg).squeeze()
 
     def old_forward(self, obs, action):
+        # This is kept as the logic is easier to follow and the result is the same (but much less efficient)
         x = self.append_index(obs)
         n = x.shape[-2]
         updates = [self.update(x[..., i, :], self.sum_messages_old(i, n, x, action)) for i in range(n)]
@@ -1006,6 +1007,7 @@ class GraphTransitionModel(nn.Module):
         return torch.sum(messages, dim=-2).squeeze()
 
     def sum_messages(self, i, n, x, action):
+        # This is kept as the logic is easier to follow and the result is the same (but much less efficient)
         xi = x[..., i, :].unsqueeze(-2).tile([n, 1])
         a = action.unsqueeze(-1).tile([n]).unsqueeze(-1)
         msg_in = torch.concat([xi, x, a], dim=-1)
@@ -1013,6 +1015,7 @@ class GraphTransitionModel(nn.Module):
         return torch.sum(messages, dim=-2).squeeze()
 
     def sum_messages_old(self, i, n, x, action):
+        # This is kept as the logic is easier to follow and the result is the same (but much less efficient)
         messages = [self.msg_pass(x[..., i, :], x[..., j, :], action) for j in range(n)]
         h = torch.sum(torch.concat(messages, -1), dim=-1)
         return h

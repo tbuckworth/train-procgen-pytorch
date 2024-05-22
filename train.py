@@ -61,6 +61,7 @@ def train_ppo(args):
         "n_rollouts",
         "temperature",
         "use_gae",
+        "clip_value",
     ]:
         if var_name in args.__dict__.keys() and args.__dict__[var_name] is not None:
             hyperparameters[var_name] = args.__dict__[var_name]
