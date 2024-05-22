@@ -213,6 +213,8 @@ class PPOModel(BaseAgent):
                              true_average_reward_v)
 
             self.optimizer, lr = self.adjust_lr(self.optimizer, self.learning_rate, self.t, num_timesteps)
+            self.t_optimizer, _ = self.adjust_lr(self.t_optimizer, self.t_learning_rate, self.t, num_timesteps)
+
             self.logger.dump(summary, lr)
             # Save the model
             # if self.t > ((checkpoint_cnt + 1) * save_every):
