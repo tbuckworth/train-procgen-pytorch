@@ -168,8 +168,8 @@ def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_ty
 def symbreg_hparams():
     return {
         "timeout_in_seconds": [3600 * 10],
-        "data_size": [10000],  # , 500, 100, 50],# 5000],
-        "iterations": [200],  # 20, 40, 80],
+        "data_size": [2000, 1000, 5000],  # , 500, 100, 50],# 5000],
+        "iterations": [1, 5, 20],  # 20, 40, 80],
         "n_envs": [100],
         "rounds": [1000],
         "denoise": [True],
@@ -177,13 +177,13 @@ def symbreg_hparams():
         "procs": [8],
         "ncycles_per_iteration": [4000],
         "bumper": [False],
-        "binary_operators": [["+", "-", "greater", "\*", "/", "cond", "bal1", "bal2"]],
+        "binary_operators": [["+", "-", "greater", "\*", "/"]],#"cond"
         "unary_operators": [  # [],
             ["sin", "relu", "log", "exp", "sign", "sqrt", "square"],
         ],
         "wandb_tags": [["cartpole", "hparam", "multi-extrapolation", "cartpole_swing"]],
-        "model_selection": ["accuracy"],
-        "weight_metric": ["value"],
+        "model_selection": ["accuracy", "best"],
+        "weight_metric": ["value", "entropy"],
         # "loss_function": ["capped_sigmoid"],
         # "loss_function": ['sigmoid', 'exp', 'logitmarg', 'logitdist', 'mse', 'capped_sigmoid'],
         "loss_function": ['mse', 'capped_sigmoid', "logitdist", "sigmoid", "mce"],  # 'exp', 'sigmoid', 'logitdist', ],
@@ -197,14 +197,15 @@ def symbreg_hparams():
 
         ## Actually working ones:
         "logdir": [
-            # "logs/train/acrobot/test/2024-05-01__12-22-24__seed_6033",
-            # "logs/train/mountain_car/test/2024-05-03__15-46-58__seed_6033",
-            # Best generalizer:
-            "logs/train/cartpole_swing/test/2024-05-01__14-19-53__seed_6033",
-            # low test ep reward and length:
-            "logs/train/cartpole_swing/test/2024-05-01__14-19-59__seed_6033",
-            # low test ep reward, high length:
-            "logs/train/cartpole_swing/test/2024-05-01__14-19-58__seed_6033",
+            "logs/train/mountain_car/test/2024-05-22__20-29-39__seed_30",
+            # # "logs/train/acrobot/test/2024-05-01__12-22-24__seed_6033",
+            # # "logs/train/mountain_car/test/2024-05-03__15-46-58__seed_6033",
+            # # Best generalizer:
+            # "logs/train/cartpole_swing/test/2024-05-01__14-19-53__seed_6033",
+            # # low test ep reward and length:
+            # "logs/train/cartpole_swing/test/2024-05-01__14-19-59__seed_6033",
+            # # low test ep reward, high length:
+            # "logs/train/cartpole_swing/test/2024-05-01__14-19-58__seed_6033",
 
         ],
         # "logs/train/cartpole/test/2024-05-01__11-17-14__seed_0",
@@ -493,8 +494,8 @@ if __name__ == '__main__':
     parser.add_argument('--max_runs', type=int, default=200)
     parser.add_argument('--hparam_type', type=str, default="train")
 
-    re_use_machine = True
-    specify_host = "gpu18"  # "gpu29"#None #"gpu34"
+    re_use_machine = False
+    specify_host = None#"gpu18"  # "gpu29"#None #"gpu34"
     if specify_host is not None and not re_use_machine:
         print("Warning - specifying host will re-use that host")
 
