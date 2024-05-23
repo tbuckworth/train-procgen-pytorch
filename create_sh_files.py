@@ -378,7 +378,7 @@ def coinrun_mostlyneural_hparams():
 def cartpole_graph_transition_hparams():
     return {
         "exp_name": [None],
-        "env_name": ['cartpole'],# 'cartpole-swing'],
+        "env_name": ['cartpole_swing'],# 'cartpole-swing'],
         # "distribution_mode": ['hard'],
         "param_name": ['graph-transition'],
         "device": ["gpu"],
@@ -519,7 +519,7 @@ if __name__ == '__main__':
 
     compute_all = False
     re_use_machine = True
-    specify_host = "gpu36"  # "gpu29"#None #"gpu34"
+    specify_host = "gpu31"  # "gpu29"#None #"gpu34"
     if specify_host is not None and not re_use_machine:
         print("Warning - specifying host will re-use that host")
 
