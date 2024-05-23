@@ -140,8 +140,8 @@ class MountainCarVecEnv(PreVecEnv):
             f"min_start_position ({self.min_start_position}) must be >= left_boundary ({self.left_boundary})"
         assert self.max_start_position <= self.min_right_boundary, \
             f"max_start_position ({self.max_start_position}) must be <= min_right_boundary ({self.min_right_boundary})"
-        assert self.max_goal_position < self.max_right_boundary, \
-            f"max_goal_postiion ({self.max_goal_position}) must be <= max_right_boundary ({self.max_right_boundary})"
+        assert self.max_goal_position <= self.max_right_boundary, \
+            f"max_goal_position ({self.max_goal_position}) must be <= max_right_boundary ({self.max_right_boundary})"
         self.max_speed = max_speed
         # self.goal_position = goal_position
         self.goal_velocity = goal_velocity
@@ -163,15 +163,16 @@ class MountainCarVecEnv(PreVecEnv):
 
         self.customizable_params = [
             "goal_velocity",
-            "min_position",
-            "max_position",
+            "min_start_position",
+            "max_start_position",
             "left_boundary",
             "min_right_boundary",
             "max_right_boundary",
             "min_goal_position",
             "max_goal_position",
             "max_speed",
-            "goal_position",
+            "min_goal_position",
+            "max_goal_position",
             "force",
             "max_steps",
             "max_gravity",

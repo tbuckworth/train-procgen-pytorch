@@ -108,7 +108,8 @@ def test_agent_mean_reward(agent, env, print_name, n=40, return_values=False):
 
 def run_tests():
     dirs = [
-        "logs/train/cartpole_swing/test/2024-05-01__14-19-53__seed_6033/symbreg/2024-05-13__10-27-13",
+        "logs/train/mountain_car/test/2024-05-22__20-29-39__seed_30/symbreg/2024-05-23__01-17-39",
+        # "logs/train/cartpole_swing/test/2024-05-01__14-19-53__seed_6033/symbreg/2024-05-13__10-27-13",
         # "logs/train/mountain_car/test/2024-05-03__15-46-58__seed_6033/symbreg/2024-05-14__00-45-59",
         # "logs/train/acrobot/test/2024-05-01__12-22-24__seed_6033/symbreg/2024-05-08__13-36-18",
         # "logs/train/cartpole/test/2024-05-01__11-17-16__seed_6033/symbreg/2024-05-03__11-14-03",
@@ -118,7 +119,7 @@ def run_tests():
     ]
     for symbdir in dirs:
         try:
-            test_saved_model(symbdir, n_envs=1000, n_rounds=10)#, override_model=CustomModel(degrees=16))
+            test_saved_model(symbdir, n_envs=1000, n_rounds=1000)#, override_model=CustomModel(degrees=16))
         except Exception as e:
             print(e)
 
@@ -178,8 +179,8 @@ def test_saved_model(symbdir, n_envs=10, n_rounds=10, override_model=None):
 
         fancy_names = ["Gravity", "1st Link Length", "2nd Link Length", "1st Link Mass", "2nd Link Mass"]
     elif env_name == "mountain_car":
-        groups = ["gravity"]
-        fancy_names = ["Gravity"]
+        groups = ["gravity", "right_boundary", "goal_position"]
+        fancy_names = ["Gravity", "Right Boundary", "Goal Position"]
     else:
         raise NotImplementedError(f"Implement for env {env_name}")
 
@@ -201,6 +202,9 @@ def test_saved_model(symbdir, n_envs=10, n_rounds=10, override_model=None):
         params[group] = temp_params
 
     params["all"] = test_params
+    if env_name in ["mountain_car"]:
+        params["goal_position"]["max_goal_position"] = min(params["goal_position"]["max_right_boundary"], params["goal_position"]["max_goal_position"])
+        #TODO: make note of this
 
     if env_name in ["cartpole", "cartpole_swing", "mountain_car"]:
         train_ranges = {k: {re.sub(r"(min|max).*", r"train_\1", ks): vs["train"] for ks, vs in v.items()} for k, v in
