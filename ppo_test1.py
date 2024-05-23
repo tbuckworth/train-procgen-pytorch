@@ -79,7 +79,7 @@ class TestPPOModel(unittest.TestCase):
     def setUpClass(cls):
         n_envs = 2
         cls.device = torch.device('cpu')
-        env_con = get_env_constructor("cartpole")
+        env_con = get_env_constructor("cartpole_swing")
         hyperparameters = {"n_envs": n_envs}
         cls.env = env_con(None, hyperparameters)
         cls.in_channels = cls.env.observation_space.shape[0]

@@ -372,7 +372,7 @@ def coinrun_mostlyneural_hparams():
 def cartpole_graph_transition_hparams():
     return {
         "exp_name": [None],
-        "env_name": ['cartpole'],# 'cartpole-swing'],
+        "env_name": ['cartpole_swing'],# 'cartpole-swing'],
         # "distribution_mode": ['hard'],
         "param_name": ['graph-transition'],
         "device": ["gpu"],
