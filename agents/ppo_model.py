@@ -137,7 +137,7 @@ class PPOModel(BaseAgent):
                     value_loss = 0.5 * torch.max(v_surr1, v_surr2).mean()
                     # value_loss.backward()
                     if not self.clip_value:
-                        value_loss = v_surr1
+                        value_loss = v_surr1.mean()
 
                     reward_loss = MSELoss()(reward_guess, rew_batch)
 
