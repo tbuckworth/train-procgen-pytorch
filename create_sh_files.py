@@ -96,14 +96,20 @@ def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_ty
     if not compute_all:
         h_dict_list = []
         for key in keys:
-            for param in hparams[key]:
-                temp_dict = {}
-                temp_dict[key] = param
-                for k2 in keys:
-                    if k2 != key:
-                        hs = hparams[k2]
-                        temp_dict[k2] = middle(hs)
-                h_dict_list.append(temp_dict)
+            if len(hparams[key])>1:
+                for param in hparams[key]:
+                    temp_dict = {}
+                    temp_dict[key] = param
+                    for k2 in keys:
+                        if k2 != key:
+                            hs = middle(hparams[k2])
+                            if type(hs) is list:
+                                hs = hs.copy()
+                            temp_dict[k2] = hs
+                    if "wandb_tags" in keys:
+                        temp_dict["wandb_tags"] += [f"varied-{key}"]
+                    h_dict_list.append(temp_dict.copy())
+                    del temp_dict
     else:
         h_dict_list = [dict(zip(keys, v)) for v in itertools.product(*values)]
     h_dict_list = np.random.permutation(h_dict_list)
