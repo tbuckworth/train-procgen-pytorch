@@ -390,7 +390,7 @@ def cartpole_graph_transition_hparams():
 
 def train_hparams():
     # return continue_run("logs/train/mountain_car/test/2024-04-25__05-18-36__seed_6033")
-    return mountain_car_hparams()
+    return cartpole_graph_transition_hparams()
 
 
 def continue_run(logdir):
