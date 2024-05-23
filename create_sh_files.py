@@ -89,11 +89,23 @@ def add_boxworld_params(args):
 
 
 def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_type, re_use_machine=False,
-                   specify_host=None):
+                   specify_host=None, compute_all=True):
     hosts = {}
     free_machine = None
     keys, values = zip(*hparams.items())
-    h_dict_list = [dict(zip(keys, v)) for v in itertools.product(*values)]
+    if not compute_all:
+        h_dict_list = []
+        for key in keys:
+            for param in hparams[key]:
+                temp_dict = {}
+                temp_dict[key] = param
+                for k2 in keys:
+                    if k2 != key:
+                        hs = hparams[k2]
+                        temp_dict[k2] = middle(hs)
+                h_dict_list.append(temp_dict)
+    else:
+        h_dict_list = [dict(zip(keys, v)) for v in itertools.product(*values)]
     h_dict_list = np.random.permutation(h_dict_list)
     arg_list = [copy.deepcopy(args) for _ in h_dict_list]
 
@@ -163,6 +175,11 @@ def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_ty
             run_subprocess(cmd1, "\\n", suppress=False)
             run_subprocess(cmd2, "\\n", suppress=False)
     np.save(os.path.join("data", f"hosts_{time.strftime('%Y-%m-%d__%H-%M-%S')}.npy"), hosts)
+
+
+def middle(hs):
+    hs.sort()
+    return hs[len(hs)//2]
 
 
 def symbreg_hparams():
@@ -355,7 +372,7 @@ def coinrun_mostlyneural_hparams():
 def cartpole_graph_transition_hparams():
     return {
         "exp_name": [None],
-        "env_name": ['cartpole', 'cartpole-swing'],
+        "env_name": ['cartpole'],# 'cartpole-swing'],
         # "distribution_mode": ['hard'],
         "param_name": ['graph-transition'],
         "device": ["gpu"],
@@ -369,7 +386,7 @@ def cartpole_graph_transition_hparams():
         "n_envs": [64, 32],
         "n_steps": [256],
         "n_rollouts": [1, 3, 5],
-        "temperature": [1, 10, 100, 1000, 100000],
+        "temperature": [1, 100, 100000],
         "use_gae": [True],
         "rew_coef": [1, 0.1],
         "done_coef": [5., 1., 0.5, 10.],
@@ -494,6 +511,7 @@ if __name__ == '__main__':
     parser.add_argument('--max_runs', type=int, default=200)
     parser.add_argument('--hparam_type', type=str, default="train")
 
+    compute_all = False
     re_use_machine = True
     specify_host = "gpu31"  # "gpu29"#None #"gpu34"
     if specify_host is not None and not re_use_machine:
@@ -525,4 +543,4 @@ if __name__ == '__main__':
     n_experiments = np.prod([len(hparams[x]) for x in hparams.keys()])
     print(f"Creating {n_experiments} experiments across {n_gpu} workers.")
     random_subset = min(1, max_runs / n_experiments)
-    write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_type, re_use_machine, specify_host)
+    write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_type, re_use_machine, specify_host, compute_all)
