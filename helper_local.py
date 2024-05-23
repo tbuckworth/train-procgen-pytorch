@@ -289,8 +289,8 @@ def initialize_model(device, env, hyperparameters):
 
         depth = hyperparameters.get("depth", 4)
         mid_weight = hyperparameters.get("mid_weight", 64)
-        latent_size = hyperparameters.get("latent_size", 256)
-        model = MLPModel(in_channels, depth, mid_weight, latent_size)
+        output_dim = hyperparameters.get("output_dim", 256)
+        model = MLPModel(in_channels, depth, mid_weight, output_dim)
 
         gamma = hyperparameters.get("gamma", 0.99)
         temperature = hyperparameters.get("temperature", 1)

@@ -135,6 +135,12 @@ class TransitionPolicy(nn.Module):
 
         log_probs = F.log_softmax(vs, dim=1)
         p = Categorical(logits=log_probs)
+        # if abs(x[0][2]) >= 0.18 or abs(x[0][0]) >= 2.35:
+        #     print(x[0])
+        #     print(s[0])
+        #     print(vs[0])
+        #     print(p.probs[0])
+        #     print("pause")
         return p, v.squeeze(), reward.squeeze()
 
     def all_dones(self, s):
