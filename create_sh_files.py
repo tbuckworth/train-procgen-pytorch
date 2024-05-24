@@ -378,21 +378,21 @@ def coinrun_mostlyneural_hparams():
 def cartpole_graph_transition_hparams():
     return {
         "exp_name": [None],
-        "env_name": ['cartpole_swing'],# 'cartpole-swing'],
+        "env_name": ['cartpole'],# 'cartpole-swing'],
         # "distribution_mode": ['hard'],
         "param_name": ['graph-transition'],
         "device": ["gpu"],
-        "num_timesteps": [int(2e6)],
+        "num_timesteps": [int(2e8)],
         "seed": [6033],  # 0, 1, 101, 40],
         "gamma": [0.95],  # 0.9],
-        "val_epochs": [3, 8, 12],
+        "val_epochs": [3, 8],
         "dyn_epochs": [3, 5, 8],
         "learning_rate": [0.00025, 0.0005],
-        "t_learning_rate": [0.00025, 0.001],
-        "n_envs": [64, 32],
+        "t_learning_rate": [0.00025, 0.0001],
+        "n_envs": [32],
         "n_steps": [256],
-        "n_rollouts": [1, 3, 5],
-        "temperature": [1, 100, 100000],
+        "n_rollouts": [1, 3],
+        "temperature": [100],
         "use_gae": [True],
         "rew_coef": [1, 0.1],
         "done_coef": [5., 1., 0.5, 10.],
@@ -406,7 +406,7 @@ def cartpole_graph_transition_hparams():
         "use_wandb": [True],
         "mirror_env": [False],
         "use_valid_env": [True],
-        "output_dim": [24, 256],
+        "output_dim": [24],
         # "fs_coef": [0.0001, 0.001, 0.01, 0.1, 0.5, 1.0, 2.0, 5.0, 10.0],
     }
 
@@ -516,14 +516,18 @@ if __name__ == '__main__':
     # parser.add_argument('--cuda', action="store_true", default=False)
     parser.add_argument('--max_runs', type=int, default=200)
     parser.add_argument('--hparam_type', type=str, default="train")
+    parser.add_argument('--host', type=str, default=None)
+    parser.add_argument('--compute_all', action="store_true", default=False)
+    parser.add_argument('--re_use_machine', action="store_true", default=False)
 
-    compute_all = False
-    re_use_machine = True
-    specify_host = "gpu31"  # "gpu29"#None #"gpu34"
+    largs = parser.parse_args()
+
+    compute_all = largs.compute_all
+    re_use_machine = largs.re_use_machine
+    specify_host = largs.host
     if specify_host is not None and not re_use_machine:
         print("Warning - specifying host will re-use that host")
 
-    largs = parser.parse_args()
     n_gpu = largs.n_gpu
     execute = largs.execute
     max_runs = largs.max_runs
