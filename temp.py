@@ -1,11 +1,13 @@
+import os
 import re
 
 import numpy as np
+import pandas as pd
 from numpy import cos,sin,pi
 
 from common.env.env_constructor import get_env_constructor
 from create_sh_files import train_hparams, symbreg_hparams
-from helper_local import free_gpu
+from helper_local import free_gpu, get_config
 from cartpole.cartpole_pre_vec import CartPoleVecEnv
 import gymnasium
 from discrete_env.acrobot_pre_vec import rk4 as rk4_pre_vec
@@ -293,6 +295,33 @@ def get_n_create_sh_files():
     print(f"Symbreg experiments: {n_experiments}.")
 
 
+def extract_hyperparams_symbreg():
+    dirs = [
+        "logs/train/mountain_car/test/2024-05-22__20-29-39__seed_30/symbreg/2024-05-23__01-17-39",
+        "logs/train/cartpole_swing/test/2024-05-01__14-19-53__seed_6033/symbreg/2024-05-13__10-27-13",
+        # "logs/train/mountain_car/test/2024-05-03__15-46-58__seed_6033/symbreg/2024-05-14__00-45-59",
+        # "logs/train/acrobot/test/2024-05-01__12-22-24__seed_6033/symbreg/2024-05-08__13-36-18",
+        "logs/train/cartpole/test/2024-05-01__11-17-16__seed_6033/symbreg/2024-05-03__11-14-03",
+        # "logs/train/acrobot/test/2024-05-01__12-22-24__seed_6033/symbreg/2024-05-02__02-06-38",
+        "logs/train/cartpole/test/2024-05-01__11-17-16__seed_6033/symbreg/2024-05-02__13-37-11",
+    ]
+    cfgs = [get_config(symbdir) for symbdir in dirs]
+    df = pd.DataFrame.from_dict(cfgs)
+
+    out = {}
+    for column in df:
+        try:
+            vals = np.unique(df[column])
+            v_str = [f"{v}" for v in list(vals)]
+            out[column] = ','.join(v_str)
+        except Exception as e:
+            continue
+
+    df2 = pd.DataFrame(out, index=[0])
+    latex = df2.T.to_latex()
+    print(latex)
+    print("pass")
+
 
 if __name__ == "__main__":
-    get_n_create_sh_files()
+    extract_hyperparams_symbreg()
