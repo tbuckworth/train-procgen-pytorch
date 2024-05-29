@@ -96,7 +96,7 @@ def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_ty
     if not compute_all:
         h_dict_list = []
         for key in keys:
-            if len(hparams[key])>1:
+            if len(hparams[key]) > 1:
                 for param in hparams[key]:
                     temp_dict = {}
                     temp_dict[key] = param
@@ -185,7 +185,7 @@ def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_ty
 
 def middle(hs):
     hs.sort()
-    return hs[len(hs)//2]
+    return hs[len(hs) // 2]
 
 
 def symbreg_hparams():
@@ -200,7 +200,7 @@ def symbreg_hparams():
         "procs": [8],
         "ncycles_per_iteration": [4000],
         "bumper": [False],
-        "binary_operators": [["+", "-", "greater", "\*", "/"]],#"cond"
+        "binary_operators": [["+", "-", "greater", "\*", "/"]],  # "cond"
         "unary_operators": [  # [],
             ["sin", "relu", "log", "exp", "sign", "sqrt", "square"],
         ],
@@ -378,25 +378,25 @@ def coinrun_mostlyneural_hparams():
 def cartpole_graph_transition_hparams():
     return {
         "exp_name": [None],
-        "env_name": ['cartpole'],# 'cartpole-swing'],
+        "env_name": ['cartpole'],  # 'cartpole-swing'],
         # "distribution_mode": ['hard'],
         "param_name": ['graph-transition'],
         "device": ["gpu"],
-        "num_timesteps": [int(2e8)],
+        "num_timesteps": [int(2e6)],
         "seed": [6033],  # 0, 1, 101, 40],
         "gamma": [0.95],  # 0.9],
-        "val_epochs": [3, 8],
-        "dyn_epochs": [3, 5, 8],
-        "learning_rate": [0.00025, 0.0005],
-        "t_learning_rate": [0.00025, 0.0001],
+        "val_epochs": [8],  # [3, 8],
+        "dyn_epochs": [5],  # [3, 5, 8],
+        "learning_rate": [0.00025],  # , 0.0005],
+        "t_learning_rate": [0.00025],  # , 0.0001],
         "n_envs": [32],
         "n_steps": [256],
-        "n_rollouts": [1, 3],
-        "temperature": [100],
+        "n_rollouts": [3],
+        "temperature": [1e-6, 1e-5, 1e-4, 1e-3, 1e-2],  # [0.01, 0.001, 0.0001, 0.00001, 0.000001],
         "use_gae": [True],
-        "rew_coef": [1, 0.1],
-        "done_coef": [5., 1., 0.5, 10.],
-        "clip_value": [False, True],
+        "rew_coef": [1],  # 0.1],
+        "done_coef": [1.],  # 5., 1., 0.5, 10.],
+        "clip_value": [False],  # True],
         # "n_minibatch": None,
         # "mini_batch_size": None,
         # "wandb_name": None,
@@ -511,14 +511,14 @@ def add_training_args_dict():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--n_gpu', type=int, default=2)
+    parser.add_argument('--n_gpu', type=int, default=1)
     parser.add_argument('--execute', action="store_true", default=True)
     # parser.add_argument('--cuda', action="store_true", default=False)
     parser.add_argument('--max_runs', type=int, default=200)
     parser.add_argument('--hparam_type', type=str, default="train")
-    parser.add_argument('--host', type=str, default=None)
-    parser.add_argument('--compute_all', action="store_true", default=False)
-    parser.add_argument('--re_use_machine', action="store_true", default=False)
+    parser.add_argument('--host', type=str, default="gpu31")
+    parser.add_argument('--compute_all', action="store_true", default=True)
+    parser.add_argument('--re_use_machine', action="store_true", default=True)
 
     largs = parser.parse_args()
 
@@ -555,4 +555,5 @@ if __name__ == '__main__':
         n_experiments = np.sum([len(hparams[x]) for x in hparams.keys()])
     print(f"Creating {n_experiments} experiments across {n_gpu} workers.")
     random_subset = min(1, max_runs / n_experiments)
-    write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_type, re_use_machine, specify_host, compute_all)
+    write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_type, re_use_machine, specify_host,
+                   compute_all)

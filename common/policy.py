@@ -108,6 +108,7 @@ class TransitionPolicy(nn.Module):
         return a.tile((*s.shape[:-1], 1)).to(device=self.device)
 
     def forward(self, x):
+        # Reward is dependent on action, should be bucketed up with continuation flag
         v, reward = self.value_reward(x)
         rews = []
         cont = []
@@ -118,7 +119,6 @@ class TransitionPolicy(nn.Module):
                            range(self.action_size)]
             s = torch.concat(next_states, dim=1)
             rews.append(self.reward(s))
-
 
         # adding discounted rewards
         cum = torch.zeros_like(rews[0])
@@ -133,7 +133,7 @@ class TransitionPolicy(nn.Module):
             vs[cont[-(i+1)].round(decimals=0) == 1] = 0
             vs = ((vs / self.temperature).softmax(-1) * vs).sum(-1)
 
-        log_probs = F.log_softmax(vs, dim=1)
+        log_probs = F.log_softmax(vs / self.temperature, dim=1)
         p = Categorical(logits=log_probs)
         # if abs(x[0][2]) >= 0.18 or abs(x[0][0]) >= 2.35:
         #     print(x[0])

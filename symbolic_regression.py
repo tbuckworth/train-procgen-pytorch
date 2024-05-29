@@ -6,6 +6,8 @@ import time
 import numpy as np
 import pandas as pd
 import sympy
+from torch import cuda
+
 import wandb
 from discrete_env.mountain_car_pre_vec import create_mountain_car
 
@@ -93,7 +95,7 @@ def load_nn_policy(logdir, n_envs=2):
     if env_name in ["coinrun", "boxworld"]:
         symbolic_agent_constructor = NeuroSymbolicAgent
 
-    device = torch.device("cpu")
+    device = torch.device("cuda") if cuda.is_available() else torch.device("cpu")
     hyperparameters, last_model = load_hparams_for_model(cfg["param_name"], logdir, n_envs)
     hyperparameters["n_envs"] = n_envs
 

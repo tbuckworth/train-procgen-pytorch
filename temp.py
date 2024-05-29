@@ -324,4 +324,4 @@ def extract_hyperparams_symbreg():
 
 
 if __name__ == "__main__":
-    extract_hyperparams_symbreg()
+    get_n_create_sh_files()
