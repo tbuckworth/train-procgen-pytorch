@@ -132,6 +132,7 @@ class TransitionPolicy(nn.Module):
         for i in range(self.n_rollouts - 1):
             vs[cont[-(i+1)].round(decimals=0) == 1] = 0
             vs = ((vs / self.temperature).softmax(-1) * vs).sum(-1)
+            # vs = vs.max(-1)[0]
 
         log_probs = F.log_softmax(vs / self.temperature, dim=1)
         p = Categorical(logits=log_probs)

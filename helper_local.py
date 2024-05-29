@@ -490,6 +490,7 @@ def add_training_args(parser):
     parser.add_argument('--mirror_env', action="store_true")
     parser.add_argument('--use_gae', action="store_true")
     parser.add_argument('--clip_value', action="store_true")
+    parser.add_argument('--anneal_temp', action="store_true")
 
     parser.add_argument('--no-detect_nan', dest='detect_nan', action="store_false")
     parser.add_argument('--no-use_valid_env', dest='use_valid_env', action="store_false")
@@ -502,6 +503,7 @@ def add_training_args(parser):
     parser.add_argument('--no-mirror_env', dest='mirror_env', action="store_false")
     parser.add_argument('--no-use_gae', dest='use_gae', action="store_false")
     parser.add_argument('--no-clip_value', dest='clip_value', action="store_false")
+    parser.add_argument('--no-anneal_temp', dest='anneal_temp', action="store_false")
 
 
     parser.set_defaults(detect_nan=False,
@@ -515,6 +517,7 @@ def add_training_args(parser):
                         mirror_env=False,
                         use_gae=True,
                         clip_value=True,
+                        anneal_temp=False,
                         )
 
     return parser

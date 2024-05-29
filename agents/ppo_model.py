@@ -8,6 +8,11 @@ import torch.optim as optim
 import numpy as np
 
 
+def adjust_temp(temperature, timesteps, max_timesteps):
+    new_temp = temperature * (1 - (timesteps / max_timesteps))
+    return max(new_temp, 1e-20)
+
+
 class PPOModel(BaseAgent):
     def __init__(self,
                  env,
@@ -43,11 +48,13 @@ class PPOModel(BaseAgent):
                  done_coef=5.,
                  val_epochs=3,
                  dyn_epochs=3,
+                 anneal_temp=False,
                  **kwargs):
         super(PPOModel, self).__init__(env, policy, logger, storage, device,
                                        n_checkpoints, env_valid, storage_valid)
 
         # self.transition_model = transition_model
+        self.anneal_temperature = anneal_temp
         self.val_epochs = val_epochs
         self.dyn_epochs = dyn_epochs
         self.done_coef = done_coef
@@ -227,6 +234,8 @@ class PPOModel(BaseAgent):
 
             self.optimizer, lr = self.adjust_lr(self.optimizer, self.learning_rate, self.t, num_timesteps)
             self.t_optimizer, _ = self.adjust_lr(self.t_optimizer, self.t_learning_rate, self.t, num_timesteps)
+            if self.anneal_temperature:
+                self.policy.temperature = adjust_temp(self.policy.temperature, self.t, num_timesteps)
 
             self.logger.dump(summary, lr)
             # Save the model

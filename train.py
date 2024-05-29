@@ -66,6 +66,7 @@ def train_ppo(args):
         "dyn_epochs",
         "val_epochs",
         "rew_coef",
+        "anneal_temp",
     ]:
         if var_name in args.__dict__.keys() and args.__dict__[var_name] is not None:
             hyperparameters[var_name] = args.__dict__[var_name]

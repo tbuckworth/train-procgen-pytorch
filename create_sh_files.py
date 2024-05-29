@@ -407,6 +407,7 @@ def cartpole_graph_transition_hparams():
         "mirror_env": [False],
         "use_valid_env": [True],
         "output_dim": [24],
+        "anneal_temp": [True, False],
         # "fs_coef": [0.0001, 0.001, 0.01, 0.1, 0.5, 1.0, 2.0, 5.0, 10.0],
     }
 
