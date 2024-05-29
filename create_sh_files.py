@@ -382,7 +382,7 @@ def cartpole_graph_transition_hparams():
         # "distribution_mode": ['hard'],
         "param_name": ['graph-transition'],
         "device": ["gpu"],
-        "num_timesteps": [int(2e6)],
+        "num_timesteps": [int(2e6),int(4e6),int(10e6)],
         "seed": [6033],  # 0, 1, 101, 40],
         "gamma": [0.95],  # 0.9],
         "val_epochs": [8],  # [3, 8],
@@ -392,7 +392,7 @@ def cartpole_graph_transition_hparams():
         "n_envs": [32],
         "n_steps": [256],
         "n_rollouts": [3],
-        "temperature": [1e-6, 1e-5, 1e-4, 1e-3, 1e-2],  # [0.01, 0.001, 0.0001, 0.00001, 0.000001],
+        "temperature": [1e-2, 1e-3],  # [0.01, 0.001, 0.0001, 0.00001, 0.000001],
         "use_gae": [True],
         "rew_coef": [1],  # 0.1],
         "done_coef": [1.],  # 5., 1., 0.5, 10.],
@@ -407,7 +407,7 @@ def cartpole_graph_transition_hparams():
         "mirror_env": [False],
         "use_valid_env": [True],
         "output_dim": [24],
-        "anneal_temp": [True, False],
+        "anneal_temp": [True],
         # "fs_coef": [0.0001, 0.001, 0.01, 0.1, 0.5, 1.0, 2.0, 5.0, 10.0],
     }
 
@@ -517,7 +517,7 @@ if __name__ == '__main__':
     # parser.add_argument('--cuda', action="store_true", default=False)
     parser.add_argument('--max_runs', type=int, default=200)
     parser.add_argument('--hparam_type', type=str, default="train")
-    parser.add_argument('--host', type=str, default="gpu31")
+    parser.add_argument('--host', type=str, default="gpu20")
     parser.add_argument('--compute_all', action="store_true", default=True)
     parser.add_argument('--re_use_machine', action="store_true", default=True)
 
