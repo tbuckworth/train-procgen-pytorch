@@ -93,17 +93,18 @@ def drop_first_dim(arr):
 
 def generate_data(agent, env, n):
     observation = env.reset()
-    x, y, act, value = agent.sample(observation)
-    X = x
-    Y = y
-    V = value
-    while len(X) < n:
+    M_in, M_out, U_in, U_out = agent.sample(observation)
+    act = agent.forward(observation)
+    while len(U_in) < n:
         observation, rew, done, info = env.step(act)
-        x, y, act, v = agent.sample(observation)
-        X = np.append(X, x, axis=0)
-        Y = np.append(Y, y, axis=0)
-        V = np.append(V, v, axis=0)
-    return X, Y, V
+        m_in, m_out, u_in, u_out = agent.sample(observation)
+        act = agent.forward(observation)
+
+        M_in = np.append(M_in, m_in, axis=0)
+        M_out = np.append(M_out, m_out, axis=0)
+        U_in = np.append(U_in, u_in, axis=0)
+        U_out = np.append(U_out, u_out, axis=0)
+    return M_in, M_out, U_in, U_out
 
 
 def test_agent_balanced_reward(agent, env, print_name, n=40):
@@ -174,9 +175,9 @@ def get_coinrun_test_env(logdir, n_envs):
     return env
 
 
-def create_symb_dir_if_exists(logdir):
+def create_symb_dir_if_exists(logdir, dir_name="symbreg"):
     save_file = "symb_reg.csv"
-    symbdir = os.path.join(logdir, "symbreg")
+    symbdir = os.path.join(logdir, dir_name)
     if not os.path.exists(symbdir):
         os.mkdir(symbdir)
     symbdir = os.path.join(symbdir, time.strftime("%Y-%m-%d__%H-%M-%S"))
@@ -358,33 +359,19 @@ def run_graph_neurosymbolic_search(args):
                        tags=args.wandb_tags, resume=wb_resume, name=name)
 
     policy, env, symbolic_agent_constructor, test_env = load_nn_policy(logdir, n_envs)
-    ns_agent = symbolic_agent_constructor(None, policy)
-    X, Y, V = generate_data(ns_agent, env, int(data_size))
-    e = get_entropy(Y)
-
-    try:
-        actions = get_actions_from_all(env)
-    except NotImplementedError:
-        actions = np.array([f"action_{i}" for i in range(env.action_space.n)])
-    action_mapping = None
-    if not args.stochastic:
-        save_Y = Y.copy()
-        # What if actions aren't implemented? improve map_actions...
-        action_mapping = map_actions_to_values(actions)
-        # map actions to 0:2pi
-        Y = action_mapping[Y.argmax(1)]
+    ns_agent = symbolic_agent_constructor(None, None, policy)
+    m_in, m_out, u_in, u_out = generate_data(ns_agent, env, int(data_size))
 
     print("data generated")
     if os.name != "nt":
         weights = None
-        if args.weight_metric is not None:
-            if args.weight_metric == "entropy":
-                weights = 1/e
-                weights[np.isinf(weights)] = weights[np.isinf(weights)==False].max()
-            elif args.weight_metric == "value":
-                weights = V
-        pysr_model, elapsed = find_model(X, Y, symbdir, save_file, weights, args)
-        ns_agent = symbolic_agent_constructor(pysr_model, policy, args.stochastic, action_mapping)
+        msgdir = create_symb_dir_if_exists(symbdir,"msg")
+        updir = create_symb_dir_if_exists(symbdir, "upd")
+
+        msg_model, elapsed = find_model(m_in, m_out, msgdir, save_file, weights, args)
+        up_model, elapsed = find_model(u_in, u_out, updir, save_file, weights, args)
+
+        ns_agent = symbolic_agent_constructor(msg_model, up_model, policy)
         nn_agent = NeuralAgent(policy)
         rn_agent = RandomAgent(env.action_space.n)
 
@@ -395,8 +382,9 @@ def run_graph_neurosymbolic_search(args):
         ns_score_test = test_agent_mean_reward(ns_agent, test_env, "NeuroSymb  Test", rounds)
         nn_score_test = test_agent_mean_reward(nn_agent, test_env, "Neural     Test", rounds)
         rn_score_test = test_agent_mean_reward(rn_agent, test_env, "Random     Test", rounds)
+        return
 
-        best = pysr_model.get_best()
+        best = msg_model.get_best()
         if type(best) != list:
             best = [best]
         best_loss = np.mean([x.loss for x in best])

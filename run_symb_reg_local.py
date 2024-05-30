@@ -636,7 +636,7 @@ def run_symb_reg_local():
     args.logdir = "logs/train/cartpole/test/2024-05-29__14-54-48__seed_6033"
     # args.logdir = "logs/train/cartpole_swing/test/2024-05-01__14-19-53__seed_6033"
     args.n_envs = 100
-    args.rounds_per_epoch = 300
+    args.rounds = 300
     args.binary_operators = ["+", "-", "*", "greater", "/"]
     args.unary_operators = ["sin", "relu", "log", "exp", "sign", "sqrt", "square"]
 

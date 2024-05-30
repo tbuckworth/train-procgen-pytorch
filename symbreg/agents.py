@@ -29,30 +29,35 @@ class CustomModel:
         return predictions
 
 
-class GraphSymbolicAgent:
-    def __init__(self, model, policy, stochastic=None, action_mapping=None):
-        self.model = model
-        self.policy = policy
+def flatten_batches_to_numpy(arr):
+    return arr.reshape(-1, arr.shape[-1]).cpu().numpy()
 
+def invert_list_levels(l):
+    return [[sl[i] for sl in l] for i in range(len(l[0]))]
+
+class GraphSymbolicAgent:
+    def __init__(self, msg_model, up_model, policy, stochastic=None, action_mapping=None):
+        self.policy = policy
+        if msg_model is not None:
+            self.policy.transition_model.message_model = msg_model
+        if up_model is not None:
+            self.policy.transition_model.updater = up_model
     def forward(self, observation):
         with torch.no_grad():
-            h = self.model.predict(observation)
-            if self.single_output:
-                if self.stochastic:
-                    p = sigmoid(h)
-                    return np.int32(np.random.random(len(h)) < p)
-                return match_to_nearest(h, self.action_mapping)
-            return self.pred_to_action(h)
+            obs = torch.FloatTensor(observation).to(self.policy.device)
+            dist, value, reward = self.policy(obs)
+            act = dist.sample()
+            return act.cpu().numpy()
 
     def sample(self, observation):
         with torch.no_grad():
             obs = torch.FloatTensor(observation).to(self.policy.device)
-            dist, value, reward = self.policy(obs)
+            # dist, value, reward = self.policy(obs)
             data_list = [self.msg_in_out(i, obs) for i in range(self.policy.action_size)]
+            dl = invert_list_levels(data_list)
+            dt = [np.concatenate(l, axis=0) for l in dl]
 
-
-
-            return data_list
+            return dt[0], dt[1], dt[2], dt[3]
 
     def msg_in_out(self, i, obs):
         action = self.policy.actions_like(obs, i)
@@ -60,7 +65,13 @@ class GraphSymbolicAgent:
         msg_in = self.policy.transition_model.vectorize_for_message_pass(action, n, x)
         messages = self.policy.transition_model.messenger(msg_in)
         h, u = self.policy.transition_model.vec_for_update(messages, x)
-        return msg_in.cpu().numpy(), messages.cpu().numpy(), h.cpu().numpy(), u.cpu().numpy()
+
+        m_in = flatten_batches_to_numpy(msg_in)
+        m_out = flatten_batches_to_numpy(messages)
+        u_in = flatten_batches_to_numpy(h)
+        u_out = flatten_batches_to_numpy(u)
+
+        return m_in, m_out, u_in, u_out
 
 
 class SymbolicAgent:
