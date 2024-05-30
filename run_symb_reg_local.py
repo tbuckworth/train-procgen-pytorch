@@ -658,10 +658,10 @@ def run_symb_reg_local():
 
 
 if __name__ == "__main__":
-    # run_tests()
+    run_tests()
     # format_results()
     # test_saved_model()
     # test_agent_specific_environment()
     # run_saved_model()
     # run_deterministic_agent()
-    run_symb_reg_local()
+    # run_symb_reg_local()

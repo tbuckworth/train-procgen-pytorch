@@ -3,7 +3,10 @@ import re
 
 import numpy as np
 import pandas as pd
+import sympy
 from numpy import cos,sin,pi
+from pysr import PySRRegressor
+import torch
 
 from common.env.env_constructor import get_env_constructor
 from create_sh_files import train_hparams, symbreg_hparams
@@ -322,6 +325,23 @@ def extract_hyperparams_symbreg():
     print(latex)
     print("pass")
 
+def greater(x, y):
+    return sympy.Piecewise((1.0, x > y), (0.0, True))
+
+def test_pysr_to_pytorch():
+    symbdir = "logs/train/cartpole_swing/test/2024-05-01__14-19-53__seed_6033/symbreg/2024-05-13__10-27-13"
+    pickle_filename = os.path.join(symbdir, "symb_reg.pkl")
+    logdir = re.search(r"(logs.*)symbreg", symbdir).group(1)
+    pysr_model = PySRRegressor.from_file(pickle_filename)
+    ###################
+    greater = lambda x, y: sympy.Piecewise((1.0, x > y), (0.0, True))
+    pysr_model.extra_torch_mappings = {sympy.Piecewise: lambda x, y: torch.where(x > y, 1.0, 0.0),
+                                       sympy.functions.elementary.piecewise.ExprCondPair: tuple,
+                                       sympy.logic.boolalg.BooleanTrue: torch.BoolType,
+                                       greater: lambda x, y: torch.where(x > y, 1.0, 0.0)}
+    pysr_model.pytorch()
+
+    print("ok")
 
 if __name__ == "__main__":
-    get_n_create_sh_files()
+    test_pysr_to_pytorch()

@@ -55,7 +55,7 @@ def find_model(X, Y, symbdir, save_file, weights, args):
         weights=weights,
         denoise=args.denoise,
         extra_sympy_mappings={"greater": lambda x, y: sympy.Piecewise((1.0, x > y), (0.0, True)),
-                              "bal1": lambda x2, x3: x2+2*x3,
+                              "bal1": lambda x2, x3: x2 + 2 * x3,
                               "bal2": lambda x1, x2: sympy.Piecewise((1.0, x1 + x2 > -0.165), (0.0, True)),
                               },
 
@@ -69,6 +69,9 @@ def find_model(X, Y, symbdir, save_file, weights, args):
         ncycles_per_iteration=args.ncycles_per_iteration,
         bumper=args.bumper,
         model_selection=args.model_selection,
+        extra_torch_mappings={sympy.Piecewise: lambda x, y: torch.where(x > y, 1.0, 0.0),
+                              sympy.functions.elementary.piecewise.ExprCondPair: tuple,
+                              sympy.logic.boolalg.BooleanTrue: torch.BoolType},
     )
     print("fitting model")
     start = time.time()
@@ -76,6 +79,9 @@ def find_model(X, Y, symbdir, save_file, weights, args):
     elapsed = time.time() - start
     eqn_str = get_best_str(model)
     print(eqn_str)
+    model.extra_torch_mappings = {sympy.Piecewise: lambda x, y: torch.where(x > y, 1.0, 0.0),
+                                  sympy.functions.elementary.piecewise.ExprCondPair: None,
+                                  sympy.logic.boolalg.BooleanTrue: None}
     return model, elapsed
 
 
@@ -84,6 +90,7 @@ def get_best_str(model, split='\n'):
     if type(best) == list:
         return split.join([x.equation for x in model.get_best()])
     return model.get_best().equation
+
 
 def drop_first_dim(arr):
     shp = np.array(arr.shape)
@@ -365,11 +372,14 @@ def run_graph_neurosymbolic_search(args):
     print("data generated")
     if os.name != "nt":
         weights = None
-        msgdir = create_symb_dir_if_exists(symbdir,"msg")
-        updir = create_symb_dir_if_exists(symbdir, "upd")
+        msgdir, _ = create_symb_dir_if_exists(symbdir, "msg")
+        updir, _ = create_symb_dir_if_exists(symbdir, "upd")
 
         msg_model, elapsed = find_model(m_in, m_out, msgdir, save_file, weights, args)
         up_model, elapsed = find_model(u_in, u_out, updir, save_file, weights, args)
+        msg_model.pytorch()
+        best = msg_model.get_best()
+        best["torch_format"]
 
         ns_agent = symbolic_agent_constructor(msg_model, up_model, policy)
         nn_agent = NeuralAgent(policy)
