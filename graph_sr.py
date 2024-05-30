@@ -12,7 +12,8 @@ import wandb
 from discrete_env.mountain_car_pre_vec import create_mountain_car
 
 from email_results import send_images_first_last
-from symbreg.agents import SymbolicAgent, NeuralAgent, RandomAgent, NeuroSymbolicAgent, GraphSymbolicAgent
+from symbolic_regression import load_nn_policy
+from symbreg.agents import SymbolicAgent, NeuralAgent, RandomAgent, NeuroSymbolicAgent
 
 if os.name != "nt":
     from pysr import PySRRegressor
@@ -83,37 +84,6 @@ def get_best_str(model, split='\n'):
     if type(best) == list:
         return split.join([x.equation for x in model.get_best()])
     return model.get_best().equation
-
-
-def load_nn_policy(logdir, n_envs=2):
-    cfg = get_config(logdir)
-    cfg["n_envs"] = n_envs
-    env_name = cfg["env_name"]
-    create_venv = get_env_constructor(env_name)
-    symbolic_agent_constructor = SymbolicAgent
-
-    if env_name in ["coinrun", "boxworld"]:
-        symbolic_agent_constructor = NeuroSymbolicAgent
-
-    if cfg["architecture"] == "graph-transition":
-        symbolic_agent_constructor = GraphSymbolicAgent
-
-    device = torch.device("cuda") if cuda.is_available() else torch.device("cpu")
-    hyperparameters, last_model = load_hparams_for_model(cfg["param_name"], logdir, n_envs)
-    hyperparameters["n_envs"] = n_envs
-
-    tmp_args = DictToArgs(cfg)
-
-    # This seems to be necessary as training from scratch produces a different result than using a trained model:
-    hyperparameters["normalize_rew"] = False
-    env = create_venv(tmp_args, hyperparameters, is_valid=False)
-    test_env = create_venv(tmp_args, hyperparameters, is_valid=True)
-
-    action_names, done, hidden_state, obs, policy, storage = load_storage_and_policy(device, env, hyperparameters,
-                                                                                     last_model, logdir, n_envs)
-
-    return policy, env, symbolic_agent_constructor, test_env
-
 
 def drop_first_dim(arr):
     shp = np.array(arr.shape)
@@ -342,7 +312,7 @@ def temp_func():
     #
     # # 10bn timestep cartpole (works!):
     logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
-    run_neurosymbolic_search(data_size, iterations, logdir, n_envs, rounds)
+    run_graph_neurosymbolic_search(data_size, iterations, logdir, n_envs, rounds)
 
 
 def get_entropy(Y):
@@ -359,7 +329,7 @@ def one_hot(targets, nb_classes):
     return np.eye(nb_classes)[targets]
 
 
-def run_neurosymbolic_search(args):
+def run_graph_neurosymbolic_search(args):
     data_size = args.data_size
     logdir = args.logdir
     n_envs = args.n_envs
@@ -378,7 +348,7 @@ def run_neurosymbolic_search(args):
         wandb_login()
         name = wandb_name
         wb_resume = "allow"  # if args.model_file is None else "must"
-        project = "Symb Reg"
+        project = "Graph Symb Reg"
         cfg["symbdir"] = symbdir
         if args.wandb_group is not None:
             wandb.init(project=project, config=cfg, sync_tensorboard=True,
@@ -388,8 +358,7 @@ def run_neurosymbolic_search(args):
                        tags=args.wandb_tags, resume=wb_resume, name=name)
 
     policy, env, symbolic_agent_constructor, test_env = load_nn_policy(logdir, n_envs)
-    # policy, env, sampler, symbolic_agent_constructor, test_env, test_agent = load_nn_policy(logdir, n_envs)
-    ns_agent = symbolic_agent_constructor(None, policy, args.stochastic, None)
+    ns_agent = symbolic_agent_constructor(None, policy)
     X, Y, V = generate_data(ns_agent, env, int(data_size))
     e = get_entropy(Y)
 
@@ -555,13 +524,5 @@ if __name__ == "__main__":
 
     if args.logdir is None:
         raise Exception("No oracle provided. Please provide logdir argument")
-        # Sparse coinrun:
-        # args.logdir = "logs/train/coinrun/coinrun-hparams/2024-03-27__18-20-55__seed_6033"
-
-        # 10bn cartpole:
-        # args.logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
-
-        # # Sparse Boxworld, overfit:
-        # args.logdir = "logs/train/boxworld/boxworld/2024-04-08__12-29-17__seed_6033"
         print(f"No oracle provided.\nUsing Logdir: {args.logdir}")
-    run_neurosymbolic_search(args)
+    run_graph_neurosymbolic_search(args)

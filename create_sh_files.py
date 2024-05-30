@@ -382,32 +382,32 @@ def cartpole_graph_transition_hparams():
         # "distribution_mode": ['hard'],
         "param_name": ['graph-transition'],
         "device": ["gpu"],
-        "num_timesteps": [int(2e6),int(4e6),int(10e6)],
+        "num_timesteps": [int(2e7)],
         "seed": [6033],  # 0, 1, 101, 40],
         "gamma": [0.95],  # 0.9],
-        "val_epochs": [8],  # [3, 8],
-        "dyn_epochs": [5],  # [3, 5, 8],
-        "learning_rate": [0.00025],  # , 0.0005],
-        "t_learning_rate": [0.00025],  # , 0.0001],
-        "n_envs": [32],
-        "n_steps": [256],
+        "val_epochs": [3, 8],
+        "dyn_epochs": [3, 5, 8],
+        "learning_rate": [0.0001, 0.00025, 0.0005],
+        "t_learning_rate": [0.0005, 0.00025, 0.0001],
+        "n_envs": [32, 16, 64],
+        "n_steps": [256, 128],
         "n_rollouts": [3],
-        "temperature": [1e-2, 1e-3],  # [0.01, 0.001, 0.0001, 0.00001, 0.000001],
+        "temperature": [1e-2],  # [0.01, 0.001, 0.0001, 0.00001, 0.000001],
         "use_gae": [True],
-        "rew_coef": [1],  # 0.1],
-        "done_coef": [1.],  # 5., 1., 0.5, 10.],
-        "clip_value": [False],  # True],
+        "rew_coef": [10, 1, 0.1],
+        "done_coef": [10, 1., 0.1],  # 5., 1., 0.5, 10.],
+        "clip_value": [False],
         # "n_minibatch": None,
         # "mini_batch_size": None,
         # "wandb_name": None,
         # "wandb_group": None,
-        "wandb_tags": [["graph-transition", "large-output-dim", "added-cont"]],
+        "wandb_tags": [["graph-transition", "0.01 temp"]],
         # "detect_nan": False,
         "use_wandb": [True],
         "mirror_env": [False],
         "use_valid_env": [True],
         "output_dim": [24],
-        "anneal_temp": [True],
+        "anneal_temp": [False],
         # "fs_coef": [0.0001, 0.001, 0.01, 0.1, 0.5, 1.0, 2.0, 5.0, 10.0],
     }
 
@@ -512,14 +512,14 @@ def add_training_args_dict():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--n_gpu', type=int, default=1)
+    parser.add_argument('--n_gpu', type=int, default=5)
     parser.add_argument('--execute', action="store_true", default=True)
     # parser.add_argument('--cuda', action="store_true", default=False)
     parser.add_argument('--max_runs', type=int, default=200)
     parser.add_argument('--hparam_type', type=str, default="train")
-    parser.add_argument('--host', type=str, default="gpu20")
-    parser.add_argument('--compute_all', action="store_true", default=True)
-    parser.add_argument('--re_use_machine', action="store_true", default=True)
+    parser.add_argument('--host', type=str, default=None)#"gpu20")
+    parser.add_argument('--compute_all', action="store_true", default=False)
+    parser.add_argument('--re_use_machine', action="store_true", default=False)
 
     largs = parser.parse_args()
 

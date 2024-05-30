@@ -10,6 +10,7 @@ from matplotlib import pyplot as plt
 
 from cartpole.create_cartpole import create_cartpole, create_cartpole_env_pre_vec
 from common.env.env_constructor import get_env_constructor
+from graph_sr import run_graph_neurosymbolic_search
 
 if os.name != "nt":
     from pysr import PySRRegressor
@@ -630,8 +631,9 @@ def run_symb_reg_local():
     # args.logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
     # args.logdir = "logs/train/coinrun/coinrun-hparams/2024-03-27__18-20-55__seed_6033"
     # args.logdir = "logs/train/acrobot/test/2024-04-25__10-03-20__seed_6033"
-    args.logdir = "logs/train/cartpole/test/2024-04-26__12-37-41__seed_40"
-    args.logdir = "logs/train/mountain_car/test/2024-05-03__15-46-58__seed_6033"
+    # args.logdir = "logs/train/cartpole/test/2024-04-26__12-37-41__seed_40"
+    # args.logdir = "logs/train/mountain_car/test/2024-05-03__15-46-58__seed_6033"
+    args.logdir = "logs/train/cartpole/test/2024-05-29__14-54-48__seed_6033"
     # args.logdir = "logs/train/cartpole_swing/test/2024-05-01__14-19-53__seed_6033"
     args.n_envs = 100
     args.rounds_per_epoch = 300
@@ -639,25 +641,27 @@ def run_symb_reg_local():
     args.unary_operators = ["sin", "relu", "log", "exp", "sign", "sqrt", "square"]
 
     args.denoise = False
-    args.use_wandb = True
+    args.use_wandb = False
     args.wandb_tags = ["test"]
-    args.weight_metric = "entropy"
+    args.weight_metric = "value"
     args.wandb_name = "manual"
     # args.populations = 24
     args.model_selection = "best"
-    args.ncycles_per_iteration = 2000
+    args.ncycles_per_iteration = 4000
     args.bumper = True
-    args.loss_function = "capped_sigmoid"
+    args.loss_function = "mse"
+    run_graph_neurosymbolic_search(args)
+    return
     for stoch in [True]:
         args.stochastic = stoch
         run_neurosymbolic_search(args)
 
 
 if __name__ == "__main__":
-    run_tests()
+    # run_tests()
     # format_results()
     # test_saved_model()
     # test_agent_specific_environment()
     # run_saved_model()
     # run_deterministic_agent()
-    # run_symb_reg_local()
+    run_symb_reg_local()

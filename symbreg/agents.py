@@ -29,6 +29,40 @@ class CustomModel:
         return predictions
 
 
+class GraphSymbolicAgent:
+    def __init__(self, model, policy, stochastic=None, action_mapping=None):
+        self.model = model
+        self.policy = policy
+
+    def forward(self, observation):
+        with torch.no_grad():
+            h = self.model.predict(observation)
+            if self.single_output:
+                if self.stochastic:
+                    p = sigmoid(h)
+                    return np.int32(np.random.random(len(h)) < p)
+                return match_to_nearest(h, self.action_mapping)
+            return self.pred_to_action(h)
+
+    def sample(self, observation):
+        with torch.no_grad():
+            obs = torch.FloatTensor(observation).to(self.policy.device)
+            dist, value, reward = self.policy(obs)
+            data_list = [self.msg_in_out(i, obs) for i in range(self.policy.action_size)]
+
+
+
+            return data_list
+
+    def msg_in_out(self, i, obs):
+        action = self.policy.actions_like(obs, i)
+        n, x = self.policy.transition_model.prep_input(obs)
+        msg_in = self.policy.transition_model.vectorize_for_message_pass(action, n, x)
+        messages = self.policy.transition_model.messenger(msg_in)
+        h, u = self.policy.transition_model.vec_for_update(messages, x)
+        return msg_in.cpu().numpy(), messages.cpu().numpy(), h.cpu().numpy(), u.cpu().numpy()
+
+
 class SymbolicAgent:
     def __init__(self, model, policy, stochastic, action_mapping):
         self.model = model
