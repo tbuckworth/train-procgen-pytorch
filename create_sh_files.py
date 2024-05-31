@@ -152,7 +152,8 @@ def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_ty
         f.write(exe)
         f.close()
         if slurm:
-            cmd1 = f'ssh gpucluster2 "sbatch {exe_file_name}"'
+            command = f"'cd pyg/train-procgen-pytorch\n sbatch {exe_file_name}'"
+            cmd1 = f'ssh gpucluster2 "{command} ENTER"'
             run_subprocess(cmd1, "\\n", suppress=False)
         elif execute:
             script = "~/free_cpu"
