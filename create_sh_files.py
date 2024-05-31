@@ -34,25 +34,28 @@ def executable_python(hparams, name, script="train"):
     return f"python3.8 /vol/bitbucket/${{USER}}/train-procgen-pytorch/{script}.py {hparams} 2>&1 | tee /vol/bitbucket/${{USER}}/train-procgen-pytorch/scripts/train_{name}.out\n"
 
 
-def executable_train(python_execs=None):
+def executable_train(python_execs=None, slurm=False):
     if python_execs is None:
         python_execs = []
-    # return f'"hn=$(hostname); echo ${{hn}} > ${{hn}}.txt; cd pyg/train-procgen-pytorch; source venvcartpole/bin/activate; train.py {hparams}"'
-
+    if not slurm:
+        return '\n'.join(
+            ["#!/bin/bash",
+             "source /vol/bitbucket/${USER}/train-procgen-pytorch/venvcartpole/bin/activate",
+             ] + python_execs + ["exit", "exit"])
     return '\n'.join(
         ["#!/bin/bash",
-         # "#SBATCH --gres=gpu:1",
-         # "#SBATCH --mail-type=ALL",
-         # "#SBATCH --mail-user=tfb115",
-         # "export PATH=/vol/bitbucket/${USER}/train-procgen-pytorch/venvcartpole/bin/:/vol/cuda/12.2.0/bin/:$PATH",
-         # "export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/vol/cuda/12.2.0/lib64:/vol/cuda/12.2.0/lib",
+         "#SBATCH --gres=gpu:1",
+         "#SBATCH --mail-type=ALL",
+         "#SBATCH --mail-user=tfb115",
+         "export PATH=/vol/bitbucket/${USER}/train-procgen-pytorch/venvcartpole/bin/:/vol/cuda/12.2.0/bin/:$PATH",
+         "export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/vol/cuda/12.2.0/lib64:/vol/cuda/12.2.0/lib",
          "source /vol/bitbucket/${USER}/train-procgen-pytorch/venvcartpole/bin/activate",
-         # ". /vol/cuda/12.2.0/setup.sh",
-         # "TERM=vt100",
-         # "/usr/bin/nvidia-smi",
-         # "export CUDA_DIR=/vol/cuda/12.2.0/:${CUDAPATH}",
-         # "export XLA_FLAGS=--xla_gpu_cuda_data_dir=/vol/cuda/12.2.0/",
-         ] + python_execs + ["exit", "exit"])
+         ". /vol/cuda/12.2.0/setup.sh",
+         "TERM=vt100",
+         "/usr/bin/nvidia-smi",
+         "export CUDA_DIR=/vol/cuda/12.2.0/:${CUDAPATH}",
+         "export XLA_FLAGS=--xla_gpu_cuda_data_dir=/vol/cuda/12.2.0/",
+         ] + python_execs)
 
 
 def add_coinrun_sparsity_params(args):
@@ -89,7 +92,7 @@ def add_boxworld_params(args):
 
 
 def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_type, re_use_machine=False,
-                   specify_host=None, compute_all=True):
+                   specify_host=None, compute_all=True, slurm=False):
     hosts = {}
     free_machine = None
     keys, values = zip(*hparams.items())
@@ -143,12 +146,15 @@ def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_ty
             python_execs += [executable_python(hparams, arg.wandb_name, script)]
         cut_to = int(random_subset * len(python_execs))
         python_execs = list(np.random.choice(python_execs, cut_to, replace=False))
-        exe = executable_train(python_execs)
+        exe = executable_train(python_execs, slurm)
         exe_file_name = f"scripts/tmp_file_{arg.wandb_name}.sh"
         f = open(exe_file_name, 'w', newline='\n')
         f.write(exe)
         f.close()
-        if execute:
+        if slurm:
+            cmd1 = f'ssh gpucluster2 "sbatch {exe_file_name}"'
+            run_subprocess(cmd1, "\\n", suppress=False)
+        elif execute:
             script = "~/free_cpu"
             if cuda:
                 script = "~/free_gpu"
@@ -385,23 +391,23 @@ def cartpole_graph_transition_hparams():
         "num_timesteps": [int(2e7)],
         "seed": [6033],  # 0, 1, 101, 40],
         "gamma": [0.95],  # 0.9],
-        "val_epochs": [3, 8],
-        "dyn_epochs": [3, 5, 8],
-        "learning_rate": [0.0001, 0.00025, 0.0005],
-        "t_learning_rate": [0.0005, 0.00025, 0.0001],
-        "n_envs": [32, 16, 64],
-        "n_steps": [256, 128],
+        "val_epochs": [15, 1, 20, 2, 9],
+        "dyn_epochs": [3],
+        "learning_rate": [0.0001],  # 0.00025, 0.0005],
+        "t_learning_rate": [0.0005],  # 0.00025, 0.0001],
+        "n_envs": [64],
+        "n_steps": [256],
         "n_rollouts": [3],
         "temperature": [1e-2],  # [0.01, 0.001, 0.0001, 0.00001, 0.000001],
         "use_gae": [True],
-        "rew_coef": [10, 1, 0.1],
-        "done_coef": [10, 1., 0.1],  # 5., 1., 0.5, 10.],
+        "rew_coef": [1.],  # 10, 1, 0.1],
+        "done_coef": [1.],  # 10, 1.], #0.1 bad
         "clip_value": [False],
         # "n_minibatch": None,
         # "mini_batch_size": None,
         # "wandb_name": None,
         # "wandb_group": None,
-        "wandb_tags": [["graph-transition", "0.01 temp"]],
+        "wandb_tags": [["graph-transition", "0.01-temp", "val_epochs"]],
         # "detect_nan": False,
         "use_wandb": [True],
         "mirror_env": [False],
@@ -517,7 +523,7 @@ if __name__ == '__main__':
     # parser.add_argument('--cuda', action="store_true", default=False)
     parser.add_argument('--max_runs', type=int, default=200)
     parser.add_argument('--hparam_type', type=str, default="train")
-    parser.add_argument('--host', type=str, default=None)#"gpu20")
+    parser.add_argument('--host', type=str, default=None)  # "gpu20")
     parser.add_argument('--compute_all', action="store_true", default=False)
     parser.add_argument('--re_use_machine', action="store_true", default=False)
 
@@ -528,6 +534,10 @@ if __name__ == '__main__':
     specify_host = largs.host
     if specify_host is not None and not re_use_machine:
         print("Warning - specifying host will re-use that host")
+
+    slurm = False
+    if specify_host == "slurm":
+        slurm = True
 
     n_gpu = largs.n_gpu
     execute = largs.execute
@@ -557,4 +567,4 @@ if __name__ == '__main__':
     print(f"Creating {n_experiments} experiments across {n_gpu} workers.")
     random_subset = min(1, max_runs / n_experiments)
     write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_type, re_use_machine, specify_host,
-                   compute_all)
+                   compute_all, slurm)
