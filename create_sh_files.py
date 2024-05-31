@@ -151,15 +151,25 @@ def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_ty
         f = open(exe_file_name, 'w', newline='\n')
         f.write(exe)
         f.close()
+        session_name = f"tmpSession{np.random.randint(0, 1000)}"
         if slurm:
-            # command = f"'cd pyg/train-procgen-pytorch\n sbatch {exe_file_name}'"
-            cmd1 = f'ssh gpucluster2 "sbatch pyg/train-procgen-pytorch/{exe_file_name}"'
-            run_subprocess(cmd1, "\\n", suppress=False)
+            # # command = f"'cd pyg/train-procgen-pytorch\n sbatch {exe_file_name}'"
+            # cmd1 = f'ssh gpucluster2 "sbatch pyg/train-procgen-pytorch/{exe_file_name}"'
+            # run_subprocess(cmd1, "\\n", suppress=False)
+            #
+
+            command = f"'cd pyg/train-procgen-pytorch\n sbatch {exe_file_name}'"
+
+            cmd1 = f'ssh gpucluster2 "tmux new -d -s {session_name}"'
+            cmd2 = f'ssh gpucluster2 "tmux send -t {session_name}.0 {command} ENTER"'
+            cmd3 = f'ssh gpucluster2 "tmus send -t {session_name}.0 exit"'
+            for cmd in [cmd1, cmd2, cmd3]:
+               run_subprocess(cmd, "\\n", suppress=False)
+
         elif execute:
             script = "~/free_cpu"
             if cuda:
                 script = "~/free_gpu"
-            session_name = f"tmpSession{np.random.randint(0, 1000)}"
             found = False
             for attempts in range(30):
                 if specify_host is None:
