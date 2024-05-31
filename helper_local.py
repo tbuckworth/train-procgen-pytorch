@@ -38,17 +38,18 @@ def is_wsl(v: str = platform.uname().release) -> int:
         return 2
     return 0
 
-
-if os.name == "nt":
-    GLOBAL_DIR = "C:/Users/titus/PycharmProjects/train-procgen-pytorch/"
-    OS_IS = "Windows"
-elif os.getlogin() == "titus":
-    GLOBAL_DIR = "/home/titus/PycharmProjects/train-procgen-pytorch/"
-    OS_IS = "Linux"
-if is_wsl() == 2:
-    GLOBAL_DIR = "/mnt/c/Users/titus/PycharmProjects/train-procgen-pytorch/"
-    OS_IS = "WSL"
-
+try:
+    if os.name == "nt":
+        GLOBAL_DIR = "C:/Users/titus/PycharmProjects/train-procgen-pytorch/"
+        OS_IS = "Windows"
+    elif os.getlogin() == "titus":
+        GLOBAL_DIR = "/home/titus/PycharmProjects/train-procgen-pytorch/"
+        OS_IS = "Linux"
+    if is_wsl() == 2:
+        GLOBAL_DIR = "/mnt/c/Users/titus/PycharmProjects/train-procgen-pytorch/"
+        OS_IS = "WSL"
+except Exception as e:
+    pass
 
 def match(a, b):
     a = a.tolist()
