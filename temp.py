@@ -334,7 +334,7 @@ def test_pysr_to_pytorch():
     logdir = re.search(r"(logs.*)symbreg", symbdir).group(1)
     pysr_model = PySRRegressor.from_file(pickle_filename)
     ###################
-    greater = lambda x, y: sympy.Piecewise((1.0, x > y), (0.0, True))
+    # greater = lambda x, y: sympy.Piecewise((1.0, x > y), (0.0, True))
     pysr_model.extra_torch_mappings = {sympy.Piecewise: lambda x, y: torch.where(x > y, 1.0, 0.0),
                                        sympy.functions.elementary.piecewise.ExprCondPair: tuple,
                                        sympy.logic.boolalg.BooleanTrue: torch.BoolType,
