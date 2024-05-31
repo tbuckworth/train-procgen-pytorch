@@ -162,7 +162,7 @@ def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_ty
 
             cmd1 = f'ssh gpucluster2 "tmux new -d -s {session_name}"'
             cmd2 = f'ssh gpucluster2 "tmux send -t {session_name}.0 {command} ENTER"'
-            cmd3 = f'ssh gpucluster2 "tmux send -t {session_name}.0 exit"'
+            cmd3 = f'ssh gpucluster2 "tmux send -t {session_name}.0 exit ENTER"'
             for cmd in [cmd1, cmd2, cmd3]:
                run_subprocess(cmd, "\\n", suppress=False)
 
