@@ -131,10 +131,10 @@ def test_agent_balanced_reward(agent, env, print_name, n=40):
     return true_average_reward
 
 
-def test_agent_mean_reward(agent, env, print_name, n=40, return_values=False):
+def test_agent_mean_reward(agent, env, print_name, n=40, return_values=False, seed=0):
     print(print_name)
     episodes = 0
-    obs = env.reset()
+    obs = env.reset(seed=seed)
     act = agent.forward(obs)
     cum_rew = np.zeros(len(act))
     episode_rewards = []
@@ -343,6 +343,7 @@ def run_graph_neurosymbolic_search(args):
     data_size = args.data_size
     logdir = args.logdir
     n_envs = args.n_envs
+    seed = args.seed
     if n_envs < 2:
         raise Exception("n_envs must be at least 2")
     rounds = args.rounds
@@ -368,8 +369,8 @@ def run_graph_neurosymbolic_search(args):
                        tags=args.wandb_tags, resume=wb_resume, name=name)
 
     policy, env, symbolic_agent_constructor, test_env = load_nn_policy(logdir, n_envs)
-    ns_agent = symbolic_agent_constructor(None, None, policy)
-    m_in, m_out, u_in, u_out = generate_data(ns_agent, env, int(data_size))
+    nn_agent = symbolic_agent_constructor(None, None, policy)
+    m_in, m_out, u_in, u_out = generate_data(nn_agent, env, int(data_size))
 
     print("data generated")
     if os.name != "nt":
@@ -384,16 +385,16 @@ def run_graph_neurosymbolic_search(args):
         up_torch = NBatchPySRTorch(up_model.pytorch())
 
         ns_agent = symbolic_agent_constructor(msg_torch, up_torch, policy)
-        nn_agent = NeuralAgent(policy)
+        # nn_agent = NeuralAgent(policy)
         rn_agent = RandomAgent(env.action_space.n)
 
-        ns_score_train = test_agent_mean_reward(ns_agent, env, "NeuroSymb Train", rounds)
-        nn_score_train = test_agent_mean_reward(nn_agent, env, "Neural    Train", rounds)
-        rn_score_train = test_agent_mean_reward(rn_agent, env, "Random    Train", rounds)
+        ns_score_train = test_agent_mean_reward(ns_agent, env, "NeuroSymb Train", rounds, seed)
+        nn_score_train = test_agent_mean_reward(nn_agent, env, "Neural    Train", rounds, seed)
+        rn_score_train = test_agent_mean_reward(rn_agent, env, "Random    Train", rounds, seed)
 
-        ns_score_test = test_agent_mean_reward(ns_agent, test_env, "NeuroSymb  Test", rounds)
-        nn_score_test = test_agent_mean_reward(nn_agent, test_env, "Neural     Test", rounds)
-        rn_score_test = test_agent_mean_reward(rn_agent, test_env, "Random     Test", rounds)
+        ns_score_test = test_agent_mean_reward(ns_agent, test_env, "NeuroSymb  Test", rounds, seed)
+        nn_score_test = test_agent_mean_reward(nn_agent, test_env, "Neural     Test", rounds, seed)
+        rn_score_test = test_agent_mean_reward(rn_agent, test_env, "Random     Test", rounds, seed)
         return
 
         best = msg_model.get_best()

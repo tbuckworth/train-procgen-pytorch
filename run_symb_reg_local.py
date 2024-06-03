@@ -119,7 +119,7 @@ def run_tests():
     ]
     for symbdir in dirs:
         try:
-            test_saved_model(symbdir, n_envs=1000, n_rounds=1000)#, override_model=CustomModel(degrees=16))
+            test_saved_model(symbdir, n_envs=1000, n_rounds=1000)  # , override_model=CustomModel(degrees=16))
         except Exception as e:
             print(e)
 
@@ -203,8 +203,9 @@ def test_saved_model(symbdir, n_envs=10, n_rounds=10, override_model=None):
 
     params["all"] = test_params
     if env_name in ["mountain_car"]:
-        params["goal_position"]["max_goal_position"] = min(params["goal_position"]["max_right_boundary"], params["goal_position"]["max_goal_position"])
-        #TODO: make note of this
+        params["goal_position"]["max_goal_position"] = min(params["goal_position"]["max_right_boundary"],
+                                                           params["goal_position"]["max_goal_position"])
+        # TODO: make note of this
 
     if env_name in ["cartpole", "cartpole_swing", "mountain_car"]:
         train_ranges = {k: {re.sub(r"(min|max).*", r"train_\1", ks): vs["train"] for ks, vs in v.items()} for k, v in
@@ -648,6 +649,7 @@ def run_symb_reg_local():
     # args.populations = 24
     args.model_selection = "best"
     args.ncycles_per_iteration = 4000
+    args.seed = 0
     args.bumper = True
     args.loss_function = "mse"
     run_graph_neurosymbolic_search(args)

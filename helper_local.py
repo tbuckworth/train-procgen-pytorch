@@ -638,6 +638,7 @@ def add_symbreg_args(parser):
     parser.add_argument('--timeout_in_seconds', type=int, default=36000)
     parser.add_argument('--populations', type=int, default=24)
     parser.add_argument('--procs', type=int, default=8)
+    parser.add_argument('--seed', type=int, default=random.randint(0, 9999), help='Random generator seed')
     parser.add_argument('--ncycles_per_iteration', type=int, default=550)
     parser.add_argument('--model_selection', type=str, default="best")
     parser.add_argument('--loss_function', type=str, default="mse")

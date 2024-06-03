@@ -49,36 +49,40 @@ def load_and_test():
     symbdir = get_latest_file_matching(r"\d*-\d*-\d*__",1, symbdir)
     pickle_filename = os.path.join(symbdir, "symb_reg.pkl")
     msg_model = PySRRegressor.from_file(pickle_filename, extra_torch_mappings=get_extra_torch_mappings())
-    policy, env, symbolic_agent_constructor, test_env = load_nn_policy(logdir, n_envs=2)
+    policy, env, symbolic_agent_constructor, test_env = load_nn_policy(logdir, n_envs=200)
+    nn_agent = symbolic_agent_constructor(None, None, policy)
+    rounds = 300
+    nn_score_train = test_agent_mean_reward(nn_agent, env, "Neural    Train", rounds)
+    nn_score_test = test_agent_mean_reward(nn_agent, test_env, "Neural     Test", rounds)
+    return
+    # x = env.reset()
+    # obs = torch.FloatTensor(x).to(policy.device)
+    # a = policy.actions_like(obs, 0)
+    # n, x0 = policy.transition_model.prep_input(obs)
+    # msg_in = policy.transition_model.vectorize_for_message_pass(a, n, x0)
+    #
+    # mi = msg_in.reshape((2*9*9,5))
+    #
+    # messages = policy.transition_model.messenger(msg_in)
+    #
+    # msg_py = msg_model.pytorch()
+    #
+    # wrapped = NBatchPySRTorch(msg_py)
+    # print(wrapped(msg_in).shape)
+    # ns_agent = symbolic_agent_constructor(wrapped, None, policy)
 
-    x = env.reset()
-    obs = torch.FloatTensor(x).to(policy.device)
-    a = policy.actions_like(obs, 0)
-    n, x0 = policy.transition_model.prep_input(obs)
-    msg_in = policy.transition_model.vectorize_for_message_pass(a, n, x0)
-
-    mi = msg_in.reshape((2*9*9,5))
-
-    messages = policy.transition_model.messenger(msg_in)
-
-    msg_py = msg_model.pytorch()
-
-    wrapped = NBatchPySRTorch(msg_py)
-    print(wrapped(msg_in).shape)
-    ns_agent = symbolic_agent_constructor(wrapped, None, policy)
-
-    # policy.transition_model.messenger = msg_py
-    mpy = msg_py(mi)
-    msympy = msg_model.predict(mi)
-    mpynp = mpy.detach().numpy()
-
-    msg_py.bark = forward_batches.__get__(msg_py, _SingleSymPyModule)
-
-    msg_py.forward = forward_batches
-
-    msg_py(msg_in).shape
-    forward_batches(msg_py, msg_in).shape
-    messages.shape
+    # # policy.transition_model.messenger = msg_py
+    # mpy = msg_py(mi)
+    # msympy = msg_model.predict(mi)
+    # mpynp = mpy.detach().numpy()
+    #
+    # msg_py.bark = forward_batches.__get__(msg_py, _SingleSymPyModule)
+    #
+    # msg_py.forward = forward_batches
+    #
+    # msg_py(msg_in).shape
+    # forward_batches(msg_py, msg_in).shape
+    # messages.shape
 
 
 
