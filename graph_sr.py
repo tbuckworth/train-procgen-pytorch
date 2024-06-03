@@ -1,4 +1,5 @@
 import argparse
+import copy
 import os
 import re
 import time
@@ -384,7 +385,7 @@ def run_graph_neurosymbolic_search(args):
         msg_torch = NBatchPySRTorch(msg_model.pytorch())
         up_torch = NBatchPySRTorch(up_model.pytorch())
 
-        ns_agent = symbolic_agent_constructor(msg_torch, up_torch, policy)
+        ns_agent = symbolic_agent_constructor(msg_torch, up_torch, copy.deepcopy(policy))
         # nn_agent = NeuralAgent(policy)
         rn_agent = RandomAgent(env.action_space.n)
 
