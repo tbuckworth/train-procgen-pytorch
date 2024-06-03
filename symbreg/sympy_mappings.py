@@ -35,6 +35,12 @@ def test_cust():
     result = np.testing.assert_array_almost_equal(true_out.detach(), torch_out.detach(), decimal=4)
 
 
+def forward_batches(self, X):
+    if self._selection is not None:
+        X = X[..., self._selection]
+    symbols = {symbol: X[..., i] for i, symbol in enumerate(self.symbols_in)}
+    return self._node(symbols)
+
 def load_and_test():
     symbdir = get_latest_file_matching(r"\d*-\d*-\d*__", 1, folder="../logs/train/cartpole/test/2024-05-29__14-54-48__seed_6033/symbreg")
     logdir = re.search(r"(logs.*)symbreg", symbdir).group(1)
@@ -50,10 +56,20 @@ def load_and_test():
     a = policy.actions_like(obs, 0)
     n, x0 = policy.transition_model.prep_input(obs)
     msg_in = policy.transition_model.vectorize_for_message_pass(a, n, x0)
+
+    mi = msg_in.reshape((2*9*9,5))
+
     messages = policy.transition_model.messenger(msg_in)
+
     msg_py = msg_model.pytorch()
-    policy.transition_model.messenger = msg_py
-    msg_py(msg_in).shape
+    # policy.transition_model.messenger = msg_py
+    mpy = msg_py(mi)
+    msympy = msg_model.predict(mi)
+    mpynp = mpy.detach().numpy()
+
+    forward_batches(msg_py, msg_in).shape
+    messages.shape
+
 
 
     policy.transition_model()
