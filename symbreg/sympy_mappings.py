@@ -7,6 +7,7 @@ from sympy import symbols, Piecewise, GreaterThan
 import numpy as np
 import re
 
+from common.model import NBatchPySRTorch
 from graph_sr import test_agent_mean_reward
 from helper_local import get_latest_file_matching
 from symbolic_regression import load_nn_policy
@@ -49,7 +50,6 @@ def load_and_test():
     pickle_filename = os.path.join(symbdir, "symb_reg.pkl")
     msg_model = PySRRegressor.from_file(pickle_filename, extra_torch_mappings=get_extra_torch_mappings())
     policy, env, symbolic_agent_constructor, test_env = load_nn_policy(logdir, n_envs=2)
-    ns_agent = symbolic_agent_constructor(msg_model.pytorch(), None, policy)
 
     x = env.reset()
     obs = torch.FloatTensor(x).to(policy.device)
@@ -62,11 +62,21 @@ def load_and_test():
     messages = policy.transition_model.messenger(msg_in)
 
     msg_py = msg_model.pytorch()
+
+    wrapped = NBatchPySRTorch(msg_py)
+    print(wrapped(msg_in).shape)
+    ns_agent = symbolic_agent_constructor(wrapped, None, policy)
+
     # policy.transition_model.messenger = msg_py
     mpy = msg_py(mi)
     msympy = msg_model.predict(mi)
     mpynp = mpy.detach().numpy()
 
+    msg_py.bark = forward_batches.__get__(msg_py, _SingleSymPyModule)
+
+    msg_py.forward = forward_batches
+
+    msg_py(msg_in).shape
     forward_batches(msg_py, msg_in).shape
     messages.shape
 
@@ -76,7 +86,7 @@ def load_and_test():
 
     ns_score_train = test_agent_mean_reward(ns_agent, env, "NeuroSymb Train", 10)
     ns_score_train = test_agent_mean_reward(ns_agent, test_env, "NeuroSymb Train", 10)
-
+    nn_agent
 
 
 

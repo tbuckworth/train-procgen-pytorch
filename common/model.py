@@ -1038,3 +1038,15 @@ class GraphTransitionModel(nn.Module):
         shp = [i for i in x.shape[:-1]] + [1]
         all_coor = torch.tile(coor, shp).to(device=self.device)
         return self.concater(x, all_coor, -1)
+
+
+class NBatchPySRTorch(nn.Module):
+    def __init__(self, model):
+        super(NBatchPySRTorch, self).__init__()
+        self.model = model
+
+    def forward(self, X):
+        if self.model._selection is not None:
+            X = X[..., self.model._selection]
+        symbols = {symbol: X[..., i] for i, symbol in enumerate(self.model.symbols_in)}
+        return self.model._node(symbols)

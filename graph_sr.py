@@ -9,6 +9,7 @@ import sympy
 from torch import cuda
 
 import wandb
+from common.model import NBatchPySRTorch
 from discrete_env.mountain_car_pre_vec import create_mountain_car
 
 from email_results import send_images_first_last
@@ -378,11 +379,11 @@ def run_graph_neurosymbolic_search(args):
 
         msg_model, elapsed = find_model(m_in, m_out, msgdir, save_file, weights, args)
         up_model, elapsed = find_model(u_in, u_out, updir, save_file, weights, args)
-        # msg_model.pytorch()
-        # best = msg_model.get_best()
-        # best["torch_format"]
 
-        ns_agent = symbolic_agent_constructor(msg_model.pytorch(), up_model.pytorch(), policy)
+        msg_torch = NBatchPySRTorch(msg_model.pytorch())
+        up_torch = NBatchPySRTorch(up_model.pytorch())
+
+        ns_agent = symbolic_agent_constructor(msg_torch, up_torch, policy)
         nn_agent = NeuralAgent(policy)
         rn_agent = RandomAgent(env.action_space.n)
 
