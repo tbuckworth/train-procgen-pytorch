@@ -156,6 +156,10 @@ class TransitionPolicy(nn.Module):
         dones, rew = self.dr(sa)
         return dones, rew
 
+    def dones_rewards(self, s, a):
+        sa = torch.concat([s, a.unsqueeze(-1)], dim=-1)
+        return self.dr(sa)
+
     def states_with_all_actions(self, s):
         s1 = s.unsqueeze(-2).tile([self.action_size, 1])
         a = self.all_actions_like(s)

@@ -161,7 +161,7 @@ class PPOModel(BaseAgent):
                     self.v_optimizer.zero_grad()
 
                 if e < self.dr_epochs:
-                    done_guess, reward_guess = self.policy.dr(obs_batch, act_batch)
+                    done_guess, reward_guess = self.policy.dones_rewards(obs_batch, act_batch)
                     reward_loss = MSELoss()(reward_guess, rew_batch)
                     done_loss = BCELoss()(done_guess, done_batch)
                     dr_loss = reward_loss * self.rew_coef + done_loss * self.done_coef
