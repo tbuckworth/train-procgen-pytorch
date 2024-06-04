@@ -94,7 +94,7 @@ class PPOModel(BaseAgent):
     def predict(self, obs):
         with torch.no_grad():
             obs = torch.FloatTensor(obs).to(device=self.device)
-            dist, value, _ = self.policy(obs)
+            dist, value = self.policy(obs)
             act = dist.sample()
         return act.cpu().numpy(), value.cpu().numpy()
 
@@ -123,7 +123,7 @@ class PPOModel(BaseAgent):
             for sample in generator:
                 obs_batch, nobs_batch, act_batch, done_batch, \
                     old_value_batch, return_batch, adv_batch, rew_batch = sample
-                dist_batch, value_batch, reward_guess = self.policy(obs_batch)
+                dist_batch, value_batch = self.policy(obs_batch)
 
                 x_batch_ent_loss, entropy_loss, = cross_batch_entropy(dist_batch)
 
@@ -146,9 +146,9 @@ class PPOModel(BaseAgent):
                     if not self.clip_value:
                         value_loss = v_surr1.mean()
 
-                    reward_loss = MSELoss()(reward_guess, rew_batch)
+                    done_guess, reward_guess = self.policy.dones_rewards(obs_batch, act_batch)
 
-                    done_guess = self.policy.dones(obs_batch, act_batch)
+                    reward_loss = MSELoss()(reward_guess, rew_batch)
 
                     done_loss = BCELoss()(done_guess, done_batch)
 

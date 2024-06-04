@@ -21,7 +21,7 @@ if __name__ == "__main__":
         episode_rewards = []
         while episodes < n:
             with torch.no_grad():
-                p, v, r = policy.forward(torch.FloatTensor(obs).to(device=policy.device))
+                p, v = policy.forward(torch.FloatTensor(obs).to(device=policy.device))
                 act = p.sample().cpu().numpy()
             obs, rew, done, info = env.step(act)
             cum_rew += rew

@@ -78,11 +78,11 @@ class TransitionPolicy(nn.Module):
         # small scale weight-initialization in policy enhances the stability
         # self.fc_policy = orthogonal_init(nn.Linear(self.embedder.output_dim, action_size), gain=0.01)
         self.fc_value = orthogonal_init(nn.Linear(self.embedder.output_dim, 1), gain=1.0)
-        self.fc_reward = orthogonal_init(nn.Linear(self.embedder.output_dim, 1), gain=1.0)
+        self.fc_reward = orthogonal_init(nn.Linear(self.embedder.output_dim + 1, 1), gain=1.0)
         self.fc_continuation = orthogonal_init(nn.Linear(self.embedder.output_dim + 1, 1), gain=1.0)
 
         self.value = nn.Sequential(self.embedder, self.fc_value)
-        self.reward = nn.Sequential(self.embedder, self.fc_reward)
+        # self.reward = nn.Sequential(self.embedder, self.fc_reward)
 
         self.transition_model = transition_model
 
@@ -91,11 +91,12 @@ class TransitionPolicy(nn.Module):
         d = self.fc_continuation(torch.concat([h, a.unsqueeze(-1)], dim=-1)).squeeze()
         return nn.Sigmoid()(d)
 
-    def value_reward(self, x):
-        h = self.embedder(x)
-        v = self.fc_value(h).reshape(-1)
-        r = self.fc_reward(h).reshape(-1)
-        return v, r
+    def dones_rewards(self, s, a):
+        h = self.embedder(s)
+        ha = torch.concat([h, a.unsqueeze(-1)], dim=-1)
+        d = self.fc_continuation(ha).squeeze()
+        r = self.fc_reward(ha).squeeze()
+        return nn.Sigmoid()(d), r
 
     def is_recurrent(self):
         return False
@@ -109,16 +110,19 @@ class TransitionPolicy(nn.Module):
 
     def forward(self, x):
         # Reward is dependent on action, should be bucketed up with continuation flag
-        v, reward = self.value_reward(x)
+        # v, reward = self.value_reward(x)
+        v = self.value(x)
         rews = []
         cont = []
         s = x
         for _ in range(self.n_rollouts):
-            cont.append(self.all_dones(s))
+            d, r = self.all_dones_rewards(s)
+            cont.append(d)
+            rews.append(r)
             next_states = [self.transition_model(s, self.actions_like(s, i)).unsqueeze(1) for i in
                            range(self.action_size)]
             s = torch.concat(next_states, dim=1)
-            rews.append(self.reward(s))
+            # rews.append(self.reward(s))
 
         # adding discounted rewards
         cum = torch.zeros_like(rews[0])
@@ -142,13 +146,13 @@ class TransitionPolicy(nn.Module):
         #     print(vs[0])
         #     print(p.probs[0])
         #     print("pause")
-        return p, v.squeeze(), reward.squeeze()
+        return p, v.squeeze()#, reward.squeeze()
 
-    def all_dones(self, s):
+    def all_dones_rewards(self, s):
         s1 = s.unsqueeze(-2).tile([self.action_size, 1])
         a = self.all_actions_like(s)
-        dones = self.dones(s1, a)
-        return dones
+        dones, rew = self.dones_rewards(s1, a)
+        return dones, rew
 
     def vectorized_attempt(self, x):
         s1 = x
