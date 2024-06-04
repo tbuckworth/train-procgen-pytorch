@@ -54,6 +54,7 @@ def train_ppo(args):
         "lmbda",
         "learning_rate",
         "t_learning_rate",
+        "dr_learning_rate",
         "entropy_coef",
         "fs_coef",
         "output_dim",
@@ -242,7 +243,7 @@ def train_ppo(args):
         print("Loading agent from %s" % args.model_file)
         checkpoint = torch.load(args.model_file, map_location=device)
         agent.policy.load_state_dict(checkpoint["model_state_dict"])
-        agent.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+        agent.v_optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
     ##############
     ## TRAINING ##
     ##############

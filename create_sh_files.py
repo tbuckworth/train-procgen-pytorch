@@ -406,6 +406,7 @@ def cartpole_graph_transition_hparams():
         "dyn_epochs": [3],
         "learning_rate": [0.0001],  # 0.00025, 0.0005],
         "t_learning_rate": [0.0005],  # 0.00025, 0.0001],
+        "dr_learning_rate": [0.0005, 0.005, 0.05, 0.00005],
         "n_envs": [64],
         "n_steps": [256],
         "n_rollouts": [3],

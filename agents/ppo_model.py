@@ -31,6 +31,7 @@ class PPOModel(BaseAgent):
                  lmbda=0.95,
                  learning_rate=2.5e-4,
                  t_learning_rate=2.5e-4,
+                 dr_learning_rate=2.5e-4,
                  grad_clip_norm=0.5,
                  eps_clip=0.2,
                  value_coef=0.5,
@@ -74,9 +75,16 @@ class PPOModel(BaseAgent):
         self.mini_batch_size = mini_batch_size
         self.gamma = gamma
         self.lmbda = lmbda
-        self.learning_rate = learning_rate
+        self.v_learning_rate = learning_rate
         self.t_learning_rate = t_learning_rate
-        self.optimizer = optim.Adam(self.policy.value.parameters(), lr=learning_rate, eps=1e-5)
+        self.dr_learning_rate = dr_learning_rate
+        self.v_optimizer = optim.Adam(self.policy.value.parameters(), lr=learning_rate, eps=1e-5)
+        if self.policy.done_model is None or self.policy.r_model is None:
+            self.dr_optimizer = optim.Adam(self.policy.cont_rew.parameters(), lr=dr_learning_rate, eps=1e-5)
+        else:
+            self.dr_optimizer = optim.Adam(
+                list(self.policy.done_model.parameters()) + list(self.policy.r_model.parameters()), lr=dr_learning_rate,
+                eps=1e-5)
         self.grad_clip_norm = grad_clip_norm
         self.eps_clip = eps_clip
         self.value_coef = value_coef
@@ -146,22 +154,25 @@ class PPOModel(BaseAgent):
                     if not self.clip_value:
                         value_loss = v_surr1.mean()
 
-                    done_guess, reward_guess = self.policy.dones_rewards(obs_batch, act_batch)
+                    value_loss.backward()
+                    self.v_optimizer.step()
+                    self.v_optimizer.zero_grad()
 
+                if e < self.dr_epochs:
+                    done_guess, reward_guess = self.policy.dr(obs_batch, act_batch)
                     reward_loss = MSELoss()(reward_guess, rew_batch)
-
                     done_loss = BCELoss()(done_guess, done_batch)
+                    dr_loss = reward_loss * self.rew_coef + done_loss * self.done_coef
+                    dr_loss.backward()
+                    self.dr_optimizer.step()
+                    self.dr_optimizer.zero_grad()
 
-                    loss = value_loss * self.value_coef + reward_loss * self.rew_coef + done_loss * self.done_coef
-                    loss.backward()
+                # # Let model to handle the large batch-size with small gpu-memory
+                # if grad_accumulation_cnt % grad_accumulation_steps == 0:
+                #     torch.nn.utils.clip_grad_norm_(self.policy.parameters(), self.grad_clip_norm)
 
-                # Let model to handle the large batch-size with small gpu-memory
-                if grad_accumulation_cnt % grad_accumulation_steps == 0:
-                    torch.nn.utils.clip_grad_norm_(self.policy.parameters(), self.grad_clip_norm)
-                    self.optimizer.step()
-                    self.optimizer.zero_grad()
                 grad_accumulation_cnt += 1
-                total_loss_list.append(loss.item())
+                total_loss_list.append(dr_loss.item())
                 value_loss_list.append(value_loss.item())
                 rew_loss_list.append(reward_loss.item())
                 cont_loss_list.append(done_loss.item())
@@ -232,7 +243,7 @@ class PPOModel(BaseAgent):
             self.logger.feed(rew_batch, done_batch, true_average_reward, rew_batch_v, done_batch_v,
                              true_average_reward_v)
 
-            self.optimizer, lr = self.adjust_lr(self.optimizer, self.learning_rate, self.t, num_timesteps)
+            self.v_optimizer, lr = self.adjust_lr(self.v_optimizer, self.v_learning_rate, self.t, num_timesteps)
             self.t_optimizer, _ = self.adjust_lr(self.t_optimizer, self.t_learning_rate, self.t, num_timesteps)
             if self.anneal_temperature:
                 self.policy.temperature = adjust_temp(self.policy.temperature, self.t, num_timesteps)
@@ -243,7 +254,7 @@ class PPOModel(BaseAgent):
             if self.t > checkpoints[checkpoint_cnt]:
                 print("Saving model.")
                 torch.save({'model_state_dict': self.policy.state_dict(),
-                            'optimizer_state_dict': self.optimizer.state_dict()},
+                            'optimizer_state_dict': self.v_optimizer.state_dict()},
                            self.logger.logdir + '/model_' + str(self.t) + '.pth')
                 checkpoint_cnt += 1
         self.env.close()
