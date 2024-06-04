@@ -91,15 +91,17 @@ class TransitionPolicy(nn.Module):
 
         self.transition_model = transition_model
 
+        self.done_model = None
+        self.r_model = None
 
-    def dones_rewards(self, s, a):
-        sa = torch.concat([s, a.unsqueeze(-1)], dim=-1)
-        # h = self.embedder(s)
-        dr = self.cont_rew(sa).squeeze()
-        d, r = dr.split(1, dim=-1)
-        # d = self.fc_continuation(ha).squeeze()
-        # r = self.fc_reward(ha).squeeze()
-        return nn.Sigmoid()(d.squeeze()), r.squeeze()
+    def dr(self, sa):
+        if self.done_model is None or self.r_model is None:
+            dr = self.cont_rew(sa).squeeze()
+            d, r = dr.split(1, dim=-1)
+            return nn.Sigmoid()(d.squeeze()), r.squeeze()
+        d = self.done_model(sa)
+        r = self.r_model(sa)
+        return d, r #sigmoid?
 
     def is_recurrent(self):
         return False
@@ -150,10 +152,15 @@ class TransitionPolicy(nn.Module):
         return p, v.squeeze()#, reward.squeeze()
 
     def all_dones_rewards(self, s):
+        sa = self.states_with_all_actions(s)
+        dones, rew = self.dr(sa)
+        return dones, rew
+
+    def states_with_all_actions(self, s):
         s1 = s.unsqueeze(-2).tile([self.action_size, 1])
         a = self.all_actions_like(s)
-        dones, rew = self.dones_rewards(s1, a)
-        return dones, rew
+        sa = torch.concat([s1, a.unsqueeze(-1)], dim=-1)
+        return sa
 
     def vectorized_attempt(self, x):
         s1 = x

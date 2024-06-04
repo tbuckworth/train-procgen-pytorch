@@ -50,7 +50,7 @@ def load_and_test():
     pickle_filename = os.path.join(symbdir, "symb_reg.pkl")
     msg_model = PySRRegressor.from_file(pickle_filename, extra_torch_mappings=get_extra_torch_mappings())
     policy, env, symbolic_agent_constructor, test_env = load_nn_policy(logdir, n_envs=100)
-    nn_agent = symbolic_agent_constructor(None, None, policy)
+    nn_agent = symbolic_agent_constructor(policy)
     rounds = 300
     nn_score_train = test_agent_mean_reward(nn_agent, env, "Neural    Train", rounds, seed=0)
     nn_score_test = test_agent_mean_reward(nn_agent, test_env, "Neural     Test", rounds, seed=0)

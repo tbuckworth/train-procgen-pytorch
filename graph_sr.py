@@ -102,19 +102,24 @@ def drop_first_dim(arr):
 
 
 def generate_data(agent, env, n):
-    observation = env.reset()
-    M_in, M_out, U_in, U_out = agent.sample(observation)
-    act = agent.forward(observation)
+    Obs = env.reset()
+    M_in, M_out, U_in, U_out, Sa, Dones, Rew, V = agent.sample(Obs)
+    act = agent.forward(Obs)
     while len(U_in) < n:
         observation, rew, done, info = env.step(act)
-        m_in, m_out, u_in, u_out = agent.sample(observation)
+        m_in, m_out, u_in, u_out, sa, dones, rew, v = agent.sample(observation)
         act = agent.forward(observation)
 
         M_in = np.append(M_in, m_in, axis=0)
         M_out = np.append(M_out, m_out, axis=0)
         U_in = np.append(U_in, u_in, axis=0)
         U_out = np.append(U_out, u_out, axis=0)
-    return M_in, M_out, U_in, U_out
+        Sa = np.append(Sa, sa, axis=0)
+        Dones = np.append(Dones, dones, axis=0)
+        Rew = np.append(Rew, rew, axis=0)
+        V = np.append(V, v, axis=0)
+        Obs = np.append(Obs, observation, axis=0)
+    return M_in, M_out, U_in, U_out, Sa, Dones, Rew, V, Obs
 
 
 def test_agent_balanced_reward(agent, env, print_name, n=40):
@@ -370,23 +375,32 @@ def run_graph_neurosymbolic_search(args):
                        tags=args.wandb_tags, resume=wb_resume, name=name)
 
     policy, env, symbolic_agent_constructor, test_env = load_nn_policy(logdir, n_envs)
-    nn_agent = symbolic_agent_constructor(None, None, policy)
-    m_in, m_out, u_in, u_out = generate_data(nn_agent, env, int(data_size))
+    nn_agent = symbolic_agent_constructor(policy)
+    m_in, m_out, u_in, u_out, sa, dones, rew, v, obs = generate_data(nn_agent, env, int(data_size))
 
     print("data generated")
     if os.name != "nt":
         weights = None
         msgdir, _ = create_symb_dir_if_exists(symbdir, "msg")
         updir, _ = create_symb_dir_if_exists(symbdir, "upd")
+        vdir, _  = create_symb_dir_if_exists(symbdir, "v")
+        rdir, _ = create_symb_dir_if_exists(symbdir, "r")
+        ddir, _ = create_symb_dir_if_exists(symbdir, "done")
 
-        msg_model, elapsed = find_model(m_in, m_out, msgdir, save_file, weights, args)
-        up_model, elapsed = find_model(u_in, u_out, updir, save_file, weights, args)
+
+        msg_model, elapsed_m = find_model(m_in, m_out, msgdir, save_file, weights, args)
+        up_model, elapsed_u = find_model(u_in, u_out, updir, save_file, weights, args)
+        v_model, elapsed_v = find_model(obs, v, vdir, save_file, weights, args)
+        r_model, elapsed_r = find_model(sa, rew, rdir, save_file, weights, args)
+        done_model, elapsed_dones = find_model(sa, dones, ddir, save_file, weights, args)
 
         msg_torch = NBatchPySRTorch(msg_model.pytorch())
         up_torch = NBatchPySRTorch(up_model.pytorch())
+        v_torch = NBatchPySRTorch(v_model.pytorch())
+        r_torch = NBatchPySRTorch(r_model.pytorch())
+        done_torch = NBatchPySRTorch(done_model.pytorch())
 
-        ns_agent = symbolic_agent_constructor(msg_torch, up_torch, copy.deepcopy(policy))
-        # nn_agent = NeuralAgent(policy)
+        ns_agent = symbolic_agent_constructor(copy.deepcopy(policy), msg_torch, up_torch, v_torch, r_torch, done_torch)
         rn_agent = RandomAgent(env.action_space.n)
 
         ns_score_train = test_agent_mean_reward(ns_agent, env, "NeuroSymb Train", rounds, seed)

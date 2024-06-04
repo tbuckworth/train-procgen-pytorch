@@ -36,12 +36,19 @@ def invert_list_levels(l):
     return [[sl[i] for sl in l] for i in range(len(l[0]))]
 
 class GraphSymbolicAgent:
-    def __init__(self, msg_model, up_model, policy, stochastic=None, action_mapping=None):
+    def __init__(self, policy, msg_model=None, up_model=None, v_model=None, r_model=None, done_model=None):
         self.policy = policy
         if msg_model is not None:
             self.policy.transition_model.message_model = msg_model
         if up_model is not None:
             self.policy.transition_model.updater = up_model
+        if v_model is not None:
+            self.policy.value = v_model
+        if r_model is not None:
+            self.policy.r_model = r_model
+        if done_model is not None:
+            self.policy.done_model = done_model
+
     def forward(self, observation):
         with torch.no_grad():
             obs = torch.FloatTensor(observation).to(self.policy.device)
@@ -57,7 +64,11 @@ class GraphSymbolicAgent:
             dl = invert_list_levels(data_list)
             dt = [np.concatenate(l, axis=0) for l in dl]
 
-            return dt[0], dt[1], dt[2], dt[3]
+            sa = self.policy.states_with_all_actions(obs)
+            dones, rew = self.policy.dr(sa)
+            v = self.policy.value(obs).squeeze()
+
+            return dt[0], dt[1], dt[2], dt[3], sa, dones, rew, v
 
     def msg_in_out(self, i, obs):
         action = self.policy.actions_like(obs, i)
