@@ -1,7 +1,7 @@
 import time
 
 from .misc_util import orthogonal_init
-from .model import GRU, GraphTransitionModel
+from .model import GRU, GraphTransitionModel, MLPModel
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -78,25 +78,28 @@ class TransitionPolicy(nn.Module):
         # small scale weight-initialization in policy enhances the stability
         # self.fc_policy = orthogonal_init(nn.Linear(self.embedder.output_dim, action_size), gain=0.01)
         self.fc_value = orthogonal_init(nn.Linear(self.embedder.output_dim, 1), gain=1.0)
-        self.fc_reward = orthogonal_init(nn.Linear(self.embedder.output_dim + 1, 1), gain=1.0)
-        self.fc_continuation = orthogonal_init(nn.Linear(self.embedder.output_dim + 1, 1), gain=1.0)
+        # self.fc_reward = orthogonal_init(nn.Linear(self.embedder.output_dim + 1, 1), gain=1.0)
+        # self.fc_continuation = orthogonal_init(nn.Linear(self.embedder.output_dim + 1, 1), gain=1.0)
+
+        self.cont_rew = MLPModel(self.embedder.input_size+1,
+                                 self.embedder.depth,
+                                 self.embedder.mid_weight,
+                                 2)
 
         self.value = nn.Sequential(self.embedder, self.fc_value)
         # self.reward = nn.Sequential(self.embedder, self.fc_reward)
 
         self.transition_model = transition_model
 
-    def dones(self, s, a):
-        h = self.embedder(s)
-        d = self.fc_continuation(torch.concat([h, a.unsqueeze(-1)], dim=-1)).squeeze()
-        return nn.Sigmoid()(d)
 
     def dones_rewards(self, s, a):
-        h = self.embedder(s)
-        ha = torch.concat([h, a.unsqueeze(-1)], dim=-1)
-        d = self.fc_continuation(ha).squeeze()
-        r = self.fc_reward(ha).squeeze()
-        return nn.Sigmoid()(d), r
+        sa = torch.concat([s, a.unsqueeze(-1)], dim=-1)
+        # h = self.embedder(s)
+        dr = self.cont_rew(sa).squeeze()
+        d, r = dr.split(1, dim=-1)
+        # d = self.fc_continuation(ha).squeeze()
+        # r = self.fc_reward(ha).squeeze()
+        return nn.Sigmoid()(d.squeeze()), r.squeeze()
 
     def is_recurrent(self):
         return False
@@ -122,12 +125,10 @@ class TransitionPolicy(nn.Module):
             next_states = [self.transition_model(s, self.actions_like(s, i)).unsqueeze(1) for i in
                            range(self.action_size)]
             s = torch.concat(next_states, dim=1)
-            # rews.append(self.reward(s))
 
         # adding discounted rewards
         cum = torch.zeros_like(rews[0])
         for r in rews[:-1]:
-            # cum = cum.unsqueeze(-2).tile([self.action_size, 1])
             cum = ((cum + r) * self.gamma).unsqueeze(-2).tile([self.action_size, 1])
 
         vs = self.value(s).squeeze()
@@ -163,8 +164,6 @@ class TransitionPolicy(nn.Module):
         k = len(s1.shape)
         shp = [self.action_size] + [1 for _ in range(k - 1)]
         return s1.unsqueeze(1).tile(shp)
-        shp = [1 for _ in range(k + 1)]
-        shp[1] = self.action_size
-        return s1.unsqueeze(1).repeat(shp)
-
-    # def old_forward(self, obs):
+        # shp = [1 for _ in range(k + 1)]
+        # shp[1] = self.action_size
+        # return s1.unsqueeze(1).repeat(shp)
