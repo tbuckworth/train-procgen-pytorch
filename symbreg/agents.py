@@ -52,7 +52,7 @@ class GraphSymbolicAgent:
     def forward(self, observation):
         with torch.no_grad():
             obs = torch.FloatTensor(observation).to(self.policy.device)
-            dist, value, reward = self.policy(obs)
+            dist, value = self.policy(obs)
             act = dist.sample()
             return act.cpu().numpy()
 
@@ -67,6 +67,11 @@ class GraphSymbolicAgent:
             sa = self.policy.states_with_all_actions(obs)
             dones, rew = self.policy.dr(sa)
             v = self.policy.value(obs).squeeze()
+
+            sa = flatten_batches_to_numpy(sa)
+            dones = flatten_batches_to_numpy(dones.unsqueeze(-1))
+            rew = flatten_batches_to_numpy(rew.unsqueeze(-1))
+            v = flatten_batches_to_numpy(v.unsqueeze(-1))
 
             return dt[0], dt[1], dt[2], dt[3], sa, dones, rew, v
 

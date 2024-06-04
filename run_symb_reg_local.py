@@ -627,15 +627,16 @@ def run_symb_reg_local():
     args = parser.parse_args()
 
     args.data_size = 100
-    args.iterations = 20
+    args.iterations = 1
     # args.logdir = "logs/train/boxworld/boxworld/2024-04-08__12-29-17__seed_6033"
     # args.logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
     # args.logdir = "logs/train/coinrun/coinrun-hparams/2024-03-27__18-20-55__seed_6033"
     # args.logdir = "logs/train/acrobot/test/2024-04-25__10-03-20__seed_6033"
     # args.logdir = "logs/train/cartpole/test/2024-04-26__12-37-41__seed_40"
     # args.logdir = "logs/train/mountain_car/test/2024-05-03__15-46-58__seed_6033"
-    args.logdir = "logs/train/cartpole/test/2024-05-29__14-54-48__seed_6033"
+    # args.logdir = "logs/train/cartpole/test/2024-05-29__14-54-48__seed_6033"
     # args.logdir = "logs/train/cartpole_swing/test/2024-05-01__14-19-53__seed_6033"
+    args.logdir = "logs/train/cartpole/test/2024-06-04__10-20-44__seed_6033"
     args.n_envs = 100
     args.rounds = 300
     args.binary_operators = ["+", "-", "*", "greater", "/"]
