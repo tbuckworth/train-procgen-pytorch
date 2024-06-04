@@ -452,6 +452,7 @@ def add_training_args(parser):
     parser.add_argument('--n_epochs', type=int, default=None)
     parser.add_argument('--dyn_epochs', type=int, default=None)
     parser.add_argument('--val_epochs', type=int, default=None)
+    parser.add_argument('--dr_epochs', type=int, default=None)
 
     parser.add_argument('--n_rollouts', type=int, default=None)
     parser.add_argument('--temperature', type=float, default=None)

@@ -66,6 +66,7 @@ def train_ppo(args):
         "done_coef",
         "dyn_epochs",
         "val_epochs",
+        "dr_epochs",
         "rew_coef",
         "anneal_temp",
     ]:

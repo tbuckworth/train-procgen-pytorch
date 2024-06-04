@@ -895,6 +895,7 @@ graph-transition:
     n_steps: 256
     val_epochs: 3
     dyn_epochs: 3
+    dr_epochs: 3
     n_minibatch: 16
     mini_batch_size: 8192
     gamma: 0.99

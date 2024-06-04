@@ -49,6 +49,7 @@ class PPOModel(BaseAgent):
                  done_coef=5.,
                  val_epochs=3,
                  dyn_epochs=3,
+                 dr_epochs=3,
                  anneal_temp=False,
                  **kwargs):
         super(PPOModel, self).__init__(env, policy, logger, storage, device,
@@ -58,6 +59,7 @@ class PPOModel(BaseAgent):
         self.anneal_temperature = anneal_temp
         self.val_epochs = val_epochs
         self.dyn_epochs = dyn_epochs
+        self.dr_epochs = dr_epochs
         self.done_coef = done_coef
         self.t_optimizer = optim.Adam(self.policy.transition_model.parameters(), lr=t_learning_rate, eps=1e-5)
         self.fs_coef = fs_coef
@@ -70,7 +72,7 @@ class PPOModel(BaseAgent):
         self.max_rew = 11.
         self.n_steps = n_steps
         self.n_envs = n_envs
-        self.epoch = max(val_epochs, dyn_epochs)
+        self.epoch = max(val_epochs, dyn_epochs, dr_epochs)
         self.n_minibatch = n_minibatch
         self.mini_batch_size = mini_batch_size
         self.gamma = gamma
