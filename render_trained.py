@@ -7,15 +7,14 @@ if __name__ == "__main__":
     # logdir = "logs/train/cartpole/test/2024-05-21__13-16-36__seed_6033"
     # logdir = "logs/train/cartpole/test/2024-05-23__07-11-27__seed_6033"
     # logdir = "logs/train/cartpole/test/2024-05-23__09-39-33__seed_6033"
-    # trained 200m:
-    logdir = "logs/train/cartpole/test/2024-05-24__09-40-11__seed_6033"
+    logdir = "logs/train/cartpole/test/2024-06-04__12-50-31__seed_6033"
     policy, env, symbolic_agent_constructor, test_env = load_nn_policy(logdir, n_envs=32)
     # env.render_mode = "human"
     # policy.n_rollouts = 3
     n = 32
-    for t in range(10):
+    for t in range(2, 10):
         policy.temperature = 10**(-t)
-        obs = env.reset()
+        obs = env.reset(seed=0)
         episodes = 0
         cum_rew = np.zeros(env.n_envs)
         episode_rewards = []

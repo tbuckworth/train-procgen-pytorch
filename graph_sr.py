@@ -403,8 +403,7 @@ def run_graph_neurosymbolic_search(args):
         ns_agent = symbolic_agent_constructor(copy.deepcopy(policy), msg_torch, up_torch, v_torch, r_torch, done_torch)
         rn_agent = RandomAgent(env.action_space.n)
 
-        env.n_envs = 100
-        test_env.n_envs = 100
+        _, env, _, test_env = load_nn_policy(logdir, 100)
         ns_score_train = test_agent_mean_reward(ns_agent, env, "NeuroSymb Train", rounds, seed)
         nn_score_train = test_agent_mean_reward(nn_agent, env, "Neural    Train", rounds, seed)
         rn_score_train = test_agent_mean_reward(rn_agent, env, "Random    Train", rounds, seed)
