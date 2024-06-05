@@ -401,8 +401,9 @@ def cartpole_graph_transition_hparams():
         "device": ["gpu"],
         "num_timesteps": [int(2e6)],
         "seed": [6033],  # 0, 1, 101, 40],
-        "gamma": [0.99, 0.999],
-        "val_epochs": [9, 8, 10],
+        "gamma": [0.999, 0.995, 0.9999],
+        "lmbda": [0.98], #TODO:
+        "val_epochs": [9],
         "dyn_epochs": [3],
         "dr_epochs": [5],
         "learning_rate": [0.0001],  # 0.00025, 0.0005],
@@ -411,7 +412,7 @@ def cartpole_graph_transition_hparams():
         "n_envs": [64],
         "n_steps": [256],
         "n_rollouts": [3],
-        "temperature": [5e-4, 1e-4, 1e-5, 5e-5],  # [0.01, 0.001, 0.0001, 0.00001, 0.000001],
+        "temperature": [1e-5],  # [0.01, 0.001, 0.0001, 0.00001, 0.000001],
         "use_gae": [True],
         "rew_coef": [1.],  # 10, 1, 0.1],
         "done_coef": [1.],  # 10, 1.], #0.1 bad
