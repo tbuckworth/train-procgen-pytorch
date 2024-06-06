@@ -10,9 +10,7 @@ from gp import bayesian_optimisation
 from helper_local import wandb_login
 
 
-
-
-def get_wandb_performance():
+def get_wandb_performance(bounds):
     entity = "ic-ai-safety"
     project = "Cartpole"
     id_tag = "sa_rew"
@@ -55,25 +53,15 @@ def get_wandb_performance():
 
     df = pd.DataFrame.from_dict(all_dicts)
 
-    # df["summary.mean_episode_rewards"]
+    # hp = [x for x in df.columns if re.search("config", x)]
+    # hp = [h for h in hp if h not in ["config.wandb_tags"]]
+    # hp = [h for h in hp if len(df[h].unique()) > 1]
 
-    hp = [x for x in df.columns if re.search("config", x)]
-    hp = [h for h in hp if h not in ["config.wandb_tags"]]
-    hp = [h for h in hp if len(df[h].unique()) > 1]
-
-    # for h in hp:
-    #     df.pivot_table(values="summary.mean_episode_rewards", index=h, aggfunc=["mean","std"])
-    #
-    # df.groupby(hp)["summary.mean_episode_rewards"].agg("mean")
-
+    hp = [f"config.{b}" for b in bounds.keys()]
     dfn = df[hp].select_dtypes(include='number')
-
     X = dfn
     y = df["summary.mean_episode_rewards"]
     return X, y
-
-
-
 
     # crs = dfn.corrwith(df["summary.mean_episode_rewards"])
     # crs = crs[pd.notna(crs)]
@@ -116,8 +104,6 @@ def get_wandb_performance():
     # plt.legend()
     # plt.show()
 
-
-
     print("x")
 
     # logdirs = np.unique([cfg["logdir"] for cfg in config_list])
@@ -130,9 +116,11 @@ def get_wandb_performance():
     # machines = list(filter(lambda summary: summary.get("problem_name", "") == "acrobot", summary_list))
 
 
-def select_next_hyperparameters(X, y):
-    bounds = {}
+def select_next_hyperparameters(X, y, bounds):
+    [b.sort() for b in bounds.values()]
+    bound_array = np.array([b for b in bounds.values()])
 
+    X.loc[[f"config.{b}" for b in bounds.keys()]]
     next_params = bayesian_optimisation(X, y, bounds)
 
 
@@ -140,14 +128,35 @@ def run_next_hyperparameters(hparams):
     pass
 
 
-def main():
-    X, y = get_wandb_performance()
+def main(bounds):
+    X, y = get_wandb_performance(bounds.keys())
 
-    hparams = select_next_hyperparameters(X, y)
+    hparams = select_next_hyperparameters(X, y, bounds)
 
     run_next_hyperparameters(hparams)
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    bounds = {
+        "gamma": [0.99999, 0.0],
+        "lmbda": [0.0, 0.99999],
+        "val_epochs": [1, 10],
+        "dyn_epochs": [1, 10],
+        "dr_epochs": [1, 10],
+        "learning_rate": [1e-8, 1e-1],
+        "t_learning_rate": [1e-8, 1e-1],
+        "dr_learning_rate": [1e-8, 1e-1],
+        "n_envs": [16, 128],
+        "n_steps": [128, 512],
+        "n_rollouts": [1, 5],
+        "temperature": [1e-8, 1e-1],
+        "rew_coef": [0.0, 10.],
+        "done_coef": [0.0, 10.],
+        "output_dim": [1, 256],
+        "depth": [1, 12],
+        "mid_weight": [1, 2048],
+        "n_minibatch": [16, 64],
+    }
     while True:
-        main()
+        main(bounds)
