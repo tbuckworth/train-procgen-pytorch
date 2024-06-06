@@ -402,8 +402,8 @@ def cartpole_graph_transition_hparams():
         "num_timesteps": [int(2e6)],
         "seed": [6033],  # 0, 1, 101, 40],
         "gamma": [0.999, 0.995, 0.9999],
-        "lmbda": [0.98], #TODO:
-        "val_epochs": [9],
+        "lmbda": [0.95, 0.99, 0.9, 0.98, 0.8, 0.97, 0.5], #TODO:
+        "val_epochs": [8],
         "dyn_epochs": [3],
         "dr_epochs": [5],
         "learning_rate": [0.0001],  # 0.00025, 0.0005],
@@ -421,7 +421,7 @@ def cartpole_graph_transition_hparams():
         # "mini_batch_size": None,
         # "wandb_name": None,
         # "wandb_group": None,
-        "wandb_tags": [["graph-transition", "sa_rew"]],
+        "wandb_tags": [["graph-transition", "sa_rew", "gam_lam"]],
         # "detect_nan": False,
         "use_wandb": [True],
         "mirror_env": [False],
@@ -532,7 +532,7 @@ def add_training_args_dict():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--n_gpu', type=int, default=5)
+    parser.add_argument('--n_gpu', type=int, default=1)
     parser.add_argument('--execute', action="store_true", default=True)
     # parser.add_argument('--cuda', action="store_true", default=False)
     parser.add_argument('--max_runs', type=int, default=200)
@@ -577,7 +577,7 @@ if __name__ == '__main__':
     if compute_all:
         n_experiments = np.prod([len(hparams[x]) for x in hparams.keys()])
     else:
-        n_experiments = np.sum([len(hparams[x]) for x in hparams.keys()])
+        n_experiments = np.sum([len(hparams[x]) for x in hparams.keys() if len(hparams[x]) > 1])
     print(f"Creating {n_experiments} experiments across {n_gpu} workers.")
     random_subset = min(1, max_runs / n_experiments)
     write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_type, re_use_machine, specify_host,
