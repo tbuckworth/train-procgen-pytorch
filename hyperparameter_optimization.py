@@ -93,7 +93,6 @@ def main(bounds, fixed, project="Cartpole", id_tag="sa_rew"):
 
 if __name__ == "__main__":
     fixed = {
-        "exp_name": None,
         "env_name": 'cartpole',
         "param_name": 'graph-transition',
         "device": "gpu",
