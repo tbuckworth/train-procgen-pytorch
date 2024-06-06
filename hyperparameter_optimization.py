@@ -1,19 +1,19 @@
 import argparse
 import re
+from math import floor, log10
 
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 
 import wandb
+from create_sh_files import add_training_args_dict
 from gp import bayesian_optimisation
-from helper_local import wandb_login
+from helper_local import wandb_login, DictToArgs
+from train import train_ppo
 
 
-def get_wandb_performance(bounds):
-    entity = "ic-ai-safety"
-    project = "Cartpole"
-    id_tag = "sa_rew"
+def get_wandb_performance(hparams, project="Cartpole", id_tag="sa_rew", entity="ic-ai-safety"):
     wandb_login()
     api = wandb.Api()
     entity, project = entity, project
@@ -35,20 +35,11 @@ def get_wandb_performance(bounds):
         # .name is the human-readable name of the run.
         name_list.append(run.name)
 
-        # state_list.append(run._state)
-
-    # runs_df = pd.DataFrame(
-    #     {"summary": summary_list, "config": config_list, "name": name_list}
-    # )
-    #
-    # runs_df.to_csv("project.csv")
-
     all_dicts = []
     for s, c, n in zip(summary_list, config_list, name_list):
         s_dict = {f"summary.{k}": v for k, v in s.items()}
         s_dict.update({f"config.{k}": v for k, v in c.items()})
         s_dict["name"] = n
-        # s_dict["state"] = st
         all_dicts.append(s_dict)
 
     df = pd.DataFrame.from_dict(all_dicts)
@@ -57,87 +48,65 @@ def get_wandb_performance(bounds):
     # hp = [h for h in hp if h not in ["config.wandb_tags"]]
     # hp = [h for h in hp if len(df[h].unique()) > 1]
 
-    hp = [f"config.{b}" for b in bounds.keys()]
+    hp = [f"config.{h}" for h in hparams]
     dfn = df[hp].select_dtypes(include='number')
     X = dfn
     y = df["summary.mean_episode_rewards"]
     return X, y
 
-    # crs = dfn.corrwith(df["summary.mean_episode_rewards"])
-    # crs = crs[pd.notna(crs)]
-    #
-    # from sklearn import tree
-    #
-    # clf = tree.DecisionTreeRegressor()
-    # clf = clf.fit(X, y)
-    # clf.predict([[1, 1]])
-    #
-    #
-    #
-    # crs[crs.abs().argmax()]
-    # from numpy.polynomial import Polynomial as Poly
-    # from numpy.polynomial import polynomial as P
-    # x = dfn["config.gamma"]
-    # y = df["summary.mean_episode_rewards"]
-    # c = P.polyfit(x, y, deg=2)
-    # c[0]
-    # c[1]
-    # c[2]
-    #
-    # # x = -c[1]/(2*c[2])
-    # # c[2]*x**2 + c[1]*x + c[0]
-    #
-    #
-    # Poly.fit(x, df["summary.mean_episode_rewards"], deg=2)
-    #
-    # np.polyfit(x, df["summary.mean_episode_rewards"], deg=2)
-    #
-    #
-    #
-    # plt.scatter(x, y, color='crimson', label='given points')
-    #
-    # # poly = np.polyfit(x, y, deg=2, rcond=None, full=False, w=None, cov=False)
-    # poly = P.polyfit(x, y, deg=2)
-    # xs = np.linspace(min(x), max(x), 100)
-    # ys = poly[2] * xs ** 2 + poly[1] * xs + poly[0]
-    # plt.plot(xs, ys, color='dodgerblue', label=f'$({poly[2]:.2f})x^2+({poly[1]:.2f})x + ({poly[0]:.2f})$')
-    # plt.legend()
-    # plt.show()
 
-    print("x")
-
-    # logdirs = np.unique([cfg["logdir"] for cfg in config_list])
-    # logdir = 'logs/train/acrobot/test/2024-04-25__10-03-20__seed_6033'
-    # flt = np.array([cfg["logdir"] == logdir for cfg in config_list])
-    #
-    # [bool(re.search("acrobot", cfg["logdir"])) for cfg in config_list]
-    # [summary.get("problem_name", "") == "acrobot" for summary in summary_list]
-    #
-    # machines = list(filter(lambda summary: summary.get("problem_name", "") == "acrobot", summary_list))
+def n_sig_fig(x, n):
+    return round(x, -int(floor(log10(abs(x)))) + (n - 1))
 
 
 def select_next_hyperparameters(X, y, bounds):
     [b.sort() for b in bounds.values()]
-    bound_array = np.array([b for b in bounds.values()])
+    col_order = [re.sub(r"config\.", "", k) for k in X.columns]
+    bound_array = np.array([bounds[k] for k in col_order])
 
-    X.loc[[f"config.{b}" for b in bounds.keys()]]
-    next_params = bayesian_optimisation(X, y, bounds)
+    next_params = bayesian_optimisation(X.to_numpy(), y.to_numpy(), bound_array)
+    int_params = [np.all([isinstance(x, int) for x in bounds[k]]) for k in col_order]
+    next_params = [int(round(v, 0)) if i else v for i, v in zip(int_params, next_params)]
+
+    hparams = {k: n_sig_fig(next_params[i], 3) for i, k in enumerate(col_order)}
+
+    return hparams
 
 
 def run_next_hyperparameters(hparams):
-    pass
+    parser_dict = add_training_args_dict()
+    parser_dict.update(hparams)
+    args = DictToArgs(parser_dict)
+    train_ppo(args)
 
 
-def main(bounds):
-    X, y = get_wandb_performance(bounds.keys())
+def main(bounds, fixed, project="Cartpole", id_tag="sa_rew"):
+    X, y = get_wandb_performance(bounds.keys(),  project, id_tag)
 
     hparams = select_next_hyperparameters(X, y, bounds)
+
+    fh = fixed.copy()
+    hparams.update(fh)
 
     run_next_hyperparameters(hparams)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    fixed = {
+        "exp_name": None,
+        "env_name": 'cartpole',
+        "param_name": 'graph-transition',
+        "device": "gpu",
+        "num_timesteps": int(2e6),
+        "seed": 6033,
+        "use_gae": True,
+        "clip_value": False,
+        "wandb_tags": ["graph-transition", "sa_rew", "gam_lam"],
+        "use_wandb": True,
+        "mirror_env": False,
+        "use_valid_env": True,
+        "anneal_temp": False,
+    }
     bounds = {
         "gamma": [0.99999, 0.0],
         "lmbda": [0.0, 0.99999],
@@ -159,4 +128,4 @@ if __name__ == "__main__":
         "n_minibatch": [16, 64],
     }
     while True:
-        main(bounds)
+        main(bounds, fixed, "Cartpole", "sa_rew")
