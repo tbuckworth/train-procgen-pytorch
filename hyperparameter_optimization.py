@@ -66,7 +66,25 @@ def select_next_hyperparameters(X, y, bounds):
 
     bound_array = np.array([[x[0], x[-1]]for x in bo])
 
-    next_params = bayesian_optimisation(X.to_numpy(), y.to_numpy(), bound_array)
+    xp = X.to_numpy()
+    yp = y.to_numpy()
+
+    eis, params = [], []
+    # for i, h in enumerate(bounds.keys()):
+    idx = np.random.permutation(len(X.columns))
+
+    n_splits = np.ceil(len(idx) / 2)
+    xs = np.array_split(xp[:, idx], n_splits, axis=1)
+    bs = np.array_split(bound_array[idx], n_splits, axis=0)
+
+    for x, b in zip(xs, bs):
+        param, ei = bayesian_optimisation(x, yp, b, random_search=True)
+        params += list(param)
+        eis += list(ei)
+
+    next_params = np.array(params)[np.argsort(idx)]
+    exp_i = np.repeat(eis, 2)[np.argsort(idx)]
+    # next_params, ei = bayesian_optimisation(X.to_numpy(), y.to_numpy(), bound_array, random_search=True)
     int_params = [np.all([isinstance(x, int) for x in bounds[k]]) for k in col_order]
     next_params = [int(round(v, 0)) if i else v for i, v in zip(int_params, next_params)]
 
@@ -107,9 +125,24 @@ if __name__ == "__main__":
         "mirror_env": False,
         "use_valid_env": True,
         "anneal_temp": False,
+        # "lmbda": .95,
+        # "val_epochs": 8,#[1, 10],
+        # "dyn_epochs": 3,#[1, 10],
+        # "dr_epochs": 3,#[1, 10],
+        # "learning_rate": 1e-4,#[1e-8, 1e-3],
+        # "t_learning_rate": 5e-4,#[1e-8, 1e-3],
+        # "dr_learning_rate": 5e-5,#[1e-8, 1e-3],
+        "n_envs": 64,
+        "n_steps": 256,
+        "n_rollouts": 3,
+        # "temperature": 1e-5,#[1e-8, 1e-2],
+        # "rew_coef": 1.,#[0.1, 10.],
+        # "done_coef": 1.,#[0.1, 10.],
+        # "output_dim": 24,#[24, 64],
+        # "depth": 4,#[2, 6],
     }
     bounds = {
-        "gamma": [0.99999, 0.0],
+        "gamma": [0.9999, 0.8],
         "lmbda": [0.0, 0.99999],
         "val_epochs": [1, 10],
         "dyn_epochs": [1, 10],
@@ -117,9 +150,9 @@ if __name__ == "__main__":
         "learning_rate": [1e-8, 1e-3],
         "t_learning_rate": [1e-8, 1e-3],
         "dr_learning_rate": [1e-8, 1e-3],
-        "n_envs": [64],
-        "n_steps": [256],
-        "n_rollouts": [3],
+        # "n_envs": [64],
+        # "n_steps": [256],
+        # "n_rollouts": [3],
         "temperature": [1e-8, 1e-2],
         "rew_coef": [0.1, 10.],
         "done_coef": [0.1, 10.],

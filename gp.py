@@ -8,6 +8,7 @@ import sklearn.gaussian_process as gp
 
 from scipy.stats import norm
 from scipy.optimize import minimize
+from matplotlib import pyplot as plt
 
 def expected_improvement(x, gaussian_process, evaluated_loss, greater_is_better=False, n_params=1):
     """ expected_improvement
@@ -45,7 +46,7 @@ def expected_improvement(x, gaussian_process, evaluated_loss, greater_is_better=
     with np.errstate(divide='ignore'):
         Z = scaling_factor * (mu - loss_optimum) / sigma
         expected_improvement = scaling_factor * (mu - loss_optimum) * norm.cdf(Z) + sigma * norm.pdf(Z)
-        expected_improvement[sigma == 0.0] == 0.0
+        expected_improvement[sigma == 0.0] = 0.0
 
     return -1 * expected_improvement
 
@@ -92,7 +93,7 @@ def sample_next_hyperparameter(acquisition_func, gaussian_process, evaluated_los
     return best_x
 
 
-def bayesian_optimisation(xp, yp, bounds, gp_params=None, random_search=False, alpha=1e-5, epsilon=1e-7):
+def bayesian_optimisation(xp, yp, bounds, gp_params=None, random_search=False, alpha=1e-5, epsilon=1e-7, n=1e5):
     """ bayesian_optimisation
 
     Uses Gaussian Processes to optimise the loss function `sample_loss`.
@@ -120,7 +121,9 @@ def bayesian_optimisation(xp, yp, bounds, gp_params=None, random_search=False, a
         epsilon: double.
             Precision tolerance for floats.
     """
-
+    if len(xp.shape) == 1:
+        xp = np.expand_dims(xp, axis=-1)
+        bounds = np.expand_dims(bounds, axis=0)
     # x_list = []
     # y_list = []
     #
@@ -152,15 +155,19 @@ def bayesian_optimisation(xp, yp, bounds, gp_params=None, random_search=False, a
 
     # Sample next hyperparameter
     if random_search:
-        x_random = np.random.uniform(bounds[:, 0], bounds[:, 1], size=(random_search, n_params))
+        x_random = np.random.uniform(bounds[:, 0], bounds[:, 1], size=(int(n), n_params))
         ei = -1 * expected_improvement(x_random, model, yp, greater_is_better=True, n_params=n_params)
         next_sample = x_random[np.argmax(ei), :]
     else:
-        next_sample = sample_next_hyperparameter(expected_improvement, model, yp, greater_is_better=True, bounds=bounds, n_restarts=100)
+        next_sample = sample_next_hyperparameter(expected_improvement, model, yp, greater_is_better=True, bounds=bounds, n_restarts=1000)
 
     # Duplicates will break the GP. In case of a duplicate, we will randomly sample a next query point.
 
     dups = np.all(np.abs(next_sample-xp) <= epsilon, axis=1)
     if np.any(dups):
         next_sample = np.random.uniform(bounds[:, 0], bounds[:, 1], bounds.shape[0])
-    return next_sample
+    ei_next_sample = expected_improvement(next_sample, model, yp, greater_is_better=True, n_params=n_params)
+
+    mu, sigma = model.predict(x_random, return_std=True)
+
+    return next_sample, ei_next_sample
