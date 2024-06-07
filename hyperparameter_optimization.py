@@ -62,7 +62,9 @@ def n_sig_fig(x, n):
 def select_next_hyperparameters(X, y, bounds):
     [b.sort() for b in bounds.values()]
     col_order = [re.sub(r"config\.", "", k) for k in X.columns]
-    bound_array = np.array([bounds[k] for k in col_order])
+    bo = [bounds[k] for k in col_order]
+
+    bound_array = np.array([[x[0], x[-1]]for x in bo])
 
     next_params = bayesian_optimisation(X.to_numpy(), y.to_numpy(), bound_array)
     int_params = [np.all([isinstance(x, int) for x in bounds[k]]) for k in col_order]
@@ -112,19 +114,17 @@ if __name__ == "__main__":
         "val_epochs": [1, 10],
         "dyn_epochs": [1, 10],
         "dr_epochs": [1, 10],
-        "learning_rate": [1e-8, 1e-1],
-        "t_learning_rate": [1e-8, 1e-1],
-        "dr_learning_rate": [1e-8, 1e-1],
-        "n_envs": [16, 128],
-        "n_steps": [128, 512],
-        "n_rollouts": [1, 5],
-        "temperature": [1e-8, 1e-1],
-        "rew_coef": [0.0, 10.],
-        "done_coef": [0.0, 10.],
-        "output_dim": [1, 256],
-        "depth": [1, 12],
-        "mid_weight": [1, 2048],
-        "n_minibatch": [16, 64],
+        "learning_rate": [1e-8, 1e-3],
+        "t_learning_rate": [1e-8, 1e-3],
+        "dr_learning_rate": [1e-8, 1e-3],
+        "n_envs": [64],
+        "n_steps": [256],
+        "n_rollouts": [3],
+        "temperature": [1e-8, 1e-2],
+        "rew_coef": [0.1, 10.],
+        "done_coef": [0.1, 10.],
+        "output_dim": [24, 64],
+        "depth": [2, 6],
     }
     while True:
         main(bounds, fixed, "Cartpole", "sa_rew")
