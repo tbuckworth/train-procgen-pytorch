@@ -1041,12 +1041,21 @@ class GraphTransitionModel(nn.Module):
 
 
 class NBatchPySRTorch(nn.Module):
-    def __init__(self, model):
+    def __init__(self, model, shape=None):
         super(NBatchPySRTorch, self).__init__()
         self.model = model
+        self.shape = shape
 
     def forward(self, X):
         if self.model._selection is not None:
             X = X[..., self.model._selection]
         symbols = {symbol: X[..., i] for i, symbol in enumerate(self.model.symbols_in)}
         return self.model._node(symbols)
+
+    def forward(self, X):
+        if self.shape is None:
+            return self.fwd(X)
+        h = self.fwd(X)
+        if len(h.shape == 0):
+            return h.repeat(self.shape)
+

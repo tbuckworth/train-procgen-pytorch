@@ -5,6 +5,7 @@ from math import floor, log10
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
+from scipy.stats import ttest_ind_from_stats
 
 import wandb
 from create_sh_files import add_training_args_dict
@@ -64,7 +65,7 @@ def select_next_hyperparameters(X, y, bounds):
     col_order = [re.sub(r"config\.", "", k) for k in X.columns]
     bo = [bounds[k] for k in col_order]
 
-    bound_array = np.array([[x[0], x[-1]]for x in bo])
+    bound_array = np.array([[x[0], x[-1]] for x in bo])
 
     xp = X.to_numpy()
     yp = y.to_numpy()
@@ -100,8 +101,23 @@ def run_next_hyperparameters(hparams):
     train_ppo(args)
 
 
+def inspect_hparams(X, y, bounds, fixed):
+    cuttoff = 495
+    cuttoff = y.max()
+    cuttoff = 485
+    X["flt"] = y >= cuttoff
+    h_stats = X.pivot_table(columns="flt", aggfunc=["mean", "std", "count"])
+    t, p = ttest_ind_from_stats(h_stats[('mean', True)], h_stats[('std', True)], h_stats['count', True],
+                                h_stats[('mean', False)], h_stats[('std', False)], h_stats['count', False])
+    h_stats[('p_val', None)] = p
+    h_stats = h_stats.drop(columns=[("count", False), ("count", True)])
+    print(h_stats)
+
+    pass
+
+
 def main(bounds, fixed, project="Cartpole", id_tag="sa_rew"):
-    X, y = get_wandb_performance(bounds.keys(),  project, id_tag)
+    X, y = get_wandb_performance(bounds.keys(), project, id_tag)
 
     hparams = select_next_hyperparameters(X, y, bounds)
 

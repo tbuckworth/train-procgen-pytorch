@@ -71,6 +71,7 @@ def find_model(X, Y, symbdir, save_file, weights, args):
         bumper=args.bumper,
         model_selection=args.model_selection,
         extra_torch_mappings=get_extra_torch_mappings(),
+        nested_constraints={"relu": {"relu": 0}},
         # extra_torch_mappings={sympy.StrictGreaterThan: torch.greater},
         # extra_torch_mappings={sympy.Piecewise: lambda x, y: torch.where(x[1], x[0], y[0])},
         #                       sympy.functions.elementary.piecewise.ExprCondPair: tuple,
@@ -345,6 +346,13 @@ def one_hot(targets, nb_classes):
     return np.eye(nb_classes)[targets]
 
 
+# def compare_outputs(sympol, nn_pol, obs):
+#     obs = torch.FloatTensor(obs).to(device=sympol.device)
+#     sympol.transition_model.message_model
+
+
+
+
 def run_graph_neurosymbolic_search(args):
     data_size = args.data_size
     logdir = args.logdir
@@ -394,14 +402,30 @@ def run_graph_neurosymbolic_search(args):
         r_model, elapsed_r = find_model(sa, rew, rdir, save_file, weights, args)
         done_model, elapsed_dones = find_model(sa, dones, ddir, save_file, weights, args)
 
+        mi = torch.FloatTensor(m_in).to(device=policy.device)
+        ui = torch.FloatTensor(u_in).to(device=policy.device)
+        oi = torch.FloatTensor(obs).to(device=policy.device)
+        sai = torch.FloatTensor(sa).to(device=policy.device)
+
         msg_torch = NBatchPySRTorch(msg_model.pytorch())
         up_torch = NBatchPySRTorch(up_model.pytorch())
         v_torch = NBatchPySRTorch(v_model.pytorch())
-        r_torch = NBatchPySRTorch(r_model.pytorch())
+        r_torch = NBatchPySRTorch(r_model.pytorch(), shape=policy.dr(sai)[0].shape)
         done_torch = NBatchPySRTorch(done_model.pytorch())
 
         ns_agent = symbolic_agent_constructor(copy.deepcopy(policy), msg_torch, up_torch, v_torch, r_torch, done_torch)
         rn_agent = RandomAgent(env.action_space.n)
+
+        ###################################
+
+        msg_torch(mi).shape == policy.transition_model.messenger(mi).shape
+        up_torch(ui).shape == policy.transition_model.updater(ui).shape
+        v_torch(oi).shape == policy.value(oi).shape
+        r_torch(sai).shape == policy.dr(sai)[0].shape
+        done_torch(sai).shape == policy.dr(sai)[1].shape
+        # compare_outputs(ns_agent.policy, policy, obs)
+        ###################################
+
 
         _, env, _, test_env = load_nn_policy(logdir, 100)
         ns_score_train = test_agent_mean_reward(ns_agent, env, "NeuroSymb Train", rounds, seed)

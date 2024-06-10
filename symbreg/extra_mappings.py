@@ -73,6 +73,8 @@ def if_then_else(*conds):
     a, b, c = conds
     return torch.where(a, torch.where(b, True, False), torch.where(c, True, False))
 
+def exp1():
+    return torch.exp(torch.FloatTensor([1]))
 
 # TODO: Add test that makes sure tensors are on the same device
 def get_extra_torch_mappings():
@@ -88,4 +90,5 @@ def get_extra_torch_mappings():
         sympy.functions.elementary.piecewise.ExprCondPair: expr_cond_pair,
         sympy.Piecewise: piecewise,
         sympy.logic.boolalg.ITE: if_then_else,
+        sympy.core.numbers.Exp1: exp1,
     }
