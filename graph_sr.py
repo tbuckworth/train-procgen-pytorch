@@ -10,7 +10,10 @@ import sympy
 from torch import cuda
 
 import wandb
+from agents.ppo_model import PPOModel
+from common.logger import Logger
 from common.model import NBatchPySRTorch
+from common.storage import BasicStorage
 from discrete_env.mountain_car_pre_vec import create_mountain_car
 
 from email_results import send_images_first_last
@@ -351,6 +354,44 @@ def one_hot(targets, nb_classes):
 #     sympol.transition_model.message_model
 
 
+def load_learning_objects(logdir, newdir, device):
+    hyperparameters = get_saved_hyperparams(logdir)
+    cfg = get_config(logdir)
+    args = DictToArgs(cfg)
+    create_venv = get_env_constructor(args.env_name)
+
+    env = create_venv(args, hyperparameters)
+    env_valid = create_venv(args, hyperparameters, is_valid=True) if args.use_valid_env else None
+
+    logger = Logger(args.n_envs, newdir, use_wandb=args.use_wandb, transition_model=args.algo == "ppo-model")
+    logger.max_steps = args.max_steps
+
+    obs = env.reset()
+    observation_shape = obs.observation_shape
+
+    storage = BasicStorage(observation_shape, args.n_steps, args.n_envs, device)
+    storage_valid = BasicStorage(args.observation_shape, args.n_steps, args.n_envs,
+                                 device) if args.use_valid_env else None
+
+    return env, env_valid, logger, storage, storage_valid, hyperparameters, args
+
+
+def fine_tune(policy, logdir, symbdir):
+    newdir = os.path.join(symbdir, "fine_tune")
+    if not os.path.exists(newdir):
+        os.mkdir(newdir)
+
+    env, env_valid, logger, storage, storage_valid, hyperparameters, args = load_learning_objects(logdir, newdir,
+                                                                                                  policy.device)
+
+    agent = PPOModel(env, policy, logger, storage, policy.device,
+                     hyperparameters["num_checkpoints"],
+                     env_valid=env_valid,
+                     storage_valid=storage_valid,
+                     **hyperparameters)
+
+    agent.train(args.num_timesteps)
+    wandb.finish()
 
 
 def run_graph_neurosymbolic_search(args):
@@ -391,10 +432,9 @@ def run_graph_neurosymbolic_search(args):
         weights = None
         msgdir, _ = create_symb_dir_if_exists(symbdir, "msg")
         updir, _ = create_symb_dir_if_exists(symbdir, "upd")
-        vdir, _  = create_symb_dir_if_exists(symbdir, "v")
+        vdir, _ = create_symb_dir_if_exists(symbdir, "v")
         rdir, _ = create_symb_dir_if_exists(symbdir, "r")
         ddir, _ = create_symb_dir_if_exists(symbdir, "done")
-
 
         msg_model, elapsed_m = find_model(m_in, m_out, msgdir, save_file, weights, args)
         up_model, elapsed_u = find_model(u_in, u_out, updir, save_file, weights, args)
@@ -430,6 +470,9 @@ def run_graph_neurosymbolic_search(args):
         print(f"Symbol Parameters: {n_params(ns_agent.policy)}")
 
         _, env, _, test_env = load_nn_policy(logdir, 100)
+
+        fine_tuned_policy = fine_tune(ns_agent.policy, logdir, symbdir)
+
         ns_score_train = test_agent_mean_reward(ns_agent, env, "NeuroSymb Train", rounds, seed)
         nn_score_train = test_agent_mean_reward(nn_agent, env, "Neural    Train", rounds, seed)
         rn_score_train = test_agent_mean_reward(rn_agent, env, "Random    Train", rounds, seed)
