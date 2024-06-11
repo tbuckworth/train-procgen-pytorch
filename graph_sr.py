@@ -435,10 +435,15 @@ def run_graph_neurosymbolic_search(args):
         rdir, _ = create_symb_dir_if_exists(symbdir, "r")
         ddir, _ = create_symb_dir_if_exists(symbdir, "done")
 
+        print("\nTransition Messenger:")
         msg_model, elapsed_m = find_model(m_in, m_out, msgdir, save_file, weights, args)
+        print("\nTransition Updater:")
         up_model, elapsed_u = find_model(u_in, u_out, updir, save_file, weights, args)
+        print("\nValue Model:")
         v_model, elapsed_v = find_model(obs, v, vdir, save_file, weights, args)
+        print("\nReward Model:")
         r_model, elapsed_r = find_model(sa, rew, rdir, save_file, weights, args)
+        print("\nDone Model:")
         done_model, elapsed_dones = find_model(sa, dones, ddir, save_file, weights, args)
 
         mi = torch.FloatTensor(m_in).to(device=policy.device)

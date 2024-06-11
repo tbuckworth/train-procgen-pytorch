@@ -626,8 +626,8 @@ def run_symb_reg_local():
 
     args = parser.parse_args()
 
-    args.data_size = 100
-    args.iterations = 1
+    args.data_size = 10000
+    args.iterations = 20
     # args.logdir = "logs/train/boxworld/boxworld/2024-04-08__12-29-17__seed_6033"
     # args.logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
     # args.logdir = "logs/train/coinrun/coinrun-hparams/2024-03-27__18-20-55__seed_6033"
