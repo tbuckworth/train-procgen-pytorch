@@ -122,8 +122,8 @@ class PPOModel(BaseAgent):
         batch_size = self.n_steps * self.n_envs // self.n_minibatch
         if batch_size < self.mini_batch_size:
             self.mini_batch_size = batch_size
-        grad_accumulation_steps = batch_size / self.mini_batch_size
-        grad_accumulation_cnt = 1
+        # grad_accumulation_steps = batch_size / self.mini_batch_size
+        # grad_accumulation_cnt = 1
 
         self.policy.train()
         for e in range(self.epoch):
@@ -173,7 +173,7 @@ class PPOModel(BaseAgent):
                 # if grad_accumulation_cnt % grad_accumulation_steps == 0:
                 #     torch.nn.utils.clip_grad_norm_(self.policy.parameters(), self.grad_clip_norm)
 
-                grad_accumulation_cnt += 1
+                # grad_accumulation_cnt += 1
                 total_loss_list.append(dr_loss.item())
                 value_loss_list.append(value_loss.item())
                 rew_loss_list.append(reward_loss.item())

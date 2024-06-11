@@ -26,7 +26,7 @@ from common.env.procgen_wrappers import create_env, create_procgen_env
 from helper_local import get_config, get_path, balanced_reward, load_storage_and_policy, \
     load_hparams_for_model, floats_to_dp, dict_to_html_table, wandb_login, add_symbreg_args, DictToArgs, \
     inverse_sigmoid, sigmoid, sample_from_sigmoid, map_actions_to_values, get_actions_from_all, \
-    entropy_from_binary_prob, get_saved_hyperparams, softmax, sample_numpy_probs
+    entropy_from_binary_prob, get_saved_hyperparams, softmax, sample_numpy_probs, n_params
 from common.env.env_constructor import get_env_constructor
 from cartpole.create_cartpole import create_cartpole
 from boxworld.create_box_world import create_bw_env
@@ -426,6 +426,8 @@ def run_graph_neurosymbolic_search(args):
         # compare_outputs(ns_agent.policy, policy, obs)
         ###################################
 
+        print(f"Neural Parameters: {n_params(nn_agent.policy)}")
+        print(f"Symbol Parameters: {n_params(ns_agent.policy)}")
 
         _, env, _, test_env = load_nn_policy(logdir, 100)
         ns_score_train = test_agent_mean_reward(ns_agent, env, "NeuroSymb Train", rounds, seed)
