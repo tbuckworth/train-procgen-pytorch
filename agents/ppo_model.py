@@ -144,6 +144,7 @@ class PPOModel(BaseAgent):
                     t_loss.backward()
                     self.t_optimizer.step()
                     self.t_optimizer.zero_grad()
+                    t_loss_list.append(t_loss.item())
 
                 if e < self.val_epochs:
                     # Clipped Bellman-Error
@@ -159,6 +160,7 @@ class PPOModel(BaseAgent):
                     value_loss.backward()
                     self.v_optimizer.step()
                     self.v_optimizer.zero_grad()
+                    value_loss_list.append(value_loss.item())
 
                 if e < self.dr_epochs:
                     done_guess, reward_guess = self.policy.dones_rewards(obs_batch, act_batch)
@@ -168,17 +170,16 @@ class PPOModel(BaseAgent):
                     dr_loss.backward()
                     self.dr_optimizer.step()
                     self.dr_optimizer.zero_grad()
+                    total_loss_list.append(dr_loss.item())
+                    rew_loss_list.append(reward_loss.item())
+                    cont_loss_list.append(done_loss.item())
 
                 # # Let model to handle the large batch-size with small gpu-memory
                 # if grad_accumulation_cnt % grad_accumulation_steps == 0:
                 #     torch.nn.utils.clip_grad_norm_(self.policy.parameters(), self.grad_clip_norm)
 
                 # grad_accumulation_cnt += 1
-                total_loss_list.append(dr_loss.item())
-                value_loss_list.append(value_loss.item())
-                rew_loss_list.append(reward_loss.item())
-                cont_loss_list.append(done_loss.item())
-                t_loss_list.append(t_loss.item())
+
                 ent_loss_list.append(entropy_loss.item())
                 x_ent_loss_list.append(x_batch_ent_loss.item())
         # Adjust common/Logger.__init__ if you add/remove from summary:

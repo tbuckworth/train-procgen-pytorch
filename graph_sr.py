@@ -382,7 +382,7 @@ def fine_tune(policy, logdir, symbdir):
 
     env, env_valid, logger, storage, storage_valid, hyperparameters, args = load_learning_objects(logdir, newdir,
                                                                                                   policy.device)
-
+    hyperparameters["val_epochs"] = 0
     agent = PPOModel(env, policy, logger, storage, policy.device,
                      args.num_checkpoints,
                      env_valid=env_valid,
@@ -439,11 +439,12 @@ def run_graph_neurosymbolic_search(args):
         msg_model, elapsed_m = find_model(m_in, m_out, msgdir, save_file, weights, args)
         print("\nTransition Updater:")
         up_model, elapsed_u = find_model(u_in, u_out, updir, save_file, weights, args)
-        print("\nValue Model:")
-        v_model, elapsed_v = find_model(obs, v, vdir, save_file, weights, args)
+        # print("\nValue Model:")
+        # v_model, elapsed_v = find_model(obs, v, vdir, save_file, weights, args)
         print("\nReward Model:")
         r_model, elapsed_r = find_model(sa, rew, rdir, save_file, weights, args)
         print("\nDone Model:")
+        args.loss_function = "sigmoid"
         done_model, elapsed_dones = find_model(sa, dones, ddir, save_file, weights, args)
 
         mi = torch.FloatTensor(m_in).to(device=policy.device)
@@ -453,10 +454,11 @@ def run_graph_neurosymbolic_search(args):
 
         msg_torch = NBatchPySRTorch(msg_model.pytorch())
         up_torch = NBatchPySRTorch(up_model.pytorch())
-        v_torch = NBatchPySRTorch(v_model.pytorch())
+        # v_torch = NBatchPySRTorch(v_model.pytorch())
         r_torch = NBatchPySRTorch(r_model.pytorch())
         done_torch = NBatchPySRTorch(done_model.pytorch())
 
+        v_torch = None
         ns_agent = symbolic_agent_constructor(copy.deepcopy(policy), msg_torch, up_torch, v_torch, r_torch, done_torch)
         rn_agent = RandomAgent(env.action_space.n)
 
@@ -464,7 +466,7 @@ def run_graph_neurosymbolic_search(args):
 
         msg_torch(mi).shape == policy.transition_model.messenger(mi).shape
         up_torch(ui).shape == policy.transition_model.updater(ui).shape
-        v_torch(oi).shape == policy.value(oi).shape
+        # v_torch(oi).shape == policy.value(oi).shape
         r_torch(sai).shape == policy.dr(sai)[0].shape
         done_torch(sai).shape == policy.dr(sai)[1].shape
         # compare_outputs(ns_agent.policy, policy, obs)
@@ -476,7 +478,7 @@ def run_graph_neurosymbolic_search(args):
         _, env, _, test_env = load_nn_policy(logdir, 100)
 
         fine_tuned_policy = fine_tune(ns_agent.policy, logdir, symbdir)
-
+        return
         ns_score_train = test_agent_mean_reward(ns_agent, env, "NeuroSymb Train", rounds, seed)
         nn_score_train = test_agent_mean_reward(nn_agent, env, "Neural    Train", rounds, seed)
         rn_score_train = test_agent_mean_reward(rn_agent, env, "Random    Train", rounds, seed)

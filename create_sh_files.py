@@ -208,9 +208,9 @@ def middle(hs):
 def symbreg_hparams():
     return {
         "timeout_in_seconds": [3600 * 10],
-        "data_size": [2000, 1000, 5000],  # , 500, 100, 50],# 5000],
-        "iterations": [1, 5, 20],  # 20, 40, 80],
-        "n_envs": [100],
+        "data_size": [2000, 1000, 5000, 10000],  # , 500, 100, 50],# 5000],
+        "iterations": [1, 5, 10, 20, 50],  # 20, 40, 80],
+        "n_envs": [2],
         "rounds": [1000],
         "denoise": [True],
         "populations": [24],
@@ -221,7 +221,7 @@ def symbreg_hparams():
         "unary_operators": [  # [],
             ["sin", "relu", "log", "exp", "sign", "sqrt", "square"],
         ],
-        "wandb_tags": [["cartpole", "hparam", "multi-extrapolation", "cartpole_swing"]],
+        "wandb_tags": [["cartpole", "graph"]],
         "model_selection": ["accuracy", "best"],
         "weight_metric": ["value", "entropy"],
         # "loss_function": ["capped_sigmoid"],

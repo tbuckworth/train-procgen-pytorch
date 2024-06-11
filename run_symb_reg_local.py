@@ -626,7 +626,7 @@ def run_symb_reg_local():
 
     args = parser.parse_args()
 
-    args.data_size = 10000
+    args.data_size = 1000
     args.iterations = 20
     # args.logdir = "logs/train/boxworld/boxworld/2024-04-08__12-29-17__seed_6033"
     # args.logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
@@ -647,7 +647,7 @@ def run_symb_reg_local():
     args.denoise = False
     args.use_wandb = True
     args.wandb_tags = ["test"]
-    args.weight_metric = "value"
+    args.weight_metric = None
     args.wandb_name = "manual"
     # args.populations = 24
     args.model_selection = "accuracy"
