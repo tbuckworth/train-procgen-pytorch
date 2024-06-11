@@ -447,6 +447,8 @@ def run_graph_neurosymbolic_search(args):
         args.loss_function = "sigmoid"
         done_model, elapsed_dones = find_model(sa, dones, ddir, save_file, weights, args)
 
+        # CUDA_LAUNCH_BLOCKING = 1
+
         mi = torch.FloatTensor(m_in).to(device=policy.device)
         ui = torch.FloatTensor(u_in).to(device=policy.device)
         oi = torch.FloatTensor(obs).to(device=policy.device)
