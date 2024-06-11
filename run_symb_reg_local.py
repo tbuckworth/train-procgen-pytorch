@@ -645,7 +645,7 @@ def run_symb_reg_local():
     args.unary_operators = ["sin", "relu", "log", "exp", "sign", "sqrt", "square"]
 
     args.denoise = False
-    args.use_wandb = False
+    args.use_wandb = True
     args.wandb_tags = ["test"]
     args.weight_metric = "value"
     args.wandb_name = "manual"

@@ -364,13 +364,12 @@ def load_learning_objects(logdir, newdir, device):
     env_valid = create_venv(args, hyperparameters, is_valid=True) if args.use_valid_env else None
 
     logger = Logger(args.n_envs, newdir, use_wandb=args.use_wandb, transition_model=args.algo == "ppo-model")
-    logger.max_steps = args.max_steps
+    logger.max_steps = hyperparameters.get("max_steps", 10 ** 3)
 
-    obs = env.reset()
-    observation_shape = obs.observation_shape
+    observation_shape = env.observation_space.shape
 
     storage = BasicStorage(observation_shape, args.n_steps, args.n_envs, device)
-    storage_valid = BasicStorage(args.observation_shape, args.n_steps, args.n_envs,
+    storage_valid = BasicStorage(observation_shape, args.n_steps, args.n_envs,
                                  device) if args.use_valid_env else None
 
     return env, env_valid, logger, storage, storage_valid, hyperparameters, args
@@ -385,7 +384,7 @@ def fine_tune(policy, logdir, symbdir):
                                                                                                   policy.device)
 
     agent = PPOModel(env, policy, logger, storage, policy.device,
-                     hyperparameters["num_checkpoints"],
+                     args.num_checkpoints,
                      env_valid=env_valid,
                      storage_valid=storage_valid,
                      **hyperparameters)
