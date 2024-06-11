@@ -39,15 +39,15 @@ class GraphSymbolicAgent:
     def __init__(self, policy, msg_model=None, up_model=None, v_model=None, r_model=None, done_model=None):
         self.policy = policy
         if msg_model is not None:
-            self.policy.transition_model.message_model = msg_model
+            self.policy.transition_model.message_model = msg_model.to(device=policy.device)
         if up_model is not None:
-            self.policy.transition_model.updater = up_model
+            self.policy.transition_model.updater = up_model.to(device=policy.device)
         if v_model is not None:
-            self.policy.value = v_model
+            self.policy.value = v_model.to(device=policy.device)
         if r_model is not None:
-            self.policy.r_model = r_model
+            self.policy.r_model = r_model.to(device=policy.device)
         if done_model is not None:
-            self.policy.done_model = done_model
+            self.policy.done_model = done_model.to(device=policy.device)
 
     def forward(self, observation):
         with torch.no_grad():

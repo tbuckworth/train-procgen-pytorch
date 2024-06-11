@@ -410,7 +410,7 @@ def run_graph_neurosymbolic_search(args):
         msg_torch = NBatchPySRTorch(msg_model.pytorch())
         up_torch = NBatchPySRTorch(up_model.pytorch())
         v_torch = NBatchPySRTorch(v_model.pytorch())
-        r_torch = NBatchPySRTorch(r_model.pytorch(), shape=policy.dr(sai)[0].shape)
+        r_torch = NBatchPySRTorch(r_model.pytorch())
         done_torch = NBatchPySRTorch(done_model.pytorch())
 
         ns_agent = symbolic_agent_constructor(copy.deepcopy(policy), msg_torch, up_torch, v_torch, r_torch, done_torch)
