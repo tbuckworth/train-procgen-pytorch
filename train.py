@@ -6,7 +6,7 @@ import os, time, argparse
 import torch
 import numpy as np
 
-from helper_local import get_hyperparams, initialize_model, add_training_args, wandb_login
+from helper_local import get_hyperparams, initialize_model, add_training_args, wandb_login, get_project
 from common.env.env_constructor import get_env_constructor
 
 try:
@@ -164,20 +164,7 @@ def train_ppo(args):
         wandb_login()
         name = f"{hyperparameters['architecture']}-{wandb_name}"
         wb_resume = "allow"  # if args.model_file is None else "must"
-        if env_name == "boxworld":
-            project = "Box-World"
-        elif exp_name == "coinrun-hparams":
-            project = "Hparams Coinrun"
-        elif exp_name == "coinrun-grok":
-            project = "Coinrun Grok"
-        elif env_name == "coinrun":
-            project = "Coinrun VQMHA"
-        elif env_name == "cartpole":
-            project = "CartPole"
-        elif exp_name == "mountain_car_cont_rew":
-            project = "MountainCar Continuous Reward"
-        else:
-            project = env_name
+        project = get_project(env_name, exp_name)
         if args.wandb_group is not None:
             wandb.init(project=project, config=cfg, sync_tensorboard=True,
                        tags=args.wandb_tags, resume=wb_resume, name=name, group=args.wandb_group)

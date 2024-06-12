@@ -129,7 +129,7 @@ def test_saved_model(symbdir, n_envs=10, n_rounds=10, override_model=None):
     # symbdir = "logs/train/cartpole/test/2024-05-01__11-17-16__seed_6033/symbreg/2024-05-02__12-03-40"
     # symbdir = "logs/train/cartpole/test/2024-05-01__11-17-16__seed_6033/symbreg/2024-05-02__13-37-11"
     pickle_filename = os.path.join(symbdir, "symb_reg.pkl")
-    logdir = re.search(r"(logs.*)symbreg", symbdir).group(1)
+    logdir = get_logdir_from_symbdir(symbdir)
     pysr_model = PySRRegressor.from_file(pickle_filename)
     if override_model is not None:
         pysr_model = override_model
@@ -513,6 +513,10 @@ def test_saved_model(symbdir, n_envs=10, n_rounds=10, override_model=None):
     return None
 
 
+def get_logdir_from_symbdir(symbdir):
+    return re.search(r"(logs.*)symbreg", symbdir).group(1)
+
+
 def bolden_df(df,
               dfo,
               greater_col="ns_mean",
@@ -649,6 +653,7 @@ def run_symb_reg_local():
     args.wandb_tags = ["test"]
     args.weight_metric = None
     args.wandb_name = "manual"
+    args.fixed_nn = []
     # args.populations = 24
     args.model_selection = "accuracy"
     args.ncycles_per_iteration = 4000

@@ -1,16 +1,15 @@
-import argparse
 import re
 from math import floor, log10
 
 import numpy as np
 import pandas as pd
-from matplotlib import pyplot as plt
 from scipy.stats import ttest_ind_from_stats
 
 import wandb
 from create_sh_files import add_training_args_dict
 from gp import bayesian_optimisation
-from helper_local import wandb_login, DictToArgs
+from graph_sr import fine_tune
+from helper_local import wandb_login, DictToArgs, load_sr_graph_agent, get_project
 from train import train_ppo
 
 
@@ -116,7 +115,7 @@ def inspect_hparams(X, y, bounds, fixed):
     pass
 
 
-def optimize_hyperparams(bounds, fixed, project="Cartpole", id_tag="sa_rew"):
+def optimize_hyperparams(bounds, fixed, project="Cartpole", id_tag="sa_rew", run_next=run_next_hyperparameters):
     X, y = get_wandb_performance(bounds.keys(), project, id_tag)
 
     hparams = select_next_hyperparameters(X, y, bounds)
@@ -124,10 +123,10 @@ def optimize_hyperparams(bounds, fixed, project="Cartpole", id_tag="sa_rew"):
     fh = fixed.copy()
     hparams.update(fh)
 
-    run_next_hyperparameters(hparams)
+    run_next(hparams)
 
 
-if __name__ == "__main__":
+def cartpole_graph_hyperparams():
     fixed = {
         "env_name": 'cartpole',
         "param_name": 'graph-transition',
@@ -176,4 +175,57 @@ if __name__ == "__main__":
         "depth": [2, 6],
     }
     while True:
-        optimize_hyperparams(bounds, fixed, "Cartpole", "sa_rew")
+        optimize_hyperparams(bounds, fixed, "Cartpole", "sa_rew", run_next_hyperparameters)
+
+
+def init_wandb(cfg):
+    name = np.random.randint(1e5)
+    wandb_login()
+    wb_resume = "allow"  # if args.model_file is None else "must"
+    project = get_project(cfg["env_name"], cfg["exp_name"])
+    wandb.init(project=project, config=cfg, sync_tensorboard=True,
+                   tags=cfg["wandb_tags"], resume=wb_resume, name=name)
+
+
+def fine_tune_sr(hp_override):
+    symbdir = hp_override["symbdir"]
+    logdir, ns_agent = load_sr_graph_agent(symbdir)
+
+    init_wandb(hp_override)
+
+    del hp_override["symbdir"]
+    fine_tune(ns_agent.policy, logdir, symbdir, hp_override)
+
+
+if __name__ == "__main__":
+    fixed = {
+        "env_name": 'cartpole',
+        "exp_name": None,
+        "param_name": 'graph-transition',
+        "device": "gpu",
+        "num_timesteps": int(2e6),
+        "seed": 6033,
+        "wandb_tags": ["ft031", "graph-transition"],
+    }
+    bounds = {
+        "num_timesteps": [int(1e5), int(2e6)],
+        # "gamma": [0.9999, 0.8],
+        # "lmbda": [0.0, 0.99999],
+        "val_epochs": [1, 10],
+        # "dyn_epochs": [1, 10],
+        "dr_epochs": [1, 10],
+        "learning_rate": [1e-8, 1e-3],
+        # "t_learning_rate": [1e-8, 1e-3],
+        "dr_learning_rate": [1e-8, 1e-3],
+        # "n_envs": [64],
+        # "n_steps": [256],
+        # "n_rollouts": [3],
+        # "temperature": [1e-8, 1e-2],
+        "rew_coef": [0.1, 10.],
+        "done_coef": [0.1, 10.],
+    }
+    project = get_project(fixed["env_name"], fixed["exp_name"])
+    id_tag = fixed["wandb_tags"][0]
+    while True:
+        fixed["symbdir"] = "logs/train/cartpole/test/2024-06-08__00-54-02__seed_6033/symbreg/2024-06-11__11-29-55"
+        optimize_hyperparams(bounds, fixed, project, id_tag, fine_tune_sr)

@@ -445,38 +445,40 @@ def run_graph_neurosymbolic_search(args):
         msg_model, elapsed_m = find_model(m_in, m_out, msgdir, save_file, weights, args)
         print("\nTransition Updater:")
         up_model, elapsed_u = find_model(u_in, u_out, updir, save_file, weights, args)
-        print("\nValue Model:")
-        v_model, elapsed_v = find_model(obs, v, vdir, save_file, weights, args)
+        if "value" in args.fixed_nn:
+            print("\nValue Model:")
+            v_model, elapsed_v = find_model(obs, v, vdir, save_file, weights, args)
         print("\nReward Model:")
         r_model, elapsed_r = find_model(sa, rew, rdir, save_file, weights, args)
         print("\nDone Model:")
         args.loss_function = "lbce"
         done_model, elapsed_dones = find_model(sa, dones, ddir, save_file, weights, args)
 
-        # CUDA_LAUNCH_BLOCKING = 1
-
-        mi = torch.FloatTensor(m_in).to(device=policy.device)
-        ui = torch.FloatTensor(u_in).to(device=policy.device)
-        oi = torch.FloatTensor(obs).to(device=policy.device)
-        sai = torch.FloatTensor(sa).to(device=policy.device)
+        # mi = torch.FloatTensor(m_in).to(device=policy.device)
+        # ui = torch.FloatTensor(u_in).to(device=policy.device)
+        # oi = torch.FloatTensor(obs).to(device=policy.device)
+        # sai = torch.FloatTensor(sa).to(device=policy.device)
 
         msg_torch = NBatchPySRTorch(msg_model.pytorch())
         up_torch = NBatchPySRTorch(up_model.pytorch())
-        v_torch = NBatchPySRTorch(v_model.pytorch())
+        if "value" in args.fixed_nn:
+            v_torch = NBatchPySRTorch(v_model.pytorch())
         r_torch = NBatchPySRTorch(r_model.pytorch())
         done_torch = NBatchPySRTorch(done_model.pytorch())
 
+        if not "value" in args.fixed_nn:
+            v_torch = None
         ns_agent = symbolic_agent_constructor(copy.deepcopy(policy), msg_torch, up_torch, v_torch, r_torch, done_torch)
         rn_agent = RandomAgent(env.action_space.n)
 
         ###################################
 
-        msg_torch(mi).shape == policy.transition_model.messenger(mi).shape
-        up_torch(ui).shape == policy.transition_model.updater(ui).shape
+        # msg_torch(mi).shape == policy.transition_model.messenger(mi).shape
+        # up_torch(ui).shape == policy.transition_model.updater(ui).shape
         # v_torch(oi).shape == policy.value(oi).shape
-        r_torch(sai).shape == policy.dr(sai)[0].shape
-        done_torch(sai).shape == policy.dr(sai)[1].shape
-        # compare_outputs(ns_agent.policy, policy, obs)
+        # r_torch(sai).shape == policy.dr(sai)[0].shape
+        # done_torch(sai).shape == policy.dr(sai)[1].shape
+        # # compare_outputs(ns_agent.policy, policy, obs)
         ###################################
 
         print(f"Neural Parameters: {n_params(nn_agent.policy)}")

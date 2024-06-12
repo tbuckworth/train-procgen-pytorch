@@ -11,6 +11,7 @@ import gymnasium
 import numpy as np
 import pandas as pd
 import torch
+from pysr import PySRRegressor
 
 import wandb
 import yaml
@@ -18,11 +19,14 @@ import platform
 from matplotlib import pyplot as plt
 
 from common.model import NatureModel, ImpalaModel, MHAModel, ImpalaVQModel, ImpalaVQMHAModel, ImpalaFSQModel, ribMHA, \
-    ImpalaFSQMHAModel, RibFSQMHAModel, MLPModel, TransformoBot, GraphTransitionModel
+    ImpalaFSQMHAModel, RibFSQMHAModel, MLPModel, TransformoBot, GraphTransitionModel, NBatchPySRTorch
 from common.policy import CategoricalPolicy, TransitionPolicy
 from moviepy.editor import ImageSequenceClip
 
 from common.storage import Storage
+from graph_sr import create_symb_dir_if_exists
+from run_symb_reg_local import get_logdir_from_symbdir
+from symbolic_regression import load_nn_policy
 
 GLOBAL_DIR = "/vol/bitbucket/tfb115/train-procgen-pytorch/"
 OS_IS = "Linux"
@@ -848,3 +852,48 @@ def concat_np_list(l, shape):
 
 def n_params(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+
+def load_pysr_to_torch(msgdir):
+    try:
+        pickle_filename = os.path.join(msgdir, "symb_reg.pkl")
+        msg_model = PySRRegressor.from_file(pickle_filename)
+        msg_torch = NBatchPySRTorch(msg_model.pytorch())
+        return msg_torch
+    except FileNotFoundError:
+        return None
+
+
+def load_sr_graph_agent(symbdir):
+    logdir = get_logdir_from_symbdir(symbdir)
+    policy, _, symbolic_agent_constructor, _ = load_nn_policy(logdir)
+    msgdir, _ = create_symb_dir_if_exists(symbdir, "msg")
+    updir, _ = create_symb_dir_if_exists(symbdir, "upd")
+    vdir, _ = create_symb_dir_if_exists(symbdir, "v")
+    rdir, _ = create_symb_dir_if_exists(symbdir, "r")
+    ddir, _ = create_symb_dir_if_exists(symbdir, "done")
+    msg_torch = load_pysr_to_torch(msgdir)
+    up_torch = load_pysr_to_torch(updir)
+    v_torch = load_pysr_to_torch(vdir)
+    r_torch = load_pysr_to_torch(rdir)
+    done_torch = load_pysr_to_torch(ddir)
+    ns_agent = symbolic_agent_constructor(policy, msg_torch, up_torch, v_torch, r_torch, done_torch)
+    return logdir, ns_agent
+
+
+def get_project(env_name, exp_name):
+    if env_name == "boxworld":
+        project = "Box-World"
+    elif exp_name == "coinrun-hparams":
+        project = "Hparams Coinrun"
+    elif exp_name == "coinrun-grok":
+        project = "Coinrun Grok"
+    elif env_name == "coinrun":
+        project = "Coinrun VQMHA"
+    elif env_name == "cartpole":
+        project = "CartPole"
+    elif exp_name == "mountain_car_cont_rew":
+        project = "MountainCar Continuous Reward"
+    else:
+        project = env_name
+    return project
