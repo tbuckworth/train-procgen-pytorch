@@ -116,7 +116,7 @@ def inspect_hparams(X, y, bounds, fixed):
     pass
 
 
-def main(bounds, fixed, project="Cartpole", id_tag="sa_rew"):
+def optimize_hyperparams(bounds, fixed, project="Cartpole", id_tag="sa_rew"):
     X, y = get_wandb_performance(bounds.keys(), project, id_tag)
 
     hparams = select_next_hyperparameters(X, y, bounds)
@@ -176,4 +176,4 @@ if __name__ == "__main__":
         "depth": [2, 6],
     }
     while True:
-        main(bounds, fixed, "Cartpole", "sa_rew")
+        optimize_hyperparams(bounds, fixed, "Cartpole", "sa_rew")

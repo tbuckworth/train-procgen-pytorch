@@ -379,14 +379,15 @@ def load_learning_objects(logdir, newdir, device):
     return env, env_valid, logger, storage, storage_valid, hyperparameters, args
 
 
-def fine_tune(policy, logdir, symbdir):
+def fine_tune(policy, logdir, symbdir, hp_override):
     newdir = os.path.join(symbdir, "fine_tune")
     if not os.path.exists(newdir):
         os.mkdir(newdir)
 
     env, env_valid, logger, storage, storage_valid, hyperparameters, args = load_learning_objects(logdir, newdir,
                                                                                                   policy.device)
-    hyperparameters["val_epochs"] = 0
+    hyperparameters.update(hp_override)
+
     agent = PPOModel(env, policy, logger, storage, policy.device,
                      args.num_checkpoints,
                      env_valid=env_valid,
@@ -402,6 +403,7 @@ def run_graph_neurosymbolic_search(args):
     logdir = args.logdir
     n_envs = args.n_envs
     seed = args.seed
+    hp_override = {}
     if n_envs < 2:
         raise Exception("n_envs must be at least 2")
     rounds = args.rounds
@@ -483,7 +485,7 @@ def run_graph_neurosymbolic_search(args):
 
         _, env, _, test_env = load_nn_policy(logdir, 100)
 
-        fine_tuned_policy = fine_tune(ns_agent.policy, logdir, symbdir)
+        fine_tuned_policy = fine_tune(ns_agent.policy, logdir, symbdir, hp_override)
         return
         ns_score_train = test_agent_mean_reward(ns_agent, env, "NeuroSymb Train", rounds, seed)
         nn_score_train = test_agent_mean_reward(nn_agent, env, "Neural    Train", rounds, seed)
