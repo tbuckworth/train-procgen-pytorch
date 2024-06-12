@@ -111,10 +111,12 @@ def generate_data(agent, env, n):
     Obs = env.reset()
     M_in, M_out, U_in, U_out, Sa, Dones, Rew, V = agent.sample(Obs)
     act = agent.forward(Obs)
-    while len(U_in) < n:
+    act[::2] = np.random.randint(0, env.action_space.n, len(act))[::2]
+    while len(Obs) < n:
         observation, rew, done, info = env.step(act)
         m_in, m_out, u_in, u_out, sa, dones, rew, v = agent.sample(observation)
         act = agent.forward(observation)
+        act[::2] = np.random.randint(0, env.action_space.n, len(act))[::2]
 
         M_in = np.append(M_in, m_in, axis=0)
         M_out = np.append(M_out, m_out, axis=0)

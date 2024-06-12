@@ -626,8 +626,8 @@ def run_symb_reg_local():
 
     args = parser.parse_args()
 
-    args.data_size = 1000
-    args.iterations = 1
+    args.data_size = 10000
+    args.iterations = 20
     # args.logdir = "logs/train/boxworld/boxworld/2024-04-08__12-29-17__seed_6033"
     # args.logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
     # args.logdir = "logs/train/coinrun/coinrun-hparams/2024-03-27__18-20-55__seed_6033"
@@ -639,7 +639,7 @@ def run_symb_reg_local():
     # args.logdir = "logs/train/cartpole/test/2024-06-04__10-20-44__seed_6033"
     # args.logdir = "logs/train/cartpole/test/2024-06-04__12-50-31__seed_6033"
     args.logdir = "logs/train/cartpole/test/2024-06-08__00-54-02__seed_6033"
-    args.n_envs = 2
+    args.n_envs = 20
     args.rounds = 300
     args.binary_operators = ["+", "-", "*", "greater", "/"]
     args.unary_operators = ["sin", "relu", "log", "exp", "sign", "sqrt", "square"]

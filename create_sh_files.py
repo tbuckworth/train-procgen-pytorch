@@ -143,6 +143,8 @@ def write_sh_files(hparams, n_gpu, args, execute, cuda, random_subset, hparam_ty
                 script = "symbolic_regression"
             if hparam_type == "train":
                 script = "train"
+            if hparam_type == "graph_sr":
+                script = "graph_sr"
             python_execs += [executable_python(hparams, arg.wandb_name, script)]
         cut_to = int(random_subset * len(python_execs))
         python_execs = list(np.random.choice(python_execs, cut_to, replace=False))
@@ -395,38 +397,38 @@ def coinrun_mostlyneural_hparams():
 def cartpole_graph_transition_hparams():
     return {
         "exp_name": [None],
-        "env_name": ['cartpole'],  # 'cartpole-swing'],
+        "env_name": ['cartpole_swing'],
         # "distribution_mode": ['hard'],
         "param_name": ['graph-transition'],
         "device": ["gpu"],
-        "num_timesteps": [int(2e6)],
+        "num_timesteps": [int(2e6), int(10e6)],
         "seed": [6033],  # 0, 1, 101, 40],
-        "gamma": [0.999, 0.995, 0.9999],
-        "lmbda": [0.95, 0.99, 0.9, 0.98, 0.8, 0.97, 0.5], #TODO:
-        "val_epochs": [8],
-        "dyn_epochs": [3],
-        "dr_epochs": [5],
-        "learning_rate": [0.0001],  # 0.00025, 0.0005],
-        "t_learning_rate": [0.0005],  # 0.00025, 0.0001],
-        "dr_learning_rate": [0.00005],
+        "gamma": [0.998],
+        "lmbda": [0.735], #TODO:
+        "val_epochs": [7],
+        "dyn_epochs": [9],
+        "dr_epochs": [2],
+        "learning_rate": [0.000532],  # 0.00025, 0.0005],
+        "t_learning_rate": [0.000511],  # 0.00025, 0.0001],
+        "dr_learning_rate": [0.00041],
         "n_envs": [64],
         "n_steps": [256],
         "n_rollouts": [3],
-        "temperature": [1e-5],  # [0.01, 0.001, 0.0001, 0.00001, 0.000001],
+        "temperature": [0.00545],  # [0.01, 0.001, 0.0001, 0.00001, 0.000001],
         "use_gae": [True],
-        "rew_coef": [1.],  # 10, 1, 0.1],
-        "done_coef": [1.],  # 10, 1.], #0.1 bad
+        "rew_coef": [0.943],  # 10, 1, 0.1],
+        "done_coef": [9.53],  # 10, 1.], #0.1 bad
         "clip_value": [False],
         # "n_minibatch": None,
         # "mini_batch_size": None,
         # "wandb_name": None,
         # "wandb_group": None,
-        "wandb_tags": [["graph-transition", "sa_rew", "gam_lam"]],
+        "wandb_tags": [["graph-transition", "sa_rew", "cartpole_swing"]],
         # "detect_nan": False,
         "use_wandb": [True],
         "mirror_env": [False],
         "use_valid_env": [True],
-        "output_dim": [24],
+        "output_dim": [43],
         "anneal_temp": [False],
         # "fs_coef": [0.0001, 0.001, 0.01, 0.1, 0.5, 1.0, 2.0, 5.0, 10.0],
     }
@@ -530,6 +532,32 @@ def add_training_args_dict():
     }
 
 
+def graph_symbreg_hparams():
+    return {
+        "timeout_in_seconds": [3600 * 10],
+        "data_size": [2000, 1000, 5000, 10000],
+        "iterations": [1, 5, 10, 20, 50],
+        "n_envs": [20],
+        # "rounds": [1000],
+        "denoise": [True, False],
+        "populations": [24],
+        "procs": [8],
+        "ncycles_per_iteration": [4000],
+        "bumper": [False],
+        "binary_operators": [["+", "-", "greater", "\*", "/"]],  # "cond"
+        "unary_operators": [  # [],
+            ["sin", "relu", "log", "exp", "sign", "sqrt", "square"],
+        ],
+        "wandb_tags": [["cartpole", "graph"]],
+        "model_selection": ["accuracy", "best"],
+
+        "logdir": [
+            "logs/train/cartpole/test/2024-06-08__00-54-02__seed_6033",
+        ],
+        "use_wandb": [True],
+    }
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--n_gpu', type=int, default=1)
@@ -565,11 +593,16 @@ if __name__ == '__main__':
         parser_dict = add_training_args_dict()
         hparams = train_hparams()
         cuda = True
-
-    if hparam_type == "symbreg":
+    elif hparam_type == "symbreg":
         parser_dict = add_symbreg_args_dict()
         hparams = symbreg_hparams()
         cuda = False
+    elif hparam_type == "graph_sr":
+        parser_dict = add_symbreg_args_dict()
+        hparams = graph_symbreg_hparams()
+        cuda = True
+    else:
+        raise NotImplementedError(f"hparam_type must be one of 'symbreg', 'train' or 'graph_sr'. Not {hparam_type}")
     args = DictToArgs(parser_dict)
 
     # args = add_coinrun_sparsity_params(args)
