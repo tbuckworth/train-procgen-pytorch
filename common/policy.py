@@ -101,7 +101,7 @@ class TransitionPolicy(nn.Module):
             return nn.Sigmoid()(d.squeeze()), r.squeeze()
         d = self.done_model(sa)
         r = self.r_model(sa)
-        return d, r #sigmoid?
+        return nn.Sigmoid()(d), r
 
     def is_recurrent(self):
         return False

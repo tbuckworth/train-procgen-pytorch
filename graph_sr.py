@@ -49,6 +49,8 @@ pysr_loss_functions = {
     "mse": "loss(prediction, target) = (prediction - target)^2",
     "mce": "loss(prediction, target) = abs(prediction - target)^3",
     "capped_sigmoid": "loss(y_hat, y) = 1 - tanh(y*y_hat) + abs(y_hat-y)",
+    "bce": "loss(y_hat, y) = -y * log(y_hat + 0.00001) - (1 - y) * log(1 - y_hat + 0.00001)",
+    "lbce": "loss(z, y) = z - z*y + log(1 + exp(-z))"
 }
 
 
@@ -444,7 +446,7 @@ def run_graph_neurosymbolic_search(args):
         print("\nReward Model:")
         r_model, elapsed_r = find_model(sa, rew, rdir, save_file, weights, args)
         print("\nDone Model:")
-        args.loss_function = "sigmoid"
+        args.loss_function = "lbce"
         done_model, elapsed_dones = find_model(sa, dones, ddir, save_file, weights, args)
 
         # CUDA_LAUNCH_BLOCKING = 1

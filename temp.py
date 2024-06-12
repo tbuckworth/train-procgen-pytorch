@@ -4,16 +4,19 @@ import re
 import numpy as np
 import pandas as pd
 import sympy
-from numpy import cos,sin,pi
+from matplotlib import pyplot as plt
+from numpy import cos, sin, pi
 from pysr import PySRRegressor
 import torch
 
 from common.env.env_constructor import get_env_constructor
 from create_sh_files import train_hparams, symbreg_hparams
-from helper_local import free_gpu, get_config
+from helper_local import free_gpu, get_config, sigmoid
 from cartpole.cartpole_pre_vec import CartPoleVecEnv
 import gymnasium
 from discrete_env.acrobot_pre_vec import rk4 as rk4_pre_vec
+
+
 # from discrete_env.acrobot import rk4 as rk4_gymnasium
 
 def compute_pairwise_affinities(X, perplexity=30.0, epsilon=1e-8):
@@ -219,6 +222,7 @@ def dsdt_gymnasium(self, s_augmented):
     ddtheta1 = -(d2 * ddtheta2 + phi1) / d1
     return dtheta1, dtheta2, ddtheta1, ddtheta2, 0.0
 
+
 def dsdt_pre_vec(self, s_augmented):
     theta1, theta2, dtheta1, dtheta2, g, l1, l2, m1, m2, lc1, lc2, link_moi = self.state.T
 
@@ -274,7 +278,7 @@ def acrobot_gymnasium():
 
     env_pv = get_env_constructor("acrobot")(None, {})
 
-    #s_aug_v = np.stack((s_augmented, s_augmented))
+    # s_aug_v = np.stack((s_augmented, s_augmented))
 
     env_pv.state[:, :env_pv.i_g] = state
 
@@ -282,12 +286,13 @@ def acrobot_gymnasium():
 
     np.stack(dsdt_pre_vec(env_pv, s_aug_v)).T
 
-    rk4_gymnasium(lambda x: dsdt_gymnasium(env,x), s_augmented, [0, 0.2])
+    rk4_gymnasium(lambda x: dsdt_gymnasium(env, x), s_augmented, [0, 0.2])
 
     rk4_pre_vec(lambda x: dsdt_pre_vec(env_pv, x), s_aug_v, [0, 0.2])
 
-    test_func = lambda y0: np.allclose(np.asarray(dsdt_pre_vec(env_pv,y0)).T[0],
+    test_func = lambda y0: np.allclose(np.asarray(dsdt_pre_vec(env_pv, y0)).T[0],
                                        dsdt_gymnasium(env, y0[0]))
+
 
 def get_n_create_sh_files():
     hparams = train_hparams()
@@ -325,8 +330,10 @@ def extract_hyperparams_symbreg():
     print(latex)
     print("pass")
 
+
 def greater(x, y):
     return sympy.Piecewise((1.0, x > y), (0.0, True))
+
 
 def test_pysr_to_pytorch():
     symbdir = "logs/train/cartpole_swing/test/2024-05-01__14-19-53__seed_6033/symbreg/2024-05-13__10-27-13"
@@ -343,5 +350,28 @@ def test_pysr_to_pytorch():
 
     print("ok")
 
+
+def bce(y, y_hat):
+    return -y * np.log(y_hat+0.0000000000000001) - (1 - y) * np.log(1 - y_hat + 0.0000000000000001)
+
+
+def lbce(y, z):
+    return z - (z * y) + np.log(1 + np.exp(-z))
+
+
+def bce_test():
+    z = (np.random.rand(10000)-1)*100
+    y_hat = sigmoid(z)
+    y = sigmoid(np.random.rand(10000))
+
+    b = bce(y, y_hat)
+    l = lbce(y, z)
+    print(np.all(b == l))
+    print(np.allclose(b, l))
+    plt.scatter(b-l, y_hat)
+    plt.show()
+    print("done")
+
+
 if __name__ == "__main__":
-    test_pysr_to_pytorch()
+    bce_test()
