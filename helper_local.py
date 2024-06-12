@@ -24,9 +24,6 @@ from common.policy import CategoricalPolicy, TransitionPolicy
 from moviepy.editor import ImageSequenceClip
 
 from common.storage import Storage
-from graph_sr import create_symb_dir_if_exists
-from run_symb_reg_local import get_logdir_from_symbdir
-from symbolic_regression import load_nn_policy
 
 GLOBAL_DIR = "/vol/bitbucket/tfb115/train-procgen-pytorch/"
 OS_IS = "Linux"
@@ -864,23 +861,6 @@ def load_pysr_to_torch(msgdir):
         return None
 
 
-def load_sr_graph_agent(symbdir):
-    logdir = get_logdir_from_symbdir(symbdir)
-    policy, _, symbolic_agent_constructor, _ = load_nn_policy(logdir)
-    msgdir, _ = create_symb_dir_if_exists(symbdir, "msg")
-    updir, _ = create_symb_dir_if_exists(symbdir, "upd")
-    vdir, _ = create_symb_dir_if_exists(symbdir, "v")
-    rdir, _ = create_symb_dir_if_exists(symbdir, "r")
-    ddir, _ = create_symb_dir_if_exists(symbdir, "done")
-    msg_torch = load_pysr_to_torch(msgdir)
-    up_torch = load_pysr_to_torch(updir)
-    v_torch = load_pysr_to_torch(vdir)
-    r_torch = load_pysr_to_torch(rdir)
-    done_torch = load_pysr_to_torch(ddir)
-    ns_agent = symbolic_agent_constructor(policy, msg_torch, up_torch, v_torch, r_torch, done_torch)
-    return logdir, ns_agent
-
-
 def get_project(env_name, exp_name):
     if env_name == "boxworld":
         project = "Box-World"
@@ -897,3 +877,7 @@ def get_project(env_name, exp_name):
     else:
         project = env_name
     return project
+
+
+def get_logdir_from_symbdir(symbdir):
+    return re.search(r"(logs.*)symbreg", symbdir).group(1)

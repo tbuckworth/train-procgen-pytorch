@@ -8,8 +8,8 @@ from scipy.stats import ttest_ind_from_stats
 import wandb
 from create_sh_files import add_training_args_dict
 from gp import bayesian_optimisation
-from graph_sr import fine_tune
-from helper_local import wandb_login, DictToArgs, load_sr_graph_agent, get_project
+from graph_sr import fine_tune, load_sr_graph_agent
+from helper_local import wandb_login, DictToArgs, get_project
 from train import train_ppo
 
 
@@ -43,7 +43,8 @@ def get_wandb_performance(hparams, project="Cartpole", id_tag="sa_rew", entity="
         all_dicts.append(s_dict)
 
     df = pd.DataFrame.from_dict(all_dicts)
-
+    if len(df) == 0:
+        return None, None
     # hp = [x for x in df.columns if re.search("config", x)]
     # hp = [h for h in hp if h not in ["config.wandb_tags"]]
     # hp = [h for h in hp if len(df[h].unique()) > 1]
@@ -61,30 +62,37 @@ def n_sig_fig(x, n):
 
 def select_next_hyperparameters(X, y, bounds):
     [b.sort() for b in bounds.values()]
-    col_order = [re.sub(r"config\.", "", k) for k in X.columns]
-    bo = [bounds[k] for k in col_order]
+    if X is None:
+        bound_array = np.array([[x[0], x[-1]] for x in bounds.values()])
+        np.random.sample(bound_array)
+        next_params = np.random.uniform(bound_array[:, 0], bound_array[:, 1], (bound_array.shape[0]))
+        # TODO: add default col_order
+    else:
+        col_order = [re.sub(r"config\.", "", k) for k in X.columns]
+        bo = [bounds[k] for k in col_order]
 
-    bound_array = np.array([[x[0], x[-1]] for x in bo])
+        bound_array = np.array([[x[0], x[-1]] for x in bo])
 
-    xp = X.to_numpy()
-    yp = y.to_numpy()
+        xp = X.to_numpy()
+        yp = y.to_numpy()
 
-    eis, params = [], []
-    # for i, h in enumerate(bounds.keys()):
-    idx = np.random.permutation(len(X.columns))
+        eis, params = [], []
+        # for i, h in enumerate(bounds.keys()):
+        idx = np.random.permutation(len(X.columns))
 
-    n_splits = np.ceil(len(idx) / 2)
-    xs = np.array_split(xp[:, idx], n_splits, axis=1)
-    bs = np.array_split(bound_array[idx], n_splits, axis=0)
+        n_splits = np.ceil(len(idx) / 2)
+        xs = np.array_split(xp[:, idx], n_splits, axis=1)
+        bs = np.array_split(bound_array[idx], n_splits, axis=0)
 
-    for x, b in zip(xs, bs):
-        param, ei = bayesian_optimisation(x, yp, b, random_search=True)
-        params += list(param)
-        eis += list(ei)
+        for x, b in zip(xs, bs):
+            param, ei = bayesian_optimisation(x, yp, b, random_search=True)
+            params += list(param)
+            eis += list(ei)
 
-    next_params = np.array(params)[np.argsort(idx)]
-    exp_i = np.repeat(eis, 2)[np.argsort(idx)]
-    # next_params, ei = bayesian_optimisation(X.to_numpy(), y.to_numpy(), bound_array, random_search=True)
+        next_params = np.array(params)[np.argsort(idx)]
+        exp_i = np.repeat(eis, 2)[np.argsort(idx)]
+        # next_params, ei = bayesian_optimisation(X.to_numpy(), y.to_numpy(), bound_array, random_search=True)
+
     int_params = [np.all([isinstance(x, int) for x in bounds[k]]) for k in col_order]
     next_params = [int(round(v, 0)) if i else v for i, v in zip(int_params, next_params)]
 

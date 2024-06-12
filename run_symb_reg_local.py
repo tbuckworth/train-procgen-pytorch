@@ -8,7 +8,7 @@ import pandas as pd
 import scipy
 from matplotlib import pyplot as plt
 
-from cartpole.create_cartpole import create_cartpole, create_cartpole_env_pre_vec
+from cartpole.create_cartpole import create_cartpole_env_pre_vec
 from common.env.env_constructor import get_env_constructor
 from graph_sr import run_graph_neurosymbolic_search
 
@@ -16,9 +16,9 @@ if os.name != "nt":
     from pysr import PySRRegressor
 
 from helper_local import add_symbreg_args, get_config, DictToArgs, sigmoid, entropy_from_binary_prob, \
-    get_actions_from_all, map_actions_to_values, concat_np_list, match
+    get_actions_from_all, map_actions_to_values, concat_np_list, match, get_logdir_from_symbdir
 from symbolic_regression import run_neurosymbolic_search, load_nn_policy, generate_data  # , test_agent_mean_reward
-from symbreg.agents import NeuralAgent, DeterministicNeuralAgent, CustomModel
+from symbreg.agents import NeuralAgent, DeterministicNeuralAgent
 
 
 def run_deterministic_agent():
@@ -511,10 +511,6 @@ def test_saved_model(symbdir, n_envs=10, n_rounds=10, override_model=None):
     plt.show()
 
     return None
-
-
-def get_logdir_from_symbdir(symbdir):
-    return re.search(r"(logs.*)symbreg", symbdir).group(1)
 
 
 def bolden_df(df,

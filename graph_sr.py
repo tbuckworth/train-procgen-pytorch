@@ -29,7 +29,8 @@ from common.env.procgen_wrappers import create_env, create_procgen_env
 from helper_local import get_config, get_path, balanced_reward, load_storage_and_policy, \
     load_hparams_for_model, floats_to_dp, dict_to_html_table, wandb_login, add_symbreg_args, DictToArgs, \
     inverse_sigmoid, sigmoid, sample_from_sigmoid, map_actions_to_values, get_actions_from_all, \
-    entropy_from_binary_prob, get_saved_hyperparams, softmax, sample_numpy_probs, n_params
+    entropy_from_binary_prob, get_saved_hyperparams, softmax, sample_numpy_probs, n_params, get_logdir_from_symbdir, \
+    load_pysr_to_torch
 from common.env.env_constructor import get_env_constructor
 from cartpole.create_cartpole import create_cartpole
 from boxworld.create_box_world import create_bw_env
@@ -627,3 +628,20 @@ if __name__ == "__main__":
         raise Exception("No oracle provided. Please provide logdir argument")
         print(f"No oracle provided.\nUsing Logdir: {args.logdir}")
     run_graph_neurosymbolic_search(args)
+
+
+def load_sr_graph_agent(symbdir):
+    logdir = get_logdir_from_symbdir(symbdir)
+    policy, _, symbolic_agent_constructor, _ = load_nn_policy(logdir)
+    msgdir, _ = create_symb_dir_if_exists(symbdir, "msg")
+    updir, _ = create_symb_dir_if_exists(symbdir, "upd")
+    vdir, _ = create_symb_dir_if_exists(symbdir, "v")
+    rdir, _ = create_symb_dir_if_exists(symbdir, "r")
+    ddir, _ = create_symb_dir_if_exists(symbdir, "done")
+    msg_torch = load_pysr_to_torch(msgdir)
+    up_torch = load_pysr_to_torch(updir)
+    v_torch = load_pysr_to_torch(vdir)
+    r_torch = load_pysr_to_torch(rdir)
+    done_torch = load_pysr_to_torch(ddir)
+    ns_agent = symbolic_agent_constructor(policy, msg_torch, up_torch, v_torch, r_torch, done_torch)
+    return logdir, ns_agent
