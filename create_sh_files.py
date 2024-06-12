@@ -585,7 +585,7 @@ if __name__ == '__main__':
     execute = largs.execute
     max_runs = largs.max_runs
     hparam_type = largs.hparam_type
-    assert hparam_type in ["symbreg", "train"], "hparam_type must be one of 'symbreg', 'train'."
+    assert hparam_type in ["symbreg", "train", "graph_sr"], "hparam_type must be one of 'symbreg', 'train'."
 
     parser_sub = argparse.ArgumentParser()
 
