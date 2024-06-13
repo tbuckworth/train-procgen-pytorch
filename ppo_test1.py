@@ -3,6 +3,7 @@ import torch
 import os
 from agents.ppo import PPO
 from agents.ppo_model import PPOModel
+from agents.ppp_model import PPPModel
 from common.env.env_constructor import get_env_constructor
 from common.env.procgen_wrappers import create_env
 from common.logger import Logger
@@ -79,6 +80,44 @@ class TestPPOModel(unittest.TestCase):
     def setUpClass(cls):
         n_envs = 2
         cls.device = torch.device('cpu')
+        env_con = get_env_constructor("cartpole")
+        hyperparameters = {"n_envs": n_envs}
+        cls.env = env_con(None, hyperparameters)
+        cls.in_channels = cls.env.observation_space.shape[0]
+        cls.obs = torch.FloatTensor(cls.env.reset())
+        cls.obs_shape = cls.env.observation_space.shape
+
+        logdir = "logs/test/test"
+        if not os.path.isdir(logdir):
+            os.mkdir(logdir)
+        cls.logdir = logdir
+        hyperparameters = get_hyperparams("graph-transition")
+        cls.n_steps = hyperparameters.get("n_steps", 256)
+        hyperparameters["n_envs"] = n_envs
+        hyperparameters["anneal_temp"] = True
+        model, obs_shape, policy = initialize_model(cls.device, cls.env, hyperparameters)
+        logger = Logger(n_envs, logdir, use_wandb=False, has_vq=False, transition_model=True)
+        logger.max_steps = 1000
+
+        storage = BasicStorage(cls.obs_shape, cls.n_steps, n_envs, cls.device)
+
+        cls.agent = PPOModel(cls.env, policy, logger, storage, cls.device,
+                    1, **hyperparameters)
+
+    def test_ppomodel(self):
+        self.agent.train(int(1e5))
+
+
+
+class TestPPPModel(unittest.TestCase):
+    device = None
+    obs_shape = None
+    env = None
+
+    @classmethod
+    def setUpClass(cls):
+        n_envs = 2
+        cls.device = torch.device('cpu')
         env_con = get_env_constructor("coinrun")
         hyperparameters = {"n_envs": n_envs}
         cls.env = env_con(None, hyperparameters)
@@ -100,12 +139,11 @@ class TestPPOModel(unittest.TestCase):
 
         storage = BasicStorage(cls.obs_shape, cls.n_steps, n_envs, cls.device)
 
-        cls.agent = PPOModel(cls.env, policy, logger, storage, cls.device,
+        cls.agent = PPPModel(cls.env, policy, logger, storage, cls.device,
                     1, **hyperparameters)
 
-    def test_ppo(self):
+    def test_ppp(self):
         self.agent.train(int(1e5))
-
 
 
 
