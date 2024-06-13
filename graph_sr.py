@@ -450,7 +450,7 @@ def run_graph_neurosymbolic_search(args):
         print("\nTransition Updater:")
         up_model, elapsed_u = find_model(u_in, u_out, updir, save_file, weights, args)
 
-        if fixed_val:
+        if not fixed_val:
             print("\nValue Model:")
             v_model, elapsed_v = find_model(obs, v, vdir, save_file, weights, args)
         print("\nReward Model:")
@@ -466,13 +466,13 @@ def run_graph_neurosymbolic_search(args):
 
         msg_torch = NBatchPySRTorch(msg_model.pytorch())
         up_torch = NBatchPySRTorch(up_model.pytorch())
-        if fixed_val:
+        if not fixed_val:
             v_torch = NBatchPySRTorch(v_model.pytorch())
+        else:
+            v_torch = None
         r_torch = NBatchPySRTorch(r_model.pytorch())
         done_torch = NBatchPySRTorch(done_model.pytorch())
 
-        if not fixed_val:
-            v_torch = None
         ns_agent = symbolic_agent_constructor(copy.deepcopy(policy), msg_torch, up_torch, v_torch, r_torch, done_torch)
         rn_agent = RandomAgent(env.action_space.n)
 
