@@ -64,7 +64,6 @@ def select_next_hyperparameters(X, y, bounds):
     [b.sort() for b in bounds.values()]
     if X is None:
         bound_array = np.array([[x[0], x[-1]] for x in bounds.values()])
-        np.random.sample(bound_array)
         next_params = np.random.uniform(bound_array[:, 0], bound_array[:, 1], (bound_array.shape[0]))
         col_order = bounds.keys()
     else:

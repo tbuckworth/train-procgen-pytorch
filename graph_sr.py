@@ -30,7 +30,7 @@ from helper_local import get_config, get_path, balanced_reward, load_storage_and
     load_hparams_for_model, floats_to_dp, dict_to_html_table, wandb_login, add_symbreg_args, DictToArgs, \
     inverse_sigmoid, sigmoid, sample_from_sigmoid, map_actions_to_values, get_actions_from_all, \
     entropy_from_binary_prob, get_saved_hyperparams, softmax, sample_numpy_probs, n_params, get_logdir_from_symbdir, \
-    load_pysr_to_torch
+    load_pysr_to_torch, get_latest_file_matching
 from common.env.env_constructor import get_env_constructor
 from cartpole.create_cartpole import create_cartpole
 from boxworld.create_box_world import create_bw_env
@@ -359,7 +359,7 @@ def one_hot(targets, nb_classes):
 #     sympol.transition_model.message_model
 
 
-def load_learning_objects(logdir, newdir, device):
+def load_learning_objects(logdir, ftdir, device):
     hyperparameters = get_saved_hyperparams(logdir)
     cfg = get_config(logdir)
     args = DictToArgs(cfg)
@@ -367,6 +367,9 @@ def load_learning_objects(logdir, newdir, device):
 
     env = create_venv(args, hyperparameters)
     env_valid = create_venv(args, hyperparameters, is_valid=True) if args.use_valid_env else None
+
+    run_name = time.strftime("%Y-%m-%d__%H-%M-%S") + f'__seed_{args.seed}'
+    newdir = os.path.join(ftdir, run_name)
 
     logger = Logger(args.n_envs, newdir, use_wandb=args.use_wandb, transition_model=args.algo == "ppo-model")
     logger.max_steps = hyperparameters.get("max_steps", 10 ** 3)
@@ -381,11 +384,11 @@ def load_learning_objects(logdir, newdir, device):
 
 
 def fine_tune(policy, logdir, symbdir, hp_override):
-    newdir = os.path.join(symbdir, "fine_tune")
-    if not os.path.exists(newdir):
-        os.mkdir(newdir)
+    ftdir = os.path.join(symbdir, "fine_tune")
+    if not os.path.exists(ftdir):
+        os.mkdir(ftdir)
 
-    env, env_valid, logger, storage, storage_valid, hyperparameters, args = load_learning_objects(logdir, newdir,
+    env, env_valid, logger, storage, storage_valid, hyperparameters, args = load_learning_objects(logdir, ftdir,
                                                                                                   policy.device)
     hyperparameters.update(hp_override)
 
@@ -637,15 +640,22 @@ if __name__ == "__main__":
 def load_sr_graph_agent(symbdir):
     logdir = get_logdir_from_symbdir(symbdir)
     policy, _, symbolic_agent_constructor, _ = load_nn_policy(logdir)
-    msgdir, _ = create_symb_dir_if_exists(symbdir, "msg")
-    updir, _ = create_symb_dir_if_exists(symbdir, "upd")
-    vdir, _ = create_symb_dir_if_exists(symbdir, "v")
-    rdir, _ = create_symb_dir_if_exists(symbdir, "r")
-    ddir, _ = create_symb_dir_if_exists(symbdir, "done")
+
+    msgdir = get_pysr_dir(symbdir, "msg")
+    updir = get_pysr_dir(symbdir, "upd")
+    vdir = get_pysr_dir(symbdir, "v")
+    rdir = get_pysr_dir(symbdir, "r")
+    ddir = get_pysr_dir(symbdir, "done")
+
     msg_torch = load_pysr_to_torch(msgdir)
     up_torch = load_pysr_to_torch(updir)
     v_torch = load_pysr_to_torch(vdir)
     r_torch = load_pysr_to_torch(rdir)
     done_torch = load_pysr_to_torch(ddir)
+
     ns_agent = symbolic_agent_constructor(policy, msg_torch, up_torch, v_torch, r_torch, done_torch)
     return logdir, ns_agent
+
+
+def get_pysr_dir(symbdir, sub_folder):
+    return get_latest_file_matching(r"\d*-\d", 1, folder=os.path.join(symbdir, sub_folder))
