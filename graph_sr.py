@@ -400,15 +400,18 @@ def fine_tune(policy, logdir, symbdir, hp_override):
 
 
 def run_graph_neurosymbolic_search(args):
+    fixed_val = "value" in args.fixed_nn
     data_size = args.data_size
     logdir = args.logdir
     n_envs = args.n_envs
     seed = args.seed
     hp_override = {}
+    if fixed_val:
+        hp_override["val_epochs"] = 0
     if n_envs < 2:
         raise Exception("n_envs must be at least 2")
-    rounds = args.rounds
     symbdir, save_file = create_symb_dir_if_exists(logdir)
+    print(f"symbdir: '{symbdir}'")
     cfg = vars(args)
     np.save(os.path.join(symbdir, "config.npy"), cfg)
 
@@ -446,7 +449,8 @@ def run_graph_neurosymbolic_search(args):
         msg_model, elapsed_m = find_model(m_in, m_out, msgdir, save_file, weights, args)
         print("\nTransition Updater:")
         up_model, elapsed_u = find_model(u_in, u_out, updir, save_file, weights, args)
-        if "value" in args.fixed_nn:
+
+        if fixed_val:
             print("\nValue Model:")
             v_model, elapsed_v = find_model(obs, v, vdir, save_file, weights, args)
         print("\nReward Model:")
@@ -462,12 +466,12 @@ def run_graph_neurosymbolic_search(args):
 
         msg_torch = NBatchPySRTorch(msg_model.pytorch())
         up_torch = NBatchPySRTorch(up_model.pytorch())
-        if "value" in args.fixed_nn:
+        if fixed_val:
             v_torch = NBatchPySRTorch(v_model.pytorch())
         r_torch = NBatchPySRTorch(r_model.pytorch())
         done_torch = NBatchPySRTorch(done_model.pytorch())
 
-        if not "value" in args.fixed_nn:
+        if not fixed_val:
             v_torch = None
         ns_agent = symbolic_agent_constructor(copy.deepcopy(policy), msg_torch, up_torch, v_torch, r_torch, done_torch)
         rn_agent = RandomAgent(env.action_space.n)

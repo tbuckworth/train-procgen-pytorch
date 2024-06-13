@@ -638,7 +638,8 @@ def run_symb_reg_local():
     # args.logdir = "logs/train/cartpole_swing/test/2024-05-01__14-19-53__seed_6033"
     # args.logdir = "logs/train/cartpole/test/2024-06-04__10-20-44__seed_6033"
     # args.logdir = "logs/train/cartpole/test/2024-06-04__12-50-31__seed_6033"
-    args.logdir = "logs/train/cartpole/test/2024-06-08__00-54-02__seed_6033"
+    args.logdir = "logs/train/cartpole/test/2024-06-08__00-54-02__seed_6033" #home pc graph-transition
+    args.logdir = "logs/train/cartpole/test/2024-06-11__10-31-41__seed_6033" #vol/bitbucket graph-transition
     args.n_envs = 20
     args.rounds = 300
     args.binary_operators = ["+", "-", "*", "greater", "/"]
@@ -649,7 +650,7 @@ def run_symb_reg_local():
     args.wandb_tags = ["test"]
     args.weight_metric = None
     args.wandb_name = "manual"
-    args.fixed_nn = []
+    args.fixed_nn = ["value"]
     # args.populations = 24
     args.model_selection = "accuracy"
     args.ncycles_per_iteration = 4000
