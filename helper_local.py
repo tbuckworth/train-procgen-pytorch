@@ -24,6 +24,7 @@ from common.policy import CategoricalPolicy, TransitionPolicy, PixelTransPolicy
 from moviepy.editor import ImageSequenceClip
 
 from common.storage import Storage
+from symbreg.extra_mappings import get_extra_torch_mappings
 
 GLOBAL_DIR = "/vol/bitbucket/tfb115/train-procgen-pytorch/"
 OS_IS = "Linux"
@@ -874,10 +875,10 @@ def n_params(model):
 def load_pysr_to_torch(msgdir):
     try:
         pickle_filename = os.path.join(msgdir, "symb_reg.pkl")
-        msg_model = PySRRegressor.from_file(pickle_filename)
+        msg_model = PySRRegressor.from_file(pickle_filename, extra_torch_mappings=get_extra_torch_mappings())
         msg_torch = NBatchPySRTorch(msg_model.pytorch())
         return msg_torch
-    except FileNotFoundError:
+    except Exception:
         return None
 
 
@@ -892,6 +893,8 @@ def get_project(env_name, exp_name):
         project = "Coinrun VQMHA"
     elif env_name == "cartpole":
         project = "CartPole"
+        if exp_name == "symbreg":
+            project = "Graph Symb Reg"
     elif exp_name == "mountain_car_cont_rew":
         project = "MountainCar Continuous Reward"
     else:

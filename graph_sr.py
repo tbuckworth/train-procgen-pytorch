@@ -370,6 +370,8 @@ def load_learning_objects(logdir, ftdir, device):
 
     run_name = time.strftime("%Y-%m-%d__%H-%M-%S") + f'__seed_{args.seed}'
     newdir = os.path.join(ftdir, run_name)
+    if not os.path.exists(newdir):
+        os.mkdir(newdir)
 
     logger = Logger(args.n_envs, newdir, use_wandb=args.use_wandb, transition_model=args.algo == "ppo-model")
     logger.max_steps = hyperparameters.get("max_steps", 10 ** 3)
@@ -391,7 +393,7 @@ def fine_tune(policy, logdir, symbdir, hp_override):
     env, env_valid, logger, storage, storage_valid, hyperparameters, args = load_learning_objects(logdir, ftdir,
                                                                                                   policy.device)
     hyperparameters.update(hp_override)
-
+    del hyperparameters["device"]
     agent = PPOModel(env, policy, logger, storage, policy.device,
                      args.num_checkpoints,
                      env_valid=env_valid,
