@@ -917,3 +917,38 @@ graph-transition:
     depth: 4
     latent_size: 1
     mid_weight: 256
+
+
+
+pixel-graph-transition:
+    algo: ppo-model
+    n_envs: 64
+    n_steps: 256
+    val_epochs: 7
+    dyn_epochs: 9
+    dr_epochs: 2
+    n_minibatch: 32
+    mini_batch_size: 2048
+    gamma: 0.998
+    lmbda: 0.735
+    learning_rate: 0.000532
+    t_learning_rate: 0.000511
+    dr_learning_rate: 0.00041
+    grad_clip_norm: 0.5
+    eps_clip: 0.2
+    value_coef: 0.5
+    rew_coef: 0.943
+    done_coef: 9.53
+    normalize_adv: True
+    normalize_rew: False
+    use_gae: True
+    architecture: pixel-graph-transition
+    recurrent: False
+    depth: 4
+    latent_size: 1
+    mid_weight: 256
+    output_dim: 43
+    encoder_mid_channels: 16
+    encoder_latent_dim: 3
+    n_impala_blocks: 3
+

@@ -19,8 +19,8 @@ import platform
 from matplotlib import pyplot as plt
 
 from common.model import NatureModel, ImpalaModel, MHAModel, ImpalaVQModel, ImpalaVQMHAModel, ImpalaFSQModel, ribMHA, \
-    ImpalaFSQMHAModel, RibFSQMHAModel, MLPModel, TransformoBot, GraphTransitionModel, NBatchPySRTorch
-from common.policy import CategoricalPolicy, TransitionPolicy
+    ImpalaFSQMHAModel, RibFSQMHAModel, MLPModel, TransformoBot, GraphTransitionModel, NBatchPySRTorch, ImpalaCNN
+from common.policy import CategoricalPolicy, TransitionPolicy, PixelTransPolicy
 from moviepy.editor import ImageSequenceClip
 
 from common.storage import Storage
@@ -300,12 +300,25 @@ def initialize_model(device, env, hyperparameters):
         depth = hyperparameters.get("depth", 4)
         mid_weight = hyperparameters.get("mid_weight", 64)
         latent_size = hyperparameters.get("latent_size", 256)
+
         transition_model = GraphTransitionModel(in_channels, depth, mid_weight, latent_size, device)
         action_size = action_space.n
+
         policy = TransitionPolicy(model, transition_model, action_size, n_rollouts, temperature, gamma)
         policy.to(device)
         policy.device = device
         return model, observation_shape, policy
+
+    elif architecture == "pixel-graph-transition":
+        hp = hyperparameters.copy()
+        hp["architecture"] = "graph-transition"
+        _, _, sub_policy = initialize_model(device, env, hp)
+        mid_weight = hyperparameters.get("encoder_mid_channels", 64)
+        latent_dim = hyperparameters.get("encoder_latent_dim", 3)
+        n_impala_blocks = hyperparameters.get("n_impala_blocks", 3)
+        encoder = ImpalaCNN(in_channels, mid_weight, latent_dim, n_impala_blocks)
+        policy = PixelTransPolicy(encoder, sub_policy)
+        return encoder, observation_shape, policy
     else:
         raise NotImplementedError(f"Architecture:{architecture} not found in helper.py")
     # Discrete action space

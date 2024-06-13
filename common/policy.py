@@ -178,3 +178,16 @@ class TransitionPolicy(nn.Module):
         # shp = [1 for _ in range(k + 1)]
         # shp[1] = self.action_size
         # return s1.unsqueeze(1).repeat(shp)
+
+class PixelTransPolicy(nn.Module):
+    def __init__(self,
+                 encoder,
+                 sub_policy,
+                 ):
+        self.encoder = encoder
+        self.sub_policy = sub_policy
+
+    def forward(self, x):
+        h = self.encoder(x)
+        # flatten?
+        return self.sub_policy(h)

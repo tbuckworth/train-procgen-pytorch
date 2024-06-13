@@ -178,7 +178,8 @@ def train_ppo(args):
 
     print('INTIALIZING MODEL...')
     model, observation_shape, policy = initialize_model(device, env, hyperparameters)
-    logger = Logger(n_envs, logdir, use_wandb=args.use_wandb, has_vq=policy.has_vq, transition_model=algo=="ppo-model")
+    logger = Logger(n_envs, logdir, use_wandb=args.use_wandb, has_vq=policy.has_vq,
+                    transition_model=algo == "ppo-model")
     logger.max_steps = max_steps
     #############
     ## STORAGE ##
@@ -191,7 +192,7 @@ def train_ppo(args):
     if algo == "ppo-model":
         storage = BasicStorage(observation_shape, n_steps, n_envs, device)
         storage_valid = BasicStorage(observation_shape, n_steps, n_envs,
-                                device) if args.use_valid_env else None
+                                     device) if args.use_valid_env else None
 
     ###########
     ## AGENT ##
