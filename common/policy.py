@@ -190,5 +190,7 @@ class PixelTransPolicy(nn.Module):
 
     def forward(self, x):
         h = self.encoder(x)
-        # flatten?
-        return self.sub_policy(h)
+        f = torch.flatten(h, start_dim=-2).permute(0, 2, 1)
+        # TODO: figure this out.
+        #  maybe we project down dimensions or maybe we use graph networks for value func. etc.
+        return self.sub_policy(f)

@@ -205,11 +205,12 @@ def get_hyperparams(param_name):
     return hyperparameters
 
 
-def initialize_model(device, env, hyperparameters):
+def initialize_model(device, env, hyperparameters, in_channels=None):
     observation_space = env.observation_space
     observation_shape = observation_space.shape
     architecture = hyperparameters.get('architecture', 'impala')
-    in_channels = observation_shape[0]
+    if in_channels is None:
+        in_channels = observation_shape[0]
     action_space = env.action_space
     has_vq = False
     # Model architecture
@@ -310,13 +311,19 @@ def initialize_model(device, env, hyperparameters):
         return model, observation_shape, policy
 
     elif architecture == "pixel-graph-transition":
-        hp = hyperparameters.copy()
-        hp["architecture"] = "graph-transition"
-        _, _, sub_policy = initialize_model(device, env, hp)
         mid_weight = hyperparameters.get("encoder_mid_channels", 64)
-        latent_dim = hyperparameters.get("encoder_latent_dim", 3)
+        latent_dim = hyperparameters.get("encoder_latent_dim", 3) + 2
         n_impala_blocks = hyperparameters.get("n_impala_blocks", 3)
         encoder = ImpalaCNN(in_channels, mid_weight, latent_dim, n_impala_blocks)
+
+        n_latents = encoder.get_n_latents(env.reset().shape)
+        latent_channels = n_latents * (latent_dim-2)
+
+        hp = hyperparameters.copy()
+        hp["architecture"] = "graph-transition"
+
+        _, _, sub_policy = initialize_model(device, env, hp, latent_channels)
+
         policy = PixelTransPolicy(encoder, sub_policy)
         return encoder, observation_shape, policy
     else:
