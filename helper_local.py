@@ -10,8 +10,8 @@ import gym
 import gymnasium
 import numpy as np
 import pandas as pd
-import torch
 from pysr import PySRRegressor
+import torch
 
 import wandb
 import yaml
