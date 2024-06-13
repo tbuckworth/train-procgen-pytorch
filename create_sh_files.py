@@ -397,7 +397,7 @@ def coinrun_mostlyneural_hparams():
 def cartpole_graph_transition_hparams():
     return {
         "exp_name": [None],
-        "env_name": ['mountain_car', 'acrobot'],
+        "env_name": ['acrobot'],
         # "distribution_mode": ['hard'],
         "param_name": ['graph-transition'],
         "device": ["gpu"],
@@ -420,7 +420,7 @@ def cartpole_graph_transition_hparams():
         "done_coef": [9.53],  # 10, 1.], #0.1 bad
         "clip_value": [False],
         # "n_minibatch": None,
-        # "mini_batch_size": None,
+        "mini_batch_size": [32],
         # "wandb_name": None,
         # "wandb_group": None,
         "wandb_tags": [["graph-transition", "sa_rew"]],

@@ -20,9 +20,8 @@ __credits__ = [
 __license__ = "BSD 3-Clause"
 __author__ = "Christoph Dann <cdann@cdann.de>"
 
-from discrete_env.helper_pre_vec import StartSpace, assign_env_vars
+from discrete_env.helper_pre_vec import StartSpace
 from discrete_env.pre_vec_env import PreVecEnv, create_pre_vec
-from helper_local import DictToArgs
 
 
 # SOURCE:
