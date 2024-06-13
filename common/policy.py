@@ -184,7 +184,8 @@ class PixelTransPolicy(nn.Module):
                  encoder,
                  sub_policy,
                  ):
-        self.encoder = encoder
+        super(PixelTransPolicy, self).__init__()
+        self.encoder = orthogonal_init(encoder)
         self.sub_policy = sub_policy
 
     def forward(self, x):
