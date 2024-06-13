@@ -235,5 +235,6 @@ if __name__ == "__main__":
     project = get_project(fixed["env_name"], fixed["exp_name"])
     id_tag = fixed["wandb_tags"][0]
     while True:
-        fixed["symbdir"] = "logs/train/cartpole/test/2024-06-08__00-54-02__seed_6033/symbreg/2024-06-11__11-29-55"
+        # fixed["symbdir"] = "logs/train/cartpole/test/2024-06-08__00-54-02__seed_6033/symbreg/2024-06-11__11-29-55"
+        fixed["symbdir"] = "logs/train/cartpole/test/2024-06-11__10-31-41__seed_6033/symbreg/2024-06-13__14-06-20"
         optimize_hyperparams(bounds, fixed, project, id_tag, fine_tune_sr)
