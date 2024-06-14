@@ -212,8 +212,8 @@ if __name__ == "__main__":
         "device": "gpu",
         "num_timesteps": int(2e6),
         "seed": 6033,
-        "wandb_tags": ["ft031", "graph-transition"],
-        "val_epochs": 0,
+        "wandb_tags": ["ft033", "graph-transition"],
+        # "val_epochs": 0,
     }
     bounds = {
         "num_timesteps": [int(1e5), int(2e6)],
@@ -235,6 +235,6 @@ if __name__ == "__main__":
     project = get_project(fixed["env_name"], fixed["exp_name"])
     id_tag = fixed["wandb_tags"][0]
     while True:
-        # fixed["symbdir"] = "logs/train/cartpole/test/2024-06-08__00-54-02__seed_6033/symbreg/2024-06-11__11-29-55"
-        fixed["symbdir"] = "logs/train/cartpole/test/2024-06-11__10-31-41__seed_6033/symbreg/2024-06-13__14-06-20"
+        fixed["symbdir"] = "logs/train/cartpole/test/2024-06-08__00-54-02__seed_6033/symbreg/2024-06-11__11-29-55"
+        # fixed["symbdir"] = "logs/train/cartpole/test/2024-06-11__10-31-41__seed_6033/symbreg/2024-06-13__14-06-20"
         optimize_hyperparams(bounds, fixed, project, id_tag, fine_tune_sr)
