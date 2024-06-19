@@ -8,7 +8,7 @@ from scipy.stats import ttest_ind_from_stats
 import wandb
 from create_sh_files import add_training_args_dict
 from gp import bayesian_optimisation
-from graph_sr import fine_tune, load_sr_graph_agent
+from graph_sr import fine_tune, load_sr_graph_agent, run_graph_neurosymbolic_search
 from helper_local import wandb_login, DictToArgs, get_project
 from train import train_ppo
 
@@ -106,6 +106,11 @@ def run_next_hyperparameters(hparams):
     args = DictToArgs(parser_dict)
     train_ppo(args)
 
+def run_graph_hyperparameters(hparams):
+    parser_dict = add_training_args_dict()
+    parser_dict.update(hparams)
+    args = DictToArgs(parser_dict)
+    run_graph_neurosymbolic_search(args)
 
 def inspect_hparams(X, y, bounds, fixed):
     cuttoff = 495
@@ -198,13 +203,14 @@ def fine_tune_sr(hp_override):
     symbdir = hp_override["symbdir"]
     logdir, ns_agent = load_sr_graph_agent(symbdir)
 
+    #TODO: add newdir to this
     init_wandb(hp_override)
 
     del hp_override["symbdir"]
     fine_tune(ns_agent.policy, logdir, symbdir, hp_override)
 
 
-if __name__ == "__main__":
+def fine_tune_hparams():
     fixed = {
         "env_name": 'cartpole',
         "exp_name": 'symbreg', # IMPORTANT!
@@ -238,3 +244,55 @@ if __name__ == "__main__":
         fixed["symbdir"] = "logs/train/cartpole/test/2024-06-08__00-54-02__seed_6033/symbreg/2024-06-11__11-29-55"
         # fixed["symbdir"] = "logs/train/cartpole/test/2024-06-11__10-31-41__seed_6033/symbreg/2024-06-13__14-06-20"
         optimize_hyperparams(bounds, fixed, project, id_tag, fine_tune_sr)
+
+if __name__ == "__main__":
+    fixed = {
+        "env_name": 'cartpole',
+        "exp_name": 'symbreg',  # IMPORTANT!
+        "param_name": 'graph-transition',
+        "device": "gpu",
+        "seed": 6033,
+
+        "wandb_tags": ["ft034", "graph-transition"],
+        "logdir": "logs/train/cartpole/test/2024-06-08__00-54-02__seed_6033",
+        "timeout_in_seconds": 3600 * 10,
+        "n_envs": 2,
+        "denoise": True,
+        "binary_operators": ["+", "-", "greater", "\*", "/"],
+        "unary_operators": ["sin", "relu", "log", "exp", "sign", "sqrt", "square"],
+        "use_wandb": True,
+        "bumper": False,
+        "model_selection": "accuracy",
+        "loss_function": 'mse',
+        "fixed_nn": [],
+        "weight_metric": None,
+
+    }
+    bounds = {
+        "data_size": [1000, 20000],
+        "iterations": [1, 70],
+        "populations": [15, 40],
+        "procs": [4, 16],
+        "ncycles_per_iteration": [4000, 6000],
+        "num_timesteps": [int(1e5), int(2e6)],
+
+        # "gamma": [0.9999, 0.8],
+        # "lmbda": [0.0, 0.99999],
+        "val_epochs": [1, 10],
+        "dyn_epochs": [1, 10],
+        "dr_epochs": [1, 10],
+        "learning_rate": [1e-8, 1e-3],
+        "t_learning_rate": [1e-8, 1e-3],
+        "dr_learning_rate": [1e-8, 1e-3],
+        # "n_envs": [64],
+        # "n_steps": [256],
+        # "n_rollouts": [3],
+        # "temperature": [1e-8, 1e-2],
+        "rew_coef": [0.1, 10.],
+        "done_coef": [0.1, 10.],
+    }
+    project = get_project(fixed["env_name"], fixed["exp_name"])
+    id_tag = fixed["wandb_tags"][0]
+    while True:
+        optimize_hyperparams(bounds, fixed, project, id_tag, run_graph_hyperparameters)
+

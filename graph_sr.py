@@ -409,8 +409,18 @@ def run_graph_neurosymbolic_search(args):
     data_size = args.data_size
     logdir = args.logdir
     n_envs = args.n_envs
-    seed = args.seed
-    hp_override = {}
+    hp_override = {
+        "device": args.device,
+        "seed": args.seed,
+        "val_epochs": args.val_epochs,
+        "dyn_epochs": args.dyn_epochs,
+        "dr_epochs": args.dr_epochs,
+        "learning_rate": args.learning_rate,
+        "t_learning_rate": args.t_learning_rate,
+        "dr_learning_rate": args.dr_learning_rate,
+        "rew_coef": args.rew_coef,
+        "done_coef": args.done_coef,
+    }
     if fixed_val:
         hp_override["val_epochs"] = 0
     if n_envs < 2:
@@ -422,7 +432,7 @@ def run_graph_neurosymbolic_search(args):
 
     wandb_name = args.wandb_name
     if args.wandb_name is None:
-        wandb_name = np.random.randint(1e5)
+        wandb_name = f"graph-{np.random.randint(1e5)}"
 
     if args.use_wandb:
         wandb_login()
