@@ -18,6 +18,10 @@ def test_cust():
     x, y = symbols("x y")
     expression = Piecewise((1.0, x > y), (0.0, True))
     expression = GreaterThan(x, y)
+    sympy.square
+    sympy.exp
+    sympy.sign
+    # expression = square(exp(sign(0.44796443))
     module = sympy2torch(expression, [x, y], extra_torch_mappings={
         # sympy.StrictGreaterThan: torch.greater,
         sympy.Piecewise: lambda x, y: torch.where(x[1], x[0], y[0]),
@@ -97,4 +101,4 @@ def load_and_test():
     print("halt")
 
 if __name__ == "__main__":
-    load_and_test()
+    test_cust()
