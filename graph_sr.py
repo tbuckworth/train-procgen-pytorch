@@ -7,14 +7,14 @@ import time
 import numpy as np
 import pandas as pd
 import sympy
-from torch import cuda
+# from torch import cuda
 
 import wandb
 from agents.ppo_model import PPOModel
 from common.logger import Logger
 from common.model import NBatchPySRTorch
 from common.storage import BasicStorage
-from discrete_env.mountain_car_pre_vec import create_mountain_car
+# from discrete_env.mountain_car_pre_vec import create_mountain_car
 
 from email_results import send_images_first_last
 from symbolic_regression import load_nn_policy

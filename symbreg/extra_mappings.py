@@ -79,6 +79,8 @@ def exp1():
 def inf():
     return torch.FloatTensor([torch.inf])
 
+def exp(x):
+    return torch.exp(torch.FloatTensor(x))
 
 # TODO: Add test that makes sure tensors are on the same device
 def get_extra_torch_mappings():
@@ -95,5 +97,6 @@ def get_extra_torch_mappings():
         sympy.Piecewise: piecewise,
         sympy.logic.boolalg.ITE: if_then_else,
         sympy.core.numbers.Exp1: exp1,
+        sympy.exp: exp,
         sympy.core.numbers.ComplexInfinity: inf,
     }

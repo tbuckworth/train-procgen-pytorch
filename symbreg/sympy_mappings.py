@@ -3,12 +3,12 @@ import os
 import sympy
 from pysr import sympy2torch, PySRRegressor
 import torch
-from sympy import symbols, Piecewise, GreaterThan
+from sympy import symbols, Piecewise, GreaterThan, exp, sign, log
 import numpy as np
 import re
 
 from common.model import NBatchPySRTorch
-from graph_sr import test_agent_mean_reward
+# from graph_sr import test_agent_mean_reward
 from helper_local import get_latest_file_matching
 from symbolic_regression import load_nn_policy
 from symbreg.extra_mappings import get_extra_torch_mappings
@@ -18,19 +18,10 @@ def test_cust():
     x, y = symbols("x y")
     expression = Piecewise((1.0, x > y), (0.0, True))
     expression = GreaterThan(x, y)
-    sympy.square
-    sympy.exp
-    sympy.sign
-    # expression = square(exp(sign(0.44796443))
-    module = sympy2torch(expression, [x, y], extra_torch_mappings={
-        # sympy.StrictGreaterThan: torch.greater,
-        sympy.Piecewise: lambda x, y: torch.where(x[1], x[0], y[0]),
-        # sympy.functions.elementary.piecewise.ExprCondPair: tuple,
-        # sympy.logic.boolalg.BooleanTrue: torch.BoolType,
-    })
-    print(module)
-    # >> _SingleSymPyModule(expression=Piecewise((1.0, x > y), (0.0, True)))
-
+    expression = exp(sign(0.44796443))*exp(sign(0.44796443))
+    expression = exp(2)
+    expression = log(4)
+    module = sympy2torch(expression, [x, y])#, extra_torch_mappings=get_extra_torch_mappings())
     X = torch.rand(100, 2).float() * 10
 
     torch_out = module(X)
@@ -56,8 +47,8 @@ def load_and_test():
     policy, env, symbolic_agent_constructor, test_env = load_nn_policy(logdir, n_envs=100)
     nn_agent = symbolic_agent_constructor(policy)
     rounds = 300
-    nn_score_train = test_agent_mean_reward(nn_agent, env, "Neural    Train", rounds, seed=0)
-    nn_score_test = test_agent_mean_reward(nn_agent, test_env, "Neural     Test", rounds, seed=0)
+    # nn_score_train = test_agent_mean_reward(nn_agent, env, "Neural    Train", rounds, seed=0)
+    # nn_score_test = test_agent_mean_reward(nn_agent, test_env, "Neural     Test", rounds, seed=0)
     return
     # x = env.reset()
     # obs = torch.FloatTensor(x).to(policy.device)
