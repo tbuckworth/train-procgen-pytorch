@@ -52,7 +52,10 @@ def get_wandb_performance(hparams, project="Cartpole", id_tag="sa_rew", entity="
     hp = [f"config.{h}" for h in hparams]
     dfn = df[hp].select_dtypes(include='number')
     X = dfn
-    y = df["summary.mean_episode_rewards"]
+    try:
+        y = df["summary.mean_episode_rewards"]
+    except KeyError:
+        X = y = None
     return X, y
 
 
@@ -257,8 +260,8 @@ if __name__ == "__main__":
         "logdir": "logs/train/cartpole/test/2024-06-08__00-54-02__seed_6033",
         "timeout_in_seconds": 3600 * 10,
         "n_envs": 2,
-        "denoise": True,
-        "binary_operators": ["+", "-", "greater", "\*", "/"],
+        "denoise": False,
+        "binary_operators": ["+", "-", "greater", "*", "/"],
         "unary_operators": ["sin", "relu", "log", "exp", "sign", "sqrt", "square"],
         "use_wandb": True,
         "bumper": False,
