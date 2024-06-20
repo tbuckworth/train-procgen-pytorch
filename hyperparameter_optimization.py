@@ -43,6 +43,14 @@ def get_wandb_performance(hparams, project="Cartpole", id_tag="sa_rew", entity="
         all_dicts.append(s_dict)
 
     df = pd.DataFrame.from_dict(all_dicts)
+    try:
+        y = df["summary.mean_episode_rewards"]
+    except KeyError:
+        return None, None
+
+    flt = pd.notna(y)
+    df = df[flt]
+    y = y[flt]
     if len(df) == 0:
         return None, None
     # hp = [x for x in df.columns if re.search("config", x)]
@@ -51,12 +59,7 @@ def get_wandb_performance(hparams, project="Cartpole", id_tag="sa_rew", entity="
 
     hp = [f"config.{h}" for h in hparams]
     dfn = df[hp].select_dtypes(include='number')
-    X = dfn
-    try:
-        y = df["summary.mean_episode_rewards"]
-    except KeyError:
-        X = y = None
-    return X, y
+    return dfn, y
 
 
 def n_sig_fig(x, n):
@@ -137,9 +140,10 @@ def optimize_hyperparams(bounds, fixed, project="Cartpole", id_tag="sa_rew", run
 
     fh = fixed.copy()
     hparams.update(fh)
-
-    run_next(hparams)
-
+    try:
+        run_next(hparams)
+    except Exception as e:
+        print(e)
 
 def cartpole_graph_hyperparams():
     fixed = {
@@ -297,8 +301,5 @@ if __name__ == "__main__":
     project = get_project(fixed["env_name"], fixed["exp_name"])
     id_tag = fixed["wandb_tags"][0]
     while True:
-        try:
-            optimize_hyperparams(bounds, fixed, project, id_tag, run_graph_hyperparameters)
-        except Exception as e:
-            print(e)
+        optimize_hyperparams(bounds, fixed, project, id_tag, run_graph_hyperparameters)
 
