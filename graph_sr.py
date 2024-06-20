@@ -75,7 +75,10 @@ def find_model(X, Y, symbdir, save_file, weights, args):
         bumper=args.bumper,
         model_selection=args.model_selection,
         extra_torch_mappings=get_extra_torch_mappings(),
-        nested_constraints={"relu": {"relu": 0}},
+        nested_constraints={"relu": {"relu": 0},
+                            "exp": {"exp": 0, "square": 1},
+                            "square": {"square": 0, "exp": 1},
+                            },
     )
     print("fitting model")
     start = time.time()
