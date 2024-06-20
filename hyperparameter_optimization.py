@@ -297,5 +297,8 @@ if __name__ == "__main__":
     project = get_project(fixed["env_name"], fixed["exp_name"])
     id_tag = fixed["wandb_tags"][0]
     while True:
-        optimize_hyperparams(bounds, fixed, project, id_tag, run_graph_hyperparameters)
+        try:
+            optimize_hyperparams(bounds, fixed, project, id_tag, run_graph_hyperparameters)
+        except Exception as e:
+            print(e)
 
