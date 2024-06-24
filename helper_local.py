@@ -904,3 +904,8 @@ def get_project(env_name, exp_name):
 
 def get_logdir_from_symbdir(symbdir):
     return re.search(r"(logs.*)symbreg", symbdir).group(1)
+
+
+def scp(symbdir):
+    cmd = ["source", "scp.sh", symbdir]
+    run_subprocess(cmd, "\\n")
