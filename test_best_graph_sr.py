@@ -41,9 +41,6 @@ def get_best_wandb_models(project="Cartpole", id_tag="sa_rew", entity="ic-ai-saf
 
     df = pd.DataFrame.from_dict(all_dicts)
 
-
-
-    print("next")
     try:
         y = df["summary.mean_episode_rewards"]
     except KeyError:
@@ -55,14 +52,13 @@ def get_best_wandb_models(project="Cartpole", id_tag="sa_rew", entity="ic-ai-saf
     if len(df) == 0:
         return None, None
 
-    metric = "summary.loss_transition"
     logdir, msg_torch, up_torch, _, _, _ = load_best(df, "summary.loss_transition")
     logdir, _, _, _, r_torch, _ = load_best(df, "summary.loss_reward")
     logdir, _, _, _, _, done_torch = load_best(df, "summary.loss_continuation")
     logdir, _, _, v_torch, _, _ = load_best(df, "summary.mean_episode_rewards", max=True)
 
 
-    policy, env, symbolic_agent_constructor, test_env = load_nn_policy(logdir)
+    policy, env, symbolic_agent_constructor, test_env = load_nn_policy(logdir, n_envs=100)
     new_agent = symbolic_agent_constructor(policy, msg_torch, up_torch, v_torch, r_torch, done_torch)
 
     ns_score_train = test_agent_mean_reward(new_agent, env, "NeuroSymb Train", rounds=100, seed=0)
@@ -76,7 +72,9 @@ def load_best(df, metric, max=False):
     if max:
         symbdir = df.loc[df[metric].argmax()]["config.symbdir"]
     if not os.path.exists(symbdir):
-        scp(symbdir)
+        print("need to load symbdir:")
+        print(symbdir)
+        print("continue")
     logdir, ns_agent = load_sr_graph_agent(symbdir)
     ftdir = os.path.join(symbdir, "fine_tune")
     subdir = get_latest_file_matching(r"\d*-\d*-\d*__", 1, ftdir)

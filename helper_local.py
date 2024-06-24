@@ -907,5 +907,6 @@ def get_logdir_from_symbdir(symbdir):
 
 
 def scp(symbdir):
-    cmd = ["source", "scp.sh", symbdir]
+    cmd = ["scp.sh", symbdir]
     run_subprocess(cmd, "\\n")
+    print("stop")
