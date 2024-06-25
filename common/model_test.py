@@ -251,5 +251,24 @@ class CartPoleTestModel(unittest.TestCase):
         print(f"Looped:\t{end-mid:.4f}")
         print(f"Ratio:\t{(end-mid)/(mid-start):.2f}")
 
+    def test_pure_graph_policy(self):
+        hyperparameters = get_hyperparams("full-graph-transition")
+        model, obs_shape, policy = initialize_model(self.device, self.env, hyperparameters)
+        action = torch.FloatTensor([self.env.action_space.sample() for _ in range(self.n_envs)])
+        # model.forward(self.obs)
+        # summary(model, self.obs.shape)
+        policy.forward(self.obs)
+        n = 100
+        start = time.time()
+        for _ in range(n):
+            policy.transition_model.forward(self.obs, policy.actions_like(self.obs, 0))
+        mid = time.time()
+        for _ in range(n):
+            policy.transition_model.old_forward(self.obs, policy.actions_like(self.obs, 0))
+        end = time.time()
+        print(f"Vectorized:\t{mid-start:.4f}")
+        print(f"Looped:\t{end-mid:.4f}")
+        print(f"Ratio:\t{(end-mid)/(mid-start):.2f}")
+
 if __name__ == '__main__':
     unittest.main()

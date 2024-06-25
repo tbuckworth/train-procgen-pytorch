@@ -20,7 +20,7 @@ from matplotlib import pyplot as plt
 
 from common.model import NatureModel, ImpalaModel, MHAModel, ImpalaVQModel, ImpalaVQMHAModel, ImpalaFSQModel, ribMHA, \
     ImpalaFSQMHAModel, RibFSQMHAModel, MLPModel, TransformoBot, GraphTransitionModel, NBatchPySRTorch, ImpalaCNN
-from common.policy import CategoricalPolicy, TransitionPolicy, PixelTransPolicy
+from common.policy import CategoricalPolicy, TransitionPolicy, PixelTransPolicy, GraphTransitionPolicy
 from moviepy.editor import ImageSequenceClip
 
 from common.storage import Storage
@@ -327,6 +327,22 @@ def initialize_model(device, env, hyperparameters, in_channels=None):
 
         policy = PixelTransPolicy(encoder, sub_policy)
         return encoder, observation_shape, policy
+    elif architecture == "full-graph-transition":
+        gamma = hyperparameters.get("gamma", 0.99)
+        temperature = hyperparameters.get("temperature", 1)
+        n_rollouts = hyperparameters.get("n_rollouts", 3)
+        depth = hyperparameters.get("depth", 4)
+        mid_weight = hyperparameters.get("mid_weight", 64)
+        latent_size = hyperparameters.get("latent_size", 256)
+        #TODO: change in_channels?
+        transition_model = GraphTransitionModel(in_channels, depth, mid_weight, latent_size, device)
+        action_size = action_space.n
+
+        policy = GraphTransitionPolicy(transition_model, action_size, n_rollouts, temperature, gamma)
+        policy.to(device)
+        policy.device = device
+        return transition_model, observation_shape, policy
+
     else:
         raise NotImplementedError(f"Architecture:{architecture} not found in helper.py")
     # Discrete action space
