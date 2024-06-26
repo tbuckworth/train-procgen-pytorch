@@ -107,7 +107,7 @@ class GraphAgent(BaseAgent):
 
                 flt = done_batch == 0
                 nobs_guess, reward_guess, done_guess, value_guess = self.policy.transition(obs_batch, act_batch)
-                t_loss = MSELoss()(nobs_guess[flt][..., :-3], nobs_batch[flt])
+                t_loss = MSELoss()(nobs_guess[flt], nobs_batch[flt])
 
                 reward_loss = MSELoss()(reward_guess, rew_batch)
                 done_loss = BCELoss()(done_guess, done_batch)
@@ -172,11 +172,11 @@ class GraphAgent(BaseAgent):
             for _ in range(self.n_steps):
                 act, value = self.predict(obs)
                 next_obs, rew, done, info = self.env.step(act)
-                self.storage.store(obs, act, rew, done, info, value[..., act])
+                self.storage.store(obs, act, rew, done, info, value[np.arange(len(value)), act])
                 obs = next_obs
             value_batch = self.storage.value_batch[:self.n_steps]
             last_act, last_val = self.predict(obs)
-            self.storage.store_last(obs, last_val[..., last_act])
+            self.storage.store_last(obs, last_val[np.arange(len(last_val)), last_act])
             # Compute advantage estimates
             self.storage.compute_estimates(self.gamma, self.lmbda, self.use_gae, self.normalize_adv)
 
@@ -187,10 +187,10 @@ class GraphAgent(BaseAgent):
                     next_obs_v, rew_v, done_v, info_v = self.env_valid.step(act_v)
                     self.storage_valid.store(obs_v, act_v,
                                              rew_v, done_v, info_v,
-                                             value_v[..., act_v])
+                                             value_v[np.arange(len(value_v)), act_v])
                     obs_v = next_obs_v
                 last_act_v, last_val_v = self.predict(obs_v)
-                self.storage_valid.store_last(obs_v, last_val_v[..., last_act_v])
+                self.storage_valid.store_last(obs_v, last_val_v[np.arange(len(last_val_v)), last_act_v])
                 self.storage_valid.compute_estimates(self.gamma, self.lmbda, self.use_gae, self.normalize_adv)
 
             # Optimize policy & valueq

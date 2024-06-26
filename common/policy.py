@@ -231,14 +231,14 @@ class GraphTransitionPolicy(nn.Module):
     def forward(self, x):
         cont, rews = [], []
         # order: reward, continuation, value
-        s = torch.concat((x, torch.zeros((*x.shape[:-1], 3)).to(device=self.device)), dim=-1)
+        s = self.add_zeros(x)
         for r in range(self.n_rollouts):
             s[..., -3:] = 0
             next_states = [self.transition_model(s, self.actions_like(s, i)).unsqueeze(1) for i in
                            range(self.action_size)]
             s = torch.concat(next_states, dim=1)
             rews.append(s[..., -3].clone())
-            cont.append(s[..., -2].clone())
+            cont.append(nn.Sigmoid()(s[..., -2].clone()))
             if r == 0:
                 v = s[..., -1].clone()
 
@@ -261,9 +261,14 @@ class GraphTransitionPolicy(nn.Module):
         p = Categorical(logits=log_probs)
         return p, v.squeeze()  # , reward.squeeze()
 
-    def transition(self, s, a):
+    def add_zeros(self, x):
+        s = torch.concat((x, torch.zeros((*x.shape[:-1], 3)).to(device=self.device)), dim=-1)
+        return s
+
+    def transition(self, x, a):
+        s = self.add_zeros(x)
         h = self.transition_model(s, a)
-        return h[..., :-3], h[..., :-3], h[..., :-2], h[..., :-1]
+        return h[..., :-3], h[..., -3], nn.Sigmoid()(h[..., -2]), h[..., -1]
 
     def all_dones_rewards(self, s):
         sa = self.states_with_all_actions(s)
