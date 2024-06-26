@@ -116,8 +116,8 @@ class GraphAgent(BaseAgent):
                 # Clipped Bellman-Error
                 clipped_value_batch = old_value_batch[1:] + (value_batch - old_value_batch[1:]).clamp(-self.eps_clip,
                                                                                               self.eps_clip)
-                v_surr1 = (value_batch - return_batch).pow(2)
-                v_surr2 = (clipped_value_batch - return_batch).pow(2)
+                v_surr1 = (value_batch - return_batch[1:]).pow(2)
+                v_surr2 = (clipped_value_batch - return_batch[1:]).pow(2)
                 value_loss = 0.5 * torch.max(v_surr1, v_surr2).mean()
                 # value_loss.backward()
                 if not self.clip_value:
