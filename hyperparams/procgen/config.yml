@@ -954,7 +954,7 @@ graph-transition:
 
 
 full-graph-transition:
-    algo: ppo-model
+    algo: graph-agent
     n_envs: 256
     n_steps: 256
     epoch: 3
