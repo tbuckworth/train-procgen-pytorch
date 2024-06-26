@@ -197,6 +197,58 @@ def cartpole_graph_hyperparams():
         optimize_hyperparams(bounds, fixed, "Cartpole", "sa_rew", run_next_hyperparameters)
 
 
+def cartpole_full_graph_hyperparams():
+    fixed = {
+        "env_name": 'cartpole',
+        "exp_name": None,
+        "param_name": 'full-graph-transition',
+        "device": "gpu",
+        "num_timesteps": int(2e6),
+        "seed": 6033,
+        "use_gae": True,
+        "clip_value": False,
+        "wandb_tags": ["fg01", "full-graph-transition", "graph-transition"],
+        "use_wandb": True,
+        "mirror_env": False,
+        "use_valid_env": True,
+        "anneal_temp": False,
+        "lmbda": .998,
+        "gamma": 0.735,
+        "learning_rate": 0.000532,
+        "temperature": 0.00545,
+
+        "n_envs": 64,
+        "n_steps": 256,
+        "n_rollouts": 3,
+        # "temperature": 1e-5,#[1e-8, 1e-2],
+        # "rew_coef": 1.,#[0.1, 10.],
+        # "done_coef": 1.,#[0.1, 10.],
+        "output_dim": 43,#[24, 64],
+        "depth": 4,#[2, 6],
+    }
+    bounds = {
+        # "gamma": [0.9999, 0.8],
+        # "lmbda": [0.0, 0.99999],
+        "epoch": [1, 10],
+        # "learning_rate": [1e-8, 1e-3],
+        # "n_envs": [64],
+        # "n_steps": [256],
+        # "n_rollouts": [3],
+        # "temperature": [1e-8, 1e-2],
+        "rew_coef": [0.1, 10.],
+        "done_coef": [0.1, 10.],
+        "t_coef": [0.1, 10.],
+        "value_coef": [0.1, 10.],
+        # "output_dim": [24, 64],
+        # "depth": [2, 6],
+    }
+    while True:
+        project = get_project(fixed["env_name"], fixed["exp_name"])
+        id_tag = fixed["wandb_tags"][0]
+        optimize_hyperparams(bounds, fixed, project, id_tag, run_next_hyperparameters)
+
+
+
 def init_wandb(cfg):
     name = np.random.randint(1e5)
     wandb_login()
@@ -252,7 +304,7 @@ def fine_tune_hparams():
         # fixed["symbdir"] = "logs/train/cartpole/test/2024-06-11__10-31-41__seed_6033/symbreg/2024-06-13__14-06-20"
         optimize_hyperparams(bounds, fixed, project, id_tag, fine_tune_sr)
 
-if __name__ == "__main__":
+def graph_symbreg_ft_hparams():
     fixed = {
         "env_name": 'cartpole',
         "exp_name": 'symbreg',  # IMPORTANT!
@@ -302,4 +354,10 @@ if __name__ == "__main__":
     id_tag = fixed["wandb_tags"][0]
     while True:
         optimize_hyperparams(bounds, fixed, project, id_tag, run_graph_hyperparameters)
+
+
+
+if __name__ == "__main__":
+    cartpole_full_graph_hyperparams()
+
 
