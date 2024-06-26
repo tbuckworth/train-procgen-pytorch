@@ -30,69 +30,43 @@ class GraphAgent(BaseAgent):
                  gamma=0.99,
                  lmbda=0.95,
                  learning_rate=2.5e-4,
-                 t_learning_rate=2.5e-4,
-                 dr_learning_rate=2.5e-4,
                  grad_clip_norm=0.5,
                  eps_clip=0.2,
                  value_coef=0.5,
-                 entropy_coef=0.01,
-                 x_entropy_coef=0.,
                  normalize_adv=True,
                  normalize_rew=True,
                  use_gae=True,
-                 entropy_scaling=None,
                  increasing_lr=False,
-                 sparsity_coef=0.,
+                 epoch=3,
                  fs_coef=0.,
                  rew_coef=.5,
-                 clip_value=True,
+                 t_coef=.5,
                  done_coef=5.,
-                 val_epochs=3,
-                 dyn_epochs=3,
-                 dr_epochs=3,
+                 clip_value=True,
                  anneal_temp=False,
                  **kwargs):
         super(GraphAgent, self).__init__(env, policy, logger, storage, device,
                                          n_checkpoints, env_valid, storage_valid)
 
-        # self.transition_model = transition_model
         self.anneal_temperature = anneal_temp
-        self.val_epochs = val_epochs
-        self.dyn_epochs = dyn_epochs
-        self.dr_epochs = dr_epochs
+        self.t_coef = t_coef
         self.done_coef = done_coef
-        self.t_optimizer = optim.Adam(self.policy.transition_model.parameters(), lr=t_learning_rate, eps=1e-5)
         self.fs_coef = fs_coef
+        self.value_coef = value_coef
+        self.rew_coef = rew_coef
         self.clip_value = clip_value
         self.total_timesteps = 0
-        self.entropy_scaling = entropy_scaling
-        self.entropy_multiplier = 1.
-        self.s_loss_coef = sparsity_coef
-        self.min_rew = -1.
-        self.max_rew = 11.
         self.n_steps = n_steps
         self.n_envs = n_envs
-        self.epoch = max(val_epochs, dyn_epochs, dr_epochs)
+        self.epoch = epoch
         self.n_minibatch = n_minibatch
         self.mini_batch_size = mini_batch_size
         self.gamma = gamma
         self.lmbda = lmbda
         self.learning_rate = learning_rate
-        self.t_learning_rate = t_learning_rate
-        self.dr_learning_rate = dr_learning_rate
-        self.optimizer = optim.Adam(self.policy.value.parameters(), lr=learning_rate, eps=1e-5)
-        if self.policy.done_model is None or self.policy.r_model is None:
-            self.dr_optimizer = optim.Adam(self.policy.cont_rew.parameters(), lr=dr_learning_rate, eps=1e-5)
-        else:
-            self.dr_optimizer = optim.Adam(
-                list(self.policy.done_model.parameters()) + list(self.policy.r_model.parameters()), lr=dr_learning_rate,
-                eps=1e-5)
+        self.optimizer = optim.Adam(self.policy.parameters(), lr=learning_rate, eps=1e-5)
         self.grad_clip_norm = grad_clip_norm
         self.eps_clip = eps_clip
-        self.value_coef = value_coef
-        self.rew_coef = rew_coef
-        self.entropy_coef = entropy_coef
-        self.x_entropy_coef = x_entropy_coef
         self.normalize_adv = normalize_adv
         self.normalize_rew = normalize_rew
         self.use_gae = use_gae
@@ -109,12 +83,6 @@ class GraphAgent(BaseAgent):
         return act.cpu().numpy(), value.cpu().numpy()
 
     def optimize(self):
-        mean_rew = np.mean(self.logger.episode_reward_buffer)
-        if self.entropy_scaling == "reward_based":
-            self.entropy_multiplier = 1 - ((mean_rew - self.min_rew) / (self.max_rew - self.min_rew))
-        elif self.entropy_scaling == "time_based":
-            self.entropy_multiplier = 1 - (self.t / self.total_timesteps)
-
         # Losses:
         total_loss_list, rew_loss_list, cont_loss_list = [], [], []
         t_loss_list, value_loss_list, ent_loss_list, x_ent_loss_list = [], [], [], []
@@ -154,7 +122,6 @@ class GraphAgent(BaseAgent):
                 # value_loss.backward()
                 if not self.clip_value:
                     value_loss = v_surr1.mean()
-
 
                 loss = reward_loss * self.rew_coef + done_loss * self.done_coef + t_loss * self.t_coef + value_loss * self.value_coef
                 loss.backward()
