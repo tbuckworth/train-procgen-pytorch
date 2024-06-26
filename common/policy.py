@@ -234,13 +234,14 @@ class GraphTransitionPolicy(nn.Module):
         # order: reward, continuation, value
         s = torch.concat((x, torch.zeros((*x.shape[:-1], 3)).to(device=self.device)), dim=-1)
         for r in range(self.n_rollouts):
+            s[..., -3:] = 0
             next_states = [self.transition_model(s, self.actions_like(s, i)).unsqueeze(1) for i in
                            range(self.action_size)]
             s = torch.concat(next_states, dim=1)
-            rews.append(s[..., -3])
-            cont.append(s[..., -2])
+            rews.append(s[..., -3].clone())
+            cont.append(s[..., -2].clone())
             if r == 0:
-                v = s[..., -1]
+                v = s[..., -1].clone()
 
         # rews = s[..., -3]
         # cont = s[..., -2]
