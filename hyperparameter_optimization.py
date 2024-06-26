@@ -200,7 +200,7 @@ def cartpole_graph_hyperparams():
 def cartpole_full_graph_hyperparams():
     fixed = {
         "env_name": 'cartpole',
-        "exp_name": None,
+        "exp_name": "",
         "param_name": 'full-graph-transition',
         "device": "gpu",
         "num_timesteps": int(2e6),
