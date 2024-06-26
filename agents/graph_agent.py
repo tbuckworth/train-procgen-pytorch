@@ -112,9 +112,9 @@ class GraphAgent(BaseAgent):
                 reward_loss = MSELoss()(reward_guess, rew_batch)
                 done_loss = BCELoss()(done_guess, done_batch)
 
-                value_batch = value_guess
+                value_batch = value_guess[:-1]
                 # Clipped Bellman-Error
-                clipped_value_batch = old_value_batch + (value_batch - old_value_batch).clamp(-self.eps_clip,
+                clipped_value_batch = old_value_batch[1:] + (value_batch - old_value_batch[1:]).clamp(-self.eps_clip,
                                                                                               self.eps_clip)
                 v_surr1 = (value_batch - return_batch).pow(2)
                 v_surr2 = (clipped_value_batch - return_batch).pow(2)
@@ -160,38 +160,21 @@ class GraphAgent(BaseAgent):
         checkpoints = [(i + 1) * save_every for i in range(self.num_checkpoints)]
         checkpoints.sort()
         obs = self.env.reset()
-        done = np.zeros(self.n_envs)
+        value = np.zeros(self.n_envs)
+        ind = np.arange(self.n_envs)
 
         if self.env_valid is not None:
             obs_v = self.env_valid.reset()
-            done_v = np.zeros(self.n_envs)
+            value_v = np.zeros(self.n_envs)
 
         while self.t < num_timesteps:
             # Run Policy
             self.policy.eval()
-            for _ in range(self.n_steps):
-                act, value = self.predict(obs)
-                next_obs, rew, done, info = self.env.step(act)
-                self.storage.store(obs, act, rew, done, info, value[np.arange(len(value)), act])
-                obs = next_obs
-            value_batch = self.storage.value_batch[:self.n_steps]
-            last_act, last_val = self.predict(obs)
-            self.storage.store_last(obs, last_val[np.arange(len(last_val)), last_act])
-            # Compute advantage estimates
-            self.storage.compute_estimates(self.gamma, self.lmbda, self.use_gae, self.normalize_adv)
+            self.collect_rollouts(ind, obs, value, self.storage, self.env)
 
             # valid
             if self.env_valid is not None:
-                for _ in range(self.n_steps):
-                    act_v, value_v = self.predict(obs_v)
-                    next_obs_v, rew_v, done_v, info_v = self.env_valid.step(act_v)
-                    self.storage_valid.store(obs_v, act_v,
-                                             rew_v, done_v, info_v,
-                                             value_v[np.arange(len(value_v)), act_v])
-                    obs_v = next_obs_v
-                last_act_v, last_val_v = self.predict(obs_v)
-                self.storage_valid.store_last(obs_v, last_val_v[np.arange(len(last_val_v)), last_act_v])
-                self.storage_valid.compute_estimates(self.gamma, self.lmbda, self.use_gae, self.normalize_adv)
+                self.collect_rollouts(ind, obs_v, value_v, self.storage_valid, self.env_valid)
 
             # Optimize policy & valueq
             summary = self.optimize()
@@ -222,3 +205,14 @@ class GraphAgent(BaseAgent):
         self.env.close()
         if self.env_valid is not None:
             self.env_valid.close()
+
+    def collect_rollouts(self, ind, obs, value, storage, env):
+        for _ in range(self.n_steps):
+            act, next_values = self.predict(obs)
+            next_obs, rew, done, info = env.step(act)
+            storage.store(obs, act, rew, done, info, value)
+            obs = next_obs
+            value = next_values[ind, act]
+        storage.store_last(obs, value)
+        # Compute advantage estimates
+        storage.compute_estimates(self.gamma, self.lmbda, self.use_gae, self.normalize_adv)
