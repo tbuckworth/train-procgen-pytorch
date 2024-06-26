@@ -77,10 +77,10 @@ class GraphAgent(BaseAgent):
         self.mini_batch_size = mini_batch_size
         self.gamma = gamma
         self.lmbda = lmbda
-        self.v_learning_rate = learning_rate
+        self.learning_rate = learning_rate
         self.t_learning_rate = t_learning_rate
         self.dr_learning_rate = dr_learning_rate
-        self.v_optimizer = optim.Adam(self.policy.value.parameters(), lr=learning_rate, eps=1e-5)
+        self.optimizer = optim.Adam(self.policy.value.parameters(), lr=learning_rate, eps=1e-5)
         if self.policy.done_model is None or self.policy.r_model is None:
             self.dr_optimizer = optim.Adam(self.policy.cont_rew.parameters(), lr=dr_learning_rate, eps=1e-5)
         else:
@@ -133,46 +133,39 @@ class GraphAgent(BaseAgent):
             for sample in generator:
                 obs_batch, nobs_batch, act_batch, done_batch, \
                     old_value_batch, return_batch, adv_batch, rew_batch = sample
-                dist_batch, value_batch = self.policy(obs_batch)
+                dist_batch, _ = self.policy(obs_batch)
 
                 x_batch_ent_loss, entropy_loss, = cross_batch_entropy(dist_batch)
 
-                if e < self.dyn_epochs:
-                    flt = done_batch == 0
-                    nobs_guess = self.policy.transition_model(obs_batch[flt], act_batch[flt])
-                    t_loss = MSELoss()(nobs_guess, nobs_batch[flt])
-                    t_loss.backward()
-                    self.t_optimizer.step()
-                    self.t_optimizer.zero_grad()
-                    t_loss_list.append(t_loss.item())
+                flt = done_batch == 0
+                nobs_guess, reward_guess, done_guess, value_guess = self.policy.transition(obs_batch, act_batch)
+                t_loss = MSELoss()(nobs_guess[flt][..., :-3], nobs_batch[flt])
 
-                if e < self.val_epochs:
-                    # Clipped Bellman-Error
-                    clipped_value_batch = old_value_batch + (value_batch - old_value_batch).clamp(-self.eps_clip,
-                                                                                                  self.eps_clip)
-                    v_surr1 = (value_batch - return_batch).pow(2)
-                    v_surr2 = (clipped_value_batch - return_batch).pow(2)
-                    value_loss = 0.5 * torch.max(v_surr1, v_surr2).mean()
-                    # value_loss.backward()
-                    if not self.clip_value:
-                        value_loss = v_surr1.mean()
+                reward_loss = MSELoss()(reward_guess, rew_batch)
+                done_loss = BCELoss()(done_guess, done_batch)
 
-                    value_loss.backward()
-                    self.v_optimizer.step()
-                    self.v_optimizer.zero_grad()
-                    value_loss_list.append(value_loss.item())
+                value_batch = value_guess
+                # Clipped Bellman-Error
+                clipped_value_batch = old_value_batch + (value_batch - old_value_batch).clamp(-self.eps_clip,
+                                                                                              self.eps_clip)
+                v_surr1 = (value_batch - return_batch).pow(2)
+                v_surr2 = (clipped_value_batch - return_batch).pow(2)
+                value_loss = 0.5 * torch.max(v_surr1, v_surr2).mean()
+                # value_loss.backward()
+                if not self.clip_value:
+                    value_loss = v_surr1.mean()
 
-                if e < self.dr_epochs:
-                    done_guess, reward_guess = self.policy.dones_rewards(obs_batch, act_batch)
-                    reward_loss = MSELoss()(reward_guess, rew_batch)
-                    done_loss = BCELoss()(done_guess, done_batch)
-                    dr_loss = reward_loss * self.rew_coef + done_loss * self.done_coef
-                    dr_loss.backward()
-                    self.dr_optimizer.step()
-                    self.dr_optimizer.zero_grad()
-                    total_loss_list.append(dr_loss.item())
-                    rew_loss_list.append(reward_loss.item())
-                    cont_loss_list.append(done_loss.item())
+
+                loss = reward_loss * self.rew_coef + done_loss * self.done_coef + t_loss * self.t_coef + value_loss * self.value_coef
+                loss.backward()
+                self.optimizer.step()
+                self.optimizer.zero_grad()
+
+                value_loss_list.append(value_loss.item())
+                t_loss_list.append(t_loss.item())
+                rew_loss_list.append(reward_loss.item())
+                cont_loss_list.append(done_loss.item())
+                total_loss_list.append(loss.item())
 
                 # # Let model to handle the large batch-size with small gpu-memory
                 # if grad_accumulation_cnt % grad_accumulation_steps == 0:
@@ -212,11 +205,11 @@ class GraphAgent(BaseAgent):
             for _ in range(self.n_steps):
                 act, value = self.predict(obs)
                 next_obs, rew, done, info = self.env.step(act)
-                self.storage.store(obs, act, rew, done, info, value)
+                self.storage.store(obs, act, rew, done, info, value[..., act])
                 obs = next_obs
             value_batch = self.storage.value_batch[:self.n_steps]
-            _, last_val = self.predict(obs)
-            self.storage.store_last(obs, last_val)
+            last_act, last_val = self.predict(obs)
+            self.storage.store_last(obs, last_val[..., last_act])
             # Compute advantage estimates
             self.storage.compute_estimates(self.gamma, self.lmbda, self.use_gae, self.normalize_adv)
 
@@ -227,10 +220,10 @@ class GraphAgent(BaseAgent):
                     next_obs_v, rew_v, done_v, info_v = self.env_valid.step(act_v)
                     self.storage_valid.store(obs_v, act_v,
                                              rew_v, done_v, info_v,
-                                             value_v)
+                                             value_v[..., act_v])
                     obs_v = next_obs_v
-                _, last_val_v = self.predict(obs_v)
-                self.storage_valid.store_last(obs_v, last_val_v)
+                last_act_v, last_val_v = self.predict(obs_v)
+                self.storage_valid.store_last(obs_v, last_val_v[..., last_act_v])
                 self.storage_valid.compute_estimates(self.gamma, self.lmbda, self.use_gae, self.normalize_adv)
 
             # Optimize policy & valueq
@@ -246,8 +239,7 @@ class GraphAgent(BaseAgent):
             self.logger.feed(rew_batch, done_batch, true_average_reward, rew_batch_v, done_batch_v,
                              true_average_reward_v)
 
-            self.v_optimizer, lr = self.adjust_lr(self.v_optimizer, self.v_learning_rate, self.t, num_timesteps)
-            self.t_optimizer, _ = self.adjust_lr(self.t_optimizer, self.t_learning_rate, self.t, num_timesteps)
+            self.optimizer, lr = self.adjust_lr(self.optimizer, self.learning_rate, self.t, num_timesteps)
             if self.anneal_temperature:
                 self.policy.temperature = adjust_temp(self.policy.temperature, self.t, num_timesteps)
 
@@ -257,7 +249,7 @@ class GraphAgent(BaseAgent):
             if self.t > checkpoints[checkpoint_cnt]:
                 print("Saving model.")
                 torch.save({'model_state_dict': self.policy.state_dict(),
-                            'optimizer_state_dict': self.v_optimizer.state_dict()},
+                            'optimizer_state_dict': self.optimizer.state_dict()},
                            self.logger.logdir + '/model_' + str(self.t) + '.pth')
                 checkpoint_cnt += 1
         self.env.close()

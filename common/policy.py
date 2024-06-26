@@ -218,7 +218,6 @@ class GraphTransitionPolicy(nn.Module):
         self.action_size = action_size
         self.transition_model = transition_model
 
-
     def is_recurrent(self):
         return False
 
@@ -260,7 +259,11 @@ class GraphTransitionPolicy(nn.Module):
 
         log_probs = F.log_softmax(vals / self.temperature, dim=1)
         p = Categorical(logits=log_probs)
-        return p, v.squeeze()#, reward.squeeze()
+        return p, v.squeeze()  # , reward.squeeze()
+
+    def transition(self, s, a):
+        h = self.transition_model(s, a)
+        return h[..., :-3], h[..., :-3], h[..., :-2], h[..., :-1]
 
     def all_dones_rewards(self, s):
         sa = self.states_with_all_actions(s)
