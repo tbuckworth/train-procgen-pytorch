@@ -166,8 +166,8 @@ def bayesian_optimisation(xp, yp, bounds, gp_params=None, random_search=False, a
     dups = np.all(np.abs(next_sample-xp) <= epsilon, axis=1)
     if np.any(dups):
         next_sample = np.random.uniform(bounds[:, 0], bounds[:, 1], bounds.shape[0])
-    ei_next_sample = expected_improvement(next_sample, model, yp, greater_is_better=True, n_params=n_params)
+    # ei_next_sample = expected_improvement(next_sample, model, yp, greater_is_better=True, n_params=n_params)
 
-    mu, sigma = model.predict(x_random, return_std=True)
+    # mu, sigma = model.predict(x_random, return_std=True)
 
-    return next_sample, ei_next_sample
+    return next_sample

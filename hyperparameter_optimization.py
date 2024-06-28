@@ -81,8 +81,7 @@ def select_next_hyperparameters(X, y, bounds):
         xp = X.to_numpy()
         yp = y.to_numpy()
 
-        eis, params = [], []
-        # for i, h in enumerate(bounds.keys()):
+        params = []
         idx = np.random.permutation(len(X.columns))
 
         n_splits = np.ceil(len(idx) / 2)
@@ -90,13 +89,10 @@ def select_next_hyperparameters(X, y, bounds):
         bs = np.array_split(bound_array[idx], n_splits, axis=0)
 
         for x, b in zip(xs, bs):
-            param, ei = bayesian_optimisation(x, yp, b, random_search=True)
+            param = bayesian_optimisation(x, yp, b, random_search=True)
             params += list(param)
-            eis += list(ei)
 
         next_params = np.array(params)[np.argsort(idx)]
-        exp_i = np.repeat(eis, 2)[np.argsort(idx)]
-        # next_params, ei = bayesian_optimisation(X.to_numpy(), y.to_numpy(), bound_array, random_search=True)
 
     int_params = [np.all([isinstance(x, int) for x in bounds[k]]) for k in col_order]
     next_params = [int(round(v, 0)) if i else v for i, v in zip(int_params, next_params)]
