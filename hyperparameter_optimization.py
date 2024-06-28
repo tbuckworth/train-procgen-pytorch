@@ -229,7 +229,7 @@ def cartpole_full_graph_hyperparams():
     bounds = {
         "gamma": [0.9999, 0.8],
         "lmbda": [0.0, 0.99999],
-        "epoch": [1, 10],
+        "epoch": [4, 10],
         # "learning_rate": [1e-8, 1e-3],
         # "n_envs": [64],
         # "n_steps": [256],
@@ -237,8 +237,8 @@ def cartpole_full_graph_hyperparams():
         "temperature": [1e-4, 1e-2],
         "rew_coef": [0.1, 10.],
         "done_coef": [0.1, 10.],
-        "t_coef": [0.1, 10.],
-        "value_coef": [0.1, 10.],
+        "t_coef": [0.6, 10.],
+        "value_coef": [0.6, 10.],
         # "output_dim": [24, 64],
         # "depth": [2, 6],
     }
