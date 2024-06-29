@@ -69,7 +69,10 @@ def train_ppo(args):
         "dr_epochs",
         "rew_coef",
         "anneal_temp",
-    ]:
+        "epoch",
+        "value_coef",
+        "t_coef",
+    ]: #TODO: should this just be all the keys, rather than specify them? why not?
         if var_name in args.__dict__.keys() and args.__dict__[var_name] is not None:
             hyperparameters[var_name] = args.__dict__[var_name]
 
@@ -180,7 +183,7 @@ def train_ppo(args):
     print('INTIALIZING MODEL...')
     model, observation_shape, policy = initialize_model(device, env, hyperparameters)
     logger = Logger(n_envs, logdir, use_wandb=args.use_wandb, has_vq=policy.has_vq,
-                    transition_model = model_based)
+                    transition_model=model_based)
     logger.max_steps = max_steps
     #############
     ## STORAGE ##
