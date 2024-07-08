@@ -352,7 +352,7 @@ def test_pysr_to_pytorch():
 
 
 def bce(y, y_hat):
-    return -y * np.log(y_hat+0.0000000000000001) - (1 - y) * np.log(1 - y_hat + 0.0000000000000001)
+    return -y * np.log(y_hat + 0.0000000000000001) - (1 - y) * np.log(1 - y_hat + 0.0000000000000001)
 
 
 def lbce(y, z):
@@ -360,7 +360,7 @@ def lbce(y, z):
 
 
 def bce_test():
-    z = (np.random.rand(10000)-1)*100
+    z = (np.random.rand(10000) - 1) * 100
     y_hat = sigmoid(z)
     y = sigmoid(np.random.rand(10000))
 
@@ -368,10 +368,83 @@ def bce_test():
     l = lbce(y, z)
     print(np.all(b == l))
     print(np.allclose(b, l))
-    plt.scatter(b-l, y_hat)
+    plt.scatter(b - l, y_hat)
     plt.show()
     print("done")
 
 
+def test_pipe_checker():
+    out = pipe_checker("pipe.txt")
+    print(out)
+
+def read_file(filename):
+    file = open(filename, 'r')
+    lines = file.readlines()
+    file.close()
+    return lines
+
+
+def pipe_checker(filename):
+    import numpy as np
+    file = open(filename, 'r')
+    txt = file.read()
+    lines = txt.split('\n')
+    lines = [l.split(' ') for l in lines if len(l) == 5]
+    # flow = [l[0] == '*' for l in lines]
+    lin_arr = np.array(lines)
+    coor = lin_arr[:, 1:].astype(np.int32)
+    char = lin_arr[:, 0]
+    shape = coor.max(0) + 1
+    flow = np.full(shape, False).T
+    grid = np.full(shape, '').T
+    for n, c in enumerate(char):
+        i, j = coor[n]
+        grid[j, i] = c
+
+    grid = np.flipud(grid)
+
+    flow[grid == '*'] = True
+    left_in = ['═', '╗', '╝', '╣', '╦', '╩', '*']
+    right_in = ['═', '╔', '╚', '╠', '╦', '╩', '*']
+    up_in = ['║', '╚', '╝', '╠', '╣', '╩', '*']
+    down_in = ['║', '╔', '╗', '╠', '╣', '╦', '*']
+
+    l_in_flt = pipe_input_boolean(grid, left_in)
+    r_in_flt = pipe_input_boolean(grid, right_in)
+    u_in_flt = pipe_input_boolean(grid, up_in)
+    d_in_flt = pipe_input_boolean(grid, down_in)
+
+    n_flow = np.sum(flow)
+    old_flow = 0
+    while n_flow > old_flow:
+        old_flow = n_flow
+
+        flow_to_left = np.bitwise_and(flow[:, :-1], l_in_flt[:, 1:])
+        flow_from_right = np.bitwise_and(r_in_flt[:, :-1], flow_to_left)
+        flow[:, 1:][flow_from_right] = True
+
+        flow_to_right = np.bitwise_and(flow[:, 1:], r_in_flt[:, :-1])
+        flow_from_left = np.bitwise_and(l_in_flt[:, 1:], flow_to_right)
+        flow[:, :-1][flow_from_left] = True
+
+        flow_up = np.bitwise_and(flow[:-1], u_in_flt[1:])
+        flow_from_down = np.bitwise_and(d_in_flt[:-1], flow_up)
+        flow[1:][flow_from_down] = True
+
+        flow_down = np.bitwise_and(flow[1:], d_in_flt[:-1])
+        flow_from_up = np.bitwise_and(u_in_flt[1:], flow_down)
+        flow[:-1][flow_from_up] = True
+        n_flow = np.sum(flow)
+
+    flowing = grid[flow]
+    answers = flowing[np.bitwise_and(flowing >= 'A', flowing <= 'Z')]
+    answers.sort()
+    return ''.join(answers)
+
+
+def pipe_input_boolean(grid, char_list):
+    return np.array([grid == c for c in char_list] + [np.bitwise_and(grid >= 'A', grid <= 'Z')]).sum(0) > 0
+
+
 if __name__ == "__main__":
-    bce_test()
+    test_pipe_checker()
