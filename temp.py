@@ -377,6 +377,7 @@ def test_pipe_checker():
     out = pipe_checker("pipe.txt")
     print(out)
 
+
 def read_file(filename):
     file = open(filename, 'r')
     lines = file.readlines()
@@ -386,24 +387,28 @@ def read_file(filename):
 
 def pipe_checker(filename):
     import numpy as np
+    # read in file
     file = open(filename, 'r')
     txt = file.read()
     lines = txt.split('\n')
     lines = [l.split(' ') for l in lines if len(l) == 5]
-    # flow = [l[0] == '*' for l in lines]
+    # create numpy array for scalable indexing
     lin_arr = np.array(lines)
     coor = lin_arr[:, 1:].astype(np.int32)
     char = lin_arr[:, 0]
     shape = coor.max(0) + 1
+    # flow will be a boolean array indicating whether water is flowing to each square
     flow = np.full(shape, False).T
+    # grid will be a character array indicating the object present in each square
     grid = np.full(shape, '').T
     for n, c in enumerate(char):
         i, j = coor[n]
         grid[j, i] = c
-
     grid = np.flipud(grid)
 
     flow[grid == '*'] = True
+
+    # These arrays indicate which objects flow in which direction
     left_in = ['═', '╗', '╝', '╣', '╦', '╩', '*']
     right_in = ['═', '╔', '╚', '╠', '╦', '╩', '*']
     up_in = ['║', '╚', '╝', '╠', '╣', '╩', '*']
@@ -416,26 +421,29 @@ def pipe_checker(filename):
 
     n_flow = np.sum(flow)
     old_flow = 0
+    # This loop will terminate when updating the flow does not change the number of flowing objects
     while n_flow > old_flow:
         old_flow = n_flow
 
-        flow_to_left = np.bitwise_and(flow[:, :-1], l_in_flt[:, 1:])
-        flow_from_right = np.bitwise_and(r_in_flt[:, :-1], flow_to_left)
+        # If water  is flowing in a square and can flow right, while the square to the right can receive from the left,
+        # then the square to the right will be updated to flowing
+        # The prod function acts as an 'and' operator. Note that np.bitwise_and only takes two inputs.
+        flow_from_right = np.array([flow[:, :-1], l_in_flt[:, 1:], r_in_flt[:, :-1]]).prod(0) > 0
         flow[:, 1:][flow_from_right] = True
 
-        flow_to_right = np.bitwise_and(flow[:, 1:], r_in_flt[:, :-1])
-        flow_from_left = np.bitwise_and(l_in_flt[:, 1:], flow_to_right)
+        # The same logic is applied for flowing left, up and down, below
+        flow_from_left = np.array([flow[:, 1:], r_in_flt[:, :-1], l_in_flt[:, 1:]]).prod(0) > 0
         flow[:, :-1][flow_from_left] = True
 
-        flow_up = np.bitwise_and(flow[:-1], u_in_flt[1:])
-        flow_from_down = np.bitwise_and(d_in_flt[:-1], flow_up)
+        flow_from_down = np.array([flow[:-1], u_in_flt[1:], d_in_flt[:-1]]).prod(0) > 0
         flow[1:][flow_from_down] = True
 
-        flow_down = np.bitwise_and(flow[1:], d_in_flt[:-1])
-        flow_from_up = np.bitwise_and(u_in_flt[1:], flow_down)
+        flow_from_up = np.array([flow[1:], d_in_flt[:-1], u_in_flt[1:]]).prod(0) > 0
         flow[:-1][flow_from_up] = True
+
         n_flow = np.sum(flow)
 
+    # Now we select all the flowing letters and return them
     flowing = grid[flow]
     answers = flowing[np.bitwise_and(flowing >= 'A', flowing <= 'Z')]
     answers.sort()
@@ -443,6 +451,9 @@ def pipe_checker(filename):
 
 
 def pipe_input_boolean(grid, char_list):
+    # This helper function determines whether any characters in char_list are present at a certain part of the grid or
+    # whether that part of the grid contains a capital letter.
+    # The sum function acts as an 'or' operator. Note that np.bitwise_or only takes two inputs.
     return np.array([grid == c for c in char_list] + [np.bitwise_and(grid >= 'A', grid <= 'Z')]).sum(0) > 0
 
 
