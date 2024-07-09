@@ -141,6 +141,10 @@ class DoubleGraphAgent(BaseAgent):
 
                 # grad_accumulation_cnt += 1
 
+                # total_loss = value_loss + t_loss
+                #
+                # total_loss_list.append(total_loss.item())
+
                 ent_loss_list.append(entropy_loss.item())
                 x_ent_loss_list.append(x_batch_ent_loss.item())
         # Adjust common/Logger.__init__ if you add/remove from summary:
