@@ -179,11 +179,12 @@ def train_ppo(args):
     ###########
     algo = hyperparameters.get('algo', 'ppo')
     model_based = algo in ['ppo-model', 'graph-agent']
+    double_graph = algo in ['double-graph-agent']
 
     print('INTIALIZING MODEL...')
     model, observation_shape, policy = initialize_model(device, env, hyperparameters)
     logger = Logger(n_envs, logdir, use_wandb=args.use_wandb, has_vq=policy.has_vq,
-                    transition_model=model_based)
+                    transition_model=model_based, double_graph=double_graph)
     logger.max_steps = max_steps
     #############
     ## STORAGE ##
@@ -208,6 +209,8 @@ def train_ppo(args):
         from agents.ppo_model import PPOModel as AGENT
     elif algo == 'graph-agent':
         from agents.graph_agent import GraphAgent as AGENT
+    elif algo == 'double-graph-agent':
+        from agents.double_graph_agent import DoubleGraphAgent as AGENT
     else:
         raise NotImplementedError
 

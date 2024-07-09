@@ -1039,6 +1039,79 @@ class GraphTransitionModel(nn.Module):
         all_coor = torch.tile(coor, shp).to(device=self.device)
         return self.concater(x, all_coor, -1)
 
+class GraphValueModel(nn.Module):
+    def __init__(self, in_channels, depth, mid_weight, latent_size, device):
+        super(GraphTransitionModel, self).__init__()
+        self.input_size = in_channels
+        self.depth = depth
+        self.mid_weight = mid_weight
+        self.output_dim = latent_size
+        self.device = device
+
+        self.messenger = MLPModel(4, depth, mid_weight, latent_size)
+        self.updater = MLPModel(3, depth, mid_weight, latent_size)
+
+        self.apply(xavier_uniform_init)
+
+    def concater(self, x, y, axis):
+        return torch.concat([x.unsqueeze(axis), y.unsqueeze(axis)], axis=axis)
+
+    def msg_pass(self, x, y, action):
+        h = torch.concat([x, y, action.unsqueeze(-1)], -1)
+        return self.messenger(h)
+
+    def update(self, x, y):
+        h = torch.concat([x, y.unsqueeze(-1)], -1)
+        return self.updater(h)
+
+    def forward(self, obs):
+        # Normalize actions?
+        n, x = self.prep_input(obs)
+        msg = self.sum_all_messages(n, x)
+        # TODO: sum which dim?
+        return self.update(x, msg).sum(-1).squeeze()
+
+    def prep_input(self, obs):
+        x = self.append_index(obs.squeeze())
+        n = x.shape[-2]
+        return n, x
+
+    def sum_all_messages(self, n, x):
+        msg_in = self.vectorize_for_message_pass(n, x)
+        messages = self.messenger(msg_in)
+        return torch.sum(messages, dim=-2).squeeze()
+
+    def vectorize_for_message_pass(self, n, x):
+        xi = x.unsqueeze(-2).tile([n, 1])
+        xj = x.unsqueeze(-3).tile([n, 1, 1])
+        msg_in = torch.concat([xi, xj], dim=-1)
+        return msg_in
+
+    def vec_for_update(self, messages, x):
+        msg = torch.sum(messages, dim=-2).squeeze()
+        h = torch.concat([x, msg.unsqueeze(-1)], -1)
+        u = self.updater(h)
+        return h, u
+
+
+    def sum_messages(self, i, n, x, action):
+        # This is kept as the logic is easier to follow and the result is the same (but much less efficient)
+        xi = x[..., i, :].unsqueeze(-2).tile([n, 1])
+        a = action.unsqueeze(-1).tile([n]).unsqueeze(-1)
+        msg_in = torch.concat([xi, x, a], dim=-1)
+        messages = self.messenger(msg_in)
+        return torch.sum(messages, dim=-2).squeeze()
+
+    def append_index(self, x):
+        n = x.shape[-1]
+        coor = torch.FloatTensor([i / n for i in range(n)])
+        shp = [i for i in x.shape[:-1]] + [1]
+        all_coor = torch.tile(coor, shp).to(device=self.device)
+        return self.concater(x, all_coor, -1)
+
+
+
+
 
 class NBatchPySRTorch(nn.Module):
     def __init__(self, model):
