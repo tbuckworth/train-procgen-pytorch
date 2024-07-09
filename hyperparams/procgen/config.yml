@@ -987,7 +987,7 @@ double-graph:
     n_steps: 256
     val_epochs: 3
     dyn_epochs: 3
-    n_minibatch: 16
+    n_minibatch: 32
     mini_batch_size: 8192
     gamma: 0.99
     lmbda: 0.95

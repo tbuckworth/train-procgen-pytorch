@@ -327,9 +327,10 @@ class DoubleTransitionPolicy(nn.Module):
         self.transition_model = transition_model
 
 
-    def dr(self, sa):
-        d = self.done_func(sa)
-        r = self.rew_func(sa)
+    def dr(self, state):
+        s = state.detach().cpu().numpy()
+        d = self.done_func(s)
+        r = self.rew_func(s)
         return d, r
 
     def is_recurrent(self):
@@ -359,6 +360,7 @@ class DoubleTransitionPolicy(nn.Module):
         cum = torch.zeros((rews[0].shape))
         for r in rews[:-1]:
             cum = ((cum + r) * self.gamma).unsqueeze(-2).tile([self.action_size, 1])
+        cum = cum.to(device=self.device)
 
         vs = self.value_model(s)
         vs *= self.gamma ** self.n_rollouts

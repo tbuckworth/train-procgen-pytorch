@@ -136,6 +136,7 @@ def optimize_hyperparams(bounds, fixed, project="Cartpole", id_tag="sa_rew", run
 
     fh = fixed.copy()
     hparams.update(fh)
+    # run_next(hparams)
     try:
         run_next(hparams)
     except Exception as e:
@@ -369,6 +370,7 @@ def cartpole_double_graph_hyperparams():
         "anneal_temp": False,
         "lmbda": .998,
         "gamma": 0.735,
+        "n_minibatch": 32,
         # "learning_rate": 0.000532,
         "t_learning_rate": 0.000511,
         "temperature": 0.00545,
@@ -398,6 +400,6 @@ def cartpole_double_graph_hyperparams():
         optimize_hyperparams(bounds, fixed, project, id_tag, run_next_hyperparameters)
 
 if __name__ == "__main__":
-    cartpole_full_graph_hyperparams()
+    cartpole_double_graph_hyperparams()
 
 

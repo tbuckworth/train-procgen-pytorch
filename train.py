@@ -194,7 +194,7 @@ def train_ppo(args):
     storage = Storage(observation_shape, hidden_state_dim, n_steps, n_envs, device)
     storage_valid = Storage(observation_shape, hidden_state_dim, n_steps, n_envs,
                             device) if args.use_valid_env else None
-    if model_based:
+    if model_based or double_graph:
         storage = BasicStorage(observation_shape, n_steps, n_envs, device)
         storage_valid = BasicStorage(observation_shape, n_steps, n_envs,
                                      device) if args.use_valid_env else None
