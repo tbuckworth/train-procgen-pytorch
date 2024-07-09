@@ -396,6 +396,7 @@ def coinrun_mostlyneural_hparams():
 
 def cartpole_graph_transition_hparams():
     return {
+        # hparams from this one: "logs/train/cartpole/test/2024-06-11__10-31-41__seed_6033" (52039 graph-transition)
         "exp_name": [None],
         "env_name": ['acrobot'],
         # "distribution_mode": ['hard'],

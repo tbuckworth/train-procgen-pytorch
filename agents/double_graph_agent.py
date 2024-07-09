@@ -33,7 +33,6 @@ class DoubleGraphAgent(BaseAgent):
                  t_learning_rate=2.5e-4,
                  grad_clip_norm=0.5,
                  eps_clip=0.2,
-                 value_coef=0.5,
                  entropy_coef=0.01,
                  x_entropy_coef=0.,
                  normalize_adv=True,
@@ -71,7 +70,6 @@ class DoubleGraphAgent(BaseAgent):
 
         self.grad_clip_norm = grad_clip_norm
         self.eps_clip = eps_clip
-        self.value_coef = value_coef
         self.entropy_coef = entropy_coef
         self.x_entropy_coef = x_entropy_coef
         self.normalize_adv = normalize_adv

@@ -352,6 +352,50 @@ def graph_symbreg_ft_hparams():
         optimize_hyperparams(bounds, fixed, project, id_tag, run_graph_hyperparameters)
 
 
+def cartpole_double_graph_hyperparams():
+    fixed = {
+        "env_name": 'cartpole',
+        "exp_name": "",
+        "param_name": 'double-graph',
+        "device": "gpu",
+        "num_timesteps": int(2e6),
+        "seed": 6033,
+        "use_gae": True,
+        "clip_value": False,
+        "wandb_tags": ["dg01", "double-graph", "graph-transition"],
+        "use_wandb": True,
+        "mirror_env": False,
+        "use_valid_env": True,
+        "anneal_temp": False,
+        "lmbda": .998,
+        "gamma": 0.735,
+        # "learning_rate": 0.000532,
+        "t_learning_rate": 0.000511,
+        "temperature": 0.00545,
+        "dyn_epochs": 9,
+        "n_envs": 64,
+        "n_steps": 256,
+        "n_rollouts": 3,
+        "output_dim": 43,
+        "depth": 4,
+    }
+    bounds = {
+        # "gamma": [0.9999, 0.8],
+        # "lmbda": [0.0, 0.99999],
+        "val_epoch": [2, 10],
+        "learning_rate": [1e-8, 1e-3],
+        # "n_envs": [64],
+        # "n_steps": [256],
+        # "n_rollouts": [3],
+        # "temperature": [1e-4, 1e-2],
+        # "value_coef": [0.1, 10.],
+        # "output_dim": [24, 64],
+        # "depth": [2, 6],
+    }
+    while True:
+        project = get_project(fixed["env_name"], fixed["exp_name"])
+        id_tag = fixed["wandb_tags"][0]
+        optimize_hyperparams(bounds, fixed, project, id_tag, run_next_hyperparameters)
 
 if __name__ == "__main__":
     cartpole_full_graph_hyperparams()
