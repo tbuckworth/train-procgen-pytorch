@@ -197,7 +197,7 @@ class CartPoleVecEnv(PreVecEnv):
         ]
 
     def rew_func(self, state):
-        return np.ones((len(state)))
+        return np.ones((state.shape[:-1]))
 
     def transition_model(self, action):
         x, x_dot, theta, theta_dot, gravity, pole_length, mass_cart, mass_pole, force_mag = self.state.T
@@ -233,7 +233,9 @@ class CartPoleVecEnv(PreVecEnv):
         self.terminated = self.done_func(self.state)
 
     def done_func(self, state):
-        x, _, theta, _, _, _, _, _, _ = state.T
+        xt, _, thetat, _, _, _, _, _, _ = state.T
+        x = xt.T
+        theta = thetat.T
         oob = np.bitwise_or(x < -self.x_threshold,
                             x > self.x_threshold)
         theta_oob = np.bitwise_or(theta < -self.theta_threshold_radians,

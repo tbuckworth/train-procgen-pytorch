@@ -348,29 +348,29 @@ class DoubleTransitionPolicy(nn.Module):
         cont = []
         s = x
         for _ in range(self.n_rollouts):
-            d, r = self.all_dones_rewards(s)
-            cont.append(d)
-            rews.append(r)
             next_states = [self.transition_model(s, self.actions_like(s, i)).unsqueeze(1) for i in
                            range(self.action_size)]
             s = torch.concat(next_states, dim=1)
+            d, r = self.dr(s)
+            cont.append(d)
+            rews.append(r)
 
         # adding discounted rewards
-        cum = torch.zeros_like(rews[0])
+        cum = torch.zeros((rews[0].shape))
         for r in rews[:-1]:
             cum = ((cum + r) * self.gamma).unsqueeze(-2).tile([self.action_size, 1])
 
-        vs = self.value(s).squeeze()
+        vs = self.value_model(s)
         vs *= self.gamma ** self.n_rollouts
         vs += cum.squeeze()
         for i in range(self.n_rollouts - 1):
-            vs[cont[-(i + 1)].round(decimals=0) == 1] = 0
+            vs[cont[-(i + 1)] == 1] = 0
             vs = ((vs / self.temperature).softmax(-1) * vs).sum(-1)
             # vs = vs.max(-1)[0]
 
         log_probs = F.log_softmax(vs / self.temperature, dim=1)
         p = Categorical(logits=log_probs)
-        return p, v.squeeze()
+        return p, v
 
     def all_dones_rewards(self, s):
         sa = self.states_with_all_actions(s)
