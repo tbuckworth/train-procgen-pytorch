@@ -196,6 +196,8 @@ class CartPoleVecEnv(PreVecEnv):
             "Action Force",
         ]
 
+    def rew_func(self, state):
+        return np.ones((len(state)))
 
     def transition_model(self, action):
         x, x_dot, theta, theta_dot, gravity, pole_length, mass_cart, mass_pole, force_mag = self.state.T
@@ -228,11 +230,15 @@ class CartPoleVecEnv(PreVecEnv):
             theta_dot = theta_dot + self.tau * thetaacc
             theta = theta + self.tau * theta_dot
         self.state = np.vstack((x, x_dot, theta, theta_dot, gravity, pole_length, mass_cart, mass_pole, force_mag)).T
+        self.terminated = self.done_func(self.state)
+
+    def done_func(self, state):
+        x, _, theta, _, _, _, _, _, _ = state.T
         oob = np.bitwise_or(x < -self.x_threshold,
                             x > self.x_threshold)
         theta_oob = np.bitwise_or(theta < -self.theta_threshold_radians,
                                   theta > self.theta_threshold_radians)
-        self.terminated = np.bitwise_or(oob, theta_oob)
+        return np.bitwise_or(oob, theta_oob)
 
     def render_unique(self):
         if self.state is None:
@@ -294,16 +300,16 @@ class CartPoleVecEnv(PreVecEnv):
 
         world_width = self.x_threshold * 2
         scale = 64 / world_width
-        polewidth = np.full((self.n_envs,), 10.0*.16)
+        polewidth = np.full((self.n_envs,), 10.0 * .16)
         polelen = scale * (2 * pole_length)
-        cartwidth = np.full((self.n_envs,), 50.0*.16)
-        cartheight = np.full((self.n_envs,), 30.0*.16)
+        cartwidth = np.full((self.n_envs,), 50.0 * .16)
+        cartheight = np.full((self.n_envs,), 30.0 * .16)
         self.surf = np.full((self.n_envs, 64, 64, 3), 255)
         # self.surf.fill((255, 255, 255))
         l, r, t, b = -cartwidth / 2, cartwidth / 2, cartheight / 2, -cartheight / 2
         axleoffset = cartheight / 4.0
-        cartx = x[:,0] * scale + 64 / 2.0  # MIDDLE OF CART
-        carty = np.full((self.n_envs,), 100*.16)  # TOP OF CART
+        cartx = x[:, 0] * scale + 64 / 2.0  # MIDDLE OF CART
+        carty = np.full((self.n_envs,), 100 * .16)  # TOP OF CART
 
         l = np.tile(l, (self.n_envs, 64, 64))
         r = np.tile(r, (1, 64, 64))
@@ -314,14 +320,10 @@ class CartPoleVecEnv(PreVecEnv):
         col_index = np.tile(raw_index, (self.n_envs, 64, 1))
         row_index = col_index.transpose((0, 2, 1))
 
-        row_index>=l
-
-
+        row_index >= l
 
         cart_coords = [(l, b), (l, t), (r, t), (r, b)]
         cart_coords = [(c[0] + cartx, c[1] + carty) for c in cart_coords]
-
-
 
         self.gfxdraw.aapolygon(self.surf, cart_coords, (0, 0, 0))
         self.gfxdraw.filled_polygon(self.surf, cart_coords, (0, 0, 0))
@@ -354,7 +356,6 @@ class CartPoleVecEnv(PreVecEnv):
         )
         self.gfxdraw.hline(self.surf, 0, self.screen_width, carty, (0, 0, 0))
         return True
-
 
     def get_action_lookup(self):
         return {
@@ -391,4 +392,3 @@ def create_cartpole(args, hyperparameters, is_valid=False):
         "max_force_mag": [10.],
     }
     return create_pre_vec(args, hyperparameters, param_range, CartPoleVecEnv, is_valid)
-

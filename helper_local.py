@@ -356,9 +356,8 @@ def initialize_model(device, env, hyperparameters, in_channels=None):
         value_model = GraphValueModel(in_channels, depth, mid_weight, latent_size, device)
         transition_model = GraphTransitionModel(in_channels, depth, mid_weight, latent_size, device)
         action_size = action_space.n
-        #TODO: get rew and don
         policy = DoubleTransitionPolicy(value_model, transition_model, action_size, n_rollouts,
-                                        temperature, gamma, done_func=None, rew_func=None)
+                                        temperature, gamma, env.done_func, env.rew_func)
         policy.to(device)
         policy.device = device
         return value_model, observation_shape, policy
