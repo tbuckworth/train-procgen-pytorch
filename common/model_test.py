@@ -270,5 +270,15 @@ class CartPoleTestModel(unittest.TestCase):
         print(f"Looped:\t{end-mid:.4f}")
         print(f"Ratio:\t{(end-mid)/(mid-start):.2f}")
 
+    def test_double_graph_policy(self):
+        hyperparameters = get_hyperparams("double-graph")
+        model, obs_shape, policy = initialize_model(self.device, self.env, hyperparameters)
+        policy.forward(self.obs)
+
+
+
+
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -1000,7 +1000,7 @@ double-graph:
     normalize_adv: True
     normalize_rew: False
     use_gae: True
-    architecture: graph-transition
+    architecture: double-graph
     recurrent: False
     depth: 4
     latent_size: 1

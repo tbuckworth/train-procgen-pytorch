@@ -1041,7 +1041,7 @@ class GraphTransitionModel(nn.Module):
 
 class GraphValueModel(nn.Module):
     def __init__(self, in_channels, depth, mid_weight, latent_size, device):
-        super(GraphTransitionModel, self).__init__()
+        super(GraphValueModel, self).__init__()
         self.input_size = in_channels
         self.depth = depth
         self.mid_weight = mid_weight
@@ -1069,7 +1069,7 @@ class GraphValueModel(nn.Module):
         n, x = self.prep_input(obs)
         msg = self.sum_all_messages(n, x)
         # TODO: sum which dim?
-        return self.update(x, msg).sum(-1).squeeze()
+        return self.update(x, msg).squeeze().sum(-1)
 
     def prep_input(self, obs):
         x = self.append_index(obs.squeeze())
