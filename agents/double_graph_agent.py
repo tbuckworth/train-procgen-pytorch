@@ -67,7 +67,7 @@ class DoubleGraphAgent(BaseAgent):
         self.lmbda = lmbda
         self.v_learning_rate = learning_rate
         self.t_learning_rate = t_learning_rate
-        self.v_optimizer = optim.Adam(self.policy.value.parameters(), lr=learning_rate, eps=1e-5)
+        self.v_optimizer = optim.Adam(self.policy.value_model.parameters(), lr=learning_rate, eps=1e-5)
 
         self.grad_clip_norm = grad_clip_norm
         self.eps_clip = eps_clip
