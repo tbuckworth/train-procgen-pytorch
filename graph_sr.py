@@ -486,6 +486,7 @@ def run_graph_neurosymbolic_search(args):
         done_torch = NBatchPySRTorch(done_model.pytorch())
 
         ns_agent = symbolic_agent_constructor(copy.deepcopy(policy), msg_torch, up_torch, v_torch, r_torch, done_torch)
+
         rn_agent = RandomAgent(env.action_space.n)
 
         ###################################
