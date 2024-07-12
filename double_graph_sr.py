@@ -1,4 +1,5 @@
 import argparse
+import copy
 import os
 import re
 import time
@@ -6,14 +7,21 @@ import time
 import numpy as np
 import pandas as pd
 import sympy
-from torch import cuda
+# from torch import cuda
 
 import wandb
-from discrete_env.mountain_car_pre_vec import create_mountain_car
+from agents.double_graph_agent import DoubleGraphAgent
+from agents.ppo_model import PPOModel
+from common.logger import Logger
+from common.model import NBatchPySRTorch
+from common.storage import BasicStorage
+# from discrete_env.mountain_car_pre_vec import create_mountain_car
 
 from email_results import send_images_first_last
-from symbreg.agents import SymbolicAgent, NeuralAgent, RandomAgent, NeuroSymbolicAgent, GraphSymbolicAgent, \
-    DoubleGraphSymbolicAgent
+from graph_sr import fine_tune
+from symbolic_regression import load_nn_policy
+from symbreg.agents import SymbolicAgent, NeuralAgent, RandomAgent, NeuroSymbolicAgent
+from symbreg.extra_mappings import get_extra_torch_mappings
 
 if os.name != "nt":
     from pysr import PySRRegressor
@@ -23,7 +31,8 @@ from common.env.procgen_wrappers import create_env, create_procgen_env
 from helper_local import get_config, get_path, balanced_reward, load_storage_and_policy, \
     load_hparams_for_model, floats_to_dp, dict_to_html_table, wandb_login, add_symbreg_args, DictToArgs, \
     inverse_sigmoid, sigmoid, sample_from_sigmoid, map_actions_to_values, get_actions_from_all, \
-    entropy_from_binary_prob, get_saved_hyperparams, softmax, sample_numpy_probs
+    entropy_from_binary_prob, get_saved_hyperparams, softmax, sample_numpy_probs, n_params, get_logdir_from_symbdir, \
+    load_pysr_to_torch, get_latest_file_matching, get_agent_constructor
 from common.env.env_constructor import get_env_constructor
 from cartpole.create_cartpole import create_cartpole
 from boxworld.create_box_world import create_bw_env
@@ -43,6 +52,8 @@ pysr_loss_functions = {
     "mse": "loss(prediction, target) = (prediction - target)^2",
     "mce": "loss(prediction, target) = abs(prediction - target)^3",
     "capped_sigmoid": "loss(y_hat, y) = 1 - tanh(y*y_hat) + abs(y_hat-y)",
+    "bce": "loss(y_hat, y) = -y * log(y_hat + 0.00001) - (1 - y) * log(1 - y_hat + 0.00001)",
+    "lbce": "loss(z, y) = z - z*y + log(1 + exp(-z))"
 }
 
 
@@ -55,11 +66,7 @@ def find_model(X, Y, symbdir, save_file, weights, args):
         weights=weights,
         denoise=args.denoise,
         extra_sympy_mappings={"greater": lambda x, y: sympy.Piecewise((1.0, x > y), (0.0, True)),
-                              "bal1": lambda x2, x3: x2+2*x3,
-                              "bal2": lambda x1, x2: sympy.Piecewise((1.0, x1 + x2 > -0.165), (0.0, True)),
                               },
-
-        # "balance": lambda x1, x2, x3, x7: sympy.Piecewise((1.0, x1 + (x2+2*x3)/x7 > -0.165), (0.0, True))},
         elementwise_loss=pysr_loss_functions[args.loss_function],
         timeout_in_seconds=args.timeout_in_seconds,
         populations=args.populations,
@@ -69,6 +76,11 @@ def find_model(X, Y, symbdir, save_file, weights, args):
         ncycles_per_iteration=args.ncycles_per_iteration,
         bumper=args.bumper,
         model_selection=args.model_selection,
+        extra_torch_mappings=get_extra_torch_mappings(),
+        nested_constraints={"relu": {"relu": 0},
+                            "exp": {"exp": 0, "square": 1},
+                            "square": {"square": 0, "exp": 1},
+                            },
     )
     print("fitting model")
     start = time.time()
@@ -76,6 +88,9 @@ def find_model(X, Y, symbdir, save_file, weights, args):
     elapsed = time.time() - start
     eqn_str = get_best_str(model)
     print(eqn_str)
+    # model.extra_torch_mappings = {sympy.Piecewise: lambda x, y: torch.where(x > y, 1.0, 0.0),
+    #                               sympy.functions.elementary.piecewise.ExprCondPair: None,
+    #                               sympy.logic.boolalg.BooleanTrue: None}
     return model, elapsed
 
 
@@ -86,39 +101,6 @@ def get_best_str(model, split='\n'):
     return model.get_best().equation
 
 
-def load_nn_policy(logdir, n_envs=2):
-    cfg = get_config(logdir)
-    cfg["n_envs"] = n_envs
-    env_name = cfg["env_name"]
-    create_venv = get_env_constructor(env_name)
-    symbolic_agent_constructor = SymbolicAgent
-
-    if env_name in ["coinrun", "boxworld"]:
-        symbolic_agent_constructor = NeuroSymbolicAgent
-
-    if cfg["architecture"] == "graph-transition":
-        symbolic_agent_constructor = GraphSymbolicAgent
-
-    if cfg['architecture'] == "double-graph":
-        symbolic_agent_constructor = DoubleGraphSymbolicAgent
-
-    device = torch.device("cuda") if cuda.is_available() else torch.device("cpu")
-    hyperparameters, last_model = load_hparams_for_model(cfg["param_name"], logdir, n_envs)
-    hyperparameters["n_envs"] = n_envs
-
-    tmp_args = DictToArgs(cfg)
-
-    # This seems to be necessary as training from scratch produces a different result than using a trained model:
-    hyperparameters["normalize_rew"] = False
-    env = create_venv(tmp_args, hyperparameters, is_valid=False)
-    test_env = create_venv(tmp_args, hyperparameters, is_valid=True)
-
-    action_names, done, hidden_state, obs, policy, storage = load_storage_and_policy(device, env, hyperparameters,
-                                                                                     last_model, logdir, n_envs)
-
-    return policy, env, symbolic_agent_constructor, test_env
-
-
 def drop_first_dim(arr):
     shp = np.array(arr.shape)
     new_shape = tuple(np.concatenate(([np.prod(shp[:2])], shp[2:])))
@@ -126,18 +108,26 @@ def drop_first_dim(arr):
 
 
 def generate_data(agent, env, n):
-    observation = env.reset()
-    x, y, act, value = agent.sample(observation)
-    X = x
-    Y = y
-    V = value
-    while len(X) < n:
+    Obs = env.reset()
+    M_in, M_out, U_in, U_out, Vm_in, Vm_out, Vu_in, Vu_out = agent.sample(Obs)
+    act = agent.forward(Obs)
+    act[::2] = np.random.randint(0, env.action_space.n, len(act))[::2]
+    while len(Obs) < n:
         observation, rew, done, info = env.step(act)
-        x, y, act, v = agent.sample(observation)
-        X = np.append(X, x, axis=0)
-        Y = np.append(Y, y, axis=0)
-        V = np.append(V, v, axis=0)
-    return X, Y, V
+        m_in, m_out, u_in, u_out, vm_in, vm_out, vu_in, vu_out = agent.sample(observation)
+        act = agent.forward(observation)
+        act[::2] = np.random.randint(0, env.action_space.n, len(act))[::2]
+
+        M_in = np.append(M_in, m_in, axis=0)
+        M_out = np.append(M_out, m_out, axis=0)
+        U_in = np.append(U_in, u_in, axis=0)
+        U_out = np.append(U_out, u_out, axis=0)
+        Vm_in = np.append(Vm_in, vm_in, axis=0)
+        Vm_out = np.append(Vm_out, vm_out, axis=0)
+        Vu_in = np.append(Vu_in, vu_in, axis=0)
+        Vu_out = np.append(Vu_out, vu_out, axis=0)
+
+    return M_in, M_out, U_in, U_out, Vm_in, Vm_out, Vu_in, Vu_out
 
 
 def test_agent_balanced_reward(agent, env, print_name, n=40):
@@ -155,10 +145,10 @@ def test_agent_balanced_reward(agent, env, print_name, n=40):
     return true_average_reward
 
 
-def test_agent_mean_reward(agent, env, print_name, n=40, return_values=False):
+def test_agent_mean_reward(agent, env, print_name, n=40, return_values=False, seed=0):
     print(print_name)
     episodes = 0
-    obs = env.reset()
+    obs = env.reset(seed=seed)
     act = agent.forward(obs)
     cum_rew = np.zeros(len(act))
     episode_rewards = []
@@ -208,9 +198,9 @@ def get_coinrun_test_env(logdir, n_envs):
     return env
 
 
-def create_symb_dir_if_exists(logdir):
+def create_symb_dir_if_exists(logdir, dir_name="symbreg"):
     save_file = "symb_reg.csv"
-    symbdir = os.path.join(logdir, "symbreg")
+    symbdir = os.path.join(logdir, dir_name)
     if not os.path.exists(symbdir):
         os.mkdir(symbdir)
     symbdir = os.path.join(symbdir, time.strftime("%Y-%m-%d__%H-%M-%S"))
@@ -346,7 +336,7 @@ def temp_func():
     #
     # # 10bn timestep cartpole (works!):
     logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
-    run_neurosymbolic_search(data_size, iterations, logdir, n_envs, rounds)
+    run_double_graph_neurosymbolic_search(data_size, iterations, logdir, n_envs, rounds)
 
 
 def get_entropy(Y):
@@ -363,26 +353,42 @@ def one_hot(targets, nb_classes):
     return np.eye(nb_classes)[targets]
 
 
-def run_neurosymbolic_search(args):
+# def compare_outputs(sympol, nn_pol, obs):
+#     obs = torch.FloatTensor(obs).to(device=sympol.device)
+#     sympol.transition_model.message_model
+
+
+def run_double_graph_neurosymbolic_search(args):
+    fixed_val = "value" in args.fixed_nn
     data_size = args.data_size
     logdir = args.logdir
     n_envs = args.n_envs
+    hp_override = {
+        "device": args.device,
+        "seed": args.seed,
+        "val_epochs": args.val_epochs,
+        "dyn_epochs": args.dyn_epochs,
+        "learning_rate": args.learning_rate,
+        "t_learning_rate": args.t_learning_rate,
+    }
+    if fixed_val:
+        hp_override["val_epochs"] = 0
     if n_envs < 2:
         raise Exception("n_envs must be at least 2")
-    rounds = args.rounds
     symbdir, save_file = create_symb_dir_if_exists(logdir)
+    print(f"symbdir: '{symbdir}'")
     cfg = vars(args)
     np.save(os.path.join(symbdir, "config.npy"), cfg)
 
     wandb_name = args.wandb_name
     if args.wandb_name is None:
-        wandb_name = np.random.randint(1e5)
+        wandb_name = f"graph-{np.random.randint(1e5)}"
 
     if args.use_wandb:
         wandb_login()
         name = wandb_name
         wb_resume = "allow"  # if args.model_file is None else "must"
-        project = "Symb Reg"
+        project = "Graph Symb Reg"
         cfg["symbdir"] = symbdir
         if args.wandb_group is not None:
             wandb.init(project=project, config=cfg, sync_tensorboard=True,
@@ -392,46 +398,64 @@ def run_neurosymbolic_search(args):
                        tags=args.wandb_tags, resume=wb_resume, name=name)
 
     policy, env, symbolic_agent_constructor, test_env = load_nn_policy(logdir, n_envs)
-    # policy, env, sampler, symbolic_agent_constructor, test_env, test_agent = load_nn_policy(logdir, n_envs)
-    ns_agent = symbolic_agent_constructor(None, policy, args.stochastic, None)
-    X, Y, V = generate_data(ns_agent, env, int(data_size))
-    e = get_entropy(Y)
-
-    try:
-        actions = get_actions_from_all(env)
-    except NotImplementedError:
-        actions = np.array([f"action_{i}" for i in range(env.action_space.n)])
-    action_mapping = None
-    if not args.stochastic:
-        save_Y = Y.copy()
-        # What if actions aren't implemented? improve map_actions...
-        action_mapping = map_actions_to_values(actions)
-        # map actions to 0:2pi
-        Y = action_mapping[Y.argmax(1)]
+    nn_agent = symbolic_agent_constructor(policy)
+    m_in, m_out, u_in, u_out, vm_in, vm_out, vu_in, vu_out = generate_data(nn_agent, env, int(data_size))
 
     print("data generated")
     if os.name != "nt":
         weights = None
-        if args.weight_metric is not None:
-            if args.weight_metric == "entropy":
-                weights = 1/e
-                weights[np.isinf(weights)] = weights[np.isinf(weights)==False].max()
-            elif args.weight_metric == "value":
-                weights = V
-        pysr_model, elapsed = find_model(X, Y, symbdir, save_file, weights, args)
-        ns_agent = symbolic_agent_constructor(pysr_model, policy, args.stochastic, action_mapping)
-        nn_agent = NeuralAgent(policy)
+        msgdir, _ = create_symb_dir_if_exists(symbdir, "msg")
+        updir, _ = create_symb_dir_if_exists(symbdir, "upd")
+        vmdir, _ = create_symb_dir_if_exists(symbdir, "vm")
+        vudir, _ = create_symb_dir_if_exists(symbdir, "vu")
+
+        print("\nTransition Messenger:")
+        msg_model, _ = find_model(m_in, m_out, msgdir, save_file, weights, args)
+        print("\nTransition Updater:")
+        up_model, _ = find_model(u_in, u_out, updir, save_file, weights, args)
+
+        print("\nValue Messsenger:")
+        v_msg_model, _ = find_model(vm_in, vm_out, vmdir, save_file, weights, args)
+        print("\nValue Updater:")
+        v_up_model, _ = find_model(vu_in, vu_out, vudir, save_file, weights, args)
+
+        msg_torch = NBatchPySRTorch(msg_model.pytorch())
+        up_torch = NBatchPySRTorch(up_model.pytorch())
+
+        v_msg_torch = NBatchPySRTorch(v_msg_model.pytorch())
+        v_up_torch = NBatchPySRTorch(v_up_model.pytorch())
+
+        ns_agent = symbolic_agent_constructor(copy.deepcopy(policy), msg_torch, up_torch, v_msg_torch, v_up_torch)
+
         rn_agent = RandomAgent(env.action_space.n)
 
-        ns_score_train = test_agent_mean_reward(ns_agent, env, "NeuroSymb Train", rounds)
-        nn_score_train = test_agent_mean_reward(nn_agent, env, "Neural    Train", rounds)
-        rn_score_train = test_agent_mean_reward(rn_agent, env, "Random    Train", rounds)
+        ###################################
 
-        ns_score_test = test_agent_mean_reward(ns_agent, test_env, "NeuroSymb  Test", rounds)
-        nn_score_test = test_agent_mean_reward(nn_agent, test_env, "Neural     Test", rounds)
-        rn_score_test = test_agent_mean_reward(rn_agent, test_env, "Random     Test", rounds)
+        # msg_torch(mi).shape == policy.transition_model.messenger(mi).shape
+        # up_torch(ui).shape == policy.transition_model.updater(ui).shape
+        # v_torch(oi).shape == policy.value(oi).shape
+        # r_torch(sai).shape == policy.dr(sai)[0].shape
+        # done_torch(sai).shape == policy.dr(sai)[1].shape
+        # # compare_outputs(ns_agent.policy, policy, obs)
+        ###################################
 
-        best = pysr_model.get_best()
+        print(f"Neural Parameters: {n_params(nn_agent.policy)}")
+        print(f"Symbol Parameters: {n_params(ns_agent.policy)}")
+
+        _, env, _, test_env = load_nn_policy(logdir, 100)
+
+        fine_tuned_policy = fine_tune(ns_agent.policy, logdir, symbdir, hp_override)
+        return
+        ns_score_train = test_agent_mean_reward(ns_agent, env, "NeuroSymb Train", rounds, seed)
+        nn_score_train = test_agent_mean_reward(nn_agent, env, "Neural    Train", rounds, seed)
+        rn_score_train = test_agent_mean_reward(rn_agent, env, "Random    Train", rounds, seed)
+
+        ns_score_test = test_agent_mean_reward(ns_agent, test_env, "NeuroSymb  Test", rounds, seed)
+        nn_score_test = test_agent_mean_reward(nn_agent, test_env, "Neural     Test", rounds, seed)
+        rn_score_test = test_agent_mean_reward(rn_agent, test_env, "Random     Test", rounds, seed)
+        return
+
+        best = msg_model.get_best()
         if type(best) != list:
             best = [best]
         best_loss = np.mean([x.loss for x in best])
@@ -559,13 +583,29 @@ if __name__ == "__main__":
 
     if args.logdir is None:
         raise Exception("No oracle provided. Please provide logdir argument")
-        # Sparse coinrun:
-        # args.logdir = "logs/train/coinrun/coinrun-hparams/2024-03-27__18-20-55__seed_6033"
-
-        # 10bn cartpole:
-        # args.logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
-
-        # # Sparse Boxworld, overfit:
-        # args.logdir = "logs/train/boxworld/boxworld/2024-04-08__12-29-17__seed_6033"
         print(f"No oracle provided.\nUsing Logdir: {args.logdir}")
-    run_neurosymbolic_search(args)
+    run_double_graph_neurosymbolic_search(args)
+
+
+def load_sr_graph_agent(symbdir):
+    logdir = get_logdir_from_symbdir(symbdir)
+    policy, _, symbolic_agent_constructor, _ = load_nn_policy(logdir)
+
+    msgdir = get_pysr_dir(symbdir, "msg")
+    updir = get_pysr_dir(symbdir, "upd")
+    vdir = get_pysr_dir(symbdir, "v")
+    rdir = get_pysr_dir(symbdir, "r")
+    ddir = get_pysr_dir(symbdir, "done")
+
+    msg_torch = load_pysr_to_torch(msgdir)
+    up_torch = load_pysr_to_torch(updir)
+    v_torch = load_pysr_to_torch(vdir)
+    r_torch = load_pysr_to_torch(rdir)
+    done_torch = load_pysr_to_torch(ddir)
+
+    ns_agent = symbolic_agent_constructor(policy, msg_torch, up_torch, v_torch, r_torch, done_torch)
+    return logdir, ns_agent
+
+
+def get_pysr_dir(symbdir, sub_folder):
+    return get_latest_file_matching(r"\d*-\d", 1, folder=os.path.join(symbdir, sub_folder))

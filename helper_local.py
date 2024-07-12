@@ -944,3 +944,17 @@ def scp(symbdir):
     cmd = ["scp.sh", symbdir]
     run_subprocess(cmd, "\\n")
     print("stop")
+
+
+def get_agent_constructor(algo):
+    if algo == 'ppo':
+        from agents.ppo import PPO as AGENT
+    elif algo == 'ppo-model':
+        from agents.ppo_model import PPOModel as AGENT
+    elif algo == 'graph-agent':
+        from agents.graph_agent import GraphAgent as AGENT
+    elif algo == 'double-graph-agent':
+        from agents.double_graph_agent import DoubleGraphAgent as AGENT
+    else:
+        raise NotImplementedError
+    return AGENT

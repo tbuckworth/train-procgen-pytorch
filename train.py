@@ -6,7 +6,8 @@ import os, time, argparse
 import torch
 import numpy as np
 
-from helper_local import get_hyperparams, initialize_model, add_training_args, wandb_login, get_project
+from helper_local import get_hyperparams, initialize_model, add_training_args, wandb_login, get_project, \
+    get_agent_constructor
 from common.env.env_constructor import get_env_constructor
 
 try:
@@ -203,16 +204,7 @@ def train_ppo(args):
     ## AGENT ##
     ###########
     print('INTIALIZING AGENT...')
-    if algo == 'ppo':
-        from agents.ppo import PPO as AGENT
-    elif algo == 'ppo-model':
-        from agents.ppo_model import PPOModel as AGENT
-    elif algo == 'graph-agent':
-        from agents.graph_agent import GraphAgent as AGENT
-    elif algo == 'double-graph-agent':
-        from agents.double_graph_agent import DoubleGraphAgent as AGENT
-    else:
-        raise NotImplementedError
+    get_agent_constructor(algo)
 
     def nan_hook(self, inp, output):
         if not isinstance(output, tuple):

@@ -30,7 +30,7 @@ from helper_local import get_config, get_path, balanced_reward, load_storage_and
     load_hparams_for_model, floats_to_dp, dict_to_html_table, wandb_login, add_symbreg_args, DictToArgs, \
     inverse_sigmoid, sigmoid, sample_from_sigmoid, map_actions_to_values, get_actions_from_all, \
     entropy_from_binary_prob, get_saved_hyperparams, softmax, sample_numpy_probs, n_params, get_logdir_from_symbdir, \
-    load_pysr_to_torch, get_latest_file_matching
+    load_pysr_to_torch, get_latest_file_matching, get_agent_constructor
 from common.env.env_constructor import get_env_constructor
 from cartpole.create_cartpole import create_cartpole
 from boxworld.create_box_world import create_bw_env
@@ -379,7 +379,9 @@ def load_learning_objects(logdir, ftdir, device):
     storage_valid = BasicStorage(observation_shape, args.n_steps, args.n_envs,
                                  device) if args.use_valid_env else None
 
-    return env, env_valid, logger, storage, storage_valid, hyperparameters, args
+    agent_cons = get_agent_constructor(args.algo)
+
+    return env, env_valid, logger, storage, storage_valid, hyperparameters, args, agent_cons
 
 
 def fine_tune(policy, logdir, symbdir, hp_override):
@@ -387,11 +389,11 @@ def fine_tune(policy, logdir, symbdir, hp_override):
     if not os.path.exists(ftdir):
         os.mkdir(ftdir)
 
-    env, env_valid, logger, storage, storage_valid, hyperparameters, args = load_learning_objects(logdir, ftdir,
+    env, env_valid, logger, storage, storage_valid, hyperparameters, args, AGENT = load_learning_objects(logdir, ftdir,
                                                                                                   policy.device)
     hyperparameters.update(hp_override)
     del hyperparameters["device"]
-    agent = PPOModel(env, policy, logger, storage, policy.device,
+    agent = AGENT(env, policy, logger, storage, policy.device,
                      args.num_checkpoints,
                      env_valid=env_valid,
                      storage_valid=storage_valid,
