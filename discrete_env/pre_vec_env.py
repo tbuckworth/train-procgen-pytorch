@@ -61,7 +61,7 @@ class PreVecEnv(Env):
     def step(self, action):
         action = np.array(action)
         assert action.size == self.n_envs, f"number of actions ({action.size}) must match n_envs ({self.n_envs})"
-        assert np.all(action<self.n_actions), f"action must be less than n_actions ({self.n_actions})"
+        assert np.all(action < self.n_actions), f"action must be less than n_actions ({self.n_actions})"
 
         self.transition_model(action)
 
