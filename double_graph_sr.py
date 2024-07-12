@@ -427,150 +427,12 @@ def run_double_graph_neurosymbolic_search(args):
 
         ns_agent = symbolic_agent_constructor(copy.deepcopy(policy), msg_torch, up_torch, v_msg_torch, v_up_torch)
 
-        rn_agent = RandomAgent(env.action_space.n)
-
-        ###################################
-
-        # msg_torch(mi).shape == policy.transition_model.messenger(mi).shape
-        # up_torch(ui).shape == policy.transition_model.updater(ui).shape
-        # v_torch(oi).shape == policy.value(oi).shape
-        # r_torch(sai).shape == policy.dr(sai)[0].shape
-        # done_torch(sai).shape == policy.dr(sai)[1].shape
-        # # compare_outputs(ns_agent.policy, policy, obs)
-        ###################################
-
         print(f"Neural Parameters: {n_params(nn_agent.policy)}")
         print(f"Symbol Parameters: {n_params(ns_agent.policy)}")
 
         _, env, _, test_env = load_nn_policy(logdir, 100)
 
         fine_tuned_policy = fine_tune(ns_agent.policy, logdir, symbdir, hp_override)
-        return
-        ns_score_train = test_agent_mean_reward(ns_agent, env, "NeuroSymb Train", rounds, seed)
-        nn_score_train = test_agent_mean_reward(nn_agent, env, "Neural    Train", rounds, seed)
-        rn_score_train = test_agent_mean_reward(rn_agent, env, "Random    Train", rounds, seed)
-
-        ns_score_test = test_agent_mean_reward(ns_agent, test_env, "NeuroSymb  Test", rounds, seed)
-        nn_score_test = test_agent_mean_reward(nn_agent, test_env, "Neural     Test", rounds, seed)
-        rn_score_test = test_agent_mean_reward(rn_agent, test_env, "Random     Test", rounds, seed)
-        return
-
-        best = msg_model.get_best()
-        if type(best) != list:
-            best = [best]
-        best_loss = np.mean([x.loss for x in best])
-        best_complexity = np.mean([x.complexity for x in best])
-        problem_name = re.search("logs/train/([^/]*)/", logdir).group(1)
-
-        df_values = {
-            "Random_score_Train": [rn_score_train],
-            "Neural_score_Train": [nn_score_train],
-            "NeuroSymb_score_Train": [ns_score_train],
-            "Neural_score_Test": [nn_score_test],
-            "Random_score_Test": [rn_score_test],
-            "NeuroSymb_score_Test": [ns_score_test],
-            "Elapsed_Seconds": [elapsed],
-            "Mean_Best_Loss": [best_loss],
-            "Mean_Complexity_of_Best": [best_complexity],
-            "Problem_name": [problem_name]
-        }
-
-        Y_hat = pysr_model.predict(X)
-        # TODO: Use agent methods to clean this all up:
-        if ns_agent.single_output:
-            if args.stochastic:
-                p = sigmoid(Y)
-                Y_act = sample_from_sigmoid(p)
-                p_hat = sigmoid(Y_hat)
-                Y_hat_act = sample_from_sigmoid(p)
-                ent = entropy_from_binary_prob(p)
-                ent_hat = entropy_from_binary_prob(p_hat)
-            else:
-                Y_act = Y
-                p = Y
-                p_hat = Y_hat
-                Y_hat_act = Y_hat
-                ent = np.zeros_like(p)
-                ent_hat = np.zeros_like(p_hat)
-        else:
-            if not args.stochastic:
-                p = softmax(save_Y)
-                ent = -(p * np.log(p)).sum(1)
-                Y_act = sample_numpy_probs(p)
-                p = p[np.arange(len(p)), Y_act]
-                Y_hat_act = ns_agent.pred_to_action(Y_hat)
-                p_hat = np.ones_like(Y)  # one_hot(Y_hat_act, save_Y.shape[-1])
-                ent_hat = np.zeros_like(Y_hat)
-            else:
-                p = softmax(Y)
-                p_hat = softmax(Y_hat)
-                Y_hat_act = sample_numpy_probs(p_hat)
-                ent_hat = -(p_hat * np.log(p_hat)).sum(1)
-                Y_act = sample_numpy_probs(p)
-                ent = -(p * np.log(p)).sum(1)
-
-        df_values["Entropy_Pred"] = [ent_hat.mean()]
-        df_values["Entropy"] = [ent.mean()]
-
-        shp = Y.shape
-        if len(shp) == 1:
-            shp = (shp[0], 1)
-
-        if not args.stochastic:
-            action_vector = actions[Y_act]
-        elif len(actions) == 2:
-            action_vector = np.repeat(actions[-1], shp[0])
-        else:
-            action_vector = np.repeat(actions, shp[0])
-
-        all_metrics = np.vstack(
-            (action_vector,
-             Y.reshape(np.prod(shp)),
-             np.tile(V, shp[-1]),
-             Y_hat.reshape(np.prod(shp)),
-             p.reshape(np.prod(shp)),
-             p_hat.reshape(np.prod(shp)),
-             np.tile(Y_act, shp[-1]),
-             np.tile(Y_hat_act, shp[-1]),
-             np.tile(ent, shp[-1]),
-             np.tile(ent_hat, shp[-1])
-             )
-        ).T
-        # all_metrics = np.vstack((Y, V, Y_hat, p, p_hat, Y_act, Y_hat_act)).T
-        columns = ["action", "logit", "value", "logit_estimate", "prob", "prob_estimate",
-                   "sampled_action", "sampled_action_estimate", "entropy", "entropy_estimate"]
-        if problem_name == "cartpole":
-            all_metrics = np.hstack((X, all_metrics))
-            state_features = [
-                "cart_position",
-                "cart_velocity",
-                "pole_angle",
-                "pole_angular_velocity",
-                "gravity",
-                "pole_length",
-                "cart_mass",
-                "pole_mass",
-                "force_magnitude",
-            ]
-            columns = state_features + columns
-        dfs = pd.DataFrame(all_metrics, columns=columns)
-        dfs.loc[:, dfs.columns != "action"] = dfs.loc[:, dfs.columns != "action"].astype(float)
-
-        if args.use_wandb:
-            wandb.log({k: df_values[k][0] for k in df_values.keys()})
-            # wandb_table = wandb.Table(
-            #     # make this work for multiple equations:
-            #     dataframe=pysr_model.equations_[["equation", "score", "loss", "complexity"]]
-            # )
-            wandb_metrics = wandb.Table(dataframe=dfs)
-            wandb.log(
-                # {#f"equations": wandb_table,
-                {f"metrics": wandb_metrics},
-            )
-
-        df = pd.DataFrame(df_values)
-        df.to_csv(os.path.join(symbdir, "results.csv"), mode="w", header=True, index=False)
-        send_full_report(df, logdir, symbdir, pysr_model, args, dfs)
 
 
 if __name__ == "__main__":
@@ -587,25 +449,4 @@ if __name__ == "__main__":
     run_double_graph_neurosymbolic_search(args)
 
 
-def load_sr_graph_agent(symbdir):
-    logdir = get_logdir_from_symbdir(symbdir)
-    policy, _, symbolic_agent_constructor, _ = load_nn_policy(logdir)
 
-    msgdir = get_pysr_dir(symbdir, "msg")
-    updir = get_pysr_dir(symbdir, "upd")
-    vdir = get_pysr_dir(symbdir, "v")
-    rdir = get_pysr_dir(symbdir, "r")
-    ddir = get_pysr_dir(symbdir, "done")
-
-    msg_torch = load_pysr_to_torch(msgdir)
-    up_torch = load_pysr_to_torch(updir)
-    v_torch = load_pysr_to_torch(vdir)
-    r_torch = load_pysr_to_torch(rdir)
-    done_torch = load_pysr_to_torch(ddir)
-
-    ns_agent = symbolic_agent_constructor(policy, msg_torch, up_torch, v_torch, r_torch, done_torch)
-    return logdir, ns_agent
-
-
-def get_pysr_dir(symbdir, sub_folder):
-    return get_latest_file_matching(r"\d*-\d", 1, folder=os.path.join(symbdir, sub_folder))
