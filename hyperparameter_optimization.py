@@ -403,7 +403,7 @@ def double_graph_symbreg_ft_hparams():
     project = get_project(fixed["env_name"], fixed["exp_name"])
     id_tag = fixed["wandb_tags"][0]
     while True:
-        optimize_hyperparams(bounds, fixed, project, id_tag, run_graph_hyperparameters)
+        optimize_hyperparams(bounds, fixed, project, id_tag, run_double_graph_hyperparameters)
 
 
 def cartpole_double_graph_hyperparams():
@@ -450,9 +450,9 @@ def cartpole_double_graph_hyperparams():
     while True:
         project = get_project(fixed["env_name"], fixed["exp_name"])
         id_tag = fixed["wandb_tags"][0]
-        optimize_hyperparams(bounds, fixed, project, id_tag, run_double_graph_hyperparameters)
+        optimize_hyperparams(bounds, fixed, project, id_tag, run_next_hyperparameters)
 
 if __name__ == "__main__":
-    cartpole_double_graph_hyperparams()
+    double_graph_symbreg_ft_hparams()
 
 
