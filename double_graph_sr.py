@@ -359,7 +359,6 @@ def one_hot(targets, nb_classes):
 
 
 def run_double_graph_neurosymbolic_search(args):
-    fixed_val = "value" in args.fixed_nn
     data_size = args.data_size
     logdir = args.logdir
     n_envs = args.n_envs
@@ -371,8 +370,6 @@ def run_double_graph_neurosymbolic_search(args):
         "learning_rate": args.learning_rate,
         "t_learning_rate": args.t_learning_rate,
     }
-    if fixed_val:
-        hp_override["val_epochs"] = 0
     if n_envs < 2:
         raise Exception("n_envs must be at least 2")
     symbdir, save_file = create_symb_dir_if_exists(logdir)
