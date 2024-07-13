@@ -204,7 +204,7 @@ def train_ppo(args):
     ## AGENT ##
     ###########
     print('INTIALIZING AGENT...')
-    get_agent_constructor(algo)
+    AGENT = get_agent_constructor(algo)
 
     def nan_hook(self, inp, output):
         if not isinstance(output, tuple):
