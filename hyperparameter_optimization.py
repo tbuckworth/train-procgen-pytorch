@@ -369,7 +369,7 @@ def double_graph_symbreg_ft_hparams():
         "seed": 6033,
 
         "wandb_tags": ["ftdg01", "double-graph", "graph-transition"],
-        "logdir": "...", #TODO
+        "logdir": "logs/train/cartpole/2024-07-11__04-48-25__seed_6033",
         "timeout_in_seconds": 3600 * 10,
         "n_envs": 2,
         "denoise": False,
