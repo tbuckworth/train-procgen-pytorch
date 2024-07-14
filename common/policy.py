@@ -359,10 +359,10 @@ class DoubleTransitionPolicy(nn.Module):
             rews.append(r)
 
         # adding discounted rewards
-        cum = torch.zeros((rews[0].shape))
+        cum = torch.zeros((rews[0].shape)).to(device=self.device)
         for r in rews[:-1]:
             cum = ((cum + r) * self.gamma).unsqueeze(-2).tile([self.action_size, 1])
-        cum = cum.to(device=self.device)
+        # cum = cum.to(device=self.device)
 
         vs = self.value_model(s)
         vs *= self.gamma ** self.n_rollouts
