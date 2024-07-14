@@ -143,7 +143,7 @@ def optimize_hyperparams(bounds, fixed, project="Cartpole", id_tag="sa_rew", run
 
     fh = fixed.copy()
     hparams.update(fh)
-    run_next(hparams)
+    # run_next(hparams)
     try:
         run_next(hparams)
     except Exception as e:
