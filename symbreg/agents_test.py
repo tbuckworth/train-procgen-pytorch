@@ -3,16 +3,20 @@ import unittest
 from unittest.mock import Mock
 
 import numpy as np
-from torch import device as torch_device
+
 
 from cartpole.create_cartpole import create_cartpole
+from common.env.env_constructor import get_env_constructor
 from common.env.procgen_wrappers import create_procgen_env
 from discrete_env.acrobot_pre_vec import create_acrobot
 from discrete_env.mountain_car_pre_vec import create_mountain_car
-from helper_local import DictToArgs, initialize_model, get_actions_from_all, \
-    map_actions_to_values
-from symbreg.agents import SymbolicAgent, NeuroSymbolicAgent
 
+from helper_local import DictToArgs, initialize_model, get_actions_from_all, \
+    map_actions_to_values, get_config, load_hparams_for_model
+
+from symbreg.agents import SymbolicAgent, NeuroSymbolicAgent, DoubleGraphSymbolicAgent
+import torch
+from torch import device as torch_device
 
 class MockRegressor:
     def __init__(self, n_out):
@@ -112,6 +116,24 @@ class TestNeuroSymbolicCoinrun(BaseAgentTester):
     def tests(self):
         self.run_all()
 
+
+class TestDoubleGraphAgent(unittest.TestCase):
+    def setUp(cls):
+        cls.env_cons = get_env_constructor("cartpole")
+        cls.symbolic_agent_constructor = DoubleGraphSymbolicAgent
+        cls.logdir = "logs/train/cartpole/2024-07-11__04-48-25__seed_6033"
+        cls.data_size = 1
+    def tests(self):
+        cfg = get_config(self.logdir)
+
+        hyperparameters, last_model = load_hparams_for_model(cfg["param_name"], self.logdir, n_envs=2)
+        env = self.env_cons(None, hyperparameters)
+        device = torch.device("cpu")
+        model, observation_shape, policy = initialize_model(device, env, hyperparameters)
+
+        nn_agent = self.symbolic_agent_constructor(policy)
+        obs = env.reset()
+        m_in, m_out, u_in, u_out, vm_in, vm_out, vu_in, vu_out = nn_agent.sample(obs)
 
 if __name__ == '__main__':
     unittest.main()
