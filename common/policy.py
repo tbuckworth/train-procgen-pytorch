@@ -331,6 +331,8 @@ class DoubleTransitionPolicy(nn.Module):
         s = state.detach().cpu().numpy()
         d = self.done_func(s)
         r = self.rew_func(s)
+        d = torch.FloatTensor(d).to(device=self.device),
+        r = torch.FloatTensor(r).to(device=self.device)
         return d, r
 
     def is_recurrent(self):
@@ -379,9 +381,6 @@ class DoubleTransitionPolicy(nn.Module):
         dones, rew = self.dr(sa)
         return dones, rew
 
-    def dones_rewards(self, s, a):
-        sa = torch.concat([s, a.unsqueeze(-1)], dim=-1)
-        return self.dr(sa)
 
     def states_with_all_actions(self, s):
         s1 = s.unsqueeze(-2).tile([self.action_size, 1])

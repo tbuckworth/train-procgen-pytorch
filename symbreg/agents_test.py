@@ -133,6 +133,7 @@ class TestDoubleGraphAgent(unittest.TestCase):
 
         nn_agent = self.symbolic_agent_constructor(policy)
         obs = env.reset()
+        nn_agent.forward(obs)
         m_in, m_out, u_in, u_out, vm_in, vm_out, vu_in, vu_out = nn_agent.sample(obs)
 
 if __name__ == '__main__':
