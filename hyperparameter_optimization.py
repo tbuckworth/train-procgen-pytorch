@@ -6,11 +6,11 @@ import pandas as pd
 from scipy.stats import ttest_ind_from_stats
 
 import wandb
-from create_sh_files import add_training_args_dict
+from create_sh_files import add_training_args_dict, add_symbreg_args_dict
 from double_graph_sr import run_double_graph_neurosymbolic_search
 from gp import bayesian_optimisation
 from graph_sr import fine_tune, load_sr_graph_agent, run_graph_neurosymbolic_search
-from helper_local import wandb_login, DictToArgs, get_project
+from helper_local import wandb_login, DictToArgs, get_project, add_symbreg_args
 from train import train_ppo
 
 
@@ -116,7 +116,7 @@ def run_graph_hyperparameters(hparams):
     run_graph_neurosymbolic_search(args)
 
 def run_double_graph_hyperparameters(hparams):
-    parser_dict = add_training_args_dict()
+    parser_dict = add_symbreg_args_dict()
     parser_dict.update(hparams)
     args = DictToArgs(parser_dict)
     run_double_graph_neurosymbolic_search(args)

@@ -23,8 +23,7 @@ from symbolic_regression import load_nn_policy
 from symbreg.agents import SymbolicAgent, NeuralAgent, RandomAgent, NeuroSymbolicAgent
 from symbreg.extra_mappings import get_extra_torch_mappings
 
-if os.name != "nt":
-    from pysr import PySRRegressor
+from pysr import PySRRegressor
 # Important! keep torch after pysr
 import torch
 from common.env.procgen_wrappers import create_env, create_procgen_env
@@ -112,7 +111,7 @@ def generate_data(agent, env, n):
     M_in, M_out, U_in, U_out, Vm_in, Vm_out, Vu_in, Vu_out = agent.sample(Obs)
     act = agent.forward(Obs)
     act[::2] = np.random.randint(0, env.action_space.n, len(act))[::2]
-    while len(Obs) < n:
+    while len(M_in) < n:
         observation, rew, done, info = env.step(act)
         m_in, m_out, u_in, u_out, vm_in, vm_out, vu_in, vu_out = agent.sample(observation)
         act = agent.forward(observation)
@@ -399,37 +398,36 @@ def run_double_graph_neurosymbolic_search(args):
     m_in, m_out, u_in, u_out, vm_in, vm_out, vu_in, vu_out = generate_data(nn_agent, env, int(data_size))
 
     print("data generated")
-    if os.name != "nt":
-        weights = None
-        msgdir, _ = create_symb_dir_if_exists(symbdir, "msg")
-        updir, _ = create_symb_dir_if_exists(symbdir, "upd")
-        vmdir, _ = create_symb_dir_if_exists(symbdir, "vm")
-        vudir, _ = create_symb_dir_if_exists(symbdir, "vu")
+    weights = None
+    msgdir, _ = create_symb_dir_if_exists(symbdir, "msg")
+    updir, _ = create_symb_dir_if_exists(symbdir, "upd")
+    vmdir, _ = create_symb_dir_if_exists(symbdir, "vm")
+    vudir, _ = create_symb_dir_if_exists(symbdir, "vu")
 
-        print("\nTransition Messenger:")
-        msg_model, _ = find_model(m_in, m_out, msgdir, save_file, weights, args)
-        print("\nTransition Updater:")
-        up_model, _ = find_model(u_in, u_out, updir, save_file, weights, args)
+    print("\nTransition Messenger:")
+    msg_model, _ = find_model(m_in, m_out, msgdir, save_file, weights, args)
+    print("\nTransition Updater:")
+    up_model, _ = find_model(u_in, u_out, updir, save_file, weights, args)
 
-        print("\nValue Messsenger:")
-        v_msg_model, _ = find_model(vm_in, vm_out, vmdir, save_file, weights, args)
-        print("\nValue Updater:")
-        v_up_model, _ = find_model(vu_in, vu_out, vudir, save_file, weights, args)
+    print("\nValue Messsenger:")
+    v_msg_model, _ = find_model(vm_in, vm_out, vmdir, save_file, weights, args)
+    print("\nValue Updater:")
+    v_up_model, _ = find_model(vu_in, vu_out, vudir, save_file, weights, args)
 
-        msg_torch = NBatchPySRTorch(msg_model.pytorch())
-        up_torch = NBatchPySRTorch(up_model.pytorch())
+    msg_torch = NBatchPySRTorch(msg_model.pytorch())
+    up_torch = NBatchPySRTorch(up_model.pytorch())
 
-        v_msg_torch = NBatchPySRTorch(v_msg_model.pytorch())
-        v_up_torch = NBatchPySRTorch(v_up_model.pytorch())
+    v_msg_torch = NBatchPySRTorch(v_msg_model.pytorch())
+    v_up_torch = NBatchPySRTorch(v_up_model.pytorch())
 
-        ns_agent = symbolic_agent_constructor(copy.deepcopy(policy), msg_torch, up_torch, v_msg_torch, v_up_torch)
+    ns_agent = symbolic_agent_constructor(copy.deepcopy(policy), msg_torch, up_torch, v_msg_torch, v_up_torch)
 
-        print(f"Neural Parameters: {n_params(nn_agent.policy)}")
-        print(f"Symbol Parameters: {n_params(ns_agent.policy)}")
+    print(f"Neural Parameters: {n_params(nn_agent.policy)}")
+    print(f"Symbol Parameters: {n_params(ns_agent.policy)}")
 
-        _, env, _, test_env = load_nn_policy(logdir, 100)
+    _, env, _, test_env = load_nn_policy(logdir, 100)
 
-        fine_tuned_policy = fine_tune(ns_agent.policy, logdir, symbdir, hp_override)
+    fine_tuned_policy = fine_tune(ns_agent.policy, logdir, symbdir, hp_override)
 
 
 if __name__ == "__main__":
@@ -439,6 +437,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     print(f"\nBinary Ops:\n{' '.join(args.binary_operators)}\n")
+
+    args.logdir = "logs/train/cartpole/2024-07-11__04-48-25__seed_6033"
 
     if args.logdir is None:
         raise Exception("No oracle provided. Please provide logdir argument")
