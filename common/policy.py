@@ -373,7 +373,11 @@ class DoubleTransitionPolicy(nn.Module):
             # vs = vs.max(-1)[0]
 
         log_probs = F.log_softmax(vs / self.temperature, dim=1)
+        if log_probs.isnan().any():
+            print("check")
         p = Categorical(logits=log_probs)
+        if p.probs.isnan().any():
+            print("check")
         return p, v
 
     def all_dones_rewards(self, s):
