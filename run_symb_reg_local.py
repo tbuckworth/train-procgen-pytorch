@@ -10,6 +10,7 @@ from matplotlib import pyplot as plt
 
 from cartpole.create_cartpole import create_cartpole_env_pre_vec
 from common.env.env_constructor import get_env_constructor
+from double_graph_sr import run_double_graph_neurosymbolic_search
 from graph_sr import run_graph_neurosymbolic_search
 
 if os.name != "nt":
@@ -626,8 +627,8 @@ def run_symb_reg_local():
 
     args = parser.parse_args()
 
-    args.data_size = 10000
-    args.iterations = 20
+    args.data_size = 1000
+    args.iterations = 1
     # args.logdir = "logs/train/boxworld/boxworld/2024-04-08__12-29-17__seed_6033"
     # args.logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
     # args.logdir = "logs/train/coinrun/coinrun-hparams/2024-03-27__18-20-55__seed_6033"
@@ -643,28 +644,32 @@ def run_symb_reg_local():
 
     args.logdir = "logs/train/cartpole/test/2024-06-08__00-54-02__seed_6033" #home pc graph-transition
     args.logdir = "logs/train/cartpole/test/2024-06-11__10-31-41__seed_6033" #vol/bitbucket graph-transition
+    args.logdir = "logs/train/cartpole/2024-07-11__04-48-25__seed_6033"
     args.n_envs = 20
     args.rounds = 300
     args.binary_operators = ["+", "-", "*", "greater", "/"]
     args.unary_operators = ["sin", "relu", "log", "exp", "sign", "sqrt", "square"]
 
     args.denoise = False
+    args.val_epochs = 3
+    args.dyn_epochs = 3
+    args.learning_rate = 1e-5
+    args.t_learning_rate = 1e-5
+    args.temperature = 0.00545
+    args.device = "cpu"
     args.use_wandb = True
-    args.wandb_tags = ["test"]
+    args.wandb_tags = ["test", "ftdg01"]
     args.weight_metric = None
     args.wandb_name = "manual"
-    args.fixed_nn = ["value"]
+    # args.fixed_nn = ["value"]
     # args.populations = 24
     args.model_selection = "accuracy"
     args.ncycles_per_iteration = 4000
     args.seed = 0
     args.bumper = True
     args.loss_function = "mse"
-    run_graph_neurosymbolic_search(args)
-    return
-    for stoch in [True]:
-        args.stochastic = stoch
-        run_neurosymbolic_search(args)
+    run_double_graph_neurosymbolic_search(args)
+
 
 
 if __name__ == "__main__":
