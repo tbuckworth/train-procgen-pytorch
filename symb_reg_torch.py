@@ -1,4 +1,5 @@
 import functools as ft
+from abc import ABC
 
 import numpy as np
 import torch
@@ -11,6 +12,91 @@ def _reduce(fn):
     return fn_
 
 
+input_types = {
+    "*": ["float", "int", "bool"],
+    "+": ["float", "int", "bool"],
+    "/": ["float", "int", "bool"],
+    "max": ["float", "int", "bool"],
+    "min": ["float", "int", "bool"],
+    "mod": ["int", "bool"],
+    "heaviside": ["float", "int", "bool"],
+    "==": ["float", "int", "bool"],
+    "!=": ["float", "int", "bool"],
+    ">": ["float", "int", "bool"],
+    "<": ["float", "int", "bool"],
+    "<=": ["float", "int", "bool"],
+    ">=": ["float", "int", "bool"],
+    r"/\\": ["bool"],
+    r"\/": ["bool"],
+    "!": ["bool"],
+    "abs": ["float", "int", "bool"],
+    "sign": ["float", "int", "bool"],
+    # Note: May raise error for ints.
+    "ceil": ["float"],
+    "floor": ["float"],
+    "log": ["float", "int"],
+    "exp": ["float", "int", "bool"],
+    "sqrt": ["float", "int", "bool"],
+    "cos": ["float", "int", "bool"],
+    "acos": ["float", "int", "bool"],
+    "sin": ["float", "int", "bool"],
+    "asin": ["float", "int", "bool"],
+    "tan": ["float", "int", "bool"],
+    "atan": ["float", "int", "bool"],
+    "atan2": ["float", "int", "bool"],
+    # Note: May give NaN for complex results.
+    "cosh": ["float", "int", "bool"],
+    "acosh": ["float", "int", "bool"],
+    "sinh": ["float", "int", "bool"],
+    "asinh": ["float", "int", "bool"],
+    "tanh": ["float", "int", "bool"],
+    "atanh": ["float", "int", "bool"],
+    "pow": ["float", "int", "bool"],
+}
+
+output_types = {
+    "*": "input",
+    "+": "input",
+    "/": "float",
+    "max": "input",
+    "min": "input",
+    "mod": "int",
+    "heaviside": "input",
+    "==": "bool",
+    "!=": "bool",
+    ">": "bool",
+    "<": "bool",
+    "<=": "bool",
+    ">=": "bool",
+    r"/\\": "bool",
+    r"\/": "bool",
+    "!": "bool",
+    "abs": "input",
+    "sign": "int",
+    # Note: May raise error for ints.
+    "ceil": "int",
+    "floor": "int",
+    "log": "float",
+    "exp": "float",
+    "sqrt": "float",
+    "cos": "float",
+    "acos": "float",
+    "sin": "float",
+    "asin": "float",
+    "tan": "float",
+    "atan": "float",
+    "atan2": "float",
+    # Note: May give NaN for complex results.
+    "cosh": "float",
+    "acosh": "float",
+    "sinh": "float",
+    "asinh": "float",
+    "tanh": "float",
+    "atanh": "float",
+    "pow": "input",
+}
+
+
 binary_functions = {
     "*": _reduce(torch.mul),
     "+": _reduce(torch.add),
@@ -19,10 +105,12 @@ binary_functions = {
     "min": torch.min,
     "mod": torch.remainder,
     "heaviside": torch.heaviside,
+    "atan2": torch.atan2,
+    "pow": torch.pow,
 }
 
 binary_booleans = {
-    "=": torch.eq,
+    "==": torch.eq,
     "!=": torch.ne,
     ">": torch.gt,
     "<": torch.lt,
@@ -48,7 +136,6 @@ unary_functions = {
     "asin": torch.asin,
     "tan": torch.tan,
     "atan": torch.atan,
-    "atan2": torch.atan2,
     # Note: May give NaN for complex results.
     "cosh": torch.cosh,
     "acosh": torch.acosh,
@@ -56,7 +143,6 @@ unary_functions = {
     "asinh": torch.asinh,
     "tanh": torch.tanh,
     "atanh": torch.atanh,
-    "pow": torch.pow,
     # "real": torch.real,
     # "imag": torch.imag,
     # "angle": torch.angle,
@@ -88,10 +174,23 @@ constants = {
 #         sympy.core.numbers.ComplexInfinity: inf,
 #     }
 
+class Node(ABC):
+    def __init__(self):
+        self.value = self.evaluate()
+
+    def evaluate(self):
+        raise NotImplementedError
+
+    def get_name(self):
+        raise NotImplementedError
+
 class BaseNode:
     def __init__(self, x, name):
         self.x = x
         self.name = name
+        self.input_type = None
+        self.output_type = "float"
+        self.value = self.evaluate()
 
     def evaluate(self):
         return self.x
@@ -105,6 +204,12 @@ class UnaryNode:
         self.func = func
         self.f = unary_functions.get(func)
         self.x1 = x1
+        self.input_type = x1.output_type
+        self.output_type = output_types[func]
+        if self.output_type == "input":
+            self.output_type = self.input_type
+        self.value = self.evaluate()
+
 
     def evaluate(self, x1=None):
         if x1 is None:
@@ -121,10 +226,14 @@ def check_style(func):
     return "pre"
 
 
-def get_output_type(func):
-    #TODO: get this working
-    return torch.FloatType
-
+def get_output_type(xs):
+    all_types = [x.output_type for x in xs]
+    if "float" in all_types:
+        return "float"
+    if "int" in all_types:
+        return "int"
+    if "bool" in all_types:
+        return "bool"
 
 
 class BinaryNode:
@@ -134,7 +243,11 @@ class BinaryNode:
         self.f = binary_functions.get(func)
         self.x1 = x1
         self.x2 = x2
-        self.output_type = get_output_type(func)
+        self.input_type = get_output_type([x1, x2])
+        self.output_type = output_types[func]
+        if self.output_type == "input":
+            self.output_type = self.input_type
+        self.value = self.evaluate()
 
     def evaluate(self, x1=None, x2=None):
         if x1 is None:
@@ -150,40 +263,59 @@ class BinaryNode:
             return f"{self.x1.get_name()} {self.func} {self.x2.get_name()}"
         raise NotImplementedError("style must be one of (mid,pre)")
 
-def combine_bin_funcs(base_vars, func_list, node_cons, max_funcs):
-    #TODO: only pick inputs of the right type
-    #   add in constants
-    max_index = len(func_list) * len(base_vars) ** 2
+
+def combine_funcs(base_vars, func_list, node_cons, max_funcs, n_inputs=1):
+    max_index = len(func_list) * len(base_vars) ** n_inputs
     n_funcs = min(np.random.randint(max_index), max_funcs)
     vars = []
     for _ in range(n_funcs):
         key = np.random.choice(np.array(list(func_list.keys())))
-        x1 = base_vars[np.random.randint(len(base_vars))]
-        x2 = base_vars[np.random.randint(len(base_vars))]
-        vars += [node_cons(key, x1, x2)]
+        temp_vars = [v for v in base_vars if v.output_type in input_types[key]]
+        if len(temp_vars) == 0:
+            continue
+        xs = [temp_vars[np.random.randint(len(temp_vars))] for _ in range(n_inputs)]
+        vars += [node_cons(key, *xs)]
     return vars
 
-def combine_funcs(base_vars, func_list, node_cons):
-    max_index = len(func_list) * len(base_vars)
-    n_funcs = np.random.randint(max_index)
-    indices = np.random.randint(max_index, size=n_funcs)
-    ind = np.mod(indices, len(func_list))
-    jnd = np.floor(indices / len(func_list))
-    keys = np.array(list(func_list.keys()))[ind]
-    return [node_cons(key, base_vars[int(jnd[i])]) for i, key in enumerate(keys)]
+# def combine_un_funcs(base_vars, func_list, node_cons, max_funcs):
+#     max_index = len(func_list) * len(base_vars)
+#     n_funcs = min(np.random.randint(max_index), max_funcs)
+#     vars = []
+#     for _ in range(n_funcs):
+#         key = np.random.choice(np.array(list(func_list.keys())))
+#         temp_vars = [v for v in base_vars if v.output_type in input_types[key]]
+#         x1 = temp_vars[np.random.randint(len(temp_vars))]
+#         vars += [node_cons(key, x1)]
+#     return vars
+#
+#
+#
+# def combine_funcs(base_vars, func_list, node_cons):
+#     max_index = len(func_list) * len(base_vars)
+#     n_funcs = np.random.randint(max_index)
+#     indices = np.random.randint(max_index, size=n_funcs)
+#     ind = np.mod(indices, len(func_list))
+#     jnd = np.floor(indices / len(func_list))
+#     keys = np.array(list(func_list.keys()))[ind]
+#     return [node_cons(key, base_vars[int(jnd[i])]) for i, key in enumerate(keys)]
 
 
 class FunctionTree:
     def __init__(self, x, y):
+        self.rounds = 2
         self.max_active_vars = 100
         in_vars = torch.split(x, 1, 1)
         self.base_vars = [BaseNode(z, f"x{i}") for i, z in enumerate(in_vars)]
         self.all_vars = self.base_vars
-        self.all_vars += combine_funcs(self.all_vars, unary_functions, UnaryNode)
-        self.all_vars += combine_bin_funcs(self.all_vars, binary_functions, BinaryNode, max_funcs=100)
-
+        for i in range(self.rounds):
+            self.all_vars += combine_funcs(self.all_vars, unary_functions, UnaryNode, max_funcs=100, n_inputs=1)
+            self.all_vars += combine_funcs(self.all_vars, binary_functions, BinaryNode, max_funcs=100, n_inputs=2)
+        self.print_everything()
+        print(len(self.all_vars))
         return
 
+    def print_everything(self):
+        _ = [print(v.get_name()) for v in self.all_vars]
 
 def create_func(x, y):
     in_vars = torch.split(x, 1, 1)
