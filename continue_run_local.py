@@ -51,19 +51,22 @@ if __name__ == '__main__':
     # args.real_procgen = True
     # # args.no-mirror_env =
     logdir = "logs/train/acrobot/test/2024-04-29__18-42-26__seed_40"
-    model_file = latest_model_path(logdir)
+    logdir = "logs/train/cartpole/2024-07-11__04-48-25__seed_6033"
+    # model_file = latest_model_path(logdir)
     cfg = get_config(logdir)
     # hp_file = os.path.join(logdir, "hyperparameters.npy")
     # if os.path.exists(hp_file):
     #     hyperparameters = np.load(hp_file, allow_pickle='TRUE').item()
-    cfg["model_file"] = model_file
-    cfg["device"] = "cpu"
+    # cfg["model_file"] = model_file
+    # cfg["device"] = "cpu"
 
     # May need to change this:
-    exclusions = ["algo", "epoch", "lmbda", "grad_clip_norm", "eps_clip", "value_coef", "normalize_adv", "use_gae",
-                  "architecture", "recurrent",
-                  "no-recurrent", "depth", "latent_size", "mid_weight"]
-    cfg = {k: v for k, v in cfg.items() if k not in exclusions}
+    # exclusions = ["algo", "epoch", "lmbda", "grad_clip_norm", "eps_clip", "value_coef", "normalize_adv", "use_gae",
+    #               "architecture", "recurrent",
+    #               "no-recurrent", "depth", "latent_size", "mid_weight"]
+    # cfg = {k: v for k, v in cfg.items() if k not in exclusions}
+
+    cfg["num_timesteps"] = int(2e8)
 
     args = DictToArgs(cfg)
 
