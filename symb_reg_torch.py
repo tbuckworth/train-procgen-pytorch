@@ -186,9 +186,9 @@ class Node(ABC):
     def compute_loss(self, loss_fn, y):
         with torch.no_grad():
             self.loss = loss_fn(y, self.value).cpu().numpy()
-        np.append(self.loss, self.losses)
-        [np.append(self.loss, x.losses) for x in self.super_nodes]
-
+        self.losses = np.append(self.loss, self.losses)
+        for n in self.super_nodes:
+            n.losses = np.append(self.loss, n.losses)
         return self.loss
 
     def evaluate(self):
