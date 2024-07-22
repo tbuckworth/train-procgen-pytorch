@@ -5,6 +5,8 @@ import numpy as np
 import torch
 from matplotlib import pyplot as plt
 
+from helper_local import softmax
+
 
 def _reduce(fn):
     def fn_(*args):
@@ -181,14 +183,16 @@ class Node(ABC):
         if self.output_type == "input":
             self.output_type = self.input_type
         self.value = self.evaluate()
-        self.losses = np.array([])
+        self.min_loss = np.inf
 
     def compute_loss(self, loss_fn, y):
         with torch.no_grad():
             self.loss = loss_fn(y, self.value).cpu().numpy()
-        self.losses = np.append(self.loss, self.losses)
+        self.min_loss = np.min([self.loss, self.min_loss])
+        if np.isnan(self.loss) or np.isinf(self.loss):
+            return self.loss
         for n in self.super_nodes:
-            n.losses = np.append(self.loss, n.losses)
+            n.min_loss = np.min([self.loss, n.min_loss])
         return self.loss
 
     def evaluate(self):
@@ -324,11 +328,12 @@ def combine_funcs(base_vars, loss_fn, y, max_funcs, n_inputs=1):
 
 
 class FunctionTree:
-    def __init__(self, x, y, loss_fn):
+    def __init__(self, x, y, loss_fn, pop_size):
         self.loss_fn = loss_fn
         self.rounds = 2
         self.max_active_vars = 100
         in_vars = torch.split(x, 1, 1)
+        self.n_base = len(in_vars)
         self.base_vars = [BaseNode(z, f"x{i}") for i, z in enumerate(in_vars)]
         _ = [b.compute_loss(loss_fn, y) for b in self.base_vars]
         self.all_vars = self.base_vars
@@ -336,12 +341,24 @@ class FunctionTree:
             self.all_vars += combine_funcs(self.all_vars, loss_fn, y, max_funcs=100, n_inputs=1)
             self.all_vars += combine_funcs(self.all_vars, loss_fn, y, max_funcs=100, n_inputs=2)
         losses = np.array([x.loss for x in self.all_vars])
-        plt.hist(losses)
+        min_losses = np.array([x.min_loss for x in self.all_vars])
+        ind = self.filter_population(min_losses, pop_size)
+        p = softmax(1/np.sqrt(min_losses))
+        plt.scatter(p, min_losses)
         plt.show()
         return
 
     def print_everything(self):
         _ = [print(v.get_name()) for v in self.all_vars]
+
+    def filter_population(self, min_losses, pop_size):
+        min_losses = min_losses[self.n_base:]
+        if pop_size < len(min_losses):
+            return np.full_like(min_losses, True)
+        p = min_losses/np.sum(min_losses)*pop_size#/len(min_losses)
+        #TODO: figure this out
+        return np.random.random((p.shape)) < p
+
 
 def create_func(x, y):
     in_vars = torch.split(x, 1, 1)
@@ -351,5 +368,5 @@ def create_func(x, y):
     u = UnaryNode("exp", x0)
     b = BinaryNode("*", u, x2)
     print(b.get_name())
-    self = FunctionTree(x, y, torch.nn.MSELoss())
+    self = FunctionTree(x, y, torch.nn.MSELoss(), pop_size=200)
     return
