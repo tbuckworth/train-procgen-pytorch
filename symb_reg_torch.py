@@ -3,6 +3,7 @@ from abc import ABC
 
 import numpy as np
 import torch
+from matplotlib import pyplot as plt
 
 
 def _reduce(fn):
@@ -175,8 +176,20 @@ constants = {
 #     }
 
 class Node(ABC):
+    loss = None
     def __init__(self):
+        if self.output_type == "input":
+            self.output_type = self.input_type
         self.value = self.evaluate()
+        self.losses = np.array([])
+
+    def compute_loss(self, loss_fn, y):
+        with torch.no_grad():
+            self.loss = loss_fn(y, self.value).cpu().numpy()
+        np.append(self.loss, self.losses)
+        [np.append(self.loss, x.losses) for x in self.super_nodes]
+
+        return self.loss
 
     def evaluate(self):
         raise NotImplementedError
@@ -184,13 +197,14 @@ class Node(ABC):
     def get_name(self):
         raise NotImplementedError
 
-class BaseNode:
+class BaseNode(Node):
     def __init__(self, x, name):
         self.x = x
         self.name = name
         self.input_type = None
         self.output_type = "float"
-        self.value = self.evaluate()
+        self.super_nodes = []
+        super().__init__()
 
     def evaluate(self):
         return self.x
@@ -199,16 +213,15 @@ class BaseNode:
         return self.name
 
 
-class UnaryNode:
+class UnaryNode(Node):
     def __init__(self, func, x1):
         self.func = func
         self.f = unary_functions.get(func)
         self.x1 = x1
+        self.super_nodes = [self.x1]
         self.input_type = x1.output_type
         self.output_type = output_types[func]
-        if self.output_type == "input":
-            self.output_type = self.input_type
-        self.value = self.evaluate()
+        super().__init__()
 
 
     def evaluate(self, x1=None):
@@ -236,18 +249,17 @@ def get_output_type(xs):
         return "bool"
 
 
-class BinaryNode:
+class BinaryNode(Node):
     def __init__(self, func, x1, x2):
         self.func = func
         self.style = check_style(func)
         self.f = binary_functions.get(func)
         self.x1 = x1
         self.x2 = x2
+        self.super_nodes = [self.x1, self.x2]
         self.input_type = get_output_type([x1, x2])
         self.output_type = output_types[func]
-        if self.output_type == "input":
-            self.output_type = self.input_type
-        self.value = self.evaluate()
+        super().__init__()
 
     def evaluate(self, x1=None, x2=None):
         if x1 is None:
@@ -264,7 +276,15 @@ class BinaryNode:
         raise NotImplementedError("style must be one of (mid,pre)")
 
 
-def combine_funcs(base_vars, func_list, node_cons, max_funcs, n_inputs=1):
+def combine_funcs(base_vars, loss_fn, y, max_funcs, n_inputs=1):
+    if n_inputs == 1:
+        node_cons = UnaryNode
+        func_list = unary_functions
+    elif n_inputs == 2:
+        node_cons = BinaryNode
+        func_list = binary_functions
+    else:
+        raise NotImplementedError("n_inputs must be 1 or 2")
     max_index = len(func_list) * len(base_vars) ** n_inputs
     n_funcs = min(np.random.randint(max_index), max_funcs)
     vars = []
@@ -275,6 +295,9 @@ def combine_funcs(base_vars, func_list, node_cons, max_funcs, n_inputs=1):
             continue
         xs = [temp_vars[np.random.randint(len(temp_vars))] for _ in range(n_inputs)]
         vars += [node_cons(key, *xs)]
+        loss = vars[-1].compute_loss(loss_fn, y)
+        if np.isnan(loss) or np.isinf(loss):
+            vars.pop()
     return vars
 
 # def combine_un_funcs(base_vars, func_list, node_cons, max_funcs):
@@ -301,17 +324,20 @@ def combine_funcs(base_vars, func_list, node_cons, max_funcs, n_inputs=1):
 
 
 class FunctionTree:
-    def __init__(self, x, y):
+    def __init__(self, x, y, loss_fn):
+        self.loss_fn = loss_fn
         self.rounds = 2
         self.max_active_vars = 100
         in_vars = torch.split(x, 1, 1)
         self.base_vars = [BaseNode(z, f"x{i}") for i, z in enumerate(in_vars)]
+        _ = [b.compute_loss(loss_fn, y) for b in self.base_vars]
         self.all_vars = self.base_vars
         for i in range(self.rounds):
-            self.all_vars += combine_funcs(self.all_vars, unary_functions, UnaryNode, max_funcs=100, n_inputs=1)
-            self.all_vars += combine_funcs(self.all_vars, binary_functions, BinaryNode, max_funcs=100, n_inputs=2)
-        self.print_everything()
-        print(len(self.all_vars))
+            self.all_vars += combine_funcs(self.all_vars, loss_fn, y, max_funcs=100, n_inputs=1)
+            self.all_vars += combine_funcs(self.all_vars, loss_fn, y, max_funcs=100, n_inputs=2)
+        losses = np.array([x.loss for x in self.all_vars])
+        plt.hist(losses)
+        plt.show()
         return
 
     def print_everything(self):
@@ -325,5 +351,5 @@ def create_func(x, y):
     u = UnaryNode("exp", x0)
     b = BinaryNode("*", u, x2)
     print(b.get_name())
-    self = FunctionTree(x, y)
+    self = FunctionTree(x, y, torch.nn.MSELoss())
     return
