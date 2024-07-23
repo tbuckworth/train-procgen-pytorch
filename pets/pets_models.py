@@ -134,7 +134,7 @@ class GraphTransitionPets(Ensemble):
         #     )
         # self.hidden_layers = nn.Sequential(*hidden_layers)
 
-        self.hidden_layers = GraphTransitionModel(self.create_linear_layer, self.in_size, num_layers, hid_size, 1, self.device)
+        self.hidden_layers = GraphTransitionModel(create_linear_layer, self.in_size, num_layers, hid_size, 1, self.device)
 
         if deterministic:
             self.mean_and_logvar = create_linear_layer(hid_size, out_size)
