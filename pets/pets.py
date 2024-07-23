@@ -13,6 +13,7 @@ import mbrl.models as models
 import mbrl.planning as planning
 import mbrl.util.common as common_util
 import mbrl.util as util
+import mbrl.models
 
 mpl.rcParams.update({"font.size": 16})
 
@@ -46,9 +47,10 @@ def run():
     cfg_dict = {
         # dynamics model configuration
         "dynamics_model": {
-            "_target_": "mbrl.models.GaussianMLP",
+            # "_target_": "mbrl.models.GaussianMLP",
+            "_target_": "pets_models.GraphTransitionPets",
             "device": device,
-            "num_layers": 3,
+            "num_layers": 4,
             "ensemble_size": ensemble_size,
             "hid_size": 200,
             "in_size": "???",
@@ -109,7 +111,7 @@ def run():
             "_target_": "mbrl.planning.CEMOptimizer",
             "num_iterations": 5,
             "elite_ratio": 0.1,
-            "population_size": 500,
+            "population_size": 100,
             "alpha": 0.1,
             "device": device,
             "lower_bound": "???",
@@ -184,14 +186,20 @@ def run():
 
         all_rewards.append(total_reward)
 
-    fig, ax = plt.subplots(2, 1, figsize=(12, 10))
+    fig, ax = plt.subplots(3, 1, figsize=(12, 10))
     ax[0].plot(train_losses)
     ax[0].set_xlabel("Total training epochs")
     ax[0].set_ylabel("Training loss (avg. NLL)")
     ax[1].plot(val_scores)
     ax[1].set_xlabel("Total training epochs")
     ax[1].set_ylabel("Validation score (avg. MSE)")
+    ax[2].plot(all_rewards)
+    ax[2].set_xlabel("Total training epochs")
+    ax[2].set_ylabel("Validation score (avg. MSE)")
+
     plt.show()
+
+    print("nothing")
 
 
 
