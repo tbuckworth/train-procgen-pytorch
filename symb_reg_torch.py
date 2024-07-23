@@ -100,7 +100,6 @@ output_types = {
     "pow": "input",
 }
 
-
 binary_functions = {
     "*": _reduce(torch.mul),
     "+": _reduce(torch.add),
@@ -180,6 +179,7 @@ constants = {
 
 class Node(ABC):
     loss = None
+
     def __init__(self):
         if self.output_type == "input":
             self.output_type = self.input_type
@@ -202,6 +202,7 @@ class Node(ABC):
     def get_name(self):
         raise NotImplementedError
 
+
 class BaseNode(Node):
     def __init__(self, x, name, ind):
         self.ind = ind
@@ -211,6 +212,7 @@ class BaseNode(Node):
         self.output_type = "float"
         self.super_nodes = []
         self.complexity = 0
+        self.birth = np.inf
         super().__init__()
 
     def forward(self, x):
@@ -224,7 +226,8 @@ class BaseNode(Node):
 
 
 class UnaryNode(Node):
-    def __init__(self, func, x1):
+    def __init__(self, func, date, x1):
+        self.birth = date
         self.func = func
         self.f = unary_functions.get(func)
         self.x1 = x1
@@ -263,7 +266,8 @@ def get_output_type(xs):
 
 
 class BinaryNode(Node):
-    def __init__(self, func, x1, x2):
+    def __init__(self, func, date, x1, x2):
+        self.birth = date
         self.func = func
         self.style = check_style(func)
         self.f = binary_functions.get(func)
@@ -292,6 +296,7 @@ class BinaryNode(Node):
             return f"{self.x1.get_name()} {self.func} {self.x2.get_name()}"
         raise NotImplementedError("style must be one of (mid,pre)")
 
+
 class SymbolicFunction(nn.Module):
     def __init__(self, node):
         super().__init__()
@@ -302,7 +307,7 @@ class SymbolicFunction(nn.Module):
         return self.node.forward(x)
 
 
-def combine_funcs(base_vars, loss_fn, y, max_funcs, n_inputs=1, max_complexity=20):
+def combine_funcs(base_vars, loss_fn, y, date, max_funcs, n_inputs=1, max_complexity=20):
     if n_inputs == 1:
         node_cons = UnaryNode
         func_list = unary_functions
@@ -319,12 +324,17 @@ def combine_funcs(base_vars, loss_fn, y, max_funcs, n_inputs=1, max_complexity=2
         temp_vars = [v for v in base_vars if v.output_type in input_types[key] and v.complexity < max_complexity]
         if len(temp_vars) == 0:
             continue
-        xs = [temp_vars[np.random.randint(len(temp_vars))] for _ in range(n_inputs)]
-        vars += [node_cons(key, *xs)]
+        complexity = np.array([v.complexity for v in temp_vars])
+        r = complexity.max() - complexity + 1
+        p = r / r.sum()
+        xs = np.random.choice(temp_vars, n_inputs, p=p).tolist()
+        # xs = [temp_vars[np.random.randint(len(temp_vars))] for _ in range(n_inputs)]
+        vars += [node_cons(key, date, *xs)]
         loss = vars[-1].compute_loss(loss_fn, y)
         if np.isnan(loss) or np.isinf(loss):
             vars.pop()
     return vars
+
 
 # def combine_un_funcs(base_vars, func_list, node_cons, max_funcs):
 #     max_index = len(func_list) * len(base_vars)
@@ -362,11 +372,13 @@ class FunctionTree:
         _ = [b.compute_loss(loss_fn, y) for b in self.base_vars]
         self.all_vars = self.base_vars
         self.loss = np.array([])
+        self.date = 0
 
     def evolve(self, pop_size):
         for i in range(self.rounds):
-            self.all_vars += combine_funcs(self.all_vars, self.loss_fn, self.y, max_funcs=100, n_inputs=1)
-            self.all_vars += combine_funcs(self.all_vars, self.loss_fn, self.y, max_funcs=100, n_inputs=2)
+            self.all_vars += combine_funcs(self.all_vars, self.loss_fn, self.y, self.date, max_funcs=100, n_inputs=1)
+            self.all_vars += combine_funcs(self.all_vars, self.loss_fn, self.y, self.date, max_funcs=100, n_inputs=2)
+        self.date += 1
         min_losses = np.array([x.min_loss for x in self.all_vars])
         complexity = np.array([x.complexity for x in self.all_vars])
         ind = self.filter_population(min_losses, complexity, pop_size)
@@ -385,7 +397,6 @@ class FunctionTree:
         model = SymbolicFunction(best_node)
         return model
 
-
     def print_everything(self):
         _ = [print(v.get_name()) for v in self.all_vars]
 
@@ -394,16 +405,19 @@ class FunctionTree:
             return np.full_like(min_losses, True)
         min_losses = min_losses[self.n_base:]
         # Rank descending from 1:
-        r = (-min_losses).argsort().argsort()+1
+        r = (-min_losses).argsort().argsort() + 1
         r -= complexity[self.n_base:]
         # Probability of survival is proportional to rank
         # and scaled to target pop_size
-        p = r/np.sum(r)*(pop_size-20)
+        p = r / np.sum(r) * (pop_size - 20)
         # Best 20 are kept with 100% prob
-        p[r > np.max(r)-20] = 1.0
-        base_ind = np.full((self.n_base,),True)
+        p[r > np.max(r) - 20] = 1.0
+        base_ind = np.full((self.n_base,), True)
         rem_ind = np.random.random((p.shape)) < p
-        return np.concatenate((base_ind, rem_ind))
+        oldest = np.argmin([x.birth for x in self.all_vars])
+        full_index = np.concatenate((base_ind, rem_ind))
+        full_index[oldest] = False
+        return full_index
 
 
 def create_func(x, y):
@@ -415,8 +429,8 @@ def create_func(x, y):
     b = BinaryNode("*", u, x2)
     print(b.get_name())
 
-def run_tree(x,y, pop_size, epochs):
+
+def run_tree(x, y, pop_size, epochs):
     tree = FunctionTree(x, y, torch.nn.MSELoss())
     tree.train(pop_size=pop_size, epochs=epochs)
     return tree
-
