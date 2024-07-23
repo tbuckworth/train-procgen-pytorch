@@ -58,7 +58,7 @@ def get_wandb_performance(hparams, project="Cartpole", id_tag="sa_rew", entity="
     # hp = [h for h in hp if h not in ["config.wandb_tags"]]
     # hp = [h for h in hp if len(df[h].unique()) > 1]
 
-    hp = [f"config.{h}" for h in hparams]
+    hp = [f"config.{h}" for h in hparams]# if f"config.{h}" in df.columns]
     dfn = df[hp].select_dtypes(include='number')
     return dfn, y
 
@@ -367,7 +367,7 @@ def double_graph_symbreg_ft_hparams():
         "param_name": 'double-graph',
         "device": "gpu",
         "seed": 6033,
-
+        "maxsize": 40,
         "wandb_tags": ["ftdg01", "double-graph", "graph-transition"],
         "logdir": "logs/train/cartpole/2024-07-11__04-48-25__seed_6033",
         "timeout_in_seconds": 3600 * 10,
@@ -395,7 +395,7 @@ def double_graph_symbreg_ft_hparams():
         "dyn_epochs": [1, 10],
         "learning_rate": [1e-8, 1e-3],
         "t_learning_rate": [1e-8, 1e-3],
-        "maxsize": [20, 50],
+        #"maxsize": [20, 50],
         # "n_envs": [64],
         # "n_steps": [256],
         # "n_rollouts": [3],
