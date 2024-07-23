@@ -328,7 +328,9 @@ def combine_funcs(base_vars, loss_fn, y, max_funcs, n_inputs=1):
 
 
 class FunctionTree:
-    def __init__(self, x, y, loss_fn, pop_size):
+    def __init__(self, x, y, loss_fn):
+        self.x = x
+        self.y = y
         self.loss_fn = loss_fn
         self.rounds = 2
         self.max_active_vars = 100
@@ -337,27 +339,41 @@ class FunctionTree:
         self.base_vars = [BaseNode(z, f"x{i}") for i, z in enumerate(in_vars)]
         _ = [b.compute_loss(loss_fn, y) for b in self.base_vars]
         self.all_vars = self.base_vars
+        self.loss = np.array([])
+
+    def evolve(self, pop_size):
         for i in range(self.rounds):
-            self.all_vars += combine_funcs(self.all_vars, loss_fn, y, max_funcs=100, n_inputs=1)
-            self.all_vars += combine_funcs(self.all_vars, loss_fn, y, max_funcs=100, n_inputs=2)
-        losses = np.array([x.loss for x in self.all_vars])
+            self.all_vars += combine_funcs(self.all_vars, self.loss_fn, self.y, max_funcs=100, n_inputs=1)
+            self.all_vars += combine_funcs(self.all_vars, self.loss_fn, self.y, max_funcs=100, n_inputs=2)
         min_losses = np.array([x.min_loss for x in self.all_vars])
         ind = self.filter_population(min_losses, pop_size)
-        p = softmax(1/np.sqrt(min_losses))
-        plt.scatter(p, min_losses)
-        plt.show()
-        return
+        self.all_vars = np.array(self.all_vars)[ind].tolist()
+        self.loss = np.append(self.loss, np.min(min_losses))
+
+    def train(self, pop_size, epochs):
+        for epoch in range(epochs):
+            self.evolve(pop_size)
+            print(f"Loss at epoch {epoch}: {self.loss[-1]}")
+
+
 
     def print_everything(self):
         _ = [print(v.get_name()) for v in self.all_vars]
 
     def filter_population(self, min_losses, pop_size):
-        min_losses = min_losses[self.n_base:]
-        if pop_size < len(min_losses):
+        if pop_size >= len(min_losses) - self.n_base:
             return np.full_like(min_losses, True)
-        p = min_losses/np.sum(min_losses)*pop_size#/len(min_losses)
-        #TODO: figure this out
-        return np.random.random((p.shape)) < p
+        min_losses = min_losses[self.n_base:]
+        # Rank descending from 1:
+        r = (-min_losses).argsort().argsort()+1
+        # Probability of survival is proportional to rank
+        # and scaled to target pop_size
+        p = r/np.sum(r)*(pop_size-20)
+        # Best 20 are kept with 100% prob
+        p[r > np.max(r)-20] = 1.0
+        base_ind = np.full((self.n_base,),True)
+        rem_ind = np.random.random((p.shape)) < p
+        return np.concatenate((base_ind, rem_ind))
 
 
 def create_func(x, y):
@@ -368,5 +384,6 @@ def create_func(x, y):
     u = UnaryNode("exp", x0)
     b = BinaryNode("*", u, x2)
     print(b.get_name())
-    self = FunctionTree(x, y, torch.nn.MSELoss(), pop_size=200)
+    self = FunctionTree(x, y, torch.nn.MSELoss())
+    self.train(pop_size=200, epochs=10)
     return
