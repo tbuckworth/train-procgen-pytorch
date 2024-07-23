@@ -703,6 +703,7 @@ class DictToArgs:
 
 def add_symbreg_args(parser):
     parser.add_argument('--data_size', type=int, default=100, help='How much data to train on')
+    parser.add_argument('--maxsize', type=int, default=20, help='Max equation size')
     parser.add_argument('--iterations', type=int, default=1, help='How many genetic algorithm iterations')
     parser.add_argument('--logdir', type=str, default=None, help='Dir of model to imitate')
     parser.add_argument('--n_envs', type=int, default=int(8),

@@ -395,6 +395,7 @@ def double_graph_symbreg_ft_hparams():
         "dyn_epochs": [1, 10],
         "learning_rate": [1e-8, 1e-3],
         "t_learning_rate": [1e-8, 1e-3],
+        "maxsize": [20, 50],
         # "n_envs": [64],
         # "n_steps": [256],
         # "n_rollouts": [3],
