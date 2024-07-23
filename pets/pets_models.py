@@ -17,9 +17,10 @@ class EnsembleLinearLayer(nn.Module):
     """Efficient linear layer for ensemble models."""
 
     def __init__(
-        self, num_members: int, in_size: int, out_size: int, bias: bool = True
+        self, num_members: int, in_size: int, out_size: int, bias: bool = True, first: bool = False
     ):
         super().__init__()
+        self.first = first
         self.num_members = num_members
         self.in_size = in_size
         self.out_size = out_size
@@ -42,7 +43,11 @@ class EnsembleLinearLayer(nn.Module):
         else:
             w = self.weight
             b = self.bias
-        xw = einops.einsum(x, w, "... d, e d h -> e ... h")
+        # First ensemble linear layer expands dimensions, rest leave dims alone
+        if self.first:
+            xw = einops.einsum(x, w, "... d, e d h -> e ... h")
+        else:
+            xw = einops.einsum(x, w, "e ... d, e d h -> e ... h")
         if self.use_bias:
             shp = np.array(list(xw.shape))
             shp[1:-1] = 1
@@ -76,7 +81,7 @@ class MLPModel(nn.Module):
             mid_layers.append(nn.ReLU())
 
         self.model = nn.Sequential(
-            linear_cons(self.input_size, self.mid_weight),
+            linear_cons(self.input_size, self.mid_weight, first=True),
             nn.ReLU(),
             nn.Sequential(*mid_layers),
             linear_cons(self.mid_weight, self.output_dim),
@@ -173,8 +178,8 @@ class GraphTransitionPets(Ensemble):
                 activation_func = hydra.utils.instantiate(cfg)
             return activation_func
 
-        def create_linear_layer(l_in, l_out):
-            return EnsembleLinearLayer(ensemble_size, l_in, l_out)
+        def create_linear_layer(l_in, l_out, first=False):
+            return EnsembleLinearLayer(ensemble_size, l_in, l_out, first=first)
 
         # hidden_layers = [
         #     nn.Sequential(create_linear_layer(in_size, hid_size), create_activation())
