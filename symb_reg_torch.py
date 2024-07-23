@@ -4,6 +4,7 @@ from abc import ABC
 import numpy as np
 import torch
 from matplotlib import pyplot as plt
+from torch import nn
 
 from helper_local import softmax
 
@@ -107,7 +108,7 @@ binary_functions = {
     "max": torch.max,
     "min": torch.min,
     "mod": torch.remainder,
-    "heaviside": torch.heaviside,
+    # "heaviside": torch.heaviside,
     "atan2": torch.atan2,
     "pow": torch.pow,
 }
@@ -202,13 +203,17 @@ class Node(ABC):
         raise NotImplementedError
 
 class BaseNode(Node):
-    def __init__(self, x, name):
+    def __init__(self, x, name, ind):
+        self.ind = ind
         self.x = x
         self.name = name
         self.input_type = None
         self.output_type = "float"
         self.super_nodes = []
         super().__init__()
+
+    def forward(self, x):
+        return x[..., self.ind]
 
     def evaluate(self):
         return self.x
@@ -227,6 +232,8 @@ class UnaryNode(Node):
         self.output_type = output_types[func]
         super().__init__()
 
+    def forward(self, x):
+        return self.f(self.x1.forward(x))
 
     def evaluate(self, x1=None):
         if x1 is None:
@@ -265,6 +272,9 @@ class BinaryNode(Node):
         self.output_type = output_types[func]
         super().__init__()
 
+    def forward(self, x):
+        return self.f(self.x1.forward(x), self.x2.forward(x))
+
     def evaluate(self, x1=None, x2=None):
         if x1 is None:
             x1 = self.x1.evaluate()
@@ -278,6 +288,15 @@ class BinaryNode(Node):
         if self.style == "mid":
             return f"{self.x1.get_name()} {self.func} {self.x2.get_name()}"
         raise NotImplementedError("style must be one of (mid,pre)")
+
+class SymbolicFunction(nn.Module):
+    def __init__(self, node):
+        super().__init__()
+        self.node = node
+        self.name = node.get_name()
+
+    def forward(self, x):
+        return self.node.forward(x)
 
 
 def combine_funcs(base_vars, loss_fn, y, max_funcs, n_inputs=1):
@@ -336,7 +355,7 @@ class FunctionTree:
         self.max_active_vars = 100
         in_vars = torch.split(x, 1, 1)
         self.n_base = len(in_vars)
-        self.base_vars = [BaseNode(z, f"x{i}") for i, z in enumerate(in_vars)]
+        self.base_vars = [BaseNode(z, f"x{i}", i) for i, z in enumerate(in_vars)]
         _ = [b.compute_loss(loss_fn, y) for b in self.base_vars]
         self.all_vars = self.base_vars
         self.loss = np.array([])
@@ -355,6 +374,12 @@ class FunctionTree:
             self.evolve(pop_size)
             print(f"Loss at epoch {epoch}: {self.loss[-1]}")
 
+    def get_best(self):
+        losses = np.array([x.loss for x in self.all_vars])
+        best_node = self.all_vars[np.argmin(losses)]
+        print(best_node.get_name())
+        model = SymbolicFunction(best_node)
+        return model
 
 
     def print_everything(self):
@@ -378,12 +403,15 @@ class FunctionTree:
 
 def create_func(x, y):
     in_vars = torch.split(x, 1, 1)
-    base_vars = [BaseNode(z, f"x{i}") for i, z in enumerate(in_vars)]
+    base_vars = [BaseNode(z, f"x{i}", i) for i, z in enumerate(in_vars)]
     x0 = BaseNode(in_vars[0], "x0")
     x2 = BaseNode(in_vars[2], "x2")
     u = UnaryNode("exp", x0)
     b = BinaryNode("*", u, x2)
     print(b.get_name())
+
+def run_tree(x,y):
     self = FunctionTree(x, y, torch.nn.MSELoss())
-    self.train(pop_size=200, epochs=10)
-    return
+    self.train(pop_size=200, epochs=100)
+    return self.get_best()
+
