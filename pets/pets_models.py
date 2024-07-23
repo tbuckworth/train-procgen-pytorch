@@ -2,14 +2,66 @@ import pathlib
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 import hydra
+import numpy as np
 import omegaconf
 import torch
 from torch import nn as nn
 from torch.nn import functional as F
+import einops
 
 import mbrl.util.math
 
-from mbrl.models import Ensemble, EnsembleLinearLayer, truncated_normal_init
+from mbrl.models import Ensemble, truncated_normal_init
+
+class EnsembleLinearLayer(nn.Module):
+    """Efficient linear layer for ensemble models."""
+
+    def __init__(
+        self, num_members: int, in_size: int, out_size: int, bias: bool = True
+    ):
+        super().__init__()
+        self.num_members = num_members
+        self.in_size = in_size
+        self.out_size = out_size
+        self.weight = nn.Parameter(
+            torch.rand(self.num_members, self.in_size, self.out_size)
+        )
+        if bias:
+            self.bias = nn.Parameter(torch.rand(self.num_members, 1, self.out_size))
+            self.use_bias = True
+        else:
+            self.use_bias = False
+
+        self.elite_models: List[int] = None
+        self.use_only_elite = False
+
+    def forward(self, x):
+        if self.use_only_elite:
+            w = self.weight[self.elite_models, ...]
+            b = self.bias[self.elite_models, ...]
+        else:
+            w = self.weight
+            b = self.bias
+        xw = einops.einsum(x, w, "... d, e d h -> e ... h")
+        if self.use_bias:
+            shp = np.array(list(xw.shape))
+            shp[1:-1] = 1
+            return xw + b.reshape(shp.tolist())
+        return xw
+
+    def extra_repr(self) -> str:
+        return (
+            f"num_members={self.num_members}, in_size={self.in_size}, "
+            f"out_size={self.out_size}, bias={self.use_bias}"
+        )
+
+    def set_elite(self, elite_models: Sequence[int]):
+        self.elite_models = list(elite_models)
+
+    def toggle_use_only_elite(self):
+        self.use_only_elite = not self.use_only_elite
+
+
 
 class MLPModel(nn.Module):
     def __init__(self, linear_cons, in_channels, depth, mid_weight, latent_size):
@@ -52,7 +104,9 @@ class GraphTransitionModel(nn.Module):
         h = torch.concat([x, y.unsqueeze(-1)], -1)
         return self.updater(h)
 
-    def forward(self, obs, action):
+    def forward(self, x):
+        obs = x[..., :-1]
+        action = x[..., -1]
         # Normalize actions?
         n, x = self.prep_input(obs)
         msg = self.sum_all_messages(n, x, action)
