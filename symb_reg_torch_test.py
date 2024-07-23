@@ -10,7 +10,8 @@ class MyTestCase(unittest.TestCase):
         x = torch.rand((100, 10))
         y = torch.cos(x[:, 1])**2 + torch.sin(x[:, 5])**3
         y = x[..., 3] * x[..., 5]
-        model = run_tree(x, y)
+        tree = run_tree(x, y, 200, 50)
+        model = tree.get_best()
         y_hat = model.forward(x)
 
         plt.scatter(y, y_hat)

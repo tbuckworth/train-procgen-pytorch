@@ -210,6 +210,7 @@ class BaseNode(Node):
         self.input_type = None
         self.output_type = "float"
         self.super_nodes = []
+        self.complexity = 0
         super().__init__()
 
     def forward(self, x):
@@ -227,6 +228,7 @@ class UnaryNode(Node):
         self.func = func
         self.f = unary_functions.get(func)
         self.x1 = x1
+        self.complexity = x1.complexity + 1
         self.super_nodes = [self.x1]
         self.input_type = x1.output_type
         self.output_type = output_types[func]
@@ -267,6 +269,7 @@ class BinaryNode(Node):
         self.f = binary_functions.get(func)
         self.x1 = x1
         self.x2 = x2
+        self.complexity = x1.complexity + x2.complexity + 2
         self.super_nodes = [self.x1, self.x2]
         self.input_type = get_output_type([x1, x2])
         self.output_type = output_types[func]
@@ -299,7 +302,7 @@ class SymbolicFunction(nn.Module):
         return self.node.forward(x)
 
 
-def combine_funcs(base_vars, loss_fn, y, max_funcs, n_inputs=1):
+def combine_funcs(base_vars, loss_fn, y, max_funcs, n_inputs=1, max_complexity=20):
     if n_inputs == 1:
         node_cons = UnaryNode
         func_list = unary_functions
@@ -313,7 +316,7 @@ def combine_funcs(base_vars, loss_fn, y, max_funcs, n_inputs=1):
     vars = []
     for _ in range(n_funcs):
         key = np.random.choice(np.array(list(func_list.keys())))
-        temp_vars = [v for v in base_vars if v.output_type in input_types[key]]
+        temp_vars = [v for v in base_vars if v.output_type in input_types[key] and v.complexity < max_complexity]
         if len(temp_vars) == 0:
             continue
         xs = [temp_vars[np.random.randint(len(temp_vars))] for _ in range(n_inputs)]
@@ -365,7 +368,8 @@ class FunctionTree:
             self.all_vars += combine_funcs(self.all_vars, self.loss_fn, self.y, max_funcs=100, n_inputs=1)
             self.all_vars += combine_funcs(self.all_vars, self.loss_fn, self.y, max_funcs=100, n_inputs=2)
         min_losses = np.array([x.min_loss for x in self.all_vars])
-        ind = self.filter_population(min_losses, pop_size)
+        complexity = np.array([x.complexity for x in self.all_vars])
+        ind = self.filter_population(min_losses, complexity, pop_size)
         self.all_vars = np.array(self.all_vars)[ind].tolist()
         self.loss = np.append(self.loss, np.min(min_losses))
 
@@ -385,12 +389,13 @@ class FunctionTree:
     def print_everything(self):
         _ = [print(v.get_name()) for v in self.all_vars]
 
-    def filter_population(self, min_losses, pop_size):
+    def filter_population(self, min_losses, complexity, pop_size):
         if pop_size >= len(min_losses) - self.n_base:
             return np.full_like(min_losses, True)
         min_losses = min_losses[self.n_base:]
         # Rank descending from 1:
         r = (-min_losses).argsort().argsort()+1
+        r -= complexity[self.n_base:]
         # Probability of survival is proportional to rank
         # and scaled to target pop_size
         p = r/np.sum(r)*(pop_size-20)
@@ -410,8 +415,8 @@ def create_func(x, y):
     b = BinaryNode("*", u, x2)
     print(b.get_name())
 
-def run_tree(x,y):
-    self = FunctionTree(x, y, torch.nn.MSELoss())
-    self.train(pop_size=200, epochs=100)
-    return self.get_best()
+def run_tree(x,y, pop_size, epochs):
+    tree = FunctionTree(x, y, torch.nn.MSELoss())
+    tree.train(pop_size=pop_size, epochs=epochs)
+    return tree
 
