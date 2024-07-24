@@ -233,8 +233,8 @@ class GraphTransitionPets(Ensemble):
         if self.deterministic:
             return mean_and_logvar, None
         else:
-            mean = mean_and_logvar[..., : self.out_size]
-            logvar = mean_and_logvar[..., self.out_size:]
+            mean = mean_and_logvar[..., 0]
+            logvar = mean_and_logvar[..., 1]
             logvar = self.max_logvar - F.softplus(self.max_logvar - logvar)
             logvar = self.min_logvar + F.softplus(logvar - self.min_logvar)
             return mean, logvar
@@ -380,8 +380,12 @@ class GraphTransitionPets(Ensemble):
             model_in = model_in.unsqueeze(0)
             target = target.unsqueeze(0)
         pred_mean, pred_logvar = self.forward(model_in, use_propagation=False)
-        if target.shape[0] != self.num_members:
-            target = target.repeat(self.num_members, 1, 1)
+        # if target.shape[0] != self.num_members:
+        n_dims = len(pred_mean.shape) - len(target.shape)
+        if n_dims > 0:
+            shp = np.array(pred_mean.shape)
+            shp[n_dims:] = 1
+            target = target.repeat(*shp)
         nll = (
             mbrl.util.math.gaussian_nll(pred_mean, pred_logvar, target, reduce=False)
             .mean((1, 2))  # average over batch and target dimension
