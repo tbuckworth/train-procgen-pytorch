@@ -186,7 +186,7 @@ def run():
 
         all_rewards.append(total_reward)
 
-    fig, ax = plt.subplots(3, 1, figsize=(12, 10))
+    fig, ax = plt.subplots(3, 1, figsize=(15, 10))
     ax[0].plot(train_losses)
     ax[0].set_xlabel("Total training epochs")
     ax[0].set_ylabel("Training loss (avg. NLL)")
