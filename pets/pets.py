@@ -111,7 +111,7 @@ def run():
             "_target_": "mbrl.planning.CEMOptimizer",
             "num_iterations": 5,
             "elite_ratio": 0.1,
-            "population_size": 100,
+            "population_size": 500,
             "alpha": 0.1,
             "device": device,
             "lower_bound": "???",
@@ -194,8 +194,8 @@ def run():
     ax[1].set_xlabel("Total training epochs")
     ax[1].set_ylabel("Validation score (avg. MSE)")
     ax[2].plot(all_rewards)
-    ax[2].set_xlabel("Total training epochs")
-    ax[2].set_ylabel("Validation score (avg. MSE)")
+    ax[2].set_xlabel("Trials")
+    ax[2].set_ylabel("Rewards")
 
     plt.show()
 
