@@ -38,7 +38,7 @@ def run():
     #configuration
 
     trial_length = 200
-    num_trials = 10
+    num_trials = 100
     ensemble_size = 5
 
     # Everything with "???" indicates an option with a missing value.

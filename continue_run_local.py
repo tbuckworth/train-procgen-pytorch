@@ -68,6 +68,9 @@ if __name__ == '__main__':
 
     cfg["num_timesteps"] = int(2e8)
 
+    cfg["learning_rate"] /= 2
+    cfg["t_learning_rate"] /= 2
+
     args = DictToArgs(cfg)
 
     train_ppo(args)
