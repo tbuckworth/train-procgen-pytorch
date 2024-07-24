@@ -44,13 +44,10 @@ class EnsembleLinearLayer(nn.Module):
             w = self.weight
             b = self.bias
         # First ensemble linear layer expands dimensions, rest leave dims alone
-        if self.first:
+        try:
+            xw = einops.einsum(x, w, "e ... d, e d h -> e ... h")
+        except RuntimeError as e:
             xw = einops.einsum(x, w, "... d, e d h -> e ... h")
-        else:
-            try:
-                xw = einops.einsum(x, w, "e ... d, e d h -> e ... h")
-            except Exception as e:
-                print(e)
         if self.use_bias:
             shp = np.array(list(xw.shape))
             shp[1:-1] = 1
@@ -87,6 +84,7 @@ class MLPModel(nn.Module):
             linear_cons(self.input_size, self.mid_weight, first=is_first),
             nn.ReLU(),
             nn.Sequential(*mid_layers),
+            nn.LayerNorm(self.mid_weight),
             linear_cons(self.mid_weight, self.output_dim),
         )
 
@@ -111,9 +109,10 @@ class GraphTransitionModel(nn.Module):
         return torch.concat([x.unsqueeze(axis), y.unsqueeze(axis)], axis=axis)
 
     def update(self, x, y):
-        tile_shape = [y.shape[0]] + [1 for _ in x.shape]
-        x_repeated = x.unsqueeze(0).tile((tile_shape))
-        h = torch.concat([x_repeated, y.unsqueeze(-1)], -1)
+        if len(y.shape) == len(x.shape):
+            tile_shape = [y.shape[0]] + [1 for _ in x.shape]
+            x = x.unsqueeze(0).tile((tile_shape))
+        h = torch.concat([x, y.unsqueeze(-1)], -1)
         return self.updater(h)
 
     def forward(self, x):
