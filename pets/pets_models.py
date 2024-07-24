@@ -47,7 +47,10 @@ class EnsembleLinearLayer(nn.Module):
         if self.first:
             xw = einops.einsum(x, w, "... d, e d h -> e ... h")
         else:
-            xw = einops.einsum(x, w, "e ... d, e d h -> e ... h")
+            try:
+                xw = einops.einsum(x, w, "e ... d, e d h -> e ... h")
+            except Exception as e:
+                print(e)
         if self.use_bias:
             shp = np.array(list(xw.shape))
             shp[1:-1] = 1
@@ -69,7 +72,7 @@ class EnsembleLinearLayer(nn.Module):
 
 
 class MLPModel(nn.Module):
-    def __init__(self, linear_cons, in_channels, depth, mid_weight, latent_size):
+    def __init__(self, linear_cons, in_channels, depth, mid_weight, latent_size, is_first=False):
         super(MLPModel, self).__init__()
         self.input_size = in_channels
         self.depth = depth
@@ -81,7 +84,7 @@ class MLPModel(nn.Module):
             mid_layers.append(nn.ReLU())
 
         self.model = nn.Sequential(
-            linear_cons(self.input_size, self.mid_weight, first=True),
+            linear_cons(self.input_size, self.mid_weight, first=is_first),
             nn.ReLU(),
             nn.Sequential(*mid_layers),
             linear_cons(self.mid_weight, self.output_dim),
@@ -91,7 +94,7 @@ class MLPModel(nn.Module):
         return self.model(x)
 
 class GraphTransitionModel(nn.Module):
-    def __init__(self, linear_cons, in_channels, depth, mid_weight, latent_size, device):
+    def __init__(self, linear_cons, in_channels, depth, mid_weight, latent_size, device, deterministic=False):
         super(GraphTransitionModel, self).__init__()
         self.input_size = in_channels
         self.depth = depth
@@ -99,14 +102,18 @@ class GraphTransitionModel(nn.Module):
         self.output_dim = latent_size
         self.device = device
 
-        self.messenger = MLPModel(linear_cons, 5, depth, mid_weight, latent_size)
+        self.messenger = MLPModel(linear_cons, 5, depth, mid_weight, latent_size, is_first=True)
+        if not deterministic:
+            latent_size *= 2
         self.updater = MLPModel(linear_cons, 3, depth, mid_weight, latent_size)
 
     def concater(self, x, y, axis):
         return torch.concat([x.unsqueeze(axis), y.unsqueeze(axis)], axis=axis)
 
     def update(self, x, y):
-        h = torch.concat([x, y.unsqueeze(-1)], -1)
+        tile_shape = [y.shape[0]] + [1 for _ in x.shape]
+        x_repeated = x.unsqueeze(0).tile((tile_shape))
+        h = torch.concat([x_repeated, y.unsqueeze(-1)], -1)
         return self.updater(h)
 
     def forward(self, x):
@@ -193,12 +200,9 @@ class GraphTransitionPets(Ensemble):
         #     )
         # self.hidden_layers = nn.Sequential(*hidden_layers)
 
-        self.hidden_layers = GraphTransitionModel(create_linear_layer, self.in_size, num_layers, hid_size, 1, self.device)
+        self.hidden_layers = GraphTransitionModel(create_linear_layer, self.in_size, num_layers, hid_size, 1, self.device, deterministic)
 
-        if deterministic:
-            self.mean_and_logvar = create_linear_layer(hid_size, out_size)
-        else:
-            self.mean_and_logvar = create_linear_layer(hid_size, 2 * out_size)
+        if not deterministic:
             self.min_logvar = nn.Parameter(
                 -10 * torch.ones(1, out_size), requires_grad=learn_logvar_bounds
             )
@@ -215,19 +219,16 @@ class GraphTransitionPets(Ensemble):
         if self.elite_models is None:
             return
         if self.num_members > 1 and only_elite:
-            for layer in self.hidden_layers:
-                # each layer is (linear layer, activation_func)
-                layer[0].set_elite(self.elite_models)
-                layer[0].toggle_use_only_elite()
-            self.mean_and_logvar.set_elite(self.elite_models)
-            self.mean_and_logvar.toggle_use_only_elite()
+            self.hidden_layers.messenger.set_elite(self.elite_models)
+            self.hidden_layers.messenger.toggle_use_only_elite()
+            self.hidden_layers.updater.set_elite(self.elite_models)
+            self.hidden_layers.updater.toggle_use_only_elite()
 
     def _default_forward(
             self, x: torch.Tensor, only_elite: bool = False, **_kwargs
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
         self._maybe_toggle_layers_use_only_elite(only_elite)
-        x = self.hidden_layers(x)
-        mean_and_logvar = self.mean_and_logvar(x)
+        mean_and_logvar = self.hidden_layers(x)
         self._maybe_toggle_layers_use_only_elite(only_elite)
         if self.deterministic:
             return mean_and_logvar, None
@@ -416,8 +417,7 @@ class GraphTransitionPets(Ensemble):
         """
         if self.deterministic:
             return self._mse_loss(model_in, target), {}
-        else:
-            return self._nll_loss(model_in, target), {}
+        return self._nll_loss(model_in, target), {}
 
     def eval_score(  # type: ignore
             self, model_in: torch.Tensor, target: Optional[torch.Tensor] = None
