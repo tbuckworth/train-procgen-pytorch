@@ -112,19 +112,24 @@ class GraphTransitionModel(nn.Module):
         if len(y.shape) == len(x.shape):
             tile_shape = [y.shape[0]] + [1 for _ in x.shape]
             x = x.unsqueeze(0).tile((tile_shape))
-        h = torch.concat([x, y.unsqueeze(-1)], -1)
+        try:
+            h = torch.concat([x, y.unsqueeze(-1)], -1)
+        except RuntimeError as e:
+            print(e)
         return self.updater(h)
 
     def forward(self, x):
+        if x.shape[-1] != self.input_size:
+            print("huh?")
         obs = x[..., :-1]
         action = x[..., -1]
         # Normalize actions?
-        n, x = self.prep_input(obs)
-        msg = self.sum_all_messages(n, x, action)
-        return self.update(x, msg).squeeze()
+        n, h = self.prep_input(obs)
+        msg = self.sum_all_messages(n, h, action)
+        return self.update(h, msg).squeeze()
 
     def prep_input(self, obs):
-        x = self.append_index(obs.squeeze())
+        x = self.append_index(obs)#.squeeze())
         n = x.shape[-2]
         return n, x
 
@@ -137,7 +142,10 @@ class GraphTransitionModel(nn.Module):
         xi = x.unsqueeze(-2).tile([n, 1])
         xj = x.unsqueeze(-3).tile([n, 1, 1])
         a = action.unsqueeze(-1).unsqueeze(-1).tile([n, n]).unsqueeze(-1)
-        msg_in = torch.concat([xi, xj, a], dim=-1)
+        try:
+            msg_in = torch.concat([xi, xj, a], dim=-1)
+        except RuntimeError as e:
+            print(e)
         return msg_in
 
     def vec_for_update(self, messages, x):
