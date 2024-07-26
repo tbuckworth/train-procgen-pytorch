@@ -129,7 +129,7 @@ class GraphTransitionModel(nn.Module):
         return self.update(h, msg).squeeze()
 
     def prep_input(self, obs):
-        x = self.append_index(obs)#.squeeze())
+        x = self.append_index(obs.squeeze())
         n = x.shape[-2]
         return n, x
 

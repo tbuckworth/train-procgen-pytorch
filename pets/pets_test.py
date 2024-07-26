@@ -21,12 +21,12 @@ class MyTestCase(unittest.TestCase):
         act = model_util.to_tensor(act).to(device)
         model_in = torch.cat([obs, act], dim=obs.ndim - 1).float()
 
-        pets = GraphTransitionPets(in_size=obs_shape[0], out_size=act_shape[0], device=device)
+        pets = GraphTransitionPets(in_size=obs_shape[0]+act_shape[0], out_size=obs_shape[0], device=device)
 
         x = model_in.unsqueeze(0)
         pets.forward(x)
 
-        x = x.tile(64,1)
+        x = x.tile(64, 1)
         pets.forward(x)
 
 
