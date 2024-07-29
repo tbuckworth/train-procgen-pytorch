@@ -111,15 +111,25 @@ class GraphTransitionModel(nn.Module):
     def concater(self, x, y, axis):
         return torch.concat([x.unsqueeze(axis), y.unsqueeze(axis)], axis=axis)
 
-    def update(self, x, y):
-        if len(y.shape) == len(x.shape):
-            tile_shape = [y.shape[0]] + [1 for _ in x.shape]
-            x = x.unsqueeze(0).tile((tile_shape))
+    def update(self, h, y):
+        if len(y.shape) == len(h.shape):
+            tile_shape = [y.shape[0]] + [1 for _ in h.shape]
+            x = h.unsqueeze(0).tile((tile_shape))
+        elif h.shape[:-1] == y.shape:
+            x = h
+        elif len(h.shape) == len(y.shape)+1:
+            tile_shape = [y.shape[0]] + [1 for _ in range(len(h.shape)-1)]
+            x = h.tile((tile_shape))
+        else:
+            x = h
         try:
-            h = torch.concat([x, y.unsqueeze(-1)], -1)
+            x2 = torch.concat([x, y.unsqueeze(-1)], -1)
         except RuntimeError as e:
             raise(e)
-        return self.updater(h)
+        print(h.shape)
+        print(y.shape)
+        print("------")
+        return self.updater(x2)
 
     def forward(self, x):
         if x.shape[-1] != self.input_size:
