@@ -9,8 +9,8 @@ import mbrl.models.util as model_util
 
 class MyTestCase(unittest.TestCase):
     def test_something(self):
-        env = cartpole_env.CartPoleEnv(render_mode="rgb_array")
-        obs, _ = env.reset(0)
+        env = cartpole_env.CartPoleEnv()#render_mode="rgb_array")
+        obs = env.reset()#0)
         obs_shape = env.observation_space.shape
         act_shape = env.action_space.shape
         device = 'cuda:0' if torch.cuda.is_available() else 'cpu'

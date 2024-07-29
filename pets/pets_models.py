@@ -51,7 +51,10 @@ class EnsembleLinearLayer(nn.Module):
         if self.use_bias:
             shp = np.array(list(xw.shape))
             shp[1:-1] = 1
-            return xw + b.reshape(shp.tolist())
+            try:
+                return xw + b#.reshape(shp.tolist())
+            except RuntimeError as e:
+                raise(e)
         return xw
 
     def extra_repr(self) -> str:
@@ -115,6 +118,7 @@ class GraphTransitionModel(nn.Module):
         try:
             h = torch.concat([x, y.unsqueeze(-1)], -1)
         except RuntimeError as e:
+            raise(e)
             print(e)
         return self.updater(h)
 
@@ -126,17 +130,17 @@ class GraphTransitionModel(nn.Module):
         # Normalize actions?
         n, h = self.prep_input(obs)
         msg = self.sum_all_messages(n, h, action)
-        return self.update(h, msg).squeeze()
+        return self.update(h, msg).squeeze(dim=-1)
 
     def prep_input(self, obs):
-        x = self.append_index(obs.squeeze())
+        x = self.append_index(obs.squeeze(dim=-1))
         n = x.shape[-2]
         return n, x
 
     def sum_all_messages(self, n, x, action):
         msg_in = self.vectorize_for_message_pass(action, n, x)
         messages = self.messenger(msg_in)
-        return torch.sum(messages, dim=-2).squeeze()
+        return torch.sum(messages, dim=-2).squeeze(dim=-1)
 
     def vectorize_for_message_pass(self, action, n, x):
         xi = x.unsqueeze(-2).tile([n, 1])
@@ -145,6 +149,7 @@ class GraphTransitionModel(nn.Module):
         try:
             msg_in = torch.concat([xi, xj, a], dim=-1)
         except RuntimeError as e:
+            raise(e)
             print(e)
         return msg_in
 
