@@ -9,8 +9,8 @@ import mbrl.models.util as model_util
 
 class MyTestCase(unittest.TestCase):
     def test_something(self):
-        env = cartpole_env.CartPoleEnv()#render_mode="rgb_array")
-        obs = env.reset()#0)
+        env = cartpole_env.CartPoleEnv(render_mode="rgb_array")
+        obs, _ = env.reset(0)
         obs_shape = env.observation_space.shape
         act_shape = env.action_space.shape
         device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
@@ -21,7 +21,7 @@ class MyTestCase(unittest.TestCase):
         act = model_util.to_tensor(act).to(device)
         model_in = torch.cat([obs, act], dim=obs.ndim - 1).float()
 
-        pets = GraphTransitionPets(in_size=obs_shape[0]+act_shape[0], out_size=obs_shape[0], device=device)
+        pets = GraphTransitionPets(in_size=obs_shape[0]+act_shape[0], out_size=obs_shape[0], device=device, ensemble_size=5)
 
         x = model_in.unsqueeze(0)
         pets.forward(x)

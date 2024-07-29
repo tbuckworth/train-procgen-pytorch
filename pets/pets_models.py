@@ -52,7 +52,7 @@ class EnsembleLinearLayer(nn.Module):
             shp = np.array(list(xw.shape))
             shp[1:-1] = 1
             try:
-                return xw + b#.reshape(shp.tolist())
+                return xw + b.reshape(shp.tolist())
             except RuntimeError as e:
                 raise(e)
         return xw
@@ -119,7 +119,6 @@ class GraphTransitionModel(nn.Module):
             h = torch.concat([x, y.unsqueeze(-1)], -1)
         except RuntimeError as e:
             raise(e)
-            print(e)
         return self.updater(h)
 
     def forward(self, x):
