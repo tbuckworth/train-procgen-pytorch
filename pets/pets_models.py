@@ -455,7 +455,10 @@ class GraphTransitionPets(Ensemble):
         assert model_in.ndim == 2 and target.ndim == 2
         with torch.no_grad():
             pred_mean, _ = self.forward(model_in, use_propagation=False)
-            target = target.repeat((self.num_members, 1, 1))
+            tile_shape = [1 for _ in pred_mean.shape]
+            if target.shape[0] != pred_mean.shape[0]:
+                tile_shape[0] = pred_mean.shape[0]
+            target = target.tile(tile_shape)
             return F.mse_loss(pred_mean, target, reduction="none"), {}
 
     def sample_propagation_indices(

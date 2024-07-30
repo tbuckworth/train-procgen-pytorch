@@ -40,6 +40,7 @@ def is_wsl(v: str = platform.uname().release) -> int:
         return 2
     return 0
 
+
 try:
     if os.name == "nt":
         GLOBAL_DIR = "C:/Users/titus/PycharmProjects/train-procgen-pytorch/"
@@ -74,7 +75,6 @@ if OS_IS == "Windows":
 
 from pysr import PySRRegressor
 import torch
-
 
 
 def match(a, b):
@@ -342,7 +342,7 @@ def initialize_model(device, env, hyperparameters, in_channels=None):
         encoder = ImpalaCNN(in_channels, mid_weight, latent_dim, n_impala_blocks)
 
         n_latents = encoder.get_n_latents(env.reset().shape)
-        latent_channels = n_latents * (latent_dim-2)
+        latent_channels = n_latents * (latent_dim - 2)
 
         hp = hyperparameters.copy()
         hp["architecture"] = "graph-transition"
@@ -358,7 +358,7 @@ def initialize_model(device, env, hyperparameters, in_channels=None):
         depth = hyperparameters.get("depth", 4)
         mid_weight = hyperparameters.get("mid_weight", 64)
         latent_size = hyperparameters.get("latent_size", 256)
-        #TODO: change in_channels?
+        # TODO: change in_channels?
         transition_model = GraphTransitionModel(in_channels, depth, mid_weight, latent_size, device)
         action_size = action_space.n
 
@@ -537,8 +537,6 @@ def add_training_args(parser):
     parser.add_argument('--done_coef', type=float, default=None)
     parser.add_argument('--rew_coef', type=float, default=None)
 
-
-
     parser.add_argument('--mini_batch_size', type=int, default=None)
     parser.add_argument('--wandb_name', type=str, default=None)
     parser.add_argument('--wandb_group', type=str, default=None)
@@ -585,7 +583,6 @@ def add_training_args(parser):
     parser.add_argument('--no-use_gae', dest='use_gae', action="store_false")
     parser.add_argument('--no-clip_value', dest='clip_value', action="store_false")
     parser.add_argument('--no-anneal_temp', dest='anneal_temp', action="store_false")
-
 
     parser.set_defaults(detect_nan=False,
                         use_valid_env=True,
@@ -911,9 +908,10 @@ def match_to_nearest(a, b):
 
     return diffs.argmin(-1)
 
+
 def get_attributes(env):
     vn = env.__dir__()
-    vn = [v for v in vn if not re.search("__",v)]
+    vn = [v for v in vn if not re.search("__", v)]
 
 
 def concat_np_list(l, shape):
@@ -981,3 +979,55 @@ def get_agent_constructor(algo):
     else:
         raise NotImplementedError
     return AGENT
+
+
+def add_pets_args(parser):
+    parser.add_argument('--exp_name', type=str, default='test', help='experiment name')
+    parser.add_argument('--env_name', type=str, default='cartpole_continuous', help='environment ID')
+    # parser.add_argument('--val_env_name', type=str, default=None, help='optional validation environment ID')
+    # parser.add_argument('--param_name', type=str, default='easy-200', help='hyper-parameter ID')
+    parser.add_argument('--seed', type=int, default=random.randint(0, 9999), help='Random generator seed')
+    parser.add_argument('--trial_length', type=int, default=200, help='Length of each trial')
+    parser.add_argument('--num_trials', type=int, default=100, help='Number of trials')
+    parser.add_argument('--ensemble_size', type=int, default=5, help='Number of ensemble models')
+    parser.add_argument('--num_layers', type=int, default=4,
+                        help='Number of linear layers in each MLP of dynamics model')
+    parser.add_argument('--hid_size', type=int, default=256, help='Hidden linear layer width')
+    parser.add_argument('--planning_horizon', type=int, default=15, help='Rollout length')
+    parser.add_argument('--replan_freq', type=int, default=1, help='Replan frequency')
+    parser.add_argument('--num_iterations', type=int, default=5, help='CEM iterations')
+    parser.add_argument('--population_size', type=int, default=500, help='CEM population size')
+    parser.add_argument('--num_particles', type=int, default=20, help='Trajectory optimization particles')
+
+    parser.add_argument('--learning_rate', type=float, default=1e-3)
+    parser.add_argument('--weight_decay', type=float, default=5e-5)
+
+    parser.add_argument('--num_epochs', type=int, default=50)
+    parser.add_argument('--patience', type=int, default=50)
+
+    parser.add_argument('--validation_ratio', type=float, default=0.05, help='Validation ratio for training')
+    parser.add_argument('--elite_ratio', type=float, default=0.1, help='CEM elite ratio')
+    parser.add_argument('--alpha', type=float, default=0.1, help='CEM alpha')
+
+    #
+    parser.add_argument('--model_batch_size', type=int, default=32)
+    parser.add_argument('--wandb_name', type=str, default=None)
+    parser.add_argument('--wandb_group', type=str, default=None)
+    # parser.add_argument('--detect_nan', action="store_true")
+    parser.add_argument('--deterministic', action="store_true")
+    # parser.add_argument('--use_valid_env', action="store_true")
+    parser.add_argument('--use_wandb', action="store_true")
+    #
+    parser.add_argument('--no-deterministic', dest='deterministic', action="store_false")
+    # parser.add_argument('--no-detect_nan', dest='detect_nan', action="store_false")
+    # parser.add_argument('--no-use_valid_env', dest='use_valid_env', action="store_false")
+    parser.add_argument('--no-use_wandb', dest='use_wandb', action="store_false")
+
+    parser.set_defaults(
+        deterministic=False,
+        # detect_nan=False,
+        # use_valid_env=True,
+        use_wandb=True,
+    )
+
+    return parser

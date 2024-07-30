@@ -1,4 +1,4 @@
-import mbrl
+import argparse
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -12,15 +12,15 @@ import mbrl.env.termination_fns as termination_fns
 import mbrl.models as models
 import mbrl.planning as planning
 import mbrl.util.common as common_util
-import mbrl.util as util
-import mbrl.models
+
+from helper_local import add_pets_args
 
 mpl.rcParams.update({"font.size": 16})
 
 
-def run():
+def run_pets(args):
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
-    seed = 0
+    seed = args.seed
     env = cartpole_env.CartPoleEnv(render_mode="rgb_array")
     env.reset(seed)
     rng = np.random.default_rng(seed=0)
@@ -37,9 +37,9 @@ def run():
 
     #configuration
 
-    trial_length = 200
-    num_trials = 100
-    ensemble_size = 5
+    trial_length = args.trial_length#200
+    num_trials = args.num_trials#100
+    ensemble_size = args.ensemble_size#5
 
     # Everything with "???" indicates an option with a missing value.
     # Our utility functions will fill in these details using the
@@ -50,12 +50,12 @@ def run():
             # "_target_": "mbrl.models.GaussianMLP",
             "_target_": "pets_models.GraphTransitionPets",
             "device": device,
-            "num_layers": 4,
+            "num_layers": args.num_layers,#4,
             "ensemble_size": ensemble_size,
-            "hid_size": 200,
+            "hid_size": args.hid_size,#200,
             "in_size": "???",
             "out_size": "???",
-            "deterministic": False,
+            "deterministic": args.deterministic,#False,
             "propagation_method": "fixed_model",
             # can also configure activation function for GaussianMLP
             "activation_fn_cfg": {
@@ -73,8 +73,8 @@ def run():
         "overrides": {
             "trial_length": trial_length,
             "num_steps": num_trials * trial_length,
-            "model_batch_size": 32,
-            "validation_ratio": 0.05
+            "model_batch_size": args.model_batch_size,#32,
+            "validation_ratio": args.validation_ratio,#0.05
         }
     }
     cfg = omegaconf.OmegaConf.create(cfg_dict)
@@ -101,18 +101,18 @@ def run():
     agent_cfg = omegaconf.OmegaConf.create({
         # this class evaluates many trajectories and picks the best one
         "_target_": "mbrl.planning.TrajectoryOptimizerAgent",
-        "planning_horizon": 15,
-        "replan_freq": 1,
+        "planning_horizon": args.planning_horizon,#15,
+        "replan_freq": args.replan_freq,#1,
         "verbose": False,
         "action_lb": "???",
         "action_ub": "???",
         # this is the optimizer to generate and choose a trajectory
         "optimizer_cfg": {
             "_target_": "mbrl.planning.CEMOptimizer",
-            "num_iterations": 5,
-            "elite_ratio": 0.1,
-            "population_size": 500,
-            "alpha": 0.1,
+            "num_iterations": args.num_iterations,#5,
+            "elite_ratio": args.elite_ratio,#0.1,
+            "population_size": args.population_size,#500,
+            "alpha": args.alpha,#0.1,
             "device": device,
             "lower_bound": "???",
             "upper_bound": "???",
@@ -124,7 +124,7 @@ def run():
     agent = planning.create_trajectory_optim_agent_for_model(
         model_env,
         agent_cfg,
-        num_particles=20
+        num_particles=args.num_particles,#20
     )
 
     train_losses = []
@@ -135,11 +135,14 @@ def run():
         val_scores.append(val_score.mean().item())  # this returns val score per ensemble model
 
     # Create a trainer for the model
-    model_trainer = models.ModelTrainer(dynamics_model, optim_lr=1e-3, weight_decay=5e-5)
+    model_trainer = models.ModelTrainer(dynamics_model,
+                                        optim_lr=args.learning_rate,#1e-3,
+                                        weight_decay=args.weight_decay,#5e-5,
+                                        )
 
-    # Create visualization objects
-    fig, axs = plt.subplots(1, 2, figsize=(14, 3.75), gridspec_kw={"width_ratios": [1, 1]})
-    ax_text = axs[0].text(300, 50, "")
+    # # Create visualization objects
+    # fig, axs = plt.subplots(1, 2, figsize=(14, 3.75), gridspec_kw={"width_ratios": [1, 1]})
+    # ax_text = axs[0].text(300, 50, "")
 
     # Main PETS loop
     all_rewards = [0]
@@ -167,8 +170,8 @@ def run():
                 model_trainer.train(
                     dataset_train,
                     dataset_val=dataset_val,
-                    num_epochs=50,
-                    patience=50,
+                    num_epochs=args.num_epochs,#50,
+                    patience=args.patience,#50,
                     callback=train_callback,
                     silent=True)
 
@@ -202,6 +205,8 @@ def run():
     print("nothing")
 
 
-
 if __name__ == '__main__':
-    run()
+    parser = argparse.ArgumentParser()
+    parser = add_pets_args(parser)
+    args = parser.parse_args()
+    run_pets(args)
