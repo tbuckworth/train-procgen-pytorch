@@ -1,4 +1,5 @@
 import argparse
+import os
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -12,8 +13,9 @@ import mbrl.env.termination_fns as termination_fns
 import mbrl.models as models
 import mbrl.planning as planning
 import mbrl.util.common as common_util
+import wandb
 
-from helper_local import add_pets_args
+from helper_local import add_pets_args, create_logdir, wandb_login, get_project
 
 mpl.rcParams.update({"font.size": 16})
 
@@ -79,6 +81,35 @@ def run_pets(args):
     }
     cfg = omegaconf.OmegaConf.create(cfg_dict)
 
+    # Setup Wandb:
+    wandb_name = args.wandb_name
+    if args.wandb_name is None:
+        wandb_name = np.random.randint(1e5)
+    for key, value in args.__dict__.items():
+        print(key, ':', value)
+    if args.detect_nan:
+        torch.autograd.set_detect_anomaly(True)
+
+    logdir = create_logdir(args, "pets", args.env_name, "")
+    np.save(os.path.join(logdir, "config.npy"), vars(args))
+    print(f'Logging to {logdir}')
+
+    if args.use_wandb:
+        # if upload_env_params:
+        #     cfg.update(env_params)
+        #     cfg.update(env_params_v)
+        cfg["logdir"] = logdir
+        wandb_login()
+        name = f"pets-{wandb_name}"
+        wb_resume = "allow"  # if args.model_file is None else "must"
+        project = get_project(args.env_name, args.exp_name)
+        if args.wandb_group is not None:
+            wandb.init(project=project, config=vars(args), sync_tensorboard=True,
+                       tags=args.wandb_tags, resume=wb_resume, name=name, group=args.wandb_group)
+        else:
+            wandb.init(project=project, config=vars(args), sync_tensorboard=True,
+                       tags=args.wandb_tags, resume=wb_resume, name=name)
+
     # Create a 1-D dynamics model for this environment
     dynamics_model = common_util.create_one_dim_tr_model(cfg, obs_shape, act_shape)
 
@@ -130,9 +161,20 @@ def run_pets(args):
     train_losses = []
     val_scores = []
 
+    def train_callback_tr(trial):
+        def train_callback(_model, _total_calls, _epoch, tr_loss, val_score, _best_val):
+            train_losses.append(tr_loss)
+            val_scores.append(val_score.mean().item())  # this returns val score per ensemble model
+            log_names = ["trial", "epoch", "train_loss", "val_score"]
+            log = [trial, _epoch, tr_loss, val_score.mean().item()]
+            if args.use_wandb:
+                wandb.log({k: v for k, v in zip(log_names, log)})
+        return train_callback
+
     def train_callback(_model, _total_calls, _epoch, tr_loss, val_score, _best_val):
         train_losses.append(tr_loss)
         val_scores.append(val_score.mean().item())  # this returns val score per ensemble model
+
 
     # Create a trainer for the model
     model_trainer = models.ModelTrainer(dynamics_model,
@@ -172,9 +214,8 @@ def run_pets(args):
                     dataset_val=dataset_val,
                     num_epochs=args.num_epochs,#50,
                     patience=args.patience,#50,
-                    callback=train_callback,
+                    callback=train_callback_tr(trial),
                     silent=True)
-
             # --- Doing env step using the agent and adding to model dataset ---
             next_obs, reward, terminated, truncated, _ = common_util.step_env_and_add_to_buffer(
                 env, obs, agent, {}, replay_buffer)
@@ -188,6 +229,11 @@ def run_pets(args):
                 break
 
         all_rewards.append(total_reward)
+        log_names = ["trial", "total_reward"]
+        log = [trial, total_reward]
+        if args.use_wandb:
+            wandb.log({k: v for k, v in zip(log_names, log)})
+    wandb.finish()
 
     fig, ax = plt.subplots(3, 1, figsize=(15, 10))
     ax[0].plot(train_losses)
