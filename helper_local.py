@@ -956,6 +956,7 @@ def add_pets_args(parser):
     # parser.add_argument('--val_env_name', type=str, default=None, help='optional validation environment ID')
     # parser.add_argument('--param_name', type=str, default='easy-200', help='hyper-parameter ID')
     parser.add_argument('--seed', type=int, default=random.randint(0, 9999), help='Random generator seed')
+    parser.add_argument('--num_checkpoints', type=int, default=4, help='Number of save checkpoints')
     parser.add_argument('--trial_length', type=int, default=200, help='Length of each trial')
     parser.add_argument('--num_trials', type=int, default=20, help='Number of trials')
     parser.add_argument('--ensemble_size', type=int, default=5, help='Number of ensemble models')
