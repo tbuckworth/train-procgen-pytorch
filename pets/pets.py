@@ -49,7 +49,7 @@ def run_pets(args):
         # dynamics model configuration
         "dynamics_model": {
             # "_target_": "mbrl.models.GaussianMLP",
-            "_target_": "pets_models.GraphTransitionPets",
+            "_target_": "pets.pets_models.GraphTransitionPets",
             "device": device,
             "num_layers": args.num_layers,#4,
             "ensemble_size": ensemble_size,

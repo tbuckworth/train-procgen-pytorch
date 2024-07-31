@@ -30,7 +30,7 @@ from helper_local import get_config, get_path, balanced_reward, load_storage_and
     load_hparams_for_model, floats_to_dp, dict_to_html_table, wandb_login, add_symbreg_args, DictToArgs, \
     inverse_sigmoid, sigmoid, sample_from_sigmoid, map_actions_to_values, get_actions_from_all, \
     entropy_from_binary_prob, get_saved_hyperparams, softmax, sample_numpy_probs, n_params, get_logdir_from_symbdir, \
-    load_pysr_to_torch, get_latest_file_matching, get_agent_constructor
+    get_latest_file_matching, get_agent_constructor
 from common.env.env_constructor import get_env_constructor
 from cartpole.create_cartpole import create_cartpole
 from boxworld.create_box_world import create_bw_env
@@ -672,3 +672,13 @@ def load_sr_graph_agent(symbdir):
 
 def get_pysr_dir(symbdir, sub_folder):
     return get_latest_file_matching(r"\d*-\d", 1, folder=os.path.join(symbdir, sub_folder))
+
+
+def load_pysr_to_torch(msgdir):
+    try:
+        pickle_filename = os.path.join(msgdir, "symb_reg.pkl")
+        msg_model = PySRRegressor.from_file(pickle_filename, extra_torch_mappings=get_extra_torch_mappings())
+        msg_torch = NBatchPySRTorch(msg_model.pytorch())
+        return msg_torch
+    except Exception:
+        return None

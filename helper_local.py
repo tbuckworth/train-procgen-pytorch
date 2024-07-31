@@ -17,14 +17,13 @@ import platform
 from matplotlib import pyplot as plt
 
 from common.model import NatureModel, ImpalaModel, MHAModel, ImpalaVQModel, ImpalaVQMHAModel, ImpalaFSQModel, ribMHA, \
-    ImpalaFSQMHAModel, RibFSQMHAModel, MLPModel, TransformoBot, GraphTransitionModel, NBatchPySRTorch, ImpalaCNN, \
+    ImpalaFSQMHAModel, RibFSQMHAModel, MLPModel, TransformoBot, GraphTransitionModel, ImpalaCNN, \
     GraphValueModel
 from common.policy import CategoricalPolicy, TransitionPolicy, PixelTransPolicy, GraphTransitionPolicy, \
     DoubleTransitionPolicy
 from moviepy.editor import ImageSequenceClip
 
 from common.storage import Storage
-from symbreg.extra_mappings import get_extra_torch_mappings
 
 GLOBAL_DIR = "/vol/bitbucket/tfb115/train-procgen-pytorch/"
 OS_IS = "Linux"
@@ -54,26 +53,25 @@ try:
 except Exception as e:
     pass
 
-if OS_IS == "Windows":
-    import os
-    import ctypes
-    import glob
+# if OS_IS == "Windows":
+#     import os
+#     import ctypes
+#     import glob
+#
+#     # Path to the bin directory of your Julia installation
+#     julia_bin_path = r"C:\Users\titus\.julia\juliaup\julia-1.10.4+0.x64.w64.mingw32\bin"  # (which is the same as the julia.exe)
+#
+#     # Add the bin directory to PATH
+#     os.environ["PATH"] += ";" + julia_bin_path
+#
+#     # Load each DLL file in the bin directory
+#     for dll_path in glob.glob(os.path.join(julia_bin_path, "*.dll")):
+#         try:
+#             ctypes.CDLL(dll_path)
+#             print(f"Loaded {dll_path} successfully.")
+#         except OSError as e:
+#             print(f"Could not load {dll_path}: {e}")
 
-    # Path to the bin directory of your Julia installation
-    julia_bin_path = r"C:\Users\titus\.julia\juliaup\julia-1.10.4+0.x64.w64.mingw32\bin"  # (which is the same as the julia.exe)
-
-    # Add the bin directory to PATH
-    os.environ["PATH"] += ";" + julia_bin_path
-
-    # Load each DLL file in the bin directory
-    for dll_path in glob.glob(os.path.join(julia_bin_path, "*.dll")):
-        try:
-            ctypes.CDLL(dll_path)
-            print(f"Loaded {dll_path} successfully.")
-        except OSError as e:
-            print(f"Could not load {dll_path}: {e}")
-
-from pysr import PySRRegressor
 import torch
 
 
@@ -925,16 +923,6 @@ def concat_np_list(l, shape):
 
 def n_params(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
-
-
-def load_pysr_to_torch(msgdir):
-    try:
-        pickle_filename = os.path.join(msgdir, "symb_reg.pkl")
-        msg_model = PySRRegressor.from_file(pickle_filename, extra_torch_mappings=get_extra_torch_mappings())
-        msg_torch = NBatchPySRTorch(msg_model.pytorch())
-        return msg_torch
-    except Exception:
-        return None
 
 
 def get_project(env_name, exp_name):
