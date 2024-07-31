@@ -1,3 +1,4 @@
+import argparse
 import re
 from math import floor, log10
 
@@ -10,7 +11,8 @@ from create_sh_files import add_training_args_dict, add_symbreg_args_dict
 from double_graph_sr import run_double_graph_neurosymbolic_search
 from gp import bayesian_optimisation
 from graph_sr import fine_tune, load_sr_graph_agent, run_graph_neurosymbolic_search
-from helper_local import wandb_login, DictToArgs, get_project, add_symbreg_args
+from helper_local import wandb_login, DictToArgs, get_project, add_symbreg_args, add_pets_args
+from pets.pets import run_pets
 from train import train_ppo
 
 
@@ -102,6 +104,13 @@ def select_next_hyperparameters(X, y, bounds):
 
     return hparams
 
+def run_pets_hyperparameters(hparams):
+    parser = argparse.ArgumentParser()
+    parser = add_pets_args(parser)
+    args = parser.parse_args()
+    args_dict = vars(args)
+    args_dict.update(hparams)
+    run_pets(DictToArgs(args_dict))
 
 def run_next_hyperparameters(hparams):
     parser_dict = add_training_args_dict()
@@ -453,7 +462,44 @@ def cartpole_double_graph_hyperparams():
         id_tag = fixed["wandb_tags"][0]
         optimize_hyperparams(bounds, fixed, project, id_tag, run_next_hyperparameters)
 
+def pets_graph_transition_cartpole():
+    fixed = {
+        "env_name": 'cartpole_continuous',
+        "exp_name": "",
+        "seed": 6033,
+        "wandb_tags": ["pgt0", "graph-transition"],
+        "use_wandb": True,
+        # "learning_rate": 0.000532,
+
+    }
+    bounds = {
+        # 'trial_length': [200, 200],
+        # 'num_trials': [20, 20],
+        # 'ensemble_size': [5, 5],
+        'num_layers': [3, 6],
+        'hid_size': [64, 256],
+        # 'planning_horizon': [15, 15],
+        # 'replan_freq': [1,1],
+        # 'num_iterations': [5,5],
+        # 'population_size': [500, 500],
+        # 'num_particles': [20, 20],
+        'learning_rate': [1e-5, 1e-3],
+        # 'weight_decay': [5e-5, 5e-5],
+        # 'num_epochs': [50, 50],
+        # 'patience': [50, 50],
+        # 'validation_ratio': [0.05, 0.05],
+        # 'elite_ratio': [0.1, 0.1],
+        # 'alpha': [0.1],
+        'model_batch_size': [16, 32],
+    }
+    while True:
+        project = get_project(fixed["env_name"], fixed["exp_name"])
+        id_tag = fixed["wandb_tags"][0]
+        optimize_hyperparams(bounds, fixed, project, id_tag, run_pets_hyperparameters)
+
+
+
 if __name__ == "__main__":
-    double_graph_symbreg_ft_hparams()
+    pets_graph_transition_cartpole()
 
 
