@@ -235,8 +235,8 @@ def run_pets(args):
                 break
 
         all_rewards.append(total_reward)
-        log_names = ["trial", "trial_total_reward", "trial_train_loss", "trial_val_score"]
-        log = [trial, total_reward, train_losses[-1], val_scores[-1]]
+        log_names = ["trial", "trial_total_reward", "trial_train_loss", "trial_val_score", "cum_max_total_reward"]
+        log = [trial, total_reward, train_losses[-1], val_scores[-1], max(all_rewards)]
         if args.use_wandb:
             wandb.log({k: v for k, v in zip(log_names, log)})
         if trial > checkpoints[checkpoint_cnt] or save:
