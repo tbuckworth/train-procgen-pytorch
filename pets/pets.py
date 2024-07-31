@@ -260,7 +260,10 @@ def run_pets(args):
             wandb.log({k: v for k, v in zip(log_names, log)})
         if trial > checkpoints[checkpoint_cnt] or save:
             print("Saving model.")
-            dynamics_model.save(f"{logdir}/model_{trial}.pth")
+            save_dir = f"{logdir}/model_{trial}"
+            if not os.path.exists(save_dir):
+                os.mkdir(save_dir)
+            dynamics_model.save(save_dir)
             checkpoint_cnt += 1
     wandb.finish()
 
