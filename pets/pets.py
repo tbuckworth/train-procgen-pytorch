@@ -1,4 +1,5 @@
 import os
+import re
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -20,6 +21,10 @@ mpl.rcParams.update({"font.size": 16})
 
 
 def run_pets(args):
+    # possible dynamics model:
+    # pets.pets_models.GraphTransitionPets
+    # mbrl.models.GaussianMLP
+
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     seed = args.seed
     env = cartpole_env.CartPoleEnv(render_mode="rgb_array")
@@ -49,7 +54,7 @@ def run_pets(args):
         # dynamics model configuration
         "dynamics_model": {
             # "_target_": "mbrl.models.GaussianMLP",
-            "_target_": "pets.pets_models.GraphTransitionPets",
+            "_target_": args.dyn_model,
             "device": device,
             "num_layers": args.num_layers,#4,
             "ensemble_size": ensemble_size,
@@ -83,7 +88,8 @@ def run_pets(args):
     # Setup Wandb:
     wandb_name = args.wandb_name
     if args.wandb_name is None:
-        wandb_name = np.random.randint(1e5)
+        model_name = re.split(r'\.', args.dyn_model)[-1]
+        wandb_name = f"{model_name}_{np.random.randint(1e5)}"
     for key, value in args.__dict__.items():
         print(key, ':', value)
     if args.detect_nan:

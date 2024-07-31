@@ -1002,6 +1002,7 @@ def add_pets_args(parser):
     parser.add_argument('--wandb_name', type=str, default=None)
     parser.add_argument('--wandb_group', type=str, default=None)
     parser.add_argument('--wandb_tags', type=str, nargs='+')
+    parser.add_argument('--dyn_model', type=str, default='pets.pets_models.GraphTransitionPets')
     parser.add_argument('--detect_nan', action="store_true")
     parser.add_argument('--deterministic', action="store_true")
     # parser.add_argument('--use_valid_env', action="store_true")
