@@ -102,16 +102,17 @@ def run_pets(args):
         # if upload_env_params:
         #     cfg.update(env_params)
         #     cfg.update(env_params_v)
-        cfg["logdir"] = logdir
+        wb_cfg = vars(args)
+        wb_cfg["logdir"] = logdir
         wandb_login()
         name = f"pets-{wandb_name}"
         wb_resume = "allow"  # if args.model_file is None else "must"
         project = get_project(args.env_name, args.exp_name)
         if args.wandb_group is not None:
-            wandb.init(project=project, config=vars(args), sync_tensorboard=True,
+            wandb.init(project=project, config=wb_cfg, sync_tensorboard=True,
                        tags=args.wandb_tags, resume=wb_resume, name=name, group=args.wandb_group)
         else:
-            wandb.init(project=project, config=vars(args), sync_tensorboard=True,
+            wandb.init(project=project, config=wb_cfg, sync_tensorboard=True,
                        tags=args.wandb_tags, resume=wb_resume, name=name)
 
     # Create a 1-D dynamics model for this environment
@@ -165,11 +166,16 @@ def run_pets(args):
     train_losses = []
     val_scores = []
 
+    wandb.define_metric("train/step")
+    wandb.define_metric("train/*", step_metric="train/step")
+    wandb.define_metric("trial/step")
+    wandb.define_metric("trial/*", step_metric="trial/step")
+
     def train_callback_tr(trial):
         def train_callback(_model, _total_calls, _epoch, tr_loss, val_score, _best_val):
             train_losses.append(tr_loss)
             val_scores.append(val_score.mean().item())  # this returns val score per ensemble model
-            log_names = ["trial_n", "epoch", "train_loss", "val_score"]
+            log_names = ["train/trial", "train/epoch", "train/train_loss", "train/val_score"]
             log = [trial, _epoch, tr_loss, val_score.mean().item()]
             if args.use_wandb:
                 wandb.log({k: v for k, v in zip(log_names, log)})
@@ -235,7 +241,11 @@ def run_pets(args):
                 break
 
         all_rewards.append(total_reward)
-        log_names = ["trial", "total_reward", "trial_train_loss", "trial_val_score", "cum_max_total_reward"]
+        log_names = ["trial/trial",
+                     "trial/total_reward",
+                     "trial/train_loss",
+                     "trial/val_score",
+                     "trial/cum_max_total_reward"]
         log = [trial, total_reward, train_losses[-1], val_scores[-1], max(all_rewards)]
         print(f"Trial:\t{trial}")
         print(f"Reward:\t{total_reward}")

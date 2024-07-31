@@ -482,7 +482,7 @@ def pets_graph_transition_cartpole():
         "seed": 6033,
         "wandb_tags": ["pgt0", "graph-transition"],
         "use_wandb": True,
-        "deterministic": True,
+        "deterministic": False,
     }
     bounds = {
         # 'trial_length': [200, 200],
