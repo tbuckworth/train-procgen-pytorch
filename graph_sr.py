@@ -10,7 +10,7 @@ import sympy
 # from torch import cuda
 
 import wandb
-from agents.ppo_model import PPOModel
+# from agents.ppo_model import PPOModel
 from common.logger import Logger
 from common.model import NBatchPySRTorch
 from common.storage import BasicStorage
@@ -20,11 +20,12 @@ from email_results import send_images_first_last
 from symbolic_regression import load_nn_policy
 from symbreg.agents import SymbolicAgent, NeuralAgent, RandomAgent, NeuroSymbolicAgent
 from symbreg.extra_mappings import get_extra_torch_mappings
+from windows_dll_setup import windows_dll_setup_for_pysr
 
-if os.name != "nt":
-    from pysr import PySRRegressor
+windows_dll_setup_for_pysr()
+from pysr import PySRRegressor
 # Important! keep torch after pysr
-import torch
+# import torch
 from common.env.procgen_wrappers import create_env, create_procgen_env
 from helper_local import get_config, get_path, balanced_reward, load_storage_and_policy, \
     load_hparams_for_model, floats_to_dp, dict_to_html_table, wandb_login, add_symbreg_args, DictToArgs, \
@@ -32,8 +33,8 @@ from helper_local import get_config, get_path, balanced_reward, load_storage_and
     entropy_from_binary_prob, get_saved_hyperparams, softmax, sample_numpy_probs, n_params, get_logdir_from_symbdir, \
     get_latest_file_matching, get_agent_constructor
 from common.env.env_constructor import get_env_constructor
-from cartpole.create_cartpole import create_cartpole
-from boxworld.create_box_world import create_bw_env
+# from cartpole.create_cartpole import create_cartpole
+# from boxworld.create_box_world import create_bw_env
 from matplotlib import pyplot as plt
 
 # os.environ["PYTHON_JULIACALL_BINDIR"] = r"C:\Users\titus\PycharmProjects\train-procgen-pytorch\venv\julia_env\pyjuliapkg\install\bin"
