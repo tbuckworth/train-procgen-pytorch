@@ -165,6 +165,8 @@ def run_pets(args):
 
     train_losses = []
     val_scores = []
+    train_step = [0]
+    trial_step = 0
 
     wandb.define_metric("train/step")
     wandb.define_metric("train/*", step_metric="train/step")
@@ -174,9 +176,10 @@ def run_pets(args):
     def train_callback_tr(trial):
         def train_callback(_model, _total_calls, _epoch, tr_loss, val_score, _best_val):
             train_losses.append(tr_loss)
-            val_scores.append(val_score.mean().item())  # this returns val score per ensemble model
-            log_names = ["train/trial", "train/epoch", "train/train_loss", "train/val_score"]
-            log = [trial, _epoch, tr_loss, val_score.mean().item()]
+            val_scores.append(val_score.mean().item())# this returns val score per ensemble model
+            train_step[-1] += 1
+            log_names = ["train/step", "train/trial", "train/epoch", "train/train_loss", "train/val_score"]
+            log = [train_step[-1], trial, _epoch, tr_loss, val_score.mean().item()]
             if args.use_wandb:
                 wandb.log({k: v for k, v in zip(log_names, log)})
 
@@ -241,12 +244,14 @@ def run_pets(args):
                 break
 
         all_rewards.append(total_reward)
-        log_names = ["trial/trial",
+        trial_step += 1
+        log_names = ["trial/step",
+                     "trial/trial",
                      "trial/total_reward",
                      "trial/train_loss",
                      "trial/val_score",
                      "trial/cum_max_total_reward"]
-        log = [trial, total_reward, train_losses[-1], val_scores[-1], max(all_rewards)]
+        log = [trial_step, trial, total_reward, train_losses[-1], val_scores[-1], max(all_rewards)]
         print(f"Trial:\t{trial}")
         print(f"Reward:\t{total_reward}")
         print(f"Max:\t{max(all_rewards)}")
