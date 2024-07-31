@@ -1,4 +1,3 @@
-import argparse
 import os
 
 import matplotlib as mpl
@@ -15,7 +14,7 @@ import mbrl.planning as planning
 import mbrl.util.common as common_util
 import wandb
 
-from helper_local import add_pets_args, create_logdir, wandb_login, get_project
+from helper_local import create_logdir, wandb_login, get_project
 
 mpl.rcParams.update({"font.size": 16})
 
@@ -251,8 +250,4 @@ def run_pets(args):
     print("nothing")
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser = add_pets_args(parser)
-    args = parser.parse_args()
-    run_pets(args)
+
