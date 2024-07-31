@@ -16,7 +16,8 @@ from pets.pets import run_pets
 from train import train_ppo
 
 
-def get_wandb_performance(hparams, project="Cartpole", id_tag="sa_rew", entity="ic-ai-safety"):
+def get_wandb_performance(hparams, project="Cartpole", id_tag="sa_rew", opt_metric="summary.mean_episode_rewards",
+                          entity="ic-ai-safety"):
     wandb_login()
     api = wandb.Api()
     entity, project = entity, project
@@ -47,7 +48,7 @@ def get_wandb_performance(hparams, project="Cartpole", id_tag="sa_rew", entity="
 
     df = pd.DataFrame.from_dict(all_dicts)
     try:
-        y = df["summary.mean_episode_rewards"]
+        y = df[opt_metric]
     except KeyError:
         return None, None
 
@@ -60,7 +61,7 @@ def get_wandb_performance(hparams, project="Cartpole", id_tag="sa_rew", entity="
     # hp = [h for h in hp if h not in ["config.wandb_tags"]]
     # hp = [h for h in hp if len(df[h].unique()) > 1]
 
-    hp = [f"config.{h}" for h in hparams]# if f"config.{h}" in df.columns]
+    hp = [f"config.{h}" for h in hparams]  # if f"config.{h}" in df.columns]
     dfn = df[hp].select_dtypes(include='number')
     return dfn, y
 
@@ -104,6 +105,7 @@ def select_next_hyperparameters(X, y, bounds):
 
     return hparams
 
+
 def run_pets_hyperparameters(hparams):
     parser = argparse.ArgumentParser()
     parser = add_pets_args(parser)
@@ -112,11 +114,13 @@ def run_pets_hyperparameters(hparams):
     args_dict.update(hparams)
     run_pets(DictToArgs(args_dict))
 
+
 def run_next_hyperparameters(hparams):
     parser_dict = add_training_args_dict()
     parser_dict.update(hparams)
     args = DictToArgs(parser_dict)
     train_ppo(args)
+
 
 def run_graph_hyperparameters(hparams):
     parser_dict = add_training_args_dict()
@@ -124,11 +128,13 @@ def run_graph_hyperparameters(hparams):
     args = DictToArgs(parser_dict)
     run_graph_neurosymbolic_search(args)
 
+
 def run_double_graph_hyperparameters(hparams):
     parser_dict = add_symbreg_args_dict()
     parser_dict.update(hparams)
     args = DictToArgs(parser_dict)
     run_double_graph_neurosymbolic_search(args)
+
 
 def inspect_hparams(X, y, bounds, fixed):
     cuttoff = 495
@@ -145,8 +151,13 @@ def inspect_hparams(X, y, bounds, fixed):
     pass
 
 
-def optimize_hyperparams(bounds, fixed, project="Cartpole", id_tag="sa_rew", run_next=run_next_hyperparameters):
-    X, y = get_wandb_performance(bounds.keys(), project, id_tag)
+def optimize_hyperparams(bounds,
+                         fixed,
+                         project="Cartpole",
+                         id_tag="sa_rew",
+                         run_next=run_next_hyperparameters,
+                         opt_metric="summary.mean_episode_rewards"):
+    X, y = get_wandb_performance(bounds.keys(), project, id_tag, opt_metric)
 
     hparams = select_next_hyperparameters(X, y, bounds)
 
@@ -157,6 +168,7 @@ def optimize_hyperparams(bounds, fixed, project="Cartpole", id_tag="sa_rew", run
         run_next(hparams)
     except Exception as e:
         print(e)
+
 
 def cartpole_graph_hyperparams():
     fixed = {
@@ -236,8 +248,8 @@ def cartpole_full_graph_hyperparams():
         # "temperature": 1e-5,#[1e-8, 1e-2],
         # "rew_coef": 1.,#[0.1, 10.],
         # "done_coef": 1.,#[0.1, 10.],
-        "output_dim": 43,#[24, 64],
-        "depth": 4,#[2, 6],
+        "output_dim": 43,  # [24, 64],
+        "depth": 4,  # [2, 6],
     }
     bounds = {
         "gamma": [0.9999, 0.8],
@@ -261,21 +273,20 @@ def cartpole_full_graph_hyperparams():
         optimize_hyperparams(bounds, fixed, project, id_tag, run_next_hyperparameters)
 
 
-
 def init_wandb(cfg):
     name = np.random.randint(1e5)
     wandb_login()
     wb_resume = "allow"  # if args.model_file is None else "must"
     project = get_project(cfg["env_name"], cfg["exp_name"])
     wandb.init(project=project, config=cfg, sync_tensorboard=True,
-                   tags=cfg["wandb_tags"], resume=wb_resume, name=f"symbolic_graph-{name}")
+               tags=cfg["wandb_tags"], resume=wb_resume, name=f"symbolic_graph-{name}")
 
 
 def fine_tune_sr(hp_override):
     symbdir = hp_override["symbdir"]
     logdir, ns_agent = load_sr_graph_agent(symbdir)
 
-    #TODO: add newdir to this
+    # TODO: add newdir to this
     init_wandb(hp_override)
 
     del hp_override["symbdir"]
@@ -285,7 +296,7 @@ def fine_tune_sr(hp_override):
 def fine_tune_hparams():
     fixed = {
         "env_name": 'cartpole',
-        "exp_name": 'symbreg', # IMPORTANT!
+        "exp_name": 'symbreg',  # IMPORTANT!
         "param_name": 'graph-transition',
         "device": "gpu",
         "num_timesteps": int(2e6),
@@ -316,6 +327,7 @@ def fine_tune_hparams():
         fixed["symbdir"] = "logs/train/cartpole/test/2024-06-08__00-54-02__seed_6033/symbreg/2024-06-11__11-29-55"
         # fixed["symbdir"] = "logs/train/cartpole/test/2024-06-11__10-31-41__seed_6033/symbreg/2024-06-13__14-06-20"
         optimize_hyperparams(bounds, fixed, project, id_tag, fine_tune_sr)
+
 
 def graph_symbreg_ft_hparams():
     fixed = {
@@ -404,7 +416,7 @@ def double_graph_symbreg_ft_hparams():
         "dyn_epochs": [1, 10],
         "learning_rate": [1e-8, 1e-3],
         "t_learning_rate": [1e-8, 1e-3],
-        #"maxsize": [20, 50],
+        # "maxsize": [20, 50],
         # "n_envs": [64],
         # "n_steps": [256],
         # "n_rollouts": [3],
@@ -462,6 +474,7 @@ def cartpole_double_graph_hyperparams():
         id_tag = fixed["wandb_tags"][0]
         optimize_hyperparams(bounds, fixed, project, id_tag, run_next_hyperparameters)
 
+
 def pets_graph_transition_cartpole():
     fixed = {
         "env_name": 'cartpole_continuous',
@@ -494,11 +507,8 @@ def pets_graph_transition_cartpole():
     while True:
         project = get_project(fixed["env_name"], fixed["exp_name"])
         id_tag = fixed["wandb_tags"][0]
-        optimize_hyperparams(bounds, fixed, project, id_tag, run_pets_hyperparameters)
-
+        optimize_hyperparams(bounds, fixed, project, id_tag, run_pets_hyperparameters, opt_metric="total_reward")
 
 
 if __name__ == "__main__":
     pets_graph_transition_cartpole()
-
-
