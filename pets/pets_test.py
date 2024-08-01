@@ -66,8 +66,12 @@ class MyTestCase(unittest.TestCase):
         t = self.obs.unsqueeze(0)
         self.pets.eval_score(x, t)
 
-        x = x.tile(64, 1)
-        t = t.tile(64, 1)
+        x = x.tile(5, 1)
+        t = t.tile(5, 1)
+        self.pets.eval_score(x, t)
+
+        x = x.tile(4, 1)
+        t = t.tile(4, 1)
         self.pets.eval_score(x, t)
 
     def test_forward(self):
@@ -76,9 +80,11 @@ class MyTestCase(unittest.TestCase):
 
         x = x.tile(5, 1)
         self.forward_twice(self.act, self.pets, x)
+        x = x.tile(4, 1)
+        self.forward_twice(self.act, self.pets, x)
 
     def forward_twice(self, act, pets, x):
-        # summary(pets, x.shape)
+        summary(pets, x.shape)
         x2 = pets.forward(x)
         model_in = compile_obs_action(act, x2[0])
         pets.forward(model_in)

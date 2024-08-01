@@ -45,15 +45,11 @@ class EnsembleLinearLayer(nn.Module):
         else:
             w = self.weight
             b = self.bias
-        # TODO: remove first and clean up:
         # First ensemble linear layer expands dimensions, rest leave dims alone
         if self.ndim == x.ndim:
             xw = einops.einsum(x, w, "... d, e d h -> e ... h")
         else:
-            try:
-                xw = einops.einsum(x, w, "e ... d, e d h -> e ... h")
-            except Exception as e:
-                raise e
+            xw = einops.einsum(x, w, "e ... d, e d h -> e ... h")
         if self.use_bias:
             shp = np.array(list(xw.shape))
             shp[1:-1] = 1
@@ -106,7 +102,8 @@ class GraphTransitionModel(nn.Module):
         self.output_dim = latent_size
         self.device = device
 
-        self.messenger = MLPModel(linear_cons, 5, depth, mid_weight, latent_size, is_first=True, ndim=4)
+        ndim = 4 # this depends on dimensions of input observation
+        self.messenger = MLPModel(linear_cons, 5, depth, mid_weight, latent_size, is_first=True, ndim=ndim)
         if not deterministic:
             latent_size *= 2
         self.updater = MLPModel(linear_cons, 3, depth, mid_weight, latent_size)
@@ -119,10 +116,7 @@ class GraphTransitionModel(nn.Module):
         if y.shape != h.shape[:-1]:
             tile_shape[0] = y.shape[0]
         x = h.tile(tile_shape)
-        try:
-            x2 = torch.concat([x, y.unsqueeze(-1)], -1)
-        except RuntimeError as e:
-            raise e
+        x2 = torch.concat([x, y.unsqueeze(-1)], -1)
         return self.updater(x2)
 
     def forward(self, x):
@@ -149,11 +143,7 @@ class GraphTransitionModel(nn.Module):
         xi = x.unsqueeze(-2).tile([n, 1])
         xj = x.unsqueeze(-3).tile([n, 1, 1])
         a = action.unsqueeze(-1).unsqueeze(-1).tile([n, n]).unsqueeze(-1)
-        try:
-            msg_in = torch.concat([xi, xj, a], dim=-1)
-        except RuntimeError as e:
-            raise (e)
-            print(e)
+        msg_in = torch.concat([xi, xj, a], dim=-1)
         return msg_in
 
     def vec_for_update(self, messages, x):
