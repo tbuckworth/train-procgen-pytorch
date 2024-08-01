@@ -168,7 +168,7 @@ def optimize_hyperparams(bounds,
         run_next(hparams)
     except Exception as e:
         print(e)
-        wandb.finish()
+        wandb.finish(exit_code=-1)
 
 
 def cartpole_graph_hyperparams():
