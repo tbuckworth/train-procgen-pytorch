@@ -14,6 +14,7 @@ def normal():
 
 if __name__ == '__main__':
     hparams = {
+        "trial_length": 500,
         "hid_size": 122,
         "learning_rate": 0.000672,
         "model_batch_size": 26,

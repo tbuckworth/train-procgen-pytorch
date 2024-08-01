@@ -11,15 +11,17 @@ import einops
 
 import mbrl.util.math
 
-from mbrl.models import Ensemble, truncated_normal_init
+from mbrl.models import Ensemble, truncated_normal_init, EnsembleLinearLayer as mbrl_EnsembleLinearLayer
+
 
 class EnsembleLinearLayer(nn.Module):
     """Efficient linear layer for ensemble models."""
 
     def __init__(
-        self, num_members: int, in_size: int, out_size: int, bias: bool = True, first: bool = False
+            self, num_members: int, in_size: int, out_size: int, bias: bool = True, first: bool = False, ndim=None,
     ):
         super().__init__()
+        self.ndim = ndim
         self.first = first
         self.num_members = num_members
         self.in_size = in_size
@@ -43,18 +45,19 @@ class EnsembleLinearLayer(nn.Module):
         else:
             w = self.weight
             b = self.bias
+        # TODO: remove first and clean up:
         # First ensemble linear layer expands dimensions, rest leave dims alone
-        try:
-            xw = einops.einsum(x, w, "e ... d, e d h -> e ... h")
-        except RuntimeError as e:
+        if self.ndim == x.ndim:
             xw = einops.einsum(x, w, "... d, e d h -> e ... h")
+        else:
+            try:
+                xw = einops.einsum(x, w, "e ... d, e d h -> e ... h")
+            except Exception as e:
+                raise e
         if self.use_bias:
             shp = np.array(list(xw.shape))
             shp[1:-1] = 1
-            try:
-                return xw + b.reshape(shp.tolist())
-            except RuntimeError as e:
-                raise(e)
+            return xw + b.reshape(shp.tolist())
         return xw
 
     def extra_repr(self) -> str:
@@ -70,9 +73,8 @@ class EnsembleLinearLayer(nn.Module):
         self.use_only_elite = not self.use_only_elite
 
 
-
 class MLPModel(nn.Module):
-    def __init__(self, linear_cons, in_channels, depth, mid_weight, latent_size, is_first=False):
+    def __init__(self, linear_cons, in_channels, depth, mid_weight, latent_size, is_first=False, ndim=None):
         super(MLPModel, self).__init__()
         self.input_size = in_channels
         self.depth = depth
@@ -84,7 +86,7 @@ class MLPModel(nn.Module):
             mid_layers.append(nn.ReLU())
 
         self.model = nn.Sequential(
-            linear_cons(self.input_size, self.mid_weight, first=is_first),
+            linear_cons(self.input_size, self.mid_weight, first=is_first, ndim=ndim),
             nn.ReLU(),
             nn.Sequential(*mid_layers),
             nn.LayerNorm(self.mid_weight),
@@ -93,6 +95,7 @@ class MLPModel(nn.Module):
 
     def forward(self, x):
         return self.model(x)
+
 
 class GraphTransitionModel(nn.Module):
     def __init__(self, linear_cons, in_channels, depth, mid_weight, latent_size, device, deterministic=False):
@@ -103,7 +106,7 @@ class GraphTransitionModel(nn.Module):
         self.output_dim = latent_size
         self.device = device
 
-        self.messenger = MLPModel(linear_cons, 5, depth, mid_weight, latent_size, is_first=True)
+        self.messenger = MLPModel(linear_cons, 5, depth, mid_weight, latent_size, is_first=True, ndim=4)
         if not deterministic:
             latent_size *= 2
         self.updater = MLPModel(linear_cons, 3, depth, mid_weight, latent_size)
@@ -113,10 +116,13 @@ class GraphTransitionModel(nn.Module):
 
     def update(self, h, y):
         tile_shape = [1 for _ in y.shape] + [1]
-        if h.shape[0] != y.shape[0]:
+        if y.shape != h.shape[:-1]:
             tile_shape[0] = y.shape[0]
         x = h.tile(tile_shape)
-        x2 = torch.concat([x, y.unsqueeze(-1)], -1)
+        try:
+            x2 = torch.concat([x, y.unsqueeze(-1)], -1)
+        except RuntimeError as e:
+            raise e
         return self.updater(x2)
 
     def forward(self, x):
@@ -146,7 +152,7 @@ class GraphTransitionModel(nn.Module):
         try:
             msg_in = torch.concat([xi, xj, a], dim=-1)
         except RuntimeError as e:
-            raise(e)
+            raise (e)
             print(e)
         return msg_in
 
@@ -194,8 +200,10 @@ class GraphTransitionPets(Ensemble):
                 activation_func = hydra.utils.instantiate(cfg)
             return activation_func
 
-        def create_linear_layer(l_in, l_out, first=False):
-            return EnsembleLinearLayer(ensemble_size, l_in, l_out, first=first)
+        def create_linear_layer(l_in, l_out, first=False, ndim=None):
+            # if first:
+            #     return mbrl_EnsembleLinearLayer(ensemble_size, l_in, l_out)
+            return EnsembleLinearLayer(ensemble_size, l_in, l_out, first=first, ndim=ndim)
 
         # hidden_layers = [
         #     nn.Sequential(create_linear_layer(in_size, hid_size), create_activation())
@@ -209,7 +217,8 @@ class GraphTransitionPets(Ensemble):
         #     )
         # self.hidden_layers = nn.Sequential(*hidden_layers)
 
-        self.hidden_layers = GraphTransitionModel(create_linear_layer, self.in_size, num_layers, hid_size, 1, self.device, deterministic)
+        self.hidden_layers = GraphTransitionModel(create_linear_layer, self.in_size, num_layers, hid_size, 1,
+                                                  self.device, deterministic)
 
         if not deterministic:
             self.min_logvar = nn.Parameter(
@@ -455,10 +464,12 @@ class GraphTransitionPets(Ensemble):
         assert model_in.ndim == 2 and target.ndim == 2
         with torch.no_grad():
             pred_mean, _ = self.forward(model_in, use_propagation=False)
-            tile_shape = [1 for _ in pred_mean.shape]
-            if target.shape[0] != pred_mean.shape[0]:
-                tile_shape[0] = pred_mean.shape[0]
-            target = target.tile(tile_shape)
+            target = target.repeat((self.num_members, 1, 1))
+            #
+            # tile_shape = [1 for _ in pred_mean.shape]
+            # if target.shape[0] != pred_mean.shape[0]:
+            #     tile_shape[0] = pred_mean.shape[0]
+            # target = target.tile(tile_shape)
             return F.mse_loss(pred_mean, target, reduction="none"), {}
 
     def sample_propagation_indices(
