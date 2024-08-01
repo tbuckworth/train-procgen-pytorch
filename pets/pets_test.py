@@ -1,5 +1,6 @@
 import unittest
 
+import mbrl.models
 import numpy as np
 import torch
 
@@ -33,6 +34,10 @@ class MyTestCase(unittest.TestCase):
                                        out_size=obs_shape[0], device=device,
                                        ensemble_size=5)
 
+        cls.gmlp = mbrl.models.GaussianMLP(in_size=obs_shape[0] + act_shape[0],
+                                           out_size=obs_shape[0], device=device,
+                                           ensemble_size=5)
+
     def test_eval(self):
         x = self.model_in.unsqueeze(0)
         t = self.obs.unsqueeze(0)
@@ -41,7 +46,6 @@ class MyTestCase(unittest.TestCase):
         x = x.tile(64, 1)
         t = t.tile(64, 1)
         self.pets.eval_score(x, t)
-
 
     def test_forward(self):
         x = self.model_in.unsqueeze(0)

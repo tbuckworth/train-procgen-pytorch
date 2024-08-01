@@ -240,7 +240,8 @@ def run_pets(args):
             steps_trial += 1
 
             if steps_trial == trial_length:
-                save = True
+                if total_reward < max(all_rewards[:-1]):
+                    save = True
                 break
 
         all_rewards.append(total_reward)
