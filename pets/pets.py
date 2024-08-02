@@ -33,6 +33,7 @@ def run_pets(args):
     env = env_cons(None, {})
     env_valid = env_cons(None, {}, is_valid=True)
     env.reset(seed)
+    env_valid.reset(seed)
     rng = np.random.default_rng(seed=0)
     generator = torch.Generator(device=device)
     generator.manual_seed(seed)
@@ -206,6 +207,7 @@ def run_pets(args):
     checkpoints = [(i + 1) * save_every for i in range(args.num_checkpoints)]
     checkpoints.sort()
     all_rewards = [0]
+    val_rewards = [0]
     for trial in range(num_trials):
         obs, _ = env.reset(None)
         agent.reset()
@@ -248,18 +250,25 @@ def run_pets(args):
                     save = True
                 break
 
+        # Rollout in val env:
+        total_val_reward = run_agent_in_env(agent, env_valid, trial_length)
+
+        val_rewards.append(total_val_reward)
         all_rewards.append(total_reward)
+
         trial_step += 1
         log_names = ["trial/step",
                      "trial/trial",
                      "trial/total_reward",
+                     "trial/total_val_reward",
                      "trial/train_loss",
                      "trial/val_score",
                      "trial/cum_max_total_reward"]
-        log = [trial_step, trial, total_reward, train_losses[-1], val_scores[-1], max(all_rewards)]
-        print(f"Trial:\t{trial}")
-        print(f"Reward:\t{total_reward}")
-        print(f"Max:\t{max(all_rewards)}")
+        log = [trial_step, trial, total_reward, total_val_reward, train_losses[-1], val_scores[-1], max(all_rewards)]
+        print(f"Trial:\t\t{trial}")
+        print(f"Reward:\t\t{total_reward}")
+        print(f"Val.Reward:\t{total_val_reward}")
+        print(f"Max:\t\t{max(all_rewards)}")
 
         if args.use_wandb:
             wandb.log({k: v for k, v in zip(log_names, log)})
@@ -286,3 +295,23 @@ def run_pets(args):
     # plt.show()
     #
     # print("nothing")
+
+
+def run_agent_in_env(agent, env, trial_length):
+    obs, _ = env.reset(None)
+    agent.reset()
+
+    terminated = False
+    total_reward = 0.0
+    steps_trial = 0
+    while not terminated:
+        # --- Doing env step using the agent and adding to model dataset ---
+        action = agent.act(obs, {})
+        next_obs, reward, terminated, truncated, info = env.step(action)
+
+        obs = next_obs
+        total_reward += reward
+        steps_trial += 1
+        if steps_trial == trial_length:
+            break
+    return total_reward
