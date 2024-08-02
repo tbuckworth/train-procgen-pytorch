@@ -989,15 +989,20 @@ def add_pets_args(parser):
     parser.add_argument('--deterministic', action="store_true")
     # parser.add_argument('--use_valid_env', action="store_true")
     parser.add_argument('--use_wandb', action="store_true")
+    parser.add_argument('--render', action="store_true")
+
     #
     parser.add_argument('--no-deterministic', dest='deterministic', action="store_false")
     parser.add_argument('--no-detect_nan', dest='detect_nan', action="store_false")
+    parser.add_argument('--no-render', dest='render', action="store_false")
+
     # parser.add_argument('--no-use_valid_env', dest='use_valid_env', action="store_false")
     parser.add_argument('--no-use_wandb', dest='use_wandb', action="store_false")
 
     parser.set_defaults(
         deterministic=False,
         detect_nan=False,
+        render=False,
         # use_valid_env=True,
         use_wandb=True,
     )

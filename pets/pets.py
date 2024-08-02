@@ -29,9 +29,9 @@ def run_pets(args):
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     seed = args.seed
     # env = cartpole_env.CartPoleEnv(render_mode="rgb_array")
-    env_cons = get_pets_env_constructor("cartpole_continuous")
-    env = env_cons(None, {})
-    env_valid = env_cons(None, {}, is_valid=True)
+    env_cons = get_pets_env_constructor(args.env_name)
+    env = env_cons(args, {})
+    env_valid = env_cons(args, {}, is_valid=True)
     env.reset(seed)
     env_valid.reset(seed)
     rng = np.random.default_rng(seed=0)
@@ -40,10 +40,13 @@ def run_pets(args):
     obs_shape = env.observation_space.shape
     act_shape = env.action_space.shape
 
-    # This functions allows the model to evaluate the true rewards given an observation
-    reward_fn = reward_fns.cartpole
-    # This function allows the model to know if an observation should make the episode end
-    term_fn = termination_fns.cartpole
+    # # This functions allows the model to evaluate the true rewards given an observation
+    # reward_fn = reward_fns.cartpole
+    # # This function allows the model to know if an observation should make the episode end
+    # term_fn = termination_fns.cartpole
+
+    reward_fn = env.rew_func
+    term_fn = env.done_func
 
     # configuration
 
@@ -306,7 +309,7 @@ def run_agent_in_env(agent, env, trial_length):
     steps_trial = 0
     while not terminated:
         # --- Doing env step using the agent and adding to model dataset ---
-        action = agent.act(obs, {})
+        action = agent.act(obs)
         next_obs, reward, terminated, truncated, info = env.step(action)
 
         obs = next_obs

@@ -20,6 +20,12 @@ class PetsWrapper(gym.Env):
     def close(self):
         return self.env.close()
 
+    def done_func(self, act, obs):
+        return self.env.done_func(obs)
+
+    def rew_func(self, act, obs):
+        return self.env.rew_func(obs)
+
 
 class DeVecEnvWrapper(gym.Env):
     def __init__(self, env):
@@ -43,3 +49,9 @@ class DeVecEnvWrapper(gym.Env):
 
     def close(self):
         return self.env.close()
+
+    def done_func(self, state):
+        return self.env.done_func(state)[0]
+
+    def rew_func(self, state):
+        return self.env.rew_func(state)[0]

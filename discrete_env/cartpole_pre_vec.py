@@ -202,7 +202,7 @@ class CartPoleVecEnv(PreVecEnv):
             "Action Force",
         ]
 
-    def rew_func(self, state):
+    def rew_func(self, act, state):
         return np.ones((state.shape[:-1]))
 
     def transition_model(self, action):
