@@ -491,7 +491,7 @@ def pets_graph_transition_cartpole():
         # 'num_trials': [20, 20],
         # 'ensemble_size': [5, 5],
         'num_layers': [4, 7],
-        'hid_size': [64, 256],
+        'hid_size': [95, 256],
         # 'planning_horizon': [15, 15],
         # 'replan_freq': [1,1],
         # 'num_iterations': [5,5],
