@@ -4,6 +4,7 @@ from discrete_env.acrobot_pre_vec import create_acrobot
 from discrete_env.cartpole_pre_vec import create_cartpole
 from discrete_env.cartpole_swing_pre_vec import create_cartpole_swing
 from discrete_env.mountain_car_pre_vec import create_mountain_car
+from discrete_env.pre_vec_wrappers import DeVecEnvWrapper, PetsWrapper
 
 
 def get_env_constructor(env_name):
@@ -21,3 +22,12 @@ def get_env_constructor(env_name):
     if env_name == "lunar_lander":
         raise NotImplementedError
     return create_venv
+
+
+def get_pets_env_constructor(env_name):
+    env_cons = get_env_constructor(env_name)
+
+    def pets_cons(**kwargs):
+        return PetsWrapper(DeVecEnvWrapper(env_cons(**kwargs)))
+
+    return pets_cons
