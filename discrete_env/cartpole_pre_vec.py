@@ -7,9 +7,10 @@ import math
 from typing import Optional
 
 import numpy as np
+from gymnasium import spaces
+
 from discrete_env.helper_pre_vec import StartSpace, override_value, assign_env_vars
 from discrete_env.pre_vec_env import PreVecEnv, create_pre_vec
-from helper_local import DictToArgs
 
 
 # Analytic Solution:
@@ -184,6 +185,9 @@ class CartPoleVecEnv(PreVecEnv):
         ]
 
         super().__init__(n_envs, n_actions, "CartPole", max_steps, seed, render_mode)
+        if self.continuous:
+            act_high = np.array((1,), dtype=np.float32)
+            self.action_space = spaces.Box(-act_high, act_high, dtype=np.float32)
 
     def get_ob_names(self):
         return [

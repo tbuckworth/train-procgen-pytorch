@@ -4,13 +4,14 @@ import gymnasium as gym
 class PetsWrapper(gym.Env):
     def __init__(self, env):
         self.env = env
-
+        self.observation_space = env.observation_space
+        self.action_space = env.action_space
     def step(self, action):
         obs, rew, done, info = self.env.step(action)
         return obs, rew, done, False, info
 
     def reset(self, seed=None):
-        return self.env.reset(seed), {}
+        return self.env.reset(seed=seed), {}
 
     def render(self):
         return self.env.render()
@@ -23,6 +24,8 @@ class DeVecEnvWrapper(gym.Env):
     def __init__(self, env):
         self.env = env
         self.n_envs = self.env.n_envs
+        self.observation_space = env.observation_space
+        self.action_space = env.action_space
 
     def step(self, action):
         shp = [self.n_envs] + [1 for _ in action.shape]
@@ -31,7 +34,7 @@ class DeVecEnvWrapper(gym.Env):
         return obs[0], rew[0], done[0], info[0]
 
     def reset(self, seed=None):
-        return self.env.reset(seed)[0]
+        return self.env.reset(seed=seed)[0]
 
     def render(self):
         return self.env.render()
