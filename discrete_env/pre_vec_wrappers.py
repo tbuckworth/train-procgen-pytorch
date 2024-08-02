@@ -23,7 +23,7 @@ class PetsWrapper(gym.Env):
 
     def done_func(self, act, obs):
         done = self.env.done_func(obs.detach().cpu().numpy())
-        return torch.BoolTensor(done).to(device=obs.device)
+        return torch.BoolTensor(done).to(device=obs.device).unsqueeze(-1)
     def rew_func(self, act, obs):
         rew = self.env.rew_func(obs.detach().cpu().numpy())
         return torch.Tensor(rew).type(obs.dtype).to(device=obs.device)
