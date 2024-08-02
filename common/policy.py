@@ -330,7 +330,7 @@ class DoubleTransitionPolicy(nn.Module):
     def dr(self, state):
         s = state.detach().cpu().numpy()
         d = self.done_func(s)
-        r = self.rew_func(s)
+        r = self.rew_func(s).squeeze()
         d = torch.FloatTensor(d).to(device=self.device),
         r = torch.FloatTensor(r).to(device=self.device)
         return d, r

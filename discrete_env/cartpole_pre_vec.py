@@ -202,8 +202,8 @@ class CartPoleVecEnv(PreVecEnv):
             "Action Force",
         ]
 
-    def rew_func(self, act, state):
-        return np.ones((state.shape[:-1]))
+    def rew_func(self, state):
+        return np.ones((*state.shape[:1], 1))
 
     def transition_model(self, action):
         x, x_dot, theta, theta_dot, gravity, pole_length, mass_cart, mass_pole, force_mag = self.state.T
