@@ -103,8 +103,10 @@ class CartPoleVecEnv(PreVecEnv):
                  max_force_mag=10.,
                  max_steps=500,
                  seed=0,
+                 continuous=False,
                  render_mode: Optional[str] = None, ):
 
+        self.continuous = continuous
         n_actions = 2
         self.reward = np.ones((n_envs))
         self.info = [{"env_reward": self.reward[i]} for i in range(len(self.reward))]
@@ -201,8 +203,7 @@ class CartPoleVecEnv(PreVecEnv):
 
     def transition_model(self, action):
         x, x_dot, theta, theta_dot, gravity, pole_length, mass_cart, mass_pole, force_mag = self.state.T
-        force = np.ones((self.n_envs))
-        force[action == 0] = -1
+        force = self.action_force(action)
         force *= force_mag
         costheta = np.cos(theta)
         sintheta = np.sin(theta)
@@ -231,6 +232,13 @@ class CartPoleVecEnv(PreVecEnv):
             theta = theta + self.tau * theta_dot
         self.state = np.vstack((x, x_dot, theta, theta_dot, gravity, pole_length, mass_cart, mass_pole, force_mag)).T
         self.terminated = self.done_func(self.state)
+
+    def action_force(self, action):
+        if self.continuous:
+            return action
+        force = np.ones((self.n_envs))
+        force[action == 0] = -1
+        return force
 
     def done_func(self, state):
         xt, _, thetat, _, _, _, _, _, _ = state.T
@@ -378,6 +386,9 @@ class CartPoleVecEnv(PreVecEnv):
 #     env_args["render_mode"] = "human" if args.render else None
 #     return CartPoleVecEnv(**env_args)
 
+def CartPoleContVecEnv(**kwargs):
+    return CartPoleVecEnv(**kwargs, continuous=True)
+
 def create_cartpole(args, hyperparameters, is_valid=False):
     param_range = {
         "degrees": [12],
@@ -394,3 +405,22 @@ def create_cartpole(args, hyperparameters, is_valid=False):
         "max_force_mag": [10.],
     }
     return create_pre_vec(args, hyperparameters, param_range, CartPoleVecEnv, is_valid)
+
+def create_cartpole_continuous(args, hyperparameters, is_valid=False):
+    param_range = {
+        "degrees": [12],
+        "h_range": [2.4],
+        "min_gravity": [9.8, 10.4],
+        "max_gravity": [10.4, 24.8],
+        "min_pole_length": [0.5, 1.0],
+        "max_pole_length": [1.0, 2.0],
+        "min_cart_mass": [1.0, 2.],
+        "max_cart_mass": [1.5, 3.],
+        "min_pole_mass": [0.1, .2],
+        "max_pole_mass": [0.2, .4],
+        "min_force_mag": [10.],
+        "max_force_mag": [10.],
+    }
+    return create_pre_vec(args, hyperparameters, param_range, CartPoleContVecEnv, is_valid)
+
+

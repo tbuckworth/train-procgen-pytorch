@@ -15,6 +15,7 @@ import mbrl.planning as planning
 import mbrl.util.common as common_util
 import wandb
 
+from common.env.env_constructor import get_pets_env_constructor
 from helper_local import create_logdir, wandb_login, get_project
 
 mpl.rcParams.update({"font.size": 16})
@@ -28,6 +29,7 @@ def run_pets(args):
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     seed = args.seed
     env = cartpole_env.CartPoleEnv(render_mode="rgb_array")
+    env = get_pets_env_constructor("cartpole")
     env.reset(seed)
     rng = np.random.default_rng(seed=0)
     generator = torch.Generator(device=device)
