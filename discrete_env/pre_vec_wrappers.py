@@ -1,4 +1,5 @@
 import gymnasium as gym
+import numpy as np
 
 
 class PetsWrapper(gym.Env):
@@ -28,8 +29,9 @@ class DeVecEnvWrapper(gym.Env):
         self.action_space = env.action_space
 
     def step(self, action):
+        # is adding a dimension wrong?
         shp = [self.n_envs] + [1 for _ in action.shape]
-        action = action.tile(shp)
+        action = np.tile(action, shp)
         obs, rew, done, info = self.env.step(action)
         return obs[0], rew[0], done[0], info[0]
 

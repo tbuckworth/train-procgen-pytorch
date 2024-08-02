@@ -239,7 +239,7 @@ class CartPoleVecEnv(PreVecEnv):
 
     def action_force(self, action):
         if self.continuous:
-            return action
+            return action.squeeze()
         force = np.ones((self.n_envs))
         force[action == 0] = -1
         return force

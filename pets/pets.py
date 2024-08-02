@@ -29,7 +29,9 @@ def run_pets(args):
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     seed = args.seed
     # env = cartpole_env.CartPoleEnv(render_mode="rgb_array")
-    env = get_pets_env_constructor("cartpole_continuous")(None, {})
+    env_cons = get_pets_env_constructor("cartpole_continuous")
+    env = env_cons(None, {})
+    env_valid = env_cons(None, {}, is_valid=True)
     env.reset(seed)
     rng = np.random.default_rng(seed=0)
     generator = torch.Generator(device=device)

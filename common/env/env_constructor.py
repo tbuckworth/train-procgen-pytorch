@@ -29,7 +29,7 @@ def get_env_constructor(env_name):
 def get_pets_env_constructor(env_name):
     env_cons = get_env_constructor(env_name)
 
-    def pets_cons(*args):
-        return PetsWrapper(DeVecEnvWrapper(env_cons(*args)))
+    def pets_cons(*args, **kwargs):
+        return PetsWrapper(DeVecEnvWrapper(env_cons(*args, **kwargs)))
 
     return pets_cons

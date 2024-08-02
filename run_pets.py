@@ -21,6 +21,6 @@ if __name__ == '__main__':
         "num_layers": 6,
         "seed": 6033,
         "use_wandb": True,
-        "wandb_tags": [""]
+        "wandb_tags": []
     }
     run_pets_hyperparameters(hparams)
