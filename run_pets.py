@@ -15,13 +15,13 @@ def normal():
 if __name__ == '__main__':
     hparams = {
         "env_name": "cartpole_continuous",
-        "trial_length": 200,
+        "trial_length": 500,
         "hid_size": 122,
         "learning_rate": 0.000672,
         "model_batch_size": 26,
         "num_layers": 6,
         "seed": 6033,
         "use_wandb": True,
-        "wandb_tags": []
+        "wandb_tags": ["pgt1"]
     }
     run_pets_hyperparameters(hparams)
