@@ -56,7 +56,8 @@ input_types = {
     "asinh": ["float", "int", "bool"],
     "tanh": ["float", "int", "bool"],
     "atanh": ["float", "int", "bool"],
-    "pow": ["float", "int", "bool"],
+    "square": ["float", "int", "bool"],
+    "cube": ["float", "int", "bool"],
 }
 
 output_types = {
@@ -98,7 +99,9 @@ output_types = {
     "asinh": "float",
     "tanh": "float",
     "atanh": "float",
-    "pow": "input",
+    # "pow": "input",
+    "square": "input",
+    "cube": "input",
 }
 
 binary_functions = {
@@ -110,7 +113,7 @@ binary_functions = {
     "mod": torch.remainder,
     # "heaviside": torch.heaviside,
     "atan2": torch.atan2,
-    "pow": torch.pow,
+    # "pow": torch.pow,
 }
 
 binary_booleans = {
@@ -147,6 +150,8 @@ unary_functions = {
     "asinh": torch.asinh,
     "tanh": torch.tanh,
     "atanh": torch.atanh,
+    "square": torch.square,
+    "cube": torch.cube,
     # "real": torch.real,
     # "imag": torch.imag,
     # "angle": torch.angle,
@@ -383,6 +388,7 @@ def combine_funcs(base_vars, loss_fn, y, date, max_funcs, n_inputs=1, max_comple
 
 class FunctionTree:
     def __init__(self, x, y, loss_fn):
+        self.stls_vars = []
         self.x = x
         self.y = y
         self.loss_fn = loss_fn
@@ -415,7 +421,7 @@ class FunctionTree:
             print(f"Loss at epoch {epoch}: {self.loss[-1]}")
 
     def get_best(self):
-        losses = np.array([x.loss for x in self.all_vars])
+        losses = np.array([x.loss for x in self.all_vars if x.loss is not None])
         best_node = self.all_vars[np.argmin(losses)]
         print(best_node.get_name())
         model = SymbolicFunction(best_node)
@@ -443,19 +449,20 @@ class FunctionTree:
         full_index[oldest] = False
         return full_index
 
-    def STLS(self, threshold=0.1, thresh_inc=0.1, max_thresh=100, n_param_target=5):
+    def STLS(self, threshold=0.01, thresh_inc=0.05, max_thresh=100, n_param_target=5):
         dictionary = [v.evaluate() for v in self.all_vars]
         d = torch.cat(dictionary, dim=1)
         dtmp = d
         idx = np.arange(d.shape[-1])
         clf = linear_model.LinearRegression(fit_intercept=False)
         min_loss = np.inf
+        last_coef = None
         while dtmp.shape[-1] > n_param_target and threshold < max_thresh:
             n_cmp = -1
             threshold += thresh_inc
             while n_cmp != dtmp.shape[-1]:
                 clf.fit(dtmp, self.y)
-                coef = clf.coef_.round(decimals=2)
+                coef = clf.coef_
                 y_hat = clf.predict(dtmp)
                 loss = self.loss_fn(torch.Tensor(y_hat).to(device=self.y.device), self.y)
                 # print(f"Loss: {loss:.4f}")
@@ -464,9 +471,14 @@ class FunctionTree:
                     best_coef = coef
                     min_loss = loss
                 flt = np.abs(coef) > threshold
+                if not np.any(flt):
+                    if last_coef is None:
+                        return self.STLS(threshold=threshold/10, thresh_inc=thresh_inc/10)
+                    return last_coef, idx, best_coef, best_idx
                 idx = idx[flt]
                 n_cmp = dtmp.shape[-1]
                 dtmp = dtmp[..., flt]
+                last_coef = coef
             # if np.min(np.abs(coef)) > 1000:
             #     break
         return coef, idx, best_coef, best_idx
@@ -477,7 +489,7 @@ class FunctionTree:
         print(final_var.get_name())
         final_var.compute_loss(self.loss_fn, self.y)
         self.all_vars += new_vars + [final_var]
-
+        self.stls_vars += [final_var]
         if keep_overfit:
             final_var, new_vars = self.convert_to_func(best_coef, best_idx)
             print(final_var.get_name())

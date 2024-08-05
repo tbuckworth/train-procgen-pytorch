@@ -15,30 +15,22 @@ class MyTestCase(unittest.TestCase):
         # lmbda = 0.1
         x = torch.rand((100, 5))
         y = torch.cos(x[:, 1])**2 + torch.sin(x[:, 4])**3
+        # y = 38.12 * torch.atan(x[:, 1]) + -34.37 * torch.atan(torch.sinh(x[:, 1]))
         # y = x[..., 3] * x[..., 4]
-        tree = run_tree(x, y, 200, 2)
+        tree = run_tree(x, y, 200, 5)
+
+        final_node = tree.stls_vars[-1]
+        print(final_node.get_name())
+        y_hat = final_node.evaluate()
+        plt.scatter(y, y_hat)
+        plt.show()
+
+
         model = tree.get_best()
 
-        # vrs = tree.all_vars
-        # tmp_vars = vrs[:5]
-        # tmp_vars.append(BinaryNode("*", 1, tmp_vars[3], tmp_vars[4]))
-
-        dictionary = [v.evaluate() for v in tree.all_vars]
-        d = torch.cat(dictionary, dim=1)
-
-        coef, idx = self.STLS(d, y)
-        print(coef)
-        nms = np.array([v.get_name() for v in tree.all_vars])[idx].tolist()
-
-        function_name = '+'.join([f"{c:.2f}{f}" for c, f in zip(coef, nms)])
-        print(function_name)
-
-        y_hat = np.matmul(d[:, idx], coef)
 
 
-        # print(clf.intercept_)
-
-        # y_hat = model.forward(x)
+        y_hat = model.forward(x)
 
         plt.scatter(y, y_hat)
         plt.show()
