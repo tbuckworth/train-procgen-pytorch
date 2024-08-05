@@ -16,6 +16,7 @@ if __name__ == '__main__':
     hparams = {
         "env_name": "cartpole_continuous",
         "trial_length": 500,
+        "num_trials": 40,
         "hid_size": 122,
         "learning_rate": 0.000672,
         "model_batch_size": 26,

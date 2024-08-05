@@ -34,7 +34,7 @@ input_types = {
     r"/\\": ["bool"],
     r"\/": ["bool"],
     "!": ["bool"],
-    "abs": ["float", "int", "bool"],
+    "abs": ["float", "int"],
     "sign": ["float", "int", "bool"],
     # Note: May raise error for ints.
     "ceil": ["float"],
@@ -271,14 +271,20 @@ class UnaryNode(Node):
     def evaluate(self, x1=None):
         if x1 is None:
             x1 = self.x1.evaluate()
-        return self.f(x1)
+        try:
+            return self.f(x1)
+        except RuntimeError as e:
+            raise e
 
     def get_name(self):
         return f"{self.func}({self.x1.get_name()})"
 
 
 def check_style(func):
-    if func in ["+", "/", "-", "*"]:
+    if func in ["+", "/", "-",
+                "*", "==", "!=",
+                ">", "<", "<=",
+                ">=", r"/\\", r"\/"]:
         return "mid"
     return "pre"
 
@@ -347,6 +353,7 @@ class ConditionalNode(Node):
             x1 = self.x1.evaluate()
         if x2 is None:
             x2 = self.x2.evaluate()
+        cond = cond.to(bool)
         return torch.where(cond, x1, x2)
 
     def get_name(self):
@@ -441,6 +448,7 @@ class FunctionTree:
         for i in range(self.rounds):
             self.all_vars += self.combine_funcs(max_funcs=10, n_inputs=1)
             self.all_vars += self.combine_funcs(max_funcs=10, n_inputs=2)
+            self.all_vars += self.add_conditionals(max_funcs=10)
         self.compute_stls()
         self.date += 1
         min_losses = np.array([x.min_loss for x in self.all_vars])
@@ -461,17 +469,18 @@ class FunctionTree:
         model = SymbolicFunction(best_node)
         return model
 
-    def add_conditionals(self, max_conditions, max_complexity=20):
+    def add_conditionals(self, max_funcs, max_complexity=20):
+        n_funcs = np.random.randint(max_funcs)
         conds = [v for v in self.all_vars if v.output_type == "bool" and v.complexity < max_complexity]
         new_vars = []
-        selected_conds = self.sample_by_inverse_complexity(max_conditions, conds)
+        selected_conds = self.sample_by_inverse_complexity(n_funcs, conds)
         for cond in selected_conds:
             poss_x1 = [v for v in self.all_vars if v.complexity < max_complexity]
-            x1 = self.sample_by_inverse_complexity(1, poss_x1)
+            x1 = self.sample_by_inverse_complexity(1, poss_x1)[0]
 
             poss_x2 = [v for v in self.all_vars if
                        v.output_type == x1.output_type and v.complexity < max_complexity]
-            x2 = self.sample_by_inverse_complexity(1, poss_x2)
+            x2 = self.sample_by_inverse_complexity(1, poss_x2)[0]
             new_vars += [ConditionalNode(self.date, cond, x1, x2)]
             loss = new_vars[-1].compute_loss(self.loss_fn, self.y)
             if np.isnan(loss) or np.isinf(loss):

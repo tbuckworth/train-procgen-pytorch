@@ -26,7 +26,7 @@ class MyTestCase(unittest.TestCase):
                                           "<", "<=", ">=",
                                           r"/\\", r"\/"])
 
-        tree.train(pop_size=200, epochs=2)
+        tree.train(pop_size=200, epochs=10)
 
         idx = np.argmin([v.loss for v in tree.stls_vars])
         final_node = tree.stls_vars[idx]
