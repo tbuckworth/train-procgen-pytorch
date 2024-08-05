@@ -461,6 +461,23 @@ class FunctionTree:
         model = SymbolicFunction(best_node)
         return model
 
+    def add_conditionals(self, max_conditions, max_complexity=20):
+        conds = [v for v in self.all_vars if v.output_type == "bool" and v.complexity < max_complexity]
+        new_vars = []
+        selected_conds = self.sample_by_inverse_complexity(max_conditions, conds)
+        for cond in selected_conds:
+            poss_x1 = [v for v in self.all_vars if v.complexity < max_complexity]
+            x1 = self.sample_by_inverse_complexity(1, poss_x1)
+
+            poss_x2 = [v for v in self.all_vars if
+                       v.output_type == x1.output_type and v.complexity < max_complexity]
+            x2 = self.sample_by_inverse_complexity(1, poss_x2)
+            new_vars += [ConditionalNode(self.date, cond, x1, x2)]
+            loss = new_vars[-1].compute_loss(self.loss_fn, self.y)
+            if np.isnan(loss) or np.isinf(loss):
+                new_vars.pop()
+        return new_vars
+
     def combine_funcs(self, max_funcs, n_inputs=1, max_complexity=20):
         if n_inputs == 1:
             node_cons = UnaryNode
@@ -472,23 +489,26 @@ class FunctionTree:
             raise NotImplementedError("n_inputs must be 1 or 2")
         max_index = len(func_list) * len(self.all_vars) ** n_inputs
         n_funcs = min(np.random.randint(max_index), max_funcs)
-        vars = []
+        new_vars = []
         for _ in range(n_funcs):
             key = np.random.choice(np.array(list(func_list.keys())))
             temp_vars = [v for v in self.all_vars if
                          v.output_type in input_types[key] and v.complexity < max_complexity]
             if len(temp_vars) == 0:
                 continue
-            complexity = np.array([v.complexity for v in temp_vars])
-            r = complexity.max() - complexity + 1
-            p = r / r.sum()
-            xs = np.random.choice(temp_vars, n_inputs, p=p).tolist()
-            # xs = [temp_vars[np.random.randint(len(temp_vars))] for _ in range(n_inputs)]
-            vars += [node_cons(key, self.date, *xs)]
-            loss = vars[-1].compute_loss(self.loss_fn, self.y)
+            xs = self.sample_by_inverse_complexity(n_inputs, temp_vars)
+            new_vars += [node_cons(key, self.date, *xs)]
+            loss = new_vars[-1].compute_loss(self.loss_fn, self.y)
             if np.isnan(loss) or np.isinf(loss):
-                vars.pop()
-        return vars
+                new_vars.pop()
+        return new_vars
+
+    def sample_by_inverse_complexity(self, n_inputs, temp_vars):
+        complexity = np.array([v.complexity for v in temp_vars])
+        r = complexity.max() - complexity + 1
+        p = r / r.sum()
+        xs = np.random.choice(temp_vars, n_inputs, p=p).tolist()
+        return xs
 
     def print_everything(self):
         _ = [print(v.get_name()) for v in self.all_vars]
