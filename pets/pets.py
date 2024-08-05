@@ -40,13 +40,13 @@ def run_pets(args):
     obs_shape = env.observation_space.shape
     act_shape = env.action_space.shape
 
-    # # This functions allows the model to evaluate the true rewards given an observation
-    # reward_fn = reward_fns.cartpole
-    # # This function allows the model to know if an observation should make the episode end
-    # term_fn = termination_fns.cartpole
-
-    reward_fn = env.rew_func
-    term_fn = env.done_func
+    # This functions allows the model to evaluate the true rewards given an observation
+    reward_fn = reward_fns.cartpole
+    # This function allows the model to know if an observation should make the episode end
+    term_fn = termination_fns.cartpole
+    if args.use_custom_reward_fn:
+        reward_fn = env.rew_func
+        term_fn = env.done_func
 
     # configuration
 

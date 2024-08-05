@@ -22,6 +22,7 @@ if __name__ == '__main__':
         "num_layers": 6,
         "seed": 6033,
         "use_wandb": True,
-        "wandb_tags": ["pgt1"]
+        "wandb_tags": ["pgt1"],
+        "use_custom_reward_fn": False,
     }
     run_pets_hyperparameters(hparams)
