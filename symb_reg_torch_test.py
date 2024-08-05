@@ -5,7 +5,7 @@ import torch
 from matplotlib import pyplot as plt
 
 from common import xavier_uniform_init
-from symb_reg_torch import create_func, run_tree, BinaryNode
+from symb_reg_torch import create_func, run_tree, BinaryNode, BaseNode, ScalarNode, UnaryNode
 
 from sklearn import linear_model
 
@@ -14,21 +14,36 @@ class MyTestCase(unittest.TestCase):
     def test_something(self):
         # lmbda = 0.1
         x = torch.rand((100, 5))
-        y = torch.cos(x[:, 1])**2 + torch.sin(x[:, 4])**3
+        y = torch.cos(x[:, 1]) ** 2 + torch.sin(x[:, 4]) ** 3
         # y = 38.12 * torch.atan(x[:, 1]) + -34.37 * torch.atan(torch.sinh(x[:, 1]))
         # y = x[..., 3] * x[..., 4]
-        tree = run_tree(x, y, 200, 2)
+        tree = run_tree(x, y, 200, 10)
 
         final_node = tree.stls_vars[-1]
         print(final_node.get_name())
         y_hat = final_node.evaluate()
         plt.scatter(y, y_hat)
         plt.show()
+        _ = [print(v.get_name()) for v in tree.stls_vars]
 
+        # f = BinaryNode("*", 0, BaseNode(x[:1], "x1", 1), BaseNode(x[:2], "x2", 2))
+        # f.forward(x).shape
+        #
+        # final_node.forward(x).shape
+        # final_node.x1.x1.x1.x1.forward(x).shape
+        #
+        # x1 = final_node
+        #
+        # while x1.forward(x).shape == torch.Size([100, 100]):
+        #     x2 = x1
+        #     x1 = x1.x1
+        #
+        # cust = BinaryNode("*", 0,
+        #                   ScalarNode(x[..., 1], '-2.75', -2.75),
+        #                   UnaryNode("sqrt", 0,
+        #                             BaseNode(x[..., 1], "x1", 1)))
 
         model = tree.get_best()
-
-
 
         y_hat = model.forward(x)
 
@@ -49,7 +64,7 @@ class MyTestCase(unittest.TestCase):
                 clf.fit(dtmp, y)
                 coef = clf.coef_.round(decimals=2)
                 y_hat = np.matmul(d[:, idx], coef)
-                print(f"Loss:{((y-y_hat)**2).mean():.4f}")
+                print(f"Loss:{((y - y_hat) ** 2).mean():.4f}")
 
                 flt = np.abs(coef) > threshold
                 idx = idx[flt]
@@ -58,7 +73,6 @@ class MyTestCase(unittest.TestCase):
             # if np.min(np.abs(coef)) > 1000:
             #     break
         return coef, idx
-
 
     def gradient_descent_SINDy(self, d, y):
         l = torch.nn.Linear(in_features=d.shape[-1], out_features=1, bias=False)

@@ -220,7 +220,7 @@ class ScalarNode(Node):
         super().__init__()
 
     def forward(self, x):
-        return self.x
+        return self.x.squeeze()
 
     def evaluate(self):
         return self.x
@@ -405,8 +405,8 @@ class FunctionTree:
 
     def evolve(self, pop_size):
         for i in range(self.rounds):
-            self.all_vars += combine_funcs(self.all_vars, self.loss_fn, self.y, self.date, max_funcs=1000, n_inputs=1)
-            self.all_vars += combine_funcs(self.all_vars, self.loss_fn, self.y, self.date, max_funcs=1000, n_inputs=2)
+            self.all_vars += combine_funcs(self.all_vars, self.loss_fn, self.y, self.date, max_funcs=10, n_inputs=1)
+            self.all_vars += combine_funcs(self.all_vars, self.loss_fn, self.y, self.date, max_funcs=10, n_inputs=2)
         self.compute_stls()
         self.date += 1
         min_losses = np.array([x.min_loss for x in self.all_vars])
@@ -432,7 +432,7 @@ class FunctionTree:
 
     def filter_population(self, min_losses, complexity, pop_size):
         if pop_size >= len(min_losses) - self.n_base:
-            return np.full_like(min_losses, True)
+            return np.arange(len(min_losses))
         min_losses = min_losses[self.n_base:]
         # Rank descending from 1:
         r = (-min_losses).argsort().argsort() + 1
@@ -488,7 +488,7 @@ class FunctionTree:
         final_var, new_vars = self.convert_to_func(coef, idx)
         print(final_var.get_name())
         final_var.compute_loss(self.loss_fn, self.y)
-        self.all_vars += new_vars + [final_var]
+        # self.all_vars += new_vars + [final_var]
         self.stls_vars += [final_var]
         if keep_overfit:
             final_var, new_vars = self.convert_to_func(best_coef, best_idx)
