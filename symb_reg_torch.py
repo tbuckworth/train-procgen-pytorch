@@ -4,6 +4,7 @@ from abc import ABC
 import numpy as np
 import torch
 from matplotlib import pyplot as plt
+from sklearn import linear_model
 from torch import nn
 
 from helper_local import softmax
@@ -202,6 +203,27 @@ class Node(ABC):
     def get_name(self):
         raise NotImplementedError
 
+class ScalarNode(Node):
+    def __init__(self, like, name, value):
+        self.x = torch.full_like(like, value).to(device=like.device)
+        self.name = name
+        self.input_type = None
+        self.output_type = "float"
+        self.super_nodes = []
+        self.complexity = 0
+        self.birth = np.inf
+        super().__init__()
+
+    def forward(self, x):
+        return self.x
+
+    def evaluate(self):
+        return self.x
+
+    def get_name(self):
+        return self.name
+
+
 
 class BaseNode(Node):
     def __init__(self, x, name, ind):
@@ -367,17 +389,19 @@ class FunctionTree:
         self.rounds = 2
         self.max_active_vars = 100
         in_vars = torch.split(x, 1, 1)
-        self.n_base = len(in_vars)
-        self.base_vars = [BaseNode(z, f"x{i}", i) for i, z in enumerate(in_vars)]
+        self.n_base = len(in_vars) + 1
+        self.base_vars = [BaseNode(z, f"x{i}", i) for i, z in enumerate(in_vars)] + [ScalarNode(in_vars[0], "1", 1.)]
         _ = [b.compute_loss(loss_fn, y) for b in self.base_vars]
         self.all_vars = self.base_vars
         self.loss = np.array([])
         self.date = 0
+        self.compute_stls()
 
     def evolve(self, pop_size):
         for i in range(self.rounds):
             self.all_vars += combine_funcs(self.all_vars, self.loss_fn, self.y, self.date, max_funcs=100, n_inputs=1)
             self.all_vars += combine_funcs(self.all_vars, self.loss_fn, self.y, self.date, max_funcs=100, n_inputs=2)
+        self.compute_stls()
         self.date += 1
         min_losses = np.array([x.min_loss for x in self.all_vars])
         complexity = np.array([x.complexity for x in self.all_vars])
@@ -418,6 +442,56 @@ class FunctionTree:
         full_index = np.concatenate((base_ind, rem_ind))
         full_index[oldest] = False
         return full_index
+
+    def STLS(self, threshold=0.1, thresh_inc=0.1, max_thresh=100, n_param_target=5):
+        dictionary = [v.evaluate() for v in self.all_vars]
+        d = torch.cat(dictionary, dim=1)
+        dtmp = d
+        idx = np.arange(d.shape[-1])
+        clf = linear_model.LinearRegression(fit_intercept=False)
+        min_loss = np.inf
+        while dtmp.shape[-1] > n_param_target and threshold < max_thresh:
+            n_cmp = -1
+            threshold += thresh_inc
+            while n_cmp != dtmp.shape[-1]:
+                clf.fit(dtmp, self.y)
+                coef = clf.coef_.round(decimals=2)
+                y_hat = clf.predict(dtmp)
+                loss = self.loss_fn(torch.Tensor(y_hat).to(device=self.y.device), self.y)
+                # print(f"Loss: {loss:.4f}")
+                if loss < min_loss:
+                    best_idx = idx
+                    best_coef = coef
+                    min_loss = loss
+                flt = np.abs(coef) > threshold
+                idx = idx[flt]
+                n_cmp = dtmp.shape[-1]
+                dtmp = dtmp[..., flt]
+            # if np.min(np.abs(coef)) > 1000:
+            #     break
+        return coef, idx, best_coef, best_idx
+
+    def compute_stls(self, keep_overfit=False):
+        coef, idx, best_coef, best_idx = self.STLS()
+        final_var, new_vars = self.convert_to_func(coef, idx)
+        print(final_var.get_name())
+        final_var.compute_loss(self.loss_fn, self.y)
+        self.all_vars += new_vars + [final_var]
+
+        if keep_overfit:
+            final_var, new_vars = self.convert_to_func(best_coef, best_idx)
+            print(final_var.get_name())
+            final_var.compute_loss(self.loss_fn, self.y)
+            self.all_vars += new_vars + [final_var]
+
+    def convert_to_func(self, coef, idx):
+        scalars = [ScalarNode(self.base_vars[0].x, f"{c:.2f}", c) for c in coef]
+        v = np.array(self.all_vars)[idx].tolist()
+        new_vars = [BinaryNode("*", self.date, c, f) for c, f in zip(scalars, v)]
+        final_var = new_vars[0]
+        for v in new_vars[1:]:
+            final_var = BinaryNode("+", self.date, final_var, v)
+        return final_var, new_vars
 
 
 def create_func(x, y):

@@ -14,9 +14,9 @@ class MyTestCase(unittest.TestCase):
     def test_something(self):
         # lmbda = 0.1
         x = torch.rand((100, 5))
-        # y = torch.cos(x[:, 1])**2 + torch.sin(x[:, 5])**3
-        y = x[..., 3] * x[..., 4]
-        tree = run_tree(x, y, 200, 50)
+        y = torch.cos(x[:, 1])**2 + torch.sin(x[:, 4])**3
+        # y = x[..., 3] * x[..., 4]
+        tree = run_tree(x, y, 200, 2)
         model = tree.get_best()
 
         # vrs = tree.all_vars
@@ -46,20 +46,16 @@ class MyTestCase(unittest.TestCase):
         print("done")
         [print(x.get_name()) for x in tree.all_vars]
 
-    def STLS(self, d, y):
+    def STLS(self, d, y, threshold=0.1, thresh_inc=0.1, max_thresh=100, n_param_target=5):
         dtmp = d
         idx = np.arange(d.shape[-1])
         clf = linear_model.LinearRegression(fit_intercept=False)
-        threshold = 0.1
-        while dtmp.shape[-1] > 5 and threshold < 100:
+        while dtmp.shape[-1] > n_param_target and threshold < max_thresh:
             n_cmp = -1
-            threshold += 0.1
+            threshold += thresh_inc
             while n_cmp != dtmp.shape[-1]:
-                if dtmp.shape[-1] == 0:
-                    print("huh?")
                 clf.fit(dtmp, y)
                 coef = clf.coef_.round(decimals=2)
-                # print(coef)
                 y_hat = np.matmul(d[:, idx], coef)
                 print(f"Loss:{((y-y_hat)**2).mean():.4f}")
 
@@ -67,8 +63,8 @@ class MyTestCase(unittest.TestCase):
                 idx = idx[flt]
                 n_cmp = dtmp.shape[-1]
                 dtmp = dtmp[:, flt]
-            if np.min(np.abs(coef)) > 1000:
-                break
+            # if np.min(np.abs(coef)) > 1000:
+            #     break
         return coef, idx
 
 
