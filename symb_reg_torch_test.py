@@ -20,9 +20,13 @@ class MyTestCase(unittest.TestCase):
                             unary_funcs=["abs", "sign", "ceil",
                                          "floor", "log", "exp",
                                          "sqrt", "cos", "sin",
-                                         "tanh", "square", "cube"],
-                            binary_funcs=["/", "max", "min"])
-        tree.train(pop_size=200, epochs=10)
+                                         "tanh", "square", "cube", "!"],
+                            binary_funcs=["/", "max", "min",
+                                          "==", "!=", ">",
+                                          "<", "<=", ">=",
+                                          r"/\\", r"\/"])
+
+        tree.train(pop_size=200, epochs=2)
 
         idx = np.argmin([v.loss for v in tree.stls_vars])
         final_node = tree.stls_vars[idx]

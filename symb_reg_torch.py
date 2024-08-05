@@ -114,9 +114,9 @@ binary_functions = {
     # "heaviside": torch.heaviside,
     "atan2": torch.atan2,
     # "pow": torch.pow,
-}
+# }
 
-binary_booleans = {
+# binary_booleans = {
     "==": torch.eq,
     "!=": torch.ne,
     ">": torch.gt,
@@ -125,10 +125,10 @@ binary_booleans = {
     ">=": torch.ge,
     r"/\\": torch.logical_and,
     r"\/": torch.logical_or,
-    "!": torch.logical_not,
 }
 
 unary_functions = {
+    "!": torch.logical_not,
     "abs": torch.abs,
     "sign": torch.sign,
     # Note: May raise error for ints.
