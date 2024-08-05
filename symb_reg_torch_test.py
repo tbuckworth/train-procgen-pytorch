@@ -5,9 +5,13 @@ import torch
 from matplotlib import pyplot as plt
 
 from common import xavier_uniform_init
-from symb_reg_torch import create_func, run_tree, BinaryNode, BaseNode, ScalarNode, UnaryNode
+from symb_reg_torch import create_func, run_tree, BinaryNode, BaseNode, ScalarNode, UnaryNode, FunctionTree
 
 from sklearn import linear_model
+
+"abs", "sign",
+"ceil", "floor", "log", "exp", "sqrt", "cos", "sin",
+"tanh", "square", "cube"
 
 
 class MyTestCase(unittest.TestCase):
@@ -17,9 +21,16 @@ class MyTestCase(unittest.TestCase):
         y = torch.cos(x[:, 1]) ** 2 + torch.sin(x[:, 4]) ** 3
         # y = 38.12 * torch.atan(x[:, 1]) + -34.37 * torch.atan(torch.sinh(x[:, 1]))
         # y = x[..., 3] * x[..., 4]
-        tree = run_tree(x, y, 200, 10)
+        tree = FunctionTree(x, y, torch.nn.MSELoss(),
+                            unary_funcs=["abs", "sign", "ceil",
+                                         "floor", "log", "exp",
+                                         "sqrt", "cos", "sin",
+                                         "tanh", "square", "cube"],
+                            binary_funcs=["/", "max", "min"])
+        tree.train(pop_size=200, epochs=10)
 
-        final_node = tree.stls_vars[-1]
+        idx = np.argmin([v.loss for v in tree.stls_vars])
+        final_node = tree.stls_vars[idx]
         print(final_node.get_name())
         y_hat = final_node.evaluate()
         plt.scatter(y, y_hat)

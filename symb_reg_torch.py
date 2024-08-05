@@ -208,6 +208,7 @@ class Node(ABC):
     def get_name(self):
         raise NotImplementedError
 
+
 class ScalarNode(Node):
     def __init__(self, like, name, value):
         self.x = torch.full_like(like, value).to(device=like.device)
@@ -227,7 +228,6 @@ class ScalarNode(Node):
 
     def get_name(self):
         return self.name
-
 
 
 class BaseNode(Node):
@@ -387,7 +387,12 @@ def combine_funcs(base_vars, loss_fn, y, date, max_funcs, n_inputs=1, max_comple
 
 
 class FunctionTree:
-    def __init__(self, x, y, loss_fn):
+    def __init__(self, x, y, loss_fn,
+                 binary_funcs=None,
+                 unary_funcs=None,
+                 ):
+        self.binary_funcs = ["/", "max", "min", "mod", "atan2"] if binary_funcs is None else binary_funcs
+        self.unary_funcs = unary_functions.keys() if unary_funcs is None else unary_funcs
         self.stls_vars = []
         self.x = x
         self.y = y
@@ -405,8 +410,8 @@ class FunctionTree:
 
     def evolve(self, pop_size):
         for i in range(self.rounds):
-            self.all_vars += combine_funcs(self.all_vars, self.loss_fn, self.y, self.date, max_funcs=10, n_inputs=1)
-            self.all_vars += combine_funcs(self.all_vars, self.loss_fn, self.y, self.date, max_funcs=10, n_inputs=2)
+            self.all_vars += self.combine_funcs(max_funcs=10, n_inputs=1)
+            self.all_vars += self.combine_funcs(max_funcs=10, n_inputs=2)
         self.compute_stls()
         self.date += 1
         min_losses = np.array([x.min_loss for x in self.all_vars])
@@ -426,6 +431,35 @@ class FunctionTree:
         print(best_node.get_name())
         model = SymbolicFunction(best_node)
         return model
+
+    def combine_funcs(self, max_funcs, n_inputs=1, max_complexity=20):
+        if n_inputs == 1:
+            node_cons = UnaryNode
+            func_list = {k: v for k, v in unary_functions.items() if k in self.unary_funcs}
+        elif n_inputs == 2:
+            node_cons = BinaryNode
+            func_list = {k: v for k, v in binary_functions.items() if k in self.binary_funcs}
+        else:
+            raise NotImplementedError("n_inputs must be 1 or 2")
+        max_index = len(func_list) * len(self.all_vars) ** n_inputs
+        n_funcs = min(np.random.randint(max_index), max_funcs)
+        vars = []
+        for _ in range(n_funcs):
+            key = np.random.choice(np.array(list(func_list.keys())))
+            temp_vars = [v for v in self.all_vars if
+                         v.output_type in input_types[key] and v.complexity < max_complexity]
+            if len(temp_vars) == 0:
+                continue
+            complexity = np.array([v.complexity for v in temp_vars])
+            r = complexity.max() - complexity + 1
+            p = r / r.sum()
+            xs = np.random.choice(temp_vars, n_inputs, p=p).tolist()
+            # xs = [temp_vars[np.random.randint(len(temp_vars))] for _ in range(n_inputs)]
+            vars += [node_cons(key, self.date, *xs)]
+            loss = vars[-1].compute_loss(self.loss_fn, self.y)
+            if np.isnan(loss) or np.isinf(loss):
+                vars.pop()
+        return vars
 
     def print_everything(self):
         _ = [print(v.get_name()) for v in self.all_vars]
@@ -473,7 +507,7 @@ class FunctionTree:
                 flt = np.abs(coef) > threshold
                 if not np.any(flt):
                     if last_coef is None:
-                        return self.STLS(threshold=threshold/10, thresh_inc=thresh_inc/10)
+                        return self.STLS(threshold=threshold / 10, thresh_inc=thresh_inc / 10)
                     return last_coef, idx, best_coef, best_idx
                 idx = idx[flt]
                 n_cmp = dtmp.shape[-1]
