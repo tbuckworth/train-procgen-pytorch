@@ -152,6 +152,7 @@ unary_functions = {
     "atanh": torch.atanh,
     "square": torch.square,
     "cube": lambda x: torch.pow(x, 3),
+    "relu": torch.relu,
     # "real": torch.real,
     # "imag": torch.imag,
     # "angle": torch.angle,
@@ -322,6 +323,34 @@ class BinaryNode(Node):
         if self.style == "mid":
             return f"{self.x1.get_name()} {self.func} {self.x2.get_name()}"
         raise NotImplementedError("style must be one of (mid,pre)")
+
+
+class ConditionalNode(Node):
+    def __init__(self, date, cond, x1, x2):
+        self.birth = date
+        self.cond = cond
+        self.x1 = x1
+        self.x2 = x2
+        self.super_nodes = [cond, x1, x2]
+        self.complexity = x1.complexity + x2.complexity + cond.complexity + 1
+        self.input_type = get_output_type([x1, x2])
+        self.output_type = self.input_type
+        super().__init__()
+
+    def forward(self, x):
+        return torch.where(self.cond.forward(x), self.x1.forward(x), self.x2.forward(x))
+
+    def evaluate(self, cond=None, x1=None, x2=None):
+        if cond is None:
+            cond = self.cond.evaluate()
+        if x1 is None:
+            x1 = self.x1.evaluate()
+        if x2 is None:
+            x2 = self.x2.evaluate()
+        return torch.where(cond, x1, x2)
+
+    def get_name(self):
+        return f"({self.cond.get_name()}) ? {self.x1.get_name()} : {self.x2.get_name()}"
 
 
 class SymbolicFunction(nn.Module):

@@ -9,11 +9,6 @@ from symb_reg_torch import create_func, run_tree, BinaryNode, BaseNode, ScalarNo
 
 from sklearn import linear_model
 
-"abs", "sign",
-"ceil", "floor", "log", "exp", "sqrt", "cos", "sin",
-"tanh", "square", "cube"
-
-
 class MyTestCase(unittest.TestCase):
     def test_something(self):
         # lmbda = 0.1
