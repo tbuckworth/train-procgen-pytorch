@@ -17,7 +17,7 @@ class MyTestCase(unittest.TestCase):
         y = torch.cos(x[:, 1])**2 + torch.sin(x[:, 4])**3
         # y = 38.12 * torch.atan(x[:, 1]) + -34.37 * torch.atan(torch.sinh(x[:, 1]))
         # y = x[..., 3] * x[..., 4]
-        tree = run_tree(x, y, 200, 5)
+        tree = run_tree(x, y, 200, 2)
 
         final_node = tree.stls_vars[-1]
         print(final_node.get_name())
