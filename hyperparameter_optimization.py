@@ -488,23 +488,23 @@ def pets_graph_transition_cartpole():
     }
     bounds = {
         # 'trial_length': [200, 200],
-        # 'num_trials': [20, 20],
-        # 'ensemble_size': [5, 5],
-        'num_layers': [4, 7],
-        'hid_size': [95, 256],
+        'num_trials': [20, 40],
+        'ensemble_size': [2, 5],
+        'num_layers': [3, 10],
+        'hid_size': [64, 512],
         # 'planning_horizon': [15, 15],
         # 'replan_freq': [1,1],
         # 'num_iterations': [5,5],
         # 'population_size': [500, 500],
-        # 'num_particles': [20, 20],
-        'learning_rate': [1e-5, 1e-3],
+        'num_particles': [5, 10],
+        'learning_rate': [1e-6, 1e-2],
         # 'weight_decay': [5e-5, 5e-5],
-        # 'num_epochs': [50, 50],
+        'num_epochs': [25, 75],
         # 'patience': [50, 50],
         # 'validation_ratio': [0.05, 0.05],
         # 'elite_ratio': [0.1, 0.1],
         # 'alpha': [0.1],
-        'model_batch_size': [16, 32],
+        'model_batch_size': [8, 32],
     }
     while True:
         project = get_project(fixed["env_name"], fixed["exp_name"])

@@ -463,8 +463,9 @@ class FunctionTree:
             print(f"Loss at epoch {epoch}: {self.loss[-1]}")
 
     def get_best(self):
-        losses = np.array([x.loss for x in self.all_vars if x.loss is not None])
-        best_node = self.all_vars[np.argmin(losses)]
+        complete_vars = self.all_vars + self.stls_vars
+        losses = np.array([x.loss for x in complete_vars if x.loss is not None])
+        best_node = complete_vars[np.argmin(losses)]
         print(best_node.get_name())
         model = SymbolicFunction(best_node)
         return model
