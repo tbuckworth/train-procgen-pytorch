@@ -476,6 +476,7 @@ class FunctionTree:
         self.compute_stls()
 
     def evolve(self, pop_size):
+        #TODO: add mutation?
         for i in range(self.rounds):
             self.all_vars += self.combine_funcs(max_funcs=100, n_inputs=1, max_complexity=self.max_complexity)
             self.all_vars += self.combine_funcs(max_funcs=200, n_inputs=2, max_complexity=self.max_complexity)
