@@ -78,7 +78,7 @@ output_types = {
     r"\/": "bool",
     "!": "bool",
     "abs": "input",
-    "sign": "int",
+    "sign": "input",
     # Note: May raise error for ints.
     "ceil": "int",
     "floor": "int",
@@ -446,9 +446,9 @@ class FunctionTree:
 
     def evolve(self, pop_size):
         for i in range(self.rounds):
-            self.all_vars += self.combine_funcs(max_funcs=10, n_inputs=1)
-            self.all_vars += self.combine_funcs(max_funcs=10, n_inputs=2)
-            self.all_vars += self.add_conditionals(max_funcs=10)
+            self.all_vars += self.combine_funcs(max_funcs=500, n_inputs=1)
+            self.all_vars += self.combine_funcs(max_funcs=200, n_inputs=2)
+            self.all_vars += self.add_conditionals(max_funcs=100)
         self.compute_stls()
         self.date += 1
         min_losses = np.array([x.min_loss for x in self.all_vars])
