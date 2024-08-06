@@ -12,8 +12,9 @@ from sklearn import linear_model
 class MyTestCase(unittest.TestCase):
     def test_something(self):
         # lmbda = 0.1
-        x = torch.rand((100, 2))
-        y = torch.cos(x[:, 0]) ** 2 + torch.sin(x[:, 1]) ** 3
+        x = torch.rand((1000, 2))
+        y = torch.cos(x[:, 0]) ** 2 + torch.sin(x[:, 1]) ** 3 + x[:, 0] * x[:, 1]
+        # y = torch.where(x[:, 0] > x[:, 1], y, x[:, 1])
         # y = 38.12 * torch.atan(x[:, 1]) + -34.37 * torch.atan(torch.sinh(x[:, 1]))
         # y = x[..., 3] * x[..., 4]
         tree = FunctionTree(x, y, torch.nn.MSELoss(),
@@ -24,19 +25,23 @@ class MyTestCase(unittest.TestCase):
                             binary_funcs=["/", "max", "min", "*",
                                           "==", "!=", ">",
                                           "<", "<=", ">=",
-                                          r"/\\", r"\/"])
+                                          r"/\\", r"\/"],
+                            max_complexity=5,
+                            validation_ratio=0.05)
 
-        tree.train(pop_size=200, epochs=2)
+        tree.train(pop_size=200, epochs=5)
 
-        idx = np.argmin([v.loss for v in tree.stls_vars])
+        idx = np.argmin([v.val_loss for v in tree.stls_vars])
         # for idx in range(len(tree.stls_vars)):
         final_node = tree.stls_vars[idx]
         print(final_node.get_name())
-        y_hat = final_node.value
+        y_hat = final_node.forward(x)
         plt.scatter(y, y_hat)
         plt.show()
         _ = [print(v.get_name()) for v in tree.stls_vars]
 
+        print("0")
+        return
         # [((y-v.value)**2).max() for v in tree.stls_vars]
         #
         # [((y-v.value)**2).max() for v in tree.stls_vars]

@@ -115,9 +115,9 @@ binary_functions = {
     # "heaviside": torch.heaviside,
     "atan2": torch.atan2,
     # "pow": torch.pow,
-# }
+    # }
 
-# binary_booleans = {
+    # binary_booleans = {
     "==": torch.eq,
     "!=": torch.ne,
     ">": torch.gt,
@@ -222,6 +222,7 @@ class Node(ABC):
 
 class ScalarNode(Node):
     def __init__(self, like, name, value):
+        self.scalar = value
         self.x = torch.full_like(like, value).to(device=like.device)
         self.name = name
         self.input_type = None
@@ -232,7 +233,7 @@ class ScalarNode(Node):
         super().__init__()
 
     def forward(self, x):
-        return self.x.squeeze()
+        return torch.full((x.shape[0], *self.x.shape[1:]), self.scalar).squeeze()
 
     def evaluate(self):
         return self.x
@@ -249,7 +250,7 @@ class BaseNode(Node):
         self.input_type = None
         self.output_type = "float"
         self.super_nodes = []
-        self.complexity = 0#1 - corr.item()
+        self.complexity = 0  # 1 - corr.item()
         self.birth = np.inf
         self.corr = corr.item()
         super().__init__()
@@ -349,7 +350,7 @@ class ConditionalNode(Node):
         self.x1 = x1
         self.x2 = x2
         self.super_nodes = [cond, x1, x2]
-        self.complexity = x1.complexity + x2.complexity + cond.complexity + 1
+        self.complexity = x1.complexity + x2.complexity + cond.complexity + 2
         self.input_type = get_output_type([x1, x2])
         self.output_type = self.input_type
         super().__init__()
@@ -438,21 +439,30 @@ class FunctionTree:
                  binary_funcs=None,
                  unary_funcs=None,
                  max_complexity=20,
+                 validation_ratio=0.1,
                  ):
         self.max_complexity = max_complexity
         self.binary_funcs = ["*", "/", "max", "min", "mod", "atan2"] if binary_funcs is None else binary_funcs
         self.unary_funcs = unary_functions.keys() if unary_funcs is None else unary_funcs
         self.stls_vars = []
-        self.x = x
-        self.y = y
+
+        order = y.argsort()
+        n = np.ceil(order.max() * validation_ratio / 2)
+        flt = torch.bitwise_or(order <= n, order >= order.max() - n)
+
+        self.train_x = x[~flt]
+        self.train_y = y[~flt]
+        self.val_x = x[flt]
+        self.val_y = y[flt]
         self.corrs = torch.corrcoef(torch.cat((x.T, y.unsqueeze(-1).T)))[-1].abs()
         self.loss_fn = loss_fn
         self.rounds = 2
         self.max_active_vars = 100
-        in_vars = torch.split(x, 1, 1)
+        in_vars = torch.split(self.train_x, 1, 1)
         self.n_base = len(in_vars) + 1
-        self.base_vars = [BaseNode(z, f"x{i}", i, self.corrs[i]) for i, z in enumerate(in_vars)] + [ScalarNode(in_vars[0], "1", 1.)]
-        _ = [b.compute_loss(loss_fn, y) for b in self.base_vars]
+        self.base_vars = [BaseNode(z, f"x{i}", i, self.corrs[i]) for i, z in enumerate(in_vars)] + [
+            ScalarNode(in_vars[0], "1", 1.)]
+        _ = [b.compute_loss(loss_fn, self.train_y) for b in self.base_vars]
         self.all_vars = self.base_vars
         self.loss = np.array([])
         self.date = 0
@@ -461,7 +471,6 @@ class FunctionTree:
         self.all_vars += self.all_combos()
         self.all_vars = self.filter_vars()
         self.compute_stls()
-
 
     def evolve(self, pop_size):
         for i in range(self.rounds):
@@ -481,29 +490,28 @@ class FunctionTree:
         for epoch in range(epochs):
             self.evolve(pop_size)
             print(f"Loss at epoch {epoch}: {self.loss[-1]}")
+        self.compute_val_loss()
 
     def get_best(self):
         complete_vars = self.all_vars + self.stls_vars
-        losses = np.array([x.loss for x in complete_vars if x.loss is not None])
+        losses = np.array([x.val_loss for x in complete_vars if x.loss is not None])
         best_node = complete_vars[np.argmin(losses)]
         print(best_node.get_name())
         model = SymbolicFunction(best_node)
         return model
 
     def analyze(self):
+        # todo: remove this function
         all_vars = [x for x in self.stls_vars if x.n_outliers is not None]
         d = [[x.loss.item(), x.n_outliers, x.std, x.complexity] for x in all_vars]
         df = pd.DataFrame(d, columns=["loss", "n_outliers", "std", "complexity"])
-        df[df["std"]>0].plot.scatter("loss", "complexity", logx=True, logy=True)
+        df[df["std"] > 0].plot.scatter("loss", "complexity", logx=True, logy=True)
         plt.show()
 
-
         min_c = df[df["std"] > 0].complexity.min()
-        df.loc[df.complexity==min_c]
+        df.loc[df.complexity == min_c]
 
         all_vars[4].get_name()
-
-
 
     def add_conditionals(self, max_funcs, max_complexity=20):
         # n_funcs = np.random.randint(max_funcs)
@@ -519,7 +527,7 @@ class FunctionTree:
                        v.output_type == x1.output_type and v.complexity < max_complexity]
             x2 = self.sample_by_inverse_complexity(1, poss_x2)[0]
             new_vars += [ConditionalNode(self.date, cond, x1, x2)]
-            loss = new_vars[-1].compute_loss(self.loss_fn, self.y)
+            loss = new_vars[-1].compute_loss(self.loss_fn, self.train_y)
             if np.isnan(loss) or np.isinf(loss):
                 new_vars.pop()
         return new_vars
@@ -532,7 +540,7 @@ class FunctionTree:
             temp_vars = [v for v in self.all_vars if v.output_type in input_types[key]]
             for v in temp_vars:
                 new_vars += [node_cons(key, self.date, v)]
-                loss = new_vars[-1].compute_loss(self.loss_fn, self.y)
+                loss = new_vars[-1].compute_loss(self.loss_fn, self.train_y)
                 if np.isnan(loss) or np.isinf(loss):
                     new_vars.pop()
         return new_vars
@@ -557,7 +565,7 @@ class FunctionTree:
                 continue
             xs = self.sample_by_inverse_complexity(n_inputs, temp_vars)
             new_vars += [node_cons(key, self.date, *xs)]
-            loss = new_vars[-1].compute_loss(self.loss_fn, self.y)
+            loss = new_vars[-1].compute_loss(self.loss_fn, self.train_y)
             if np.isnan(loss) or np.isinf(loss):
                 new_vars.pop()
         return new_vars
@@ -604,10 +612,10 @@ class FunctionTree:
             n_cmp = -1
             threshold += thresh_inc
             while n_cmp != dtmp.shape[-1]:
-                clf.fit(dtmp, self.y)
+                clf.fit(dtmp, self.train_y)
                 coef = clf.coef_
                 y_hat = clf.predict(dtmp)
-                loss = self.loss_fn(torch.Tensor(y_hat).to(device=self.y.device), self.y)
+                loss = self.loss_fn(torch.Tensor(y_hat).to(device=self.train_y.device), self.train_y)
                 # print(f"Loss: {loss:.4f}")
                 if loss < min_loss:
                     best_idx = idx
@@ -630,13 +638,13 @@ class FunctionTree:
         coef, idx, best_coef, best_idx = self.STLS()
         final_var, new_vars = self.convert_to_func(coef, idx)
         print(final_var.get_name())
-        final_var.compute_loss(self.loss_fn, self.y)
+        final_var.compute_loss(self.loss_fn, self.train_y)
         # self.all_vars += new_vars + [final_var]
         self.stls_vars += [final_var]
         if keep_overfit:
             final_var, new_vars = self.convert_to_func(best_coef, best_idx)
             print(final_var.get_name())
-            final_var.compute_loss(self.loss_fn, self.y)
+            final_var.compute_loss(self.loss_fn, self.train_y)
             self.all_vars += new_vars + [final_var]
 
     def convert_to_func(self, coef, idx):
@@ -649,14 +657,20 @@ class FunctionTree:
         return final_var, new_vars
 
     def filter_vars(self):
-        all_v = torch.cat([x.value for x in self.all_vars],axis=-1)
+        all_v = torch.cat([x.value for x in self.all_vars], axis=-1)
 
         idx = linearly_independent_columns(all_v)
         idx2 = np.unique(idx.tolist() + [i for i in range(self.n_base)])
 
         return np.array(self.all_vars)[idx2].tolist()
 
+    def compute_val_loss(self):
+        all_v = torch.cat([x.forward(self.val_x).unsqueeze(-1) for x in self.all_vars + self.stls_vars], axis=-1)
+        # assume MSE Loss:
+        val_losses = ((all_v.T - self.val_y) ** 2).mean(-1).tolist()
 
+        for l, v in zip(val_losses, self.all_vars + self.stls_vars):
+            v.val_loss = l
 
 
 def create_func(x, y):
