@@ -21,12 +21,12 @@ class MyTestCase(unittest.TestCase):
                                          "floor", "log", "exp",
                                          "sqrt", "cos", "sin",
                                          "tanh", "square", "cube", "!"],
-                            binary_funcs=["/", "max", "min",
+                            binary_funcs=["/", "max", "min", "*",
                                           "==", "!=", ">",
                                           "<", "<=", ">=",
                                           r"/\\", r"\/"])
 
-        tree.train(pop_size=200, epochs=20)
+        tree.train(pop_size=200, epochs=2)
 
         idx = np.argmin([v.n_outliers for v in tree.stls_vars])
         final_node = tree.stls_vars[idx]

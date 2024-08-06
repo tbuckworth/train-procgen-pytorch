@@ -438,7 +438,7 @@ class FunctionTree:
                  binary_funcs=None,
                  unary_funcs=None,
                  ):
-        self.binary_funcs = ["/", "max", "min", "mod", "atan2"] if binary_funcs is None else binary_funcs
+        self.binary_funcs = ["*", "/", "max", "min", "mod", "atan2"] if binary_funcs is None else binary_funcs
         self.unary_funcs = unary_functions.keys() if unary_funcs is None else unary_funcs
         self.stls_vars = []
         self.x = x
@@ -455,6 +455,7 @@ class FunctionTree:
         self.loss = np.array([])
         self.date = 0
         self.all_vars += self.all_combos()
+        self.all_vars = self.filter_vars()
         self.compute_stls()
 
     def evolve(self, pop_size):
@@ -641,6 +642,16 @@ class FunctionTree:
             final_var = BinaryNode("+", self.date, final_var, v)
         return final_var, new_vars
 
+    def filter_vars(self):
+        all_v = torch.cat([x.value for x in self.all_vars],axis=-1)
+
+        idx = linearly_independent_columns(all_v)
+        idx2 = np.unique(idx.tolist() + [i for i in range(self.n_base)])
+
+        return np.array(self.all_vars)[idx2].tolist()
+
+
+
 
 def create_func(x, y):
     in_vars = torch.split(x, 1, 1)
@@ -656,3 +667,26 @@ def run_tree(x, y, pop_size, epochs):
     tree = FunctionTree(x, y, torch.nn.MSELoss())
     tree.train(pop_size=pop_size, epochs=epochs)
     return tree
+
+
+def linearly_independent_columns(matrix, tol=1e-10):
+    # Convert input to numpy array if it's not already
+    A = np.array(matrix, dtype=float)
+
+    # Get the number of rows and columns
+    m, n = A.shape
+
+    # Compute the SVD of the matrix
+    U, s, Vt = np.linalg.svd(A, full_matrices=False)
+
+    # Find the rank of the matrix
+    r = np.sum(s > tol)
+
+    # Get the first r columns of V.T
+    V_r = Vt[:r, :].T
+
+    # Find the indices of the columns with the largest magnitude in each row of V_r
+    independent_cols = np.abs(V_r).argmax(axis=0)
+
+    # Return the matrix with only independent columns
+    return np.sort(np.unique(independent_cols))
