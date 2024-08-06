@@ -679,9 +679,6 @@ def linearly_independent_columns(matrix, tol=1e-10):
     # Convert input to numpy array if it's not already
     A = np.array(matrix, dtype=float)
 
-    # Get the number of rows and columns
-    m, n = A.shape
-
     # Compute the SVD of the matrix
     U, s, Vt = np.linalg.svd(A, full_matrices=False)
 
@@ -695,4 +692,4 @@ def linearly_independent_columns(matrix, tol=1e-10):
     independent_cols = np.abs(V_r).argmax(axis=0)
 
     # Return the matrix with only independent columns
-    return np.sort(np.unique(independent_cols))
+    return np.unique(independent_cols)
