@@ -27,17 +27,17 @@ class MyTestCase(unittest.TestCase):
                                           "<", "<=", ">=",
                                           r"/\\", r"\/"],
                             max_complexity=5,
-                            validation_ratio=0.05)
+                            validation_ratio=0.1)
 
         tree.train(pop_size=200, epochs=5)
 
         idx = np.argmin([v.val_loss for v in tree.stls_vars])
-        # for idx in range(len(tree.stls_vars)):
-        final_node = tree.stls_vars[idx]
-        print(final_node.get_name())
-        y_hat = final_node.forward(x)
-        plt.scatter(y, y_hat)
-        plt.show()
+        for idx in range(len(tree.stls_vars)):
+            final_node = tree.stls_vars[idx]
+            print(final_node.get_name())
+            y_hat = final_node.forward(x)
+            plt.scatter(y, y_hat)
+            plt.show()
         _ = [print(v.get_name()) for v in tree.stls_vars]
 
         print("0")

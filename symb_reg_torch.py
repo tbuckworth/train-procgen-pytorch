@@ -484,9 +484,9 @@ class FunctionTree:
         self.compute_stls()
         self.date += 1
         min_losses = np.array([x.min_loss for x in self.all_vars])
-        complexity = np.array([x.complexity for x in self.all_vars])
-        ind = self.filter_population(min_losses, complexity, pop_size)
-        self.all_vars = np.array(self.all_vars)[ind].tolist()
+        # complexity = np.array([x.complexity for x in self.all_vars])
+        # ind = self.filter_population(min_losses, complexity, pop_size)
+        # self.all_vars = np.array(self.all_vars)[ind].tolist()
         self.loss = np.append(self.loss, np.min(min_losses))
 
     def train(self, pop_size, epochs):
