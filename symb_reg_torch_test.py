@@ -26,15 +26,22 @@ class MyTestCase(unittest.TestCase):
                                           "<", "<=", ">=",
                                           r"/\\", r"\/"])
 
-        tree.train(pop_size=200, epochs=2)
+        tree.train(pop_size=200, epochs=20)
 
-        idx = np.argmin([v.loss for v in tree.stls_vars])
+        idx = np.argmin([v.n_outliers for v in tree.stls_vars])
         final_node = tree.stls_vars[idx]
         print(final_node.get_name())
-        y_hat = final_node.evaluate()
+        y_hat = final_node.value
         plt.scatter(y, y_hat)
         plt.show()
         _ = [print(v.get_name()) for v in tree.stls_vars]
+
+        # [((y-v.value)**2).max() for v in tree.stls_vars]
+        #
+        # [((y-v.value)**2).max() for v in tree.stls_vars]
+        #
+        # e = y_hat.squeeze()-y
+        # (abs(e)-2*e.std() > 0).sum()
 
         # f = BinaryNode("*", 0, BaseNode(x[:1], "x1", 1), BaseNode(x[:2], "x2", 2))
         # f.forward(x).shape
@@ -59,6 +66,16 @@ class MyTestCase(unittest.TestCase):
 
         plt.scatter(y, y_hat)
         plt.show()
+
+        complete_vars = [x for x in tree.all_vars + tree.stls_vars if torch.var(x.value.to(float)) > 0.]
+
+        losses = np.array([[x.loss, x.complexity] for x in complete_vars if x.loss is not None])
+        node = complete_vars[np.argmin(losses[:, 0])]
+
+        plt.scatter(np.log(losses[:, 0]), np.log(losses[:, 1]))
+        plt.show()
+
+
 
         print("done")
         [print(x.get_name()) for x in tree.all_vars]

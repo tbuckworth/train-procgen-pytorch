@@ -2,6 +2,7 @@ import functools as ft
 from abc import ABC
 
 import numpy as np
+import pandas as pd
 import torch
 from matplotlib import pyplot as plt
 from sklearn import linear_model
@@ -186,15 +187,24 @@ constants = {
 
 class Node(ABC):
     loss = None
+    super_nodes = []
+    output_type = None
+    input_type = None
 
     def __init__(self):
+        self.n_outliers = None
         if self.output_type == "input":
             self.output_type = self.input_type
         self.value = self.evaluate()
         self.min_loss = np.inf
+        self.std = torch.std(self.value.to(float)).item()
 
     def compute_loss(self, loss_fn, y):
         with torch.no_grad():
+            self.corr = torch.corrcoef(torch.cat((self.value.squeeze(), y.squeeze()))).abs().item()
+            if self.output_type != "bool":
+                e = self.value.squeeze() - y.squeeze()
+                self.n_outliers = (np.abs(e) - 2 * e.std() > 0).sum().item()
             self.loss = loss_fn(y, self.value).cpu().numpy()
         self.min_loss = np.min([self.loss, self.min_loss])
         if np.isnan(self.loss) or np.isinf(self.loss):
@@ -232,15 +242,16 @@ class ScalarNode(Node):
 
 
 class BaseNode(Node):
-    def __init__(self, x, name, ind):
+    def __init__(self, x, name, ind, corr):
         self.ind = ind
         self.x = x
         self.name = name
         self.input_type = None
         self.output_type = "float"
         self.super_nodes = []
-        self.complexity = 0
+        self.complexity = 0#1 - corr.item()
         self.birth = np.inf
+        self.corr = corr.item()
         super().__init__()
 
     def forward(self, x):
@@ -432,21 +443,23 @@ class FunctionTree:
         self.stls_vars = []
         self.x = x
         self.y = y
+        self.corrs = torch.corrcoef(torch.cat((x.T, y.unsqueeze(-1).T)))[-1].abs()
         self.loss_fn = loss_fn
         self.rounds = 2
         self.max_active_vars = 100
         in_vars = torch.split(x, 1, 1)
         self.n_base = len(in_vars) + 1
-        self.base_vars = [BaseNode(z, f"x{i}", i) for i, z in enumerate(in_vars)] + [ScalarNode(in_vars[0], "1", 1.)]
+        self.base_vars = [BaseNode(z, f"x{i}", i, self.corrs[i]) for i, z in enumerate(in_vars)] + [ScalarNode(in_vars[0], "1", 1.)]
         _ = [b.compute_loss(loss_fn, y) for b in self.base_vars]
         self.all_vars = self.base_vars
         self.loss = np.array([])
         self.date = 0
+        self.all_vars += self.all_combos()
         self.compute_stls()
 
     def evolve(self, pop_size):
         for i in range(self.rounds):
-            self.all_vars += self.combine_funcs(max_funcs=500, n_inputs=1)
+            self.all_vars += self.combine_funcs(max_funcs=100, n_inputs=1)
             self.all_vars += self.combine_funcs(max_funcs=200, n_inputs=2)
             self.all_vars += self.add_conditionals(max_funcs=100)
         self.compute_stls()
@@ -470,8 +483,24 @@ class FunctionTree:
         model = SymbolicFunction(best_node)
         return model
 
+    def analyze(self):
+        all_vars = [x for x in self.stls_vars if x.n_outliers is not None]
+        d = [[x.loss.item(), x.n_outliers, x.std, x.complexity] for x in all_vars]
+        df = pd.DataFrame(d, columns=["loss", "n_outliers", "std", "complexity"])
+        df[df["std"]>0].plot.scatter("loss", "complexity", logx=True, logy=True)
+        plt.show()
+
+
+        min_c = df[df["std"] > 0].complexity.min()
+        df.loc[df.complexity==min_c]
+
+        all_vars[4].get_name()
+
+
+
     def add_conditionals(self, max_funcs, max_complexity=20):
-        n_funcs = np.random.randint(max_funcs)
+        # n_funcs = np.random.randint(max_funcs)
+        n_funcs = max_funcs
         conds = [v for v in self.all_vars if v.output_type == "bool" and v.complexity < max_complexity]
         new_vars = []
         selected_conds = self.sample_by_inverse_complexity(n_funcs, conds)
@@ -488,6 +517,19 @@ class FunctionTree:
                 new_vars.pop()
         return new_vars
 
+    def all_combos(self):
+        node_cons = UnaryNode
+        func_list = {k: v for k, v in unary_functions.items() if k in self.unary_funcs}
+        new_vars = []
+        for key in func_list.keys():
+            temp_vars = [v for v in self.all_vars if v.output_type in input_types[key]]
+            for v in temp_vars:
+                new_vars += [node_cons(key, self.date, v)]
+                loss = new_vars[-1].compute_loss(self.loss_fn, self.y)
+                if np.isnan(loss) or np.isinf(loss):
+                    new_vars.pop()
+        return new_vars
+
     def combine_funcs(self, max_funcs, n_inputs=1, max_complexity=20):
         if n_inputs == 1:
             node_cons = UnaryNode
@@ -498,7 +540,7 @@ class FunctionTree:
         else:
             raise NotImplementedError("n_inputs must be 1 or 2")
         max_index = len(func_list) * len(self.all_vars) ** n_inputs
-        n_funcs = min(np.random.randint(max_index), max_funcs)
+        n_funcs = min(max_index, max_funcs)
         new_vars = []
         for _ in range(n_funcs):
             key = np.random.choice(np.array(list(func_list.keys())))
@@ -514,6 +556,7 @@ class FunctionTree:
         return new_vars
 
     def sample_by_inverse_complexity(self, n_inputs, temp_vars):
+        # have changed this to correlation
         complexity = np.array([v.complexity for v in temp_vars])
         r = complexity.max() - complexity + 1
         p = r / r.sum()
@@ -528,7 +571,7 @@ class FunctionTree:
             return np.arange(len(min_losses))
         min_losses = min_losses[self.n_base:]
         # Rank descending from 1:
-        r = (-min_losses).argsort().argsort() + 1
+        r = ((-min_losses).argsort().argsort() + 1).astype(float)
         r -= complexity[self.n_base:]
         # Probability of survival is proportional to rank
         # and scaled to target pop_size
@@ -537,9 +580,9 @@ class FunctionTree:
         p[r > np.max(r) - 20] = 1.0
         base_ind = np.full((self.n_base,), True)
         rem_ind = np.random.random((p.shape)) < p
-        oldest = np.argmin([x.birth for x in self.all_vars])
+        # oldest = np.argmin([x.birth for x in self.all_vars])
         full_index = np.concatenate((base_ind, rem_ind))
-        full_index[oldest] = False
+        # full_index[oldest] = False
         return full_index
 
     def STLS(self, threshold=0.01, thresh_inc=0.05, max_thresh=100, n_param_target=5):
