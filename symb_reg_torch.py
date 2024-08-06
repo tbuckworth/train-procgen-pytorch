@@ -437,7 +437,9 @@ class FunctionTree:
     def __init__(self, x, y, loss_fn,
                  binary_funcs=None,
                  unary_funcs=None,
+                 max_complexity=20,
                  ):
+        self.max_complexity = max_complexity
         self.binary_funcs = ["*", "/", "max", "min", "mod", "atan2"] if binary_funcs is None else binary_funcs
         self.unary_funcs = unary_functions.keys() if unary_funcs is None else unary_funcs
         self.stls_vars = []
@@ -457,17 +459,15 @@ class FunctionTree:
         self.all_vars += self.all_combos()
         self.compute_stls()
         self.all_vars += self.all_combos()
-        self.compute_stls()
         self.all_vars = self.filter_vars()
         self.compute_stls()
 
 
     def evolve(self, pop_size):
         for i in range(self.rounds):
-            self.all_vars += self.combine_funcs(max_funcs=100, n_inputs=1)
-            self.all_vars += self.combine_funcs(max_funcs=200, n_inputs=2)
+            self.all_vars += self.combine_funcs(max_funcs=100, n_inputs=1, max_complexity=self.max_complexity)
+            self.all_vars += self.combine_funcs(max_funcs=200, n_inputs=2, max_complexity=self.max_complexity)
             self.all_vars += self.add_conditionals(max_funcs=100)
-        self.compute_stls()
         self.all_vars = self.filter_vars()
         self.compute_stls()
         self.date += 1
