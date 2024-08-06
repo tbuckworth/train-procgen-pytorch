@@ -14,7 +14,7 @@ class MyTestCase(unittest.TestCase):
         # lmbda = 0.1
         x = torch.rand((1000, 2))
         y = torch.cos(x[:, 0]) ** 2 + torch.sin(x[:, 1]) ** 3 + x[:, 0] * x[:, 1]
-        # y = torch.where(x[:, 0] > x[:, 1], y, x[:, 1])
+        y = torch.where(x[:, 0] > x[:, 1], y, x[:, 1])
         # y = 38.12 * torch.atan(x[:, 1]) + -34.37 * torch.atan(torch.sinh(x[:, 1]))
         # y = x[..., 3] * x[..., 4]
         tree = FunctionTree(x, y, torch.nn.MSELoss(),

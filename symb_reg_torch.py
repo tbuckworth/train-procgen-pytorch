@@ -356,7 +356,10 @@ class ConditionalNode(Node):
         super().__init__()
 
     def forward(self, x):
-        return torch.where(self.cond.forward(x), self.x1.forward(x), self.x2.forward(x))
+        try:
+            return torch.where(self.cond.forward(x), self.x1.forward(x), self.x2.forward(x))
+        except RuntimeError as e:
+            raise e
 
     def evaluate(self, cond=None, x1=None, x2=None):
         if cond is None:
