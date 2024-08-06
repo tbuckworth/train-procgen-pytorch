@@ -12,8 +12,8 @@ from sklearn import linear_model
 class MyTestCase(unittest.TestCase):
     def test_something(self):
         # lmbda = 0.1
-        x = torch.rand((100, 5))
-        y = torch.cos(x[:, 1]) ** 2 + torch.sin(x[:, 4]) ** 3
+        x = torch.rand((100, 2))
+        y = torch.cos(x[:, 0]) ** 2 + torch.sin(x[:, 1]) ** 3
         # y = 38.12 * torch.atan(x[:, 1]) + -34.37 * torch.atan(torch.sinh(x[:, 1]))
         # y = x[..., 3] * x[..., 4]
         tree = FunctionTree(x, y, torch.nn.MSELoss(),
@@ -28,7 +28,8 @@ class MyTestCase(unittest.TestCase):
 
         tree.train(pop_size=200, epochs=2)
 
-        idx = np.argmin([v.n_outliers for v in tree.stls_vars])
+        idx = np.argmin([v.loss for v in tree.stls_vars])
+        # for idx in range(len(tree.stls_vars)):
         final_node = tree.stls_vars[idx]
         print(final_node.get_name())
         y_hat = final_node.value

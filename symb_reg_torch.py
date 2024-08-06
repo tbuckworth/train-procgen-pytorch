@@ -205,7 +205,7 @@ class Node(ABC):
             if self.output_type != "bool":
                 e = self.value.squeeze() - y.squeeze()
                 self.n_outliers = (np.abs(e) - 2 * e.std() > 0).sum().item()
-            self.loss = loss_fn(y, self.value).cpu().numpy()
+            self.loss = loss_fn(y.squeeze(), self.value.squeeze()).item()
         self.min_loss = np.min([self.loss, self.min_loss])
         if np.isnan(self.loss) or np.isinf(self.loss):
             return self.loss
@@ -455,14 +455,20 @@ class FunctionTree:
         self.loss = np.array([])
         self.date = 0
         self.all_vars += self.all_combos()
+        self.compute_stls()
+        self.all_vars += self.all_combos()
+        self.compute_stls()
         self.all_vars = self.filter_vars()
         self.compute_stls()
+
 
     def evolve(self, pop_size):
         for i in range(self.rounds):
             self.all_vars += self.combine_funcs(max_funcs=100, n_inputs=1)
             self.all_vars += self.combine_funcs(max_funcs=200, n_inputs=2)
             self.all_vars += self.add_conditionals(max_funcs=100)
+        self.compute_stls()
+        self.all_vars = self.filter_vars()
         self.compute_stls()
         self.date += 1
         min_losses = np.array([x.min_loss for x in self.all_vars])
