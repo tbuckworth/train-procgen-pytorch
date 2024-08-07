@@ -5,7 +5,7 @@ import torch
 from matplotlib import pyplot as plt
 
 from common import xavier_uniform_init
-from symb_reg_torch import create_func, run_tree, BinaryNode, BaseNode, ScalarNode, UnaryNode, FunctionTree
+from symb_reg_torch import create_func, run_tree, BinaryNode, BaseNode, ScalarNode, UnaryNode, FunctionTree, ConditionalNode
 
 from sklearn import linear_model
 
@@ -52,7 +52,7 @@ class MyTestCase(unittest.TestCase):
         print("0")
         return
 
-        c_vars = [x for x in tree.all_vars if x.split_points is not None and len(x.split_points)>0]
+        c_vars = [x for x in tree.all_vars if x.split_points is not None and len(x.split_points)>0 and type(x) is not ConditionalNode]
         l = np.array([len(x.split_points) for x in c_vars])
         idx = 4
         c_vars[idx].split_points
@@ -65,8 +65,11 @@ class MyTestCase(unittest.TestCase):
             plt.scatter(y[flt], y_hat[flt], s=15)
             plt.scatter(y[~flt], y_hat[~flt], s=10)
             plt.show()
+            time.sleep(1)
             if idx > 16:
                 break
+
+
         # [((y-v.value)**2).max() for v in tree.stls_vars]
         #
         # [((y-v.value)**2).max() for v in tree.stls_vars]

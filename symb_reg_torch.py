@@ -194,7 +194,7 @@ class Node(ABC):
     input_type = None
 
     def __init__(self):
-        self.split_points = None
+        self.flt = None
         self.n_outliers = None
         if self.output_type == "input":
             self.output_type = self.input_type
@@ -204,18 +204,22 @@ class Node(ABC):
 
     def compute_loss(self, loss_fn, y):
         with torch.no_grad():
-            self.corr = torch.corrcoef(torch.cat((self.value.squeeze(), y.squeeze()))).abs().item()
+            y_hat = self.value.squeeze()
+            y = y.squeeze()
+            self.corr = torch.corrcoef(torch.cat((y_hat, y))).abs().item()
             if self.output_type != "bool":
-                e = self.value.squeeze() - y.squeeze()
+                e = y_hat - y
                 self.n_outliers = (np.abs(e) - 2 * e.std() > 0).sum().item()
-            self.loss = loss_fn(y.squeeze(), self.value.squeeze()).item()
+            self.loss = loss_fn(y, y_hat).item()
         self.min_loss = np.min([self.loss, self.min_loss])
         if np.isnan(self.loss) or np.isinf(self.loss):
             return self.loss
         if self.output_type != "bool":
             with torch.no_grad():
-                pairwise_loss = (self.value.squeeze() - y.squeeze()) ** 2
-                self.split_points = get_kde_minima_1d(pairwise_loss)
+                pairwise_loss = e ** 2
+                split_points = get_kde_minima_1d(pairwise_loss)
+                if len(split_points) == 1:
+                    self.flt = pairwise_loss > split_points.item()
         for n in self.super_nodes:
             n.min_loss = np.min([self.loss, n.min_loss])
         return self.loss
@@ -382,7 +386,7 @@ class ConditionalNode(Node):
 
     def forward(self, x):
         try:
-            return torch.where(self.cond.forward(x), self.x1.forward(x), self.x2.forward(x))
+            return torch.where(self.cond.forward(x).to(bool), self.x1.forward(x), self.x2.forward(x))
         except RuntimeError as e:
             raise e
 
@@ -590,6 +594,20 @@ class FunctionTree:
             if np.isnan(loss) or np.isinf(loss):
                 new_vars.pop()
         return new_vars
+
+    def find_splitpoint_conditionals(self, max_funcs, max_complexity=20):
+        split_vars = [v for v in self.all_vars if v.flt is not None and v.complexity < max_complexity]
+
+        node_cons = BinaryNode
+        func_list = {k: v for k, v in binary_functions.items() if k in self.binary_funcs and output_types[k] == "bool"}
+
+        for v in split_vars:
+
+            gt = v.value[v.flt] > v.value[~v.flt]
+            if np.all(gt):
+                v.value[v.flt].min() + v.value[~v.flt].max()
+
+
 
     def all_combos(self):
         node_cons = UnaryNode
