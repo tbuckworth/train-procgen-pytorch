@@ -31,7 +31,16 @@ class MyTestCase(unittest.TestCase):
 
         tree.train(pop_size=200, epochs=5)
 
-        idx = np.argmin([v.val_loss for v in tree.stls_vars])
+        model = tree.get_best()
+
+        y_hat = model.forward(x)
+
+        plt.scatter(y, y_hat)
+        plt.show()
+
+
+
+        idx = np.argmin([v.val_loss for v in tree.stls_vars if v.std > 0.])
         for idx in range(len(tree.stls_vars)):
             final_node = tree.stls_vars[idx]
             print(final_node.get_name())

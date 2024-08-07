@@ -457,6 +457,7 @@ class FunctionTree:
         self.train_y = y[~flt]
         self.val_x = x[flt]
         self.val_y = y[flt]
+        self.y_std = torch.std(y).item()
         self.corrs = torch.corrcoef(torch.cat((x.T, y.unsqueeze(-1).T)))[-1].abs()
         self.loss_fn = loss_fn
         self.rounds = 2
@@ -498,19 +499,43 @@ class FunctionTree:
 
     def get_best(self):
         complete_vars = self.all_vars + self.stls_vars
-        losses = np.array([x.val_loss for x in complete_vars if x.loss is not None])
+        losses = np.array([x.val_loss for x in complete_vars if self.condition(x)])
         best_node = complete_vars[np.argmin(losses)]
         print(best_node.get_name())
         model = SymbolicFunction(best_node)
         return model
 
-    def analyze(self):
-        # todo: remove this function
-        all_vars = [x for x in self.stls_vars if x.n_outliers is not None]
-        d = [[x.loss.item(), x.n_outliers, x.std, x.complexity] for x in all_vars]
-        df = pd.DataFrame(d, columns=["loss", "n_outliers", "std", "complexity"])
+    def condition(self, x):
+        if self.y_std > 0.:
+            return x.std > 0. and x.loss is not None
+        return x.loss is not None
+
+    def analyze(self, x, y):
+        all_vars = [x for x in self.all_vars + self.stls_vars if x.n_outliers is not None and self.condition(x)]
+        d = [[x.loss, x.n_outliers, x.std, x.complexity, x.val_loss] for x in all_vars]
+        df = pd.DataFrame(d, columns=["loss", "n_outliers", "std", "complexity", "val_loss"])
         df[df["std"] > 0].plot.scatter("loss", "complexity", logx=True, logy=True)
         plt.show()
+
+        rank = df.drop(columns="std").rank().mean(axis=1)
+
+        y_hat = all_vars[rank.argmin()].forward(x)
+        y_hat = all_vars[df.loss.argmin()].forward(x)
+        y_hat_val = all_vars[df.val_loss.argmin()].forward(x)
+
+        plt.scatter(y, y_hat)
+        plt.scatter(y, y_hat)
+
+        plt.scatter(y, y)
+        plt.show()
+
+        df.loc[rank.argmin()]
+
+        df.loc[df.complexity.argmin()]
+        df.loc[df.loss.argmin()]
+        df.loc[df.val_loss.argmin()]
+        df.loc[df.n_outliers.argmin()]
+
 
         min_c = df[df["std"] > 0].complexity.min()
         df.loc[df.complexity == min_c]
@@ -612,7 +637,8 @@ class FunctionTree:
         clf = linear_model.LinearRegression(fit_intercept=False)
         min_loss = np.inf
         last_coef = None
-        while dtmp.shape[-1] > n_param_target and threshold < max_thresh:
+        repeated = 0
+        while dtmp.shape[-1] > n_param_target and threshold < max_thresh and repeated < 2:
             n_cmp = -1
             threshold += thresh_inc
             while n_cmp != dtmp.shape[-1]:
@@ -626,6 +652,10 @@ class FunctionTree:
                     best_coef = coef
                     min_loss = loss
                 flt = np.abs(coef) > threshold
+                if np.all(flt):
+                    repeated += 1
+                else:
+                    repeated = 0
                 if not np.any(flt):
                     if last_coef is None:
                         return self.STLS(threshold=threshold / 10, thresh_inc=thresh_inc / 10)
