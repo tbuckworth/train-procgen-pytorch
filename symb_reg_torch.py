@@ -5,7 +5,9 @@ import numpy as np
 import pandas as pd
 import torch
 from matplotlib import pyplot as plt
+from scipy.signal import argrelextrema
 from sklearn import linear_model
+from sklearn.neighbors import KernelDensity
 from torch import nn
 
 from helper_local import softmax
@@ -201,6 +203,8 @@ class Node(ABC):
 
     def compute_loss(self, loss_fn, y):
         with torch.no_grad():
+            pairwise_loss = (self.value.squeeze()-y.squeeze())**2
+            self.split_points = get_kde_minima_1d(pairwise_loss)
             self.corr = torch.corrcoef(torch.cat((self.value.squeeze(), y.squeeze()))).abs().item()
             if self.output_type != "bool":
                 e = self.value.squeeze() - y.squeeze()
@@ -310,6 +314,24 @@ def get_output_type(xs):
     if "bool" in all_types:
         return "bool"
 
+def get_kde_minima_1d(a):
+
+    # y_hat = np.random.random(y.shape)
+    # y_hat = -y
+    # y_hat[::2] = y[::2]
+    # a = (y_hat-y.cpu().numpy())**2
+    a = a.reshape(-1, 1)
+    # a = np.array([10, 11, 9, 23, 21, 11, 45, 20, 11, 12]).reshape(-1, 1)
+    kde = KernelDensity(kernel='gaussian').fit(a)
+    s = np.linspace(a.min(), a.max(),50)
+    # s = a
+    e = kde.score_samples(s.reshape(-1, 1))
+    # plt.plot(s, e)
+    # plt.show()
+    # mi, ma = argrelextrema(e, np.less)[0], argrelextrema(e, np.greater)[0]
+    mi = argrelextrema(e, np.less)[0]
+    # print(mi)
+    return mi
 
 class BinaryNode(Node):
     def __init__(self, func, date, x1, x2):
@@ -517,15 +539,20 @@ class FunctionTree:
         df[df["std"] > 0].plot.scatter("loss", "complexity", logx=True, logy=True)
         plt.show()
 
+        df.loc[df.val_loss.rank()<=10]
+
+        ranks = df.drop(columns="std").rank()
+
         rank = df.drop(columns="std").rank().mean(axis=1)
 
         y_hat = all_vars[rank.argmin()].forward(x)
         y_hat = all_vars[df.loss.argmin()].forward(x)
         y_hat_val = all_vars[df.val_loss.argmin()].forward(x)
 
-        plt.scatter(y, y_hat)
-        plt.scatter(y, y_hat)
+        plt.scatter(y, y_hat_val)
 
+        y_hat = all_vars[203].forward(x)
+        plt.scatter(y, y_hat)
         plt.scatter(y, y)
         plt.show()
 
