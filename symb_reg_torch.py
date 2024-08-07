@@ -321,8 +321,8 @@ def get_output_type(xs):
     if "bool" in all_types:
         return "bool"
 
-def get_kde_minima_1d(a):
 
+def get_kde_minima_1d(a):
     # y_hat = np.random.random(y.shape)
     # y_hat = -y
     # y_hat[::2] = y[::2]
@@ -330,7 +330,7 @@ def get_kde_minima_1d(a):
     a = a.reshape(-1, 1)
     # a = np.array([10, 11, 9, 23, 21, 11, 45, 20, 11, 12]).reshape(-1, 1)
     kde = KernelDensity(kernel='gaussian').fit(a)
-    s = np.linspace(a.min(), a.max(),50)
+    s = np.linspace(a.min(), a.max(), 50)
     # s = a
     e = kde.score_samples(s.reshape(-1, 1))
     # plt.plot(s, e)
@@ -338,7 +338,8 @@ def get_kde_minima_1d(a):
     # mi, ma = argrelextrema(e, np.less)[0], argrelextrema(e, np.greater)[0]
     mi = argrelextrema(e, np.less)[0]
     # print(mi)
-    return mi
+    return s[mi]
+
 
 class BinaryNode(Node):
     def __init__(self, func, date, x1, x2):
@@ -506,13 +507,14 @@ class FunctionTree:
         self.compute_stls()
 
     def evolve(self, pop_size):
-        #TODO: add mutation?
+        # TODO: add mutation?
         for i in range(self.rounds):
             self.all_vars += self.combine_funcs(max_funcs=100, n_inputs=1, max_complexity=self.max_complexity)
             self.all_vars += self.combine_funcs(max_funcs=200, n_inputs=2, max_complexity=self.max_complexity)
             self.all_vars += self.add_conditionals(max_funcs=100)
         self.all_vars = self.filter_vars()
         self.compute_stls()
+        self.find_splitpoint_conditionals(max_funcs=100, max_complexity=self.max_complexity)
         self.date += 1
         min_losses = np.array([x.min_loss for x in self.all_vars])
         # complexity = np.array([x.complexity for x in self.all_vars])
@@ -546,7 +548,7 @@ class FunctionTree:
         df[df["std"] > 0].plot.scatter("loss", "complexity", logx=True, logy=True)
         plt.show()
 
-        df.loc[df.val_loss.rank()<=10]
+        df.loc[df.val_loss.rank() <= 10]
 
         ranks = df.drop(columns="std").rank()
 
@@ -569,7 +571,6 @@ class FunctionTree:
         df.loc[df.loss.argmin()]
         df.loc[df.val_loss.argmin()]
         df.loc[df.n_outliers.argmin()]
-
 
         min_c = df[df["std"] > 0].complexity.min()
         df.loc[df.complexity == min_c]
@@ -595,19 +596,40 @@ class FunctionTree:
                 new_vars.pop()
         return new_vars
 
-    def find_splitpoint_conditionals(self, max_funcs, max_complexity=20):
+    def find_splitpoint_conditionals(self, score_threshold=0.95, max_complexity=20):
         split_vars = [v for v in self.all_vars if v.flt is not None and v.complexity < max_complexity]
-
-        node_cons = BinaryNode
         func_list = {k: v for k, v in binary_functions.items() if k in self.binary_funcs and output_types[k] == "bool"}
-
+        nodes = []
         for v in split_vars:
+            cond, score = self.split_node(v, func_list)
+            if score > score_threshold:
+                nodes += [(v, cond)]
+        for v, cond in nodes:
+            ConditionalNode(self.date, cond, v,)
 
-            gt = v.value[v.flt] > v.value[~v.flt]
-            if np.all(gt):
-                v.value[v.flt].min() + v.value[~v.flt].max()
+        return nodes
 
+    def split_node(self, v, func_list):
+        split_point = None
+        g1 = v.value[v.flt]
+        g2 = v.value[~v.flt]
+        # gt = g1 > g2
+        if g2.max() < g1.min():
+            split_point = (g2.max() + g1.min()).item() / 2
+        if g1.max() < g2.min():
+            split_point = (g1.max() + g2.min()).item() / 2
+        if split_point is not None:
+            return BinaryNode(">=", self.date, v, ScalarNode(v.value, f"{split_point:.2f}", split_point)), 1.
 
+        nodes = []
+        for f in func_list:
+            tmp_vars = [v for v in self.all_vars if v.output_type != "bool"]
+            for t in tmp_vars:
+                nodes += [BinaryNode(f, self.date, v, t)]
+
+        vals = torch.cat([v.value for v in nodes], axis=-1)
+        matches = (v.flt == vals.T).sum(axis=-1)
+        return nodes[matches.argmax()], matches.max().item()/len(v.flt)
 
     def all_combos(self):
         node_cons = UnaryNode
