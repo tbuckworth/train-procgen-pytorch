@@ -194,6 +194,7 @@ class Node(ABC):
     input_type = None
 
     def __init__(self):
+        self.split_points = None
         self.n_outliers = None
         if self.output_type == "input":
             self.output_type = self.input_type
@@ -203,8 +204,6 @@ class Node(ABC):
 
     def compute_loss(self, loss_fn, y):
         with torch.no_grad():
-            pairwise_loss = (self.value.squeeze()-y.squeeze())**2
-            self.split_points = get_kde_minima_1d(pairwise_loss)
             self.corr = torch.corrcoef(torch.cat((self.value.squeeze(), y.squeeze()))).abs().item()
             if self.output_type != "bool":
                 e = self.value.squeeze() - y.squeeze()
@@ -213,6 +212,10 @@ class Node(ABC):
         self.min_loss = np.min([self.loss, self.min_loss])
         if np.isnan(self.loss) or np.isinf(self.loss):
             return self.loss
+        if self.output_type != "bool":
+            with torch.no_grad():
+                pairwise_loss = (self.value.squeeze() - y.squeeze()) ** 2
+                self.split_points = get_kde_minima_1d(pairwise_loss)
         for n in self.super_nodes:
             n.min_loss = np.min([self.loss, n.min_loss])
         return self.loss
@@ -520,8 +523,8 @@ class FunctionTree:
         self.compute_val_loss()
 
     def get_best(self):
-        complete_vars = self.all_vars + self.stls_vars
-        losses = np.array([x.val_loss for x in complete_vars if self.condition(x)])
+        complete_vars = [x for x in self.all_vars + self.stls_vars if self.condition(x)]
+        losses = np.array([x.val_loss for x in complete_vars])
         best_node = complete_vars[np.argmin(losses)]
         print(best_node.get_name())
         model = SymbolicFunction(best_node)

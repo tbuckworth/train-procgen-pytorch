@@ -39,18 +39,34 @@ class MyTestCase(unittest.TestCase):
         plt.show()
 
 
-
-        idx = np.argmin([v.val_loss for v in tree.stls_vars if v.std > 0.])
-        for idx in range(len(tree.stls_vars)):
-            final_node = tree.stls_vars[idx]
+        stls_vars = [x for x in tree.stls_vars if tree.condition(x)]
+        idx = np.argmin([v.val_loss for v in stls_vars])
+        for idx in range(len(stls_vars)):
+            final_node = stls_vars[idx]
             print(final_node.get_name())
             y_hat = final_node.forward(x)
             plt.scatter(y, y_hat)
             plt.show()
-        _ = [print(v.get_name()) for v in tree.stls_vars]
+        _ = [print(v.get_name()) for v in stls_vars]
 
         print("0")
         return
+
+        c_vars = [x for x in tree.all_vars if x.split_points is not None and len(x.split_points)>0]
+        l = np.array([len(x.split_points) for x in c_vars])
+        idx = 4
+        c_vars[idx].split_points
+
+        for i in np.argwhere(l == 1):
+            idx = i.item()
+            y_hat = c_vars[idx].forward(x)
+            flt = (y_hat-y)**2 < c_vars[idx].split_points.item()
+            # plt.scatter(y, y)
+            plt.scatter(y[flt], y_hat[flt], s=15)
+            plt.scatter(y[~flt], y_hat[~flt], s=10)
+            plt.show()
+            if idx > 16:
+                break
         # [((y-v.value)**2).max() for v in tree.stls_vars]
         #
         # [((y-v.value)**2).max() for v in tree.stls_vars]
