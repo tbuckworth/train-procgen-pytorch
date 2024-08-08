@@ -529,7 +529,8 @@ class FunctionTree:
         self.all_vars = self.filter_vars()
         self.compute_stls()
         if find_splitpoints:
-            self.all_vars += self.find_splitpoint_conditionals()
+            # self.alternative_splitpoint()
+            self.all_vars += self.alternative_splitpoint()
             self.remove_duplicates()
         self.date += 1
         min_losses = np.array([x.min_loss for x in self.all_vars])
@@ -612,33 +613,40 @@ class FunctionTree:
 
     def alternative_splitpoint(self, score_threshold=0.95):
         tmp_vars = self.stls_vars + self.all_vars
+        # works from existing bool_vars, but new bool_vars could be searched for or added
         bool_vars = [v for v in self.all_vars if v.output_type == "bool"]
-        all_flt = torch.cat([v.value for v in bool_vars])
+        all_bools = torch.cat([v.value for v in bool_vars], axis=-1)
         losses = self.piecewise_loss(tmp_vars)
         threshold = 0
-        b = losses <= threshold
+        low_loss_bool = losses <= threshold
 
-        order = np.argsort(len(b) - b.sum(0))
+        n = len(low_loss_bool)
+        order = np.argsort(n - low_loss_bool.sum(0))
         tmp_vars = np.array(tmp_vars)[order].tolist()
-        b = b[:, order]
+        low_loss_bool = low_loss_bool[:, order]
+        nodes = []
         for i, v in enumerate(tmp_vars):
-            f1 = b[:, i]
-            if f1.sum() / len(b) < 0.1:
+            f1 = low_loss_bool[:, i]
+            if i > 10 or f1.sum() / n < 0.1:
                 break
-
-            f2 = b[:, (i + 1):]
-
-            totals = (f1 + f2.T).sum(1) / len(b)
+            f2 = low_loss_bool[:, (i + 1):]
+            totals = (f1 + f2.T).sum(1) / n
             matches = totals > score_threshold
-            b[:, matches]
+            full_match_fltr = torch.cat([torch.BoolTensor([False for _ in range(i+1)]), matches])
+            matched_low_loss_bools = low_loss_bool[:, full_match_fltr]
 
-            v2 = tmp_vars[totals.argmax() + i + 1]
-
-
-            if totals.max() > score_threshold:
-                cond = search_for_split()
-                ConditionalNode(self.date, cond, v, v2)
-
+            all_bools_expanded = all_bools.unsqueeze(-1).tile(1, 1, matched_low_loss_bools.shape[1])
+            bool_scores = (all_bools_expanded == matched_low_loss_bools.unsqueeze(1)).sum(0)/n
+            score = bool_scores.max()
+            if score > score_threshold:
+                ind = bool_scores.argmax().item()
+                alt_ind = ind // bool_scores.shape[1]
+                cond_idx = ind % bool_scores.shape[1]
+                alt_v = np.array(tmp_vars)[full_match_fltr][alt_ind]
+                cond = bool_vars[cond_idx]
+                nodes += [ConditionalNode(self.date, cond, v, alt_v)]
+                self.filter_loss(nodes)
+        return nodes
 
     def find_splitpoint_conditionals(self, score_threshold=0.8):
         # TODO: consider split_vars with low loss in one split and low complexity more
