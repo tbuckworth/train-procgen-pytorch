@@ -5,8 +5,10 @@ import numpy as np
 import pandas as pd
 import torch
 from matplotlib import pyplot as plt
+from pysindy import STLSQ
 from scipy.signal import argrelextrema
-from sklearn import linear_model
+# from sklearn import linear_model
+from sklearn.linear_model import Ridge, LinearRegression
 from sklearn.neighbors import KernelDensity
 from torch import nn
 
@@ -473,7 +475,8 @@ class FunctionTree:
                  unary_funcs=None,
                  max_complexity=20,
                  validation_ratio=0.1,
-                 ):
+                 use_sindy=True):
+        self.use_sindy = use_sindy
         self.max_complexity = max_complexity
         self.binary_funcs = ["*", "/", "max", "min", "mod", "atan2"] if binary_funcs is None else binary_funcs
         self.unary_funcs = unary_functions.keys() if unary_funcs is None else unary_funcs
@@ -595,11 +598,12 @@ class FunctionTree:
             self.filter_loss(new_vars)
         return new_vars
 
-    def find_splitpoint_conditionals(self, score_threshold=0.95):
-        split_vars = [v for v in self.all_vars if v.flt is not None and v.complexity < self.max_complexity]
+    def find_splitpoint_conditionals(self, score_threshold=0.8):
+        split_vars = [v for v in self.stls_vars + self.all_vars if v.flt is not None and v.complexity < self.max_complexity]
         if len(split_vars) == 0:
             return []
-        all_flt = ~torch.cat([v.flt.unsqueeze(-1) for v in split_vars], axis=-1)
+        all_vals = torch.cat([v.value for v in self.stls_vars + self.all_vars], axis=-1)
+        all_loss = ((all_vals.T - self.train_y)**2).T
         func_list = {k: v for k, v in binary_functions.items() if k in self.binary_funcs and output_types[k] == "bool"}
         nodes = []
         for v in split_vars:
@@ -607,10 +611,9 @@ class FunctionTree:
             if score > score_threshold:
                 nodes += [cond]
                 cond.compute_loss(self.loss_fn, self.train_y)
-                matches = (v.flt == all_flt.T).sum(axis=1) / len(v.flt)
-                if matches.max() > score_threshold:
-                    nodes += [ConditionalNode(self.date, cond, v, split_vars[matches.argmax()])]
-                    self.filter_loss(nodes)
+                losses = all_loss[~v.flt].sum(0)
+                nodes += [ConditionalNode(self.date, cond, v, (self.stls_vars+self.all_vars)[losses.argmin()])]
+                self.filter_loss(nodes)
         return nodes
 
     def split_node(self, v, func_list):
@@ -629,10 +632,14 @@ class FunctionTree:
             return BinaryNode(func, self.date, v, ScalarNode(v.value, f"{split_point:.2f}", split_point)), 1.
 
         nodes = []
+        tmp_vars = [x for x in self.stls_vars + self.all_vars if x.output_type != "bool" and x != v]
         for f in func_list:
-            tmp_vars = [v for v in self.all_vars if v.output_type != "bool"]
             for t in tmp_vars:
                 nodes += [BinaryNode(f, self.date, v, t)]
+                nodes += [UnaryNode("!", self.date, nodes[-1])]
+                #
+                # for t0 in tmp_vars:
+                #     nodes += [BinaryNode(f, self.date, t0, t)]
 
         vals = torch.cat([v.value for v in nodes], axis=-1)
         matches = (v.flt == vals.T).sum(axis=-1)
@@ -707,12 +714,19 @@ class FunctionTree:
         # full_index[oldest] = False
         return full_index
 
+    def sindySTLS(self, threshold=0.1, thresh_inc=0.05, max_thresh=100, n_param_target=5):
+        opt = STLSQ(threshold)
+        opt.fit(self.get_library(), self.train_y)
+        idx = opt.ind_.squeeze()
+        coef = opt.coef_.squeeze()[idx]
+        return coef, idx, None, None
+
     def STLS(self, threshold=0.01, thresh_inc=0.05, max_thresh=100, n_param_target=5):
-        dictionary = [v.evaluate() for v in self.all_vars]
-        d = torch.cat(dictionary, dim=1)
+        d = self.get_library()
         dtmp = d
         idx = np.arange(d.shape[-1])
-        clf = linear_model.LinearRegression(fit_intercept=False)
+        # clf = LinearRegression(fit_intercept=False)
+        clf = Ridge(fit_intercept=False)
         min_loss = np.inf
         last_coef = None
         repeated = 0
@@ -746,8 +760,19 @@ class FunctionTree:
             #     break
         return coef, idx, best_coef, best_idx
 
+    def get_library(self):
+        dictionary = [v.value for v in self.all_vars]
+        d = torch.cat(dictionary, dim=1)
+        return d
+
     def compute_stls(self, keep_overfit=False):
-        coef, idx, best_coef, best_idx = self.STLS()
+        stls = self.STLS
+        if self.use_sindy:
+            stls = self.sindySTLS
+        coef, idx, best_coef, best_idx = stls()
+        if len(coef) == 0:
+            print("STLS found nothing")
+            return
         final_var, new_vars = self.convert_to_func(coef, idx)
         print(final_var.get_name())
         final_var.compute_loss(self.loss_fn, self.train_y)

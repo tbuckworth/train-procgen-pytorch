@@ -28,11 +28,15 @@ class MyTestCase(unittest.TestCase):
               r"/\\", r"\/"]
         u_funcs = ["cos", "sin", "square", "cube"]
         b_funcs = ["*", ">"]
+
+        "0.38 * x1 + 0.45 * 1 + 0.45 * square(1) + 0.45 * cube(1)"
+
         tree = FunctionTree(x, y, torch.nn.MSELoss(),
                             unary_funcs=u_funcs,
                             binary_funcs=b_funcs,
-                            max_complexity=5,
-                            validation_ratio=0.2)
+                            max_complexity=20,
+                            validation_ratio=0.2,
+                            use_sindy=False)
 
         tree.train(pop_size=200, epochs=5, find_split_points=True)
 
