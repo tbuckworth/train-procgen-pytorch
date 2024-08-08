@@ -277,12 +277,14 @@ class BaseNode(Node):
     def get_name(self):
         return self.name
 
+
 def unary_node_cons(func, date, x1):
     f = unary_functions.get(func)
     if type(x1) is ScalarNode:
         val = f(x1.value).unique().item()
         return ScalarNode(like=x1.value, name=f"{val:.2f}", value=val)
     return UnaryNode(func, date, x1)
+
 
 class UnaryNode(Node):
     def __init__(self, func, date, x1):
@@ -608,14 +610,44 @@ class FunctionTree:
             self.filter_loss(new_vars)
         return new_vars
 
+    def alternative_splitpoint(self, score_threshold=0.95):
+        tmp_vars = self.stls_vars + self.all_vars
+        bool_vars = [v for v in self.all_vars if v.output_type == "bool"]
+        all_flt = torch.cat([v.value for v in bool_vars])
+        losses = self.piecewise_loss(tmp_vars)
+        threshold = 0
+        b = losses <= threshold
+
+        order = np.argsort(len(b) - b.sum(0))
+        tmp_vars = np.array(tmp_vars)[order].tolist()
+        b = b[:, order]
+        for i, v in enumerate(tmp_vars):
+            f1 = b[:, i]
+            if f1.sum() / len(b) < 0.1:
+                break
+
+            f2 = b[:, (i + 1):]
+
+            totals = (f1 + f2.T).sum(1) / len(b)
+            matches = totals > score_threshold
+            b[:, matches]
+
+            v2 = tmp_vars[totals.argmax() + i + 1]
+
+
+            if totals.max() > score_threshold:
+                cond = search_for_split()
+                ConditionalNode(self.date, cond, v, v2)
+
+
     def find_splitpoint_conditionals(self, score_threshold=0.8):
-        #TODO: consider split_vars with low loss in one split and low complexity more
-        split_vars = [v for v in self.stls_vars + self.all_vars if v.flt is not None]
+        # TODO: consider split_vars with low loss in one split and low complexity more
+        split_vars = [v for v in self.stls_vars + self.all_vars if
+                      v.flt is not None and v.complexity < self.max_complexity]
         # split_vars = np.array(split_vars)[np.argsort([v.complexity for v in split_vars])].tolist()
         if len(split_vars) == 0:
             return []
-        all_vals = torch.cat([v.value for v in self.stls_vars + self.all_vars], axis=-1)
-        all_loss = ((all_vals.T - self.train_y)**2).T
+        all_loss = self.piecewise_loss(self.stls_vars + self.all_vars)
         func_list = {k: v for k, v in binary_functions.items() if k in self.binary_funcs and output_types[k] == "bool"}
         nodes = []
         for v in split_vars:
@@ -624,9 +656,14 @@ class FunctionTree:
                 nodes += [cond]
                 cond.compute_loss(self.loss_fn, self.train_y)
                 losses = all_loss[~v.flt].sum(0)
-                nodes += [ConditionalNode(self.date, cond, v, (self.stls_vars+self.all_vars)[losses.argmin()])]
+                nodes += [ConditionalNode(self.date, cond, v, (self.stls_vars + self.all_vars)[losses.argmin()])]
                 self.filter_loss(nodes)
         return nodes
+
+    def piecewise_loss(self, var_list):
+        all_vals = torch.cat([v.value for v in var_list], axis=-1)
+        all_loss = ((all_vals.T - self.train_y) ** 2).T
+        return all_loss
 
     def split_node(self, v, func_list):
         # True is low loss, False is high loss
@@ -773,8 +810,9 @@ class FunctionTree:
         return coef, idx, best_coef, best_idx
 
     def get_library(self):
-        self.lib_vars = [v for i, v in enumerate(self.all_vars) if i < self.n_base and type(v) is not ScalarNode]
-        dictionary = [v.value for v in self.all_vars]
+        # Lots of scalars would ruin the ridge regression
+        self.lib_vars = [v for i, v in enumerate(self.all_vars) if i < self.n_base or type(v) is not ScalarNode]
+        dictionary = [v.value for v in self.lib_vars]
         d = torch.cat(dictionary, dim=1)
         return d
 
@@ -799,7 +837,7 @@ class FunctionTree:
 
     def convert_to_func(self, coef, idx):
         scalars = [ScalarNode(self.base_vars[0].x, f"{c:.2f}", c) for c in coef]
-        v = np.array(self.all_vars)[idx].tolist()
+        v = np.array(self.lib_vars)[idx].tolist()
         new_vars = [BinaryNode("*", self.date, c, f) for c, f in zip(scalars, v)]
         final_var = new_vars[0]
         for v in new_vars[1:]:
@@ -813,7 +851,6 @@ class FunctionTree:
         idx = self.ensure_base(idx)
         self.all_vars = np.array(self.all_vars)[idx].tolist()
         return all_v[:, idx]
-
 
     def filter_vars(self):
         all_v = self.remove_duplicates()
@@ -836,7 +873,6 @@ class FunctionTree:
 
         for l, v in zip(val_losses, self.all_vars + self.stls_vars):
             v.val_loss = l
-
 
 
 def run_tree(x, y, pop_size, epochs):
