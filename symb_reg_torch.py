@@ -611,7 +611,7 @@ class FunctionTree:
             self.filter_loss(new_vars)
         return new_vars
 
-    def alternative_splitpoint(self, score_threshold=0.95):
+    def alternative_splitpoint(self, score_threshold=0.8):
         tmp_vars = self.stls_vars + self.all_vars
         # works from existing bool_vars, but new bool_vars could be searched for or added
         bool_vars = [v for v in self.all_vars if v.output_type == "bool"]
@@ -632,17 +632,25 @@ class FunctionTree:
             f2 = low_loss_bool[:, (i + 1):]
             totals = (f1 + f2.T).sum(1) / n
             matches = totals > score_threshold
+            if sum(matches) == 0:
+                continue
             full_match_fltr = torch.cat([torch.BoolTensor([False for _ in range(i+1)]), matches])
             matched_low_loss_bools = low_loss_bool[:, full_match_fltr]
 
             all_bools_expanded = all_bools.unsqueeze(-1).tile(1, 1, matched_low_loss_bools.shape[1])
             bool_scores = (all_bools_expanded == matched_low_loss_bools.unsqueeze(1)).sum(0)/n
-            score = bool_scores.max()
+            try:
+                score = bool_scores.max()
+            except RuntimeError as e:
+                raise e
             if score > score_threshold:
                 ind = bool_scores.argmax().item()
-                alt_ind = ind // bool_scores.shape[1]
-                cond_idx = ind % bool_scores.shape[1]
-                alt_v = np.array(tmp_vars)[full_match_fltr][alt_ind]
+                cond_idx = ind // bool_scores.shape[1]
+                alt_idx = ind % bool_scores.shape[1]
+                try:
+                    alt_v = np.array(tmp_vars)[full_match_fltr][alt_idx]
+                except Exception as e:
+                    raise e
                 cond = bool_vars[cond_idx]
                 nodes += [ConditionalNode(self.date, cond, v, alt_v)]
                 self.filter_loss(nodes)
