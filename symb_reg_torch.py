@@ -506,15 +506,16 @@ class FunctionTree:
         self.all_vars = self.filter_vars()
         self.compute_stls()
 
-    def evolve(self, pop_size):
+    def evolve(self, pop_size, find_splitpoints=True):
         # TODO: add mutation?
         for i in range(self.rounds):
             self.all_vars += self.combine_funcs(max_funcs=100, n_inputs=1)
-            self.all_vars += self.combine_funcs(max_funcs=200, n_inputs=2)
+            self.all_vars += self.combine_funcs(max_funcs=500, n_inputs=2)
             self.all_vars += self.add_conditionals(max_funcs=100)
         self.all_vars = self.filter_vars()
         self.compute_stls()
-        self.all_vars += self.find_splitpoint_conditionals()
+        if find_splitpoints:
+            self.all_vars += self.find_splitpoint_conditionals()
         self.date += 1
         min_losses = np.array([x.min_loss for x in self.all_vars])
         # complexity = np.array([x.complexity for x in self.all_vars])
@@ -522,9 +523,9 @@ class FunctionTree:
         # self.all_vars = np.array(self.all_vars)[ind].tolist()
         self.loss = np.append(self.loss, np.min(min_losses))
 
-    def train(self, pop_size, epochs):
+    def train(self, pop_size, epochs, find_split_points=True):
         for epoch in range(epochs):
-            self.evolve(pop_size)
+            self.evolve(pop_size, find_split_points)
             print(f"Loss at epoch {epoch}: {self.loss[-1]}")
         self.compute_val_loss()
 
@@ -606,7 +607,7 @@ class FunctionTree:
             if score > score_threshold:
                 nodes += [cond]
                 cond.compute_loss(self.loss_fn, self.train_y)
-                matches = (v.flt == all_flt.T).sum(axis=1)/len(v.flt)
+                matches = (v.flt == all_flt.T).sum(axis=1) / len(v.flt)
                 if matches.max() > score_threshold:
                     nodes += [ConditionalNode(self.date, cond, v, split_vars[matches.argmax()])]
                     self.filter_loss(nodes)
@@ -635,7 +636,7 @@ class FunctionTree:
 
         vals = torch.cat([v.value for v in nodes], axis=-1)
         matches = (v.flt == vals.T).sum(axis=-1)
-        return nodes[matches.argmax()], matches.max().item()/len(v.flt)
+        return nodes[matches.argmax()], matches.max().item() / len(v.flt)
 
     def all_combos(self):
         node_cons = UnaryNode
@@ -768,12 +769,19 @@ class FunctionTree:
         return final_var, new_vars
 
     def filter_vars(self):
+        self.sort_by_complexity()
+
         all_v = torch.cat([x.value for x in self.all_vars], axis=-1)
 
         idx = linearly_independent_columns(all_v)
         idx2 = np.unique(idx.tolist() + [i for i in range(self.n_base)])
 
         return np.array(self.all_vars)[idx2].tolist()
+
+    def sort_by_complexity(self):
+        tmp_vars = [x for i, x in enumerate(self.all_vars) if i >= self.n_base]
+        cplxty = [x.complexity for x in tmp_vars]
+        self.all_vars = self.all_vars[:self.n_base] + np.array(tmp_vars)[np.argsort(cplxty)].tolist()
 
     def compute_val_loss(self):
         all_v = torch.cat([x.forward(self.val_x).unsqueeze(-1) for x in self.all_vars + self.stls_vars], axis=-1)

@@ -12,9 +12,10 @@ from sklearn import linear_model
 class MyTestCase(unittest.TestCase):
     def test_something(self):
         # lmbda = 0.1
-        x = torch.rand((1000, 2))
-        y = torch.cos(x[:, 0]) ** 2 + torch.sin(x[:, 1]) ** 3 + x[:, 0] * x[:, 1]
-        y = torch.where(x[:, 0] > x[:, 1], y, x[:, 1])
+        x = (torch.rand((1000, 2))-.5)*10
+        y_func = lambda x: torch.where(x[:, 0] > x[:, 1], 1, x[:, 1])
+        # y = torch.cos(x[:, 0]) ** 2 + torch.sin(x[:, 1]) ** 3 + x[:, 0] * x[:, 1]
+        y = y_func(x)
         # y = 38.12 * torch.atan(x[:, 1]) + -34.37 * torch.atan(torch.sinh(x[:, 1]))
         # y = x[..., 3] * x[..., 4]
         u_funcs = ["abs", "sign", "ceil",
@@ -31,9 +32,9 @@ class MyTestCase(unittest.TestCase):
                             unary_funcs=u_funcs,
                             binary_funcs=b_funcs,
                             max_complexity=5,
-                            validation_ratio=0.1)
+                            validation_ratio=0.2)
 
-        tree.train(pop_size=200, epochs=5)
+        tree.train(pop_size=200, epochs=5, find_split_points=True)
 
         model = tree.get_best()
 
@@ -43,6 +44,13 @@ class MyTestCase(unittest.TestCase):
         plt.scatter(y, y_hat)
         plt.show()
 
+        model.name
+
+        y2_hat = model.forward(x*2)
+        y2 = y_func(x*2)
+        plt.scatter(y2, y2)
+        plt.scatter(y2, y2_hat)
+        plt.show()
 
         stls_vars = [x for x in tree.stls_vars if tree.condition(x)]
         idx = np.argmin([v.val_loss for v in stls_vars])
