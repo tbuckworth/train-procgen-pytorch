@@ -277,6 +277,12 @@ class BaseNode(Node):
     def get_name(self):
         return self.name
 
+def unary_node_cons(func, date, x1):
+    f = unary_functions.get(func)
+    if type(x1) is ScalarNode:
+        val = f(x1).unique().item()
+        return ScalarNode(like=x1.value, name=f"{val:.2f}", value=val)
+    return UnaryNode(func, date, x1)
 
 class UnaryNode(Node):
     def __init__(self, func, date, x1):
@@ -419,7 +425,7 @@ class SymbolicFunction(nn.Module):
 
 def combine_funcs(base_vars, loss_fn, y, date, max_funcs, n_inputs=1, max_complexity=20):
     if n_inputs == 1:
-        node_cons = UnaryNode
+        node_cons = unary_node_cons
         func_list = unary_functions
     elif n_inputs == 2:
         node_cons = BinaryNode
@@ -638,7 +644,7 @@ class FunctionTree:
         for f in func_list:
             for t in tmp_vars:
                 nodes += [BinaryNode(f, self.date, v, t)]
-                nodes += [UnaryNode("!", self.date, nodes[-1])]
+                nodes += [unary_node_cons("!", self.date, nodes[-1])]
                 #
                 # for t0 in tmp_vars:
                 #     nodes += [BinaryNode(f, self.date, t0, t)]
@@ -648,7 +654,7 @@ class FunctionTree:
         return nodes[matches.argmax()], matches.max().item() / len(v.flt)
 
     def all_combos(self):
-        node_cons = UnaryNode
+        node_cons = unary_node_cons
         func_list = {k: v for k, v in unary_functions.items() if k in self.unary_funcs}
         new_vars = []
         for key in func_list.keys():
@@ -660,7 +666,7 @@ class FunctionTree:
 
     def combine_funcs(self, max_funcs, n_inputs=1):
         if n_inputs == 1:
-            node_cons = UnaryNode
+            node_cons = unary_node_cons
             func_list = {k: v for k, v in unary_functions.items() if k in self.unary_funcs}
         elif n_inputs == 2:
             node_cons = BinaryNode
@@ -818,15 +824,6 @@ class FunctionTree:
         for l, v in zip(val_losses, self.all_vars + self.stls_vars):
             v.val_loss = l
 
-
-def create_func(x, y):
-    in_vars = torch.split(x, 1, 1)
-    base_vars = [BaseNode(z, f"x{i}", i) for i, z in enumerate(in_vars)]
-    x0 = BaseNode(in_vars[0], "x0")
-    x2 = BaseNode(in_vars[2], "x2")
-    u = UnaryNode("exp", x0)
-    b = BinaryNode("*", u, x2)
-    print(b.get_name())
 
 
 def run_tree(x, y, pop_size, epochs):

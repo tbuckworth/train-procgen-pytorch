@@ -4,8 +4,7 @@ import numpy as np
 import torch
 from matplotlib import pyplot as plt
 
-from common import xavier_uniform_init
-from symb_reg_torch import create_func, run_tree, BinaryNode, BaseNode, ScalarNode, UnaryNode, FunctionTree, ConditionalNode
+from symb_reg_torch import FunctionTree, ConditionalNode
 
 from sklearn import linear_model
 
