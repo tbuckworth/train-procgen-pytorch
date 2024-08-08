@@ -280,7 +280,7 @@ class BaseNode(Node):
 def unary_node_cons(func, date, x1):
     f = unary_functions.get(func)
     if type(x1) is ScalarNode:
-        val = f(x1).unique().item()
+        val = f(x1.value).unique().item()
         return ScalarNode(like=x1.value, name=f"{val:.2f}", value=val)
     return UnaryNode(func, date, x1)
 
@@ -510,6 +510,7 @@ class FunctionTree:
         self.loss = np.array([])
         self.date = 0
         self.all_vars += self.all_combos()
+        self.remove_duplicates()
         self.compute_stls()
         self.all_vars += self.all_combos()
         self.all_vars = self.filter_vars()
@@ -519,12 +520,15 @@ class FunctionTree:
         # TODO: add mutation?
         for i in range(self.rounds):
             self.all_vars += self.combine_funcs(max_funcs=100, n_inputs=1)
+            self.remove_duplicates()
             self.all_vars += self.combine_funcs(max_funcs=500, n_inputs=2)
+            self.remove_duplicates()
             self.all_vars += self.add_conditionals(max_funcs=100)
         self.all_vars = self.filter_vars()
         self.compute_stls()
         if find_splitpoints:
             self.all_vars += self.find_splitpoint_conditionals()
+            self.remove_duplicates()
         self.date += 1
         min_losses = np.array([x.min_loss for x in self.all_vars])
         # complexity = np.array([x.complexity for x in self.all_vars])
@@ -769,6 +773,7 @@ class FunctionTree:
         return coef, idx, best_coef, best_idx
 
     def get_library(self):
+        self.lib_vars = [v for i, v in enumerate(self.all_vars) if i < self.n_base and type(v) is not ScalarNode]
         dictionary = [v.value for v in self.all_vars]
         d = torch.cat(dictionary, dim=1)
         return d
@@ -801,15 +806,23 @@ class FunctionTree:
             final_var = BinaryNode("+", self.date, final_var, v)
         return final_var, new_vars
 
-    def filter_vars(self):
+    def remove_duplicates(self):
         self.sort_by_complexity()
-
         all_v = torch.cat([x.value for x in self.all_vars], axis=-1)
+        idx = non_duplicate_columns(all_v)
+        idx = self.ensure_base(idx)
+        self.all_vars = np.array(self.all_vars)[idx].tolist()
+        return all_v[:, idx]
 
+
+    def filter_vars(self):
+        all_v = self.remove_duplicates()
         idx = linearly_independent_columns(all_v)
-        idx2 = np.unique(idx.tolist() + [i for i in range(self.n_base)])
+        idx = self.ensure_base(idx)
+        return np.array(self.all_vars)[idx].tolist()
 
-        return np.array(self.all_vars)[idx2].tolist()
+    def ensure_base(self, idx):
+        return np.unique(idx.tolist() + [i for i in range(self.n_base)])
 
     def sort_by_complexity(self):
         tmp_vars = [x for i, x in enumerate(self.all_vars) if i >= self.n_base]
@@ -850,3 +863,14 @@ def linearly_independent_columns(matrix, tol=1e-10):
 
     # Return the matrix with only independent columns
     return np.unique(independent_cols)
+
+
+def non_duplicate_columns(data):
+    if type(data) is torch.Tensor:
+        data = data.numpy()
+    ind = np.lexsort(data)
+    diff = np.any(data.T[ind[1:]] != data.T[ind[:-1]], axis=1)
+    edges = np.where(diff)[0] + 1
+    result = np.split(ind, edges)
+    keep_ind = np.sort([group[0] for group in result])
+    return keep_ind
