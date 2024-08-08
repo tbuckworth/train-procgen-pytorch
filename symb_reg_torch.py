@@ -493,7 +493,7 @@ class FunctionTree:
         self.y_std = torch.std(y).item()
         self.corrs = torch.corrcoef(torch.cat((x.T, y.unsqueeze(-1).T)))[-1].abs()
         self.loss_fn = loss_fn
-        self.rounds = 2
+        self.rounds = 1
         self.max_active_vars = 100
         in_vars = torch.split(self.train_x, 1, 1)
         self.n_base = len(in_vars) + 1
@@ -599,7 +599,9 @@ class FunctionTree:
         return new_vars
 
     def find_splitpoint_conditionals(self, score_threshold=0.8):
-        split_vars = [v for v in self.stls_vars + self.all_vars if v.flt is not None and v.complexity < self.max_complexity]
+        #TODO: consider split_vars with low loss in one split and low complexity more
+        split_vars = [v for v in self.stls_vars + self.all_vars if v.flt is not None]
+        # split_vars = np.array(split_vars)[np.argsort([v.complexity for v in split_vars])].tolist()
         if len(split_vars) == 0:
             return []
         all_vals = torch.cat([v.value for v in self.stls_vars + self.all_vars], axis=-1)
