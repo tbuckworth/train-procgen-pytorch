@@ -17,15 +17,19 @@ class MyTestCase(unittest.TestCase):
         y = torch.where(x[:, 0] > x[:, 1], y, x[:, 1])
         # y = 38.12 * torch.atan(x[:, 1]) + -34.37 * torch.atan(torch.sinh(x[:, 1]))
         # y = x[..., 3] * x[..., 4]
+        u_funcs = ["abs", "sign", "ceil",
+                 "floor", "log", "exp",
+                 "sqrt", "cos", "sin",
+                 "tanh", "square", "cube", "!"]
+        b_funcs = ["/", "max", "min", "*",
+              "==", "!=", ">",
+              "<", "<=", ">=",
+              r"/\\", r"\/"]
+        u_funcs = ["cos", "sin", "square", "cube"]
+        b_funcs = ["*", ">"]
         tree = FunctionTree(x, y, torch.nn.MSELoss(),
-                            unary_funcs=["abs", "sign", "ceil",
-                                         "floor", "log", "exp",
-                                         "sqrt", "cos", "sin",
-                                         "tanh", "square", "cube", "!"],
-                            binary_funcs=["/", "max", "min", "*",
-                                          "==", "!=", ">",
-                                          "<", "<=", ">=",
-                                          r"/\\", r"\/"],
+                            unary_funcs=u_funcs,
+                            binary_funcs=b_funcs,
                             max_complexity=5,
                             validation_ratio=0.1)
 
@@ -35,6 +39,7 @@ class MyTestCase(unittest.TestCase):
 
         y_hat = model.forward(x)
 
+        plt.scatter(y, y)
         plt.scatter(y, y_hat)
         plt.show()
 

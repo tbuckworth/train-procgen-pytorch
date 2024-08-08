@@ -219,7 +219,7 @@ class Node(ABC):
                 pairwise_loss = e ** 2
                 split_points = get_kde_minima_1d(pairwise_loss)
                 if len(split_points) == 1:
-                    self.flt = pairwise_loss > split_points.item()
+                    self.flt = pairwise_loss < split_points.item()
         for n in self.super_nodes:
             n.min_loss = np.min([self.loss, n.min_loss])
         return self.loss
@@ -509,12 +509,12 @@ class FunctionTree:
     def evolve(self, pop_size):
         # TODO: add mutation?
         for i in range(self.rounds):
-            self.all_vars += self.combine_funcs(max_funcs=100, n_inputs=1, max_complexity=self.max_complexity)
-            self.all_vars += self.combine_funcs(max_funcs=200, n_inputs=2, max_complexity=self.max_complexity)
+            self.all_vars += self.combine_funcs(max_funcs=100, n_inputs=1)
+            self.all_vars += self.combine_funcs(max_funcs=200, n_inputs=2)
             self.all_vars += self.add_conditionals(max_funcs=100)
         self.all_vars = self.filter_vars()
         self.compute_stls()
-        self.find_splitpoint_conditionals(max_funcs=100, max_complexity=self.max_complexity)
+        self.all_vars += self.find_splitpoint_conditionals()
         self.date += 1
         min_losses = np.array([x.min_loss for x in self.all_vars])
         # complexity = np.array([x.complexity for x in self.all_vars])
@@ -591,35 +591,41 @@ class FunctionTree:
                        v.output_type == x1.output_type and v.complexity < max_complexity]
             x2 = self.sample_by_inverse_complexity(1, poss_x2)[0]
             new_vars += [ConditionalNode(self.date, cond, x1, x2)]
-            loss = new_vars[-1].compute_loss(self.loss_fn, self.train_y)
-            if np.isnan(loss) or np.isinf(loss):
-                new_vars.pop()
+            self.filter_loss(new_vars)
         return new_vars
 
-    def find_splitpoint_conditionals(self, score_threshold=0.95, max_complexity=20):
-        split_vars = [v for v in self.all_vars if v.flt is not None and v.complexity < max_complexity]
+    def find_splitpoint_conditionals(self, score_threshold=0.95):
+        split_vars = [v for v in self.all_vars if v.flt is not None and v.complexity < self.max_complexity]
+        if len(split_vars) == 0:
+            return []
+        all_flt = ~torch.cat([v.flt.unsqueeze(-1) for v in split_vars], axis=-1)
         func_list = {k: v for k, v in binary_functions.items() if k in self.binary_funcs and output_types[k] == "bool"}
         nodes = []
         for v in split_vars:
             cond, score = self.split_node(v, func_list)
             if score > score_threshold:
-                nodes += [(v, cond)]
-        for v, cond in nodes:
-            ConditionalNode(self.date, cond, v,)
-
+                nodes += [cond]
+                cond.compute_loss(self.loss_fn, self.train_y)
+                matches = (v.flt == all_flt.T).sum(axis=1)/len(v.flt)
+                if matches.max() > score_threshold:
+                    nodes += [ConditionalNode(self.date, cond, v, split_vars[matches.argmax()])]
+                    self.filter_loss(nodes)
         return nodes
 
     def split_node(self, v, func_list):
+        # True is low loss, False is high loss
         split_point = None
         g1 = v.value[v.flt]
         g2 = v.value[~v.flt]
         # gt = g1 > g2
         if g2.max() < g1.min():
             split_point = (g2.max() + g1.min()).item() / 2
+            func = ">="
         if g1.max() < g2.min():
             split_point = (g1.max() + g2.min()).item() / 2
+            func = "<="
         if split_point is not None:
-            return BinaryNode(">=", self.date, v, ScalarNode(v.value, f"{split_point:.2f}", split_point)), 1.
+            return BinaryNode(func, self.date, v, ScalarNode(v.value, f"{split_point:.2f}", split_point)), 1.
 
         nodes = []
         for f in func_list:
@@ -639,12 +645,10 @@ class FunctionTree:
             temp_vars = [v for v in self.all_vars if v.output_type in input_types[key]]
             for v in temp_vars:
                 new_vars += [node_cons(key, self.date, v)]
-                loss = new_vars[-1].compute_loss(self.loss_fn, self.train_y)
-                if np.isnan(loss) or np.isinf(loss):
-                    new_vars.pop()
+                self.filter_loss(new_vars)
         return new_vars
 
-    def combine_funcs(self, max_funcs, n_inputs=1, max_complexity=20):
+    def combine_funcs(self, max_funcs, n_inputs=1):
         if n_inputs == 1:
             node_cons = UnaryNode
             func_list = {k: v for k, v in unary_functions.items() if k in self.unary_funcs}
@@ -659,15 +663,18 @@ class FunctionTree:
         for _ in range(n_funcs):
             key = np.random.choice(np.array(list(func_list.keys())))
             temp_vars = [v for v in self.all_vars if
-                         v.output_type in input_types[key] and v.complexity < max_complexity]
+                         v.output_type in input_types[key] and v.complexity < self.max_complexity]
             if len(temp_vars) == 0:
                 continue
             xs = self.sample_by_inverse_complexity(n_inputs, temp_vars)
             new_vars += [node_cons(key, self.date, *xs)]
-            loss = new_vars[-1].compute_loss(self.loss_fn, self.train_y)
-            if np.isnan(loss) or np.isinf(loss):
-                new_vars.pop()
+            self.filter_loss(new_vars)
         return new_vars
+
+    def filter_loss(self, new_vars):
+        loss = new_vars[-1].compute_loss(self.loss_fn, self.train_y)
+        if np.isnan(loss) or np.isinf(loss):
+            new_vars.pop()
 
     def sample_by_inverse_complexity(self, n_inputs, temp_vars):
         # have changed this to correlation
