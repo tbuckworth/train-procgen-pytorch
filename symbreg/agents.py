@@ -6,19 +6,23 @@ from torch.nn import functional as F
 from helper_local import sigmoid, inverse_sigmoid, softmax, sample_numpy_probs, \
     match_to_nearest
 
+
 def greater(a, b):
     return (a > b).astype(np.int32)
+
 
 class CustomModel:
     def __init__(self, degrees=12):
         self.theta_threshold_radians = degrees * 2 * np.pi / 360
+
     def swing(self, obs):
         x0, x1, x2, x3, x4, x5, x6, x7, x8 = obs.T
-        return np.sin(greater(np.sin(((np.sign(x3 + (np.sin(x2) / np.sin(x5))) + -0.06463726) + x2) + x2), x0) + 0.04201813)
+        return np.sin(
+            greater(np.sin(((np.sign(x3 + (np.sin(x2) / np.sin(x5))) + -0.06463726) + x2) + x2), x0) + 0.04201813)
 
     def balance(self, obs):
         x0, x1, x2, x3, x4, x5, x6, x7, x8 = obs.T
-        return greater(x1 + (x2+2*x3)/x7, -0.165)
+        return greater(x1 + (x2 + 2 * x3) / x7, -0.165)
 
     def predict(self, obs):
         x0, x1, x2, x3, x4, x5, x6, x7, x8 = obs.T
@@ -32,8 +36,10 @@ class CustomModel:
 def flatten_batches_to_numpy(arr):
     return arr.reshape(-1, arr.shape[-1]).cpu().numpy()
 
+
 def invert_list_levels(l):
     return [[sl[i] for sl in l] for i in range(len(l[0]))]
+
 
 class GraphSymbolicAgent:
     def __init__(self, policy, msg_model=None, up_model=None, v_model=None, r_model=None, done_model=None):
@@ -102,7 +108,6 @@ class SymbolicAgent:
         self.single_output = self.policy.action_size <= 2
         self.action_mapping = action_mapping
         self.n = len(np.unique(self.action_mapping)) // 2
-
 
     def forward(self, observation):
         with (torch.no_grad()):
@@ -271,8 +276,6 @@ class NeuroSymbolicAgent:
         return x.cpu().numpy(), y, act.cpu().numpy(), value.cpu().numpy()
 
 
-
-
 class MostlyNeuralAgent:
     def __init__(self, model, policy, stochastic, action_mapping):
         self.model = model
@@ -326,7 +329,6 @@ class DoubleGraphSymbolicAgent:
         if v_up_model is not None:
             self.policy.value_model.updater = v_up_model.to(device=policy.device)
 
-
     def forward(self, observation):
         with torch.no_grad():
             obs = torch.FloatTensor(observation).to(self.policy.device)
@@ -365,6 +367,59 @@ class DoubleGraphSymbolicAgent:
         msg_in = self.policy.value_model.vectorize_for_message_pass(n, x)
         messages = self.policy.value_model.messenger(msg_in)
         h, u = self.policy.value_model.vec_for_update(messages, x)
+
+        m_in = flatten_batches_to_numpy(msg_in)
+        m_out = flatten_batches_to_numpy(messages)
+        u_in = flatten_batches_to_numpy(h)
+        u_out = flatten_batches_to_numpy(u)
+
+        return m_in, m_out, u_in, u_out
+
+
+class PetsSymbolicAgent:
+    def __init__(self, agent,
+                 model_env,
+                 num_particles,
+                 msg_model=None,
+                 up_model=None,
+                 ):
+        self.agent = agent
+        self.device = agent.optimizer.optimizer.device
+        self.model_env = model_env
+        self.dynamics_model = model_env.dynamics_model
+        if msg_model is not None:
+            self.dynamics_model.hidden_layers.messenger = msg_model.to(device=self.device)
+        if up_model is not None:
+            self.dynamics_model.hidden_layers.updater = up_model.to(device=self.device)
+        if msg_model is not None or up_model is not None:
+            def trajectory_eval_fn(initial_state, action_sequences):
+                return self.model_env.evaluate_action_sequences(
+                    action_sequences, initial_state=initial_state, num_particles=num_particles
+                )
+            self.agent.set_trajectory_eval_fn(trajectory_eval_fn)
+
+    def forward(self, observation):
+        with torch.no_grad():
+            obs = torch.FloatTensor(observation).to(self.device)
+            act = self.agent.act(obs)
+            return act.cpu().numpy()
+
+    def sample(self, observation):
+        with torch.no_grad():
+            obs = torch.FloatTensor(observation).to(self.device)
+            act = self.agent.act(obs)
+            data_list = self.t_in_out(act, obs)
+            dl = invert_list_levels(data_list)
+            dt = [np.concatenate(l, axis=0) for l in dl]
+
+            return dt[0], dt[1], dt[2], dt[3]
+
+    def t_in_out(self, action, obs):
+        # action = self.dynamics_model.hidden_layers.actions_like(obs, i)
+        n, x = self.dynamics_model.hidden_layers.prep_input(obs)
+        msg_in = self.dynamics_model.hidden_layers.vectorize_for_message_pass(action, n, x)
+        messages = self.dynamics_model.hidden_layers.messenger(msg_in)
+        h, u = self.dynamics_model.hidden_layers.vec_for_update(messages, x)
 
         m_in = flatten_batches_to_numpy(msg_in)
         m_out = flatten_batches_to_numpy(messages)

@@ -109,34 +109,7 @@ def run_pets(args):
 
     print("# samples stored", replay_buffer.num_stored)
 
-    agent_cfg = omegaconf.OmegaConf.create({
-        # this class evaluates many trajectories and picks the best one
-        "_target_": "mbrl.planning.TrajectoryOptimizerAgent",
-        "planning_horizon": args.planning_horizon,  # 15,
-        "replan_freq": args.replan_freq,  # 1,
-        "verbose": False,
-        "action_lb": "???",
-        "action_ub": "???",
-        # this is the optimizer to generate and choose a trajectory
-        "optimizer_cfg": {
-            "_target_": "mbrl.planning.CEMOptimizer",
-            "num_iterations": args.num_iterations,  # 5,
-            "elite_ratio": args.elite_ratio,  # 0.1,
-            "population_size": args.population_size,  # 500,
-            "alpha": args.alpha,  # 0.1,
-            "device": device,
-            "lower_bound": "???",
-            "upper_bound": "???",
-            "return_mean_elites": True,
-            "clipped_normal": False
-        }
-    })
-
-    agent = planning.create_trajectory_optim_agent_for_model(
-        model_env,
-        agent_cfg,
-        num_particles=args.num_particles,  # 20
-    )
+    agent = load_pets_agent(args, device, model_env)
 
     train_losses = []
     val_scores = []
@@ -268,6 +241,37 @@ def run_pets(args):
     # plt.show()
     #
     # print("nothing")
+
+
+def load_pets_agent(args, device, model_env):
+    agent_cfg = omegaconf.OmegaConf.create({
+        # this class evaluates many trajectories and picks the best one
+        "_target_": "mbrl.planning.TrajectoryOptimizerAgent",
+        "planning_horizon": args.planning_horizon,  # 15,
+        "replan_freq": args.replan_freq,  # 1,
+        "verbose": False,
+        "action_lb": "???",
+        "action_ub": "???",
+        # this is the optimizer to generate and choose a trajectory
+        "optimizer_cfg": {
+            "_target_": "mbrl.planning.CEMOptimizer",
+            "num_iterations": args.num_iterations,  # 5,
+            "elite_ratio": args.elite_ratio,  # 0.1,
+            "population_size": args.population_size,  # 500,
+            "alpha": args.alpha,  # 0.1,
+            "device": device,
+            "lower_bound": "???",
+            "upper_bound": "???",
+            "return_mean_elites": True,
+            "clipped_normal": False
+        }
+    })
+    agent = planning.create_trajectory_optim_agent_for_model(
+        model_env,
+        agent_cfg,
+        num_particles=args.num_particles,  # 20
+    )
+    return agent
 
 
 def generate_pets_cfg_dict(args, device):
