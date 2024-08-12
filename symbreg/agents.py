@@ -386,11 +386,11 @@ class PetsSymbolicAgent:
         self.agent = agent
         self.device = agent.optimizer.optimizer.device
         self.model_env = model_env
-        self.dynamics_model = model_env.dynamics_model
+        self.dynamics_model = model_env.dynamics_model.model.hidden_layers
         if msg_model is not None:
-            self.dynamics_model.hidden_layers.messenger = msg_model.to(device=self.device)
+            self.dynamics_model.messenger = msg_model.to(device=self.device)
         if up_model is not None:
-            self.dynamics_model.hidden_layers.updater = up_model.to(device=self.device)
+            self.dynamics_model.updater = up_model.to(device=self.device)
         if msg_model is not None or up_model is not None:
             def trajectory_eval_fn(initial_state, action_sequences):
                 return self.model_env.evaluate_action_sequences(
@@ -406,20 +406,24 @@ class PetsSymbolicAgent:
 
     def sample(self, observation):
         with torch.no_grad():
+            act = self.agent.act(observation)
             obs = torch.FloatTensor(observation).to(self.device)
-            act = self.agent.act(obs)
-            data_list = self.t_in_out(act, obs)
+            if len(obs.shape) == 1:
+                obs = obs.unsqueeze(0)
+            action = torch.FloatTensor(act).to(self.device)
+            data_list = self.t_in_out(action, obs)
             dl = invert_list_levels(data_list)
             dt = [np.concatenate(l, axis=0) for l in dl]
 
             return dt[0], dt[1], dt[2], dt[3]
 
     def t_in_out(self, action, obs):
-        # action = self.dynamics_model.hidden_layers.actions_like(obs, i)
-        n, x = self.dynamics_model.hidden_layers.prep_input(obs)
-        msg_in = self.dynamics_model.hidden_layers.vectorize_for_message_pass(action, n, x)
-        messages = self.dynamics_model.hidden_layers.messenger(msg_in)
-        h, u = self.dynamics_model.hidden_layers.vec_for_update(messages, x)
+        # make a copy of action for each feature:
+        n, x = self.dynamics_model.prep_input(obs)
+        # actions = action.unsqueeze(-1).tile(*[1 for _ in action.shape], n).squeeze()
+        msg_in = self.dynamics_model.vectorize_for_message_pass(action, n, x)
+        messages = self.dynamics_model.messenger(msg_in)
+        h, u = self.dynamics_model.vec_for_update(messages, x)
 
         m_in = flatten_batches_to_numpy(msg_in)
         m_out = flatten_batches_to_numpy(messages)

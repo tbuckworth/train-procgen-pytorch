@@ -55,10 +55,11 @@ if __name__ == "__main__":
     agent, model_env, args, env = load_pets_dynamics_model(logdir)
 
 
-    PetsSymbolicAgent(agent)
+    symb_agent = PetsSymbolicAgent(agent, model_env, args.num_particles)
     # generate env data
-
+    obs, _ = env.reset(args.seed)
     # generate training data
+    symb_agent.sample(obs)
 
     # do symbolic regression
 
