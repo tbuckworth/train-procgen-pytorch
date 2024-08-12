@@ -57,40 +57,7 @@ def run_pets(args):
     # Everything with "???" indicates an option with a missing value.
     # Our utility functions will fill in these details using the
     # environment information
-    cfg_dict = {
-        # dynamics model configuration
-        "dynamics_model": {
-            # "_target_": "mbrl.models.GaussianMLP",
-            "_target_": args.dyn_model,
-            "device": device,
-            "num_layers": args.num_layers,  # 4,
-            "ensemble_size": ensemble_size,
-            "hid_size": args.hid_size,  # 200,
-            "in_size": "???",
-            "out_size": "???",
-            "deterministic": args.deterministic,  # False,
-            "propagation_method": "fixed_model",
-            # can also configure activation function for GaussianMLP
-            "activation_fn_cfg": {
-                "_target_": "torch.nn.LeakyReLU",
-                "negative_slope": 0.01
-            }
-        },
-        # options for training the dynamics model
-        "algorithm": {
-            "learned_rewards": False,
-            "target_is_delta": True,
-            "normalize": True,
-        },
-        # these are experiment specific options
-        "overrides": {
-            "trial_length": trial_length,
-            "num_steps": num_trials * trial_length,
-            "model_batch_size": args.model_batch_size,  # 32,
-            "validation_ratio": args.validation_ratio,  # 0.05
-        }
-    }
-    cfg = omegaconf.OmegaConf.create(cfg_dict)
+    cfg = generate_pets_cfg_dict(args, device)
 
     # Setup Wandb:
     wandb_name = args.wandb_name
@@ -207,7 +174,7 @@ def run_pets(args):
     # Main PETS loop
     save_every = num_trials // args.num_checkpoints
     checkpoint_cnt = 0
-    checkpoints = [(i + 1) * save_every for i in range(args.num_checkpoints)]
+    checkpoints = [(i + 1) * save_every for i in range(args.num_checkpoints)] + [num_trials-2]
     checkpoints.sort()
     all_rewards = [0]
     val_rewards = [0]
@@ -301,6 +268,44 @@ def run_pets(args):
     # plt.show()
     #
     # print("nothing")
+
+
+def generate_pets_cfg_dict(args, device):
+    cfg_dict = {
+        # dynamics model configuration
+        "dynamics_model": {
+            # "_target_": "mbrl.models.GaussianMLP",
+            "_target_": args.dyn_model,
+            "device": device,
+            "num_layers": args.num_layers,  # 4,
+            "ensemble_size": args.ensemble_size,
+            "hid_size": args.hid_size,  # 200,
+            "in_size": "???",
+            "out_size": "???",
+            "deterministic": args.deterministic,  # False,
+            "propagation_method": "fixed_model",
+            # can also configure activation function for GaussianMLP
+            "activation_fn_cfg": {
+                "_target_": "torch.nn.LeakyReLU",
+                "negative_slope": 0.01
+            }
+        },
+        # options for training the dynamics model
+        "algorithm": {
+            "learned_rewards": False,
+            "target_is_delta": True,
+            "normalize": True,
+        },
+        # these are experiment specific options
+        "overrides": {
+            "trial_length": args.trial_length,
+            "num_steps": args.num_trials * args.trial_length,
+            "model_batch_size": args.model_batch_size,  # 32,
+            "validation_ratio": args.validation_ratio,  # 0.05
+        }
+    }
+    cfg = omegaconf.OmegaConf.create(cfg_dict)
+    return cfg
 
 
 def run_agent_in_env(agent, env, trial_length):
