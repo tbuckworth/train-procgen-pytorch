@@ -148,6 +148,8 @@ class GraphTransitionModel(nn.Module):
 
     def vec_for_update(self, messages, x):
         msg = torch.sum(messages, dim=-2).squeeze()
+
+
         h = torch.concat([x, msg.unsqueeze(-1)], -1)
         u = self.updater(h)
         return h, u

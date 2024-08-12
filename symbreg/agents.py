@@ -5,6 +5,7 @@ from torch.nn import functional as F
 
 from helper_local import sigmoid, inverse_sigmoid, softmax, sample_numpy_probs, \
     match_to_nearest
+from pets.pets_test import compile_obs_action
 
 
 def greater(a, b):
@@ -411,13 +412,16 @@ class PetsSymbolicAgent:
             if len(obs.shape) == 1:
                 obs = obs.unsqueeze(0)
             action = torch.FloatTensor(act).to(self.device)
-            data_list = self.t_in_out(action, obs)
+            x = compile_obs_action(action, obs)
+            data_list = self.t_in_out(x)
             dl = invert_list_levels(data_list)
             dt = [np.concatenate(l, axis=0) for l in dl]
 
             return dt[0], dt[1], dt[2], dt[3]
 
-    def t_in_out(self, action, obs):
+    def t_in_out(self, x):
+        obs = x[..., :-1]
+        action = x[..., -1]
         # make a copy of action for each feature:
         n, x = self.dynamics_model.prep_input(obs)
         # actions = action.unsqueeze(-1).tile(*[1 for _ in action.shape], n).squeeze()
