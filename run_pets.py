@@ -17,13 +17,15 @@ if __name__ == '__main__':
         "env_name": "cartpole_continuous",
         "trial_length": 500,
         "num_trials": 40,
-        "hid_size": 122,
+        "hid_size": 512,
         "learning_rate": 0.000672,
-        "model_batch_size": 26,
+        "model_batch_size": 16,
         "num_layers": 6,
         "seed": 6033,
         "use_wandb": True,
         "wandb_tags": ["pgt1"],
         "use_custom_reward_fn": False,
+        "num_epochs": 1000,
+        "overfit": True,
     }
     run_pets_hyperparameters(hparams)

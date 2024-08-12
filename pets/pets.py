@@ -233,6 +233,9 @@ def run_pets(args):
                     bootstrap_permutes=False,  # build bootstrap dataset using sampling with replacement
                 )
 
+                if args.overfit:
+                    dataset_val = None
+
                 model_trainer.train(
                     dataset_train,
                     dataset_val=dataset_val,
