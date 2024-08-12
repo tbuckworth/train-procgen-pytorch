@@ -387,11 +387,12 @@ class PetsSymbolicAgent:
         self.agent = agent
         self.device = agent.optimizer.optimizer.device
         self.model_env = model_env
-        self.dynamics_model = model_env.dynamics_model.model.hidden_layers
+        self.trans_graph = model_env.dynamics_model.model.hidden_layers
+        self.ensemble_size = model_env.dynamics_model.model.num_members
         if msg_model is not None:
-            self.dynamics_model.messenger = msg_model.to(device=self.device)
+            self.trans_graph.messenger = msg_model.to(device=self.device)
         if up_model is not None:
-            self.dynamics_model.updater = up_model.to(device=self.device)
+            self.trans_graph.updater = up_model.to(device=self.device)
         if msg_model is not None or up_model is not None:
             def trajectory_eval_fn(initial_state, action_sequences):
                 return self.model_env.evaluate_action_sequences(
@@ -423,15 +424,19 @@ class PetsSymbolicAgent:
         obs = x[..., :-1]
         action = x[..., -1]
         # make a copy of action for each feature:
-        n, x = self.dynamics_model.prep_input(obs)
+        n, h = self.trans_graph.prep_input(obs)
         # actions = action.unsqueeze(-1).tile(*[1 for _ in action.shape], n).squeeze()
-        msg_in = self.dynamics_model.vectorize_for_message_pass(action, n, x)
-        messages = self.dynamics_model.messenger(msg_in)
-        h, u = self.dynamics_model.vec_for_update(messages, x)
+        msg_in = self.trans_graph.vectorize_for_message_pass(action, n, h)
+        messages = self.trans_graph.messenger(msg_in)
+        u_in, u = self.trans_graph.vec_for_update(messages, h)
 
-        m_in = flatten_batches_to_numpy(msg_in)
-        m_out = flatten_batches_to_numpy(messages)
-        u_in = flatten_batches_to_numpy(h)
-        u_out = flatten_batches_to_numpy(u)
+        flatten = lambda a: a.reshape(a.shape[0], -1, a.shape[-1]).cpu().numpy()
+        if msg_in.shape != messages.shape:
+            msg_in = torch.tile(msg_in, (self.ensemble_size, *[1 for _ in msg_in.shape]))
+
+        m_in = flatten(msg_in)
+        m_out = flatten(messages)
+        u_in = flatten(u_in)
+        u_out = flatten(u)
 
         return m_in, m_out, u_in, u_out

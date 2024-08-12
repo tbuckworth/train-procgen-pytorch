@@ -92,6 +92,14 @@ class MLPModel(nn.Module):
     def forward(self, x):
         return self.model(x)
 
+    def set_elite(self, elite_models: Sequence[int]):
+        for i, layer in enumerate(self.model.children()):
+            #TODO: finish this
+            layer.set_elite(self.elite_models)
+
+    def toggle_use_only_elite(self):
+        for layer in self.model.children():
+            layer.toggle_use_only_elite()
 
 class GraphTransitionModel(nn.Module):
     def __init__(self, linear_cons, in_channels, depth, mid_weight, latent_size, device, deterministic=False):
@@ -111,13 +119,17 @@ class GraphTransitionModel(nn.Module):
     def concater(self, x, y, axis):
         return torch.concat([x.unsqueeze(axis), y.unsqueeze(axis)], axis=axis)
 
-    def update(self, h, y):
-        tile_shape = [1 for _ in y.shape] + [1]
-        if y.shape != h.shape[:-1]:
-            tile_shape[0] = y.shape[0]
+    def update(self, h, msg):
+        x = self.prep_for_update(h, msg)
+        return self.updater(x)
+
+    def prep_for_update(self, h, msg):
+        tile_shape = [1 for _ in msg.shape] + [1]
+        if msg.shape != h.shape[:-1]:
+            tile_shape[0] = msg.shape[0]
         x = h.tile(tile_shape)
-        x2 = torch.concat([x, y.unsqueeze(-1)], -1)
-        return self.updater(x2)
+        x2 = torch.concat([x, msg.unsqueeze(-1)], -1)
+        return x2
 
     def forward(self, x):
         if x.shape[-1] != self.input_size:
@@ -146,12 +158,12 @@ class GraphTransitionModel(nn.Module):
         msg_in = torch.concat([xi, xj, a], dim=-1)
         return msg_in
 
-    def vec_for_update(self, messages, x):
-        msg = torch.sum(messages, dim=-2).squeeze()
+    def vec_for_update(self, messages, h):
+        msg = torch.sum(messages, dim=-2).squeeze(dim=-1)
+        u_in = self.prep_for_update(h, msg)
 
-
-        h = torch.concat([x, msg.unsqueeze(-1)], -1)
-        u = self.updater(h)
+        # h = torch.concat([x, msg.unsqueeze(-1)], -1)
+        u = self.updater(u_in)
         return h, u
 
     def append_index(self, x):
@@ -160,7 +172,6 @@ class GraphTransitionModel(nn.Module):
         shp = [i for i in x.shape[:-1]] + [1]
         all_coor = torch.tile(coor, shp).to(device=self.device)
         return self.concater(x, all_coor, -1)
-
 
 class GraphTransitionPets(Ensemble):
     def __init__(
