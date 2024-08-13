@@ -134,15 +134,20 @@ def pets_sr(sr_args):
     print("next")
 
 
-def filter_data(m_in, m_out, u_in, u_out, loss):
+def filter_data(m_in, m_out, u_in, u_out, loss, max_obs=2000):
     elite_ensemble = loss.mean(-1).argmin()
     eloss = loss[elite_ensemble]
+    rank = eloss.argsort()
     weight = eloss.max() - eloss
     w = np.expand_dims(weight, 1)
     m_in = m_in[elite_ensemble]
     m_out = m_out[elite_ensemble]
     u_in = u_in[elite_ensemble]
     u_out = u_out[elite_ensemble]
+
+    m_in, m_out = keep_best(m_in, m_out, max_obs, rank)
+    u_in, u_out = keep_best(u_in, u_out, max_obs, rank)
+
     m_weight = np.tile(w, (1, m_in.shape[1]))
     u_weight = np.tile(w, (1, u_in.shape[1]))
     flatten = lambda a: a.reshape(-1, a.shape[-1])
@@ -153,6 +158,13 @@ def filter_data(m_in, m_out, u_in, u_out, loss):
     u_out = flatten(u_out)
     u_weight = flatten(u_weight)
     return m_in, m_out, m_weight, u_in, u_out, u_weight
+
+
+def keep_best(m_in, m_out, max_obs, rank):
+    flt = rank <= max_obs / m_in.shape[1] - 1
+    m_in = m_in[flt]
+    m_out = m_out[flt]
+    return m_in, m_out
 
 
 if __name__ == "__main__":
