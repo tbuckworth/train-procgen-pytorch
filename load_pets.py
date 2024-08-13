@@ -1,4 +1,5 @@
 import mbrl.util.common as common_util
+import numpy as np
 import torch
 from mbrl import models
 
@@ -45,10 +46,48 @@ def load_pets_dynamics_model(logdir):
 
     return agent, model_env, args, env
 
-def trajectory_eval_fn(initial_state, action_sequences):
-    return model_env.evaluate_action_sequences(
-        action_sequences, initial_state=initial_state, num_particles=args.num_particles
-    )
+def generate_data(agent, env, n):
+    Obs, _ = env.reset()
+    agent.reset()
+    M_in, M_out, U_in, U_out = agent.sample(Obs)
+    act = env.action_space.sample()
+    ep_count = 0
+    while ep_count < n:
+        observation, rew, done, trunc, info = env.step(act)
+        ep_count += done
+        m_in, m_out, u_in, u_out = agent.sample(observation)
+        act = env.action_space.sample()
+        if ep_count % 3 == 0:
+            act = agent.forward(observation)
+        M_in = np.append(M_in, m_in, axis=1)
+        M_out = np.append(M_out, m_out, axis=1)
+        U_in = np.append(U_in, u_in, axis=1)
+        U_out = np.append(U_out, u_out, axis=1)
+
+    return M_in, M_out, U_in, U_out
+
+def generate_data(agent, env, n):
+    X, _ = env.reset()
+    X = np.expand_dims(X,0)
+    agent.reset()
+    act = env.action_space.sample()
+    A = np.expand_dims(act.copy(), 0)
+    ep_count = 0
+    while ep_count < n:
+        observation, rew, done, trunc, info = env.step(act)
+        ep_count += done
+        act = env.action_space.sample()
+        if ep_count == 0:
+            act = agent.forward(observation)
+        X = np.append(X, np.expand_dims(obs, 0), axis=0)
+        A = np.append(A, np.expand_dims(act, 0), axis=0)
+        m_in, m_out, u_in, u_out, X_next = agent.sample_pre_act(X, A)
+
+    # actions = np.array([env.action_space.sample() for _ in X])
+
+    m_in, m_out, u_in, u_out, X_next = agent.sample_pre_act(X, A)
+    return m_in, m_out, u_in, u_out
+
 
 if __name__ == "__main__":
     logdir = "logs/pets/cartpole_continuous/2024-08-05__02-43-29__seed_6033"
@@ -59,7 +98,8 @@ if __name__ == "__main__":
     # generate env data
     obs, _ = env.reset(args.seed)
     # generate training data
-    m_in, m_out, u_in, u_out = symb_agent.sample(obs)
+
+    m_in, m_out, u_in, u_out = generate_data(symb_agent, env, n=5)
 
     # do symbolic regression
     print("next")

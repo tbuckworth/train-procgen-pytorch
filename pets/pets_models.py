@@ -129,12 +129,10 @@ class GraphTransitionModel(nn.Module):
         if msg.shape != h.shape[:-1]:
             tile_shape[0] = msg.shape[0]
         x = h.tile(tile_shape)
-        x2 = torch.concat([x, msg.unsqueeze(-1)], -1)
-        return x2
+        u_in = torch.concat([x, msg.unsqueeze(-1)], -1)
+        return u_in
 
     def forward(self, x):
-        if x.shape[-1] != self.input_size:
-            print("huh?")
         obs = x[..., :-1]
         action = x[..., -1]
         # Normalize actions?
@@ -161,11 +159,9 @@ class GraphTransitionModel(nn.Module):
 
     def vec_for_update(self, messages, h):
         msg = torch.sum(messages, dim=-2).squeeze(dim=-1)
-        u_in = self.prep_for_update(h, msg)
-
-        # h = torch.concat([x, msg.unsqueeze(-1)], -1)
-        u = self.updater(u_in)
-        return h, u
+        ui = self.prep_for_update(h, msg)
+        u = self.updater(ui)
+        return ui, u
 
     def append_index(self, x):
         n = x.shape[-1]
@@ -257,7 +253,10 @@ class GraphTransitionPets(Ensemble):
         else:
             mean = mean_and_logvar[..., 0]
             logvar = mean_and_logvar[..., 1]
-            logvar = self.max_logvar - F.softplus(self.max_logvar - logvar)
+            try:
+                logvar = self.max_logvar - F.softplus(self.max_logvar - logvar)
+            except RuntimeError as e:
+                raise e
             logvar = self.min_logvar + F.softplus(logvar - self.min_logvar)
             return mean, logvar
 
@@ -414,6 +413,26 @@ class GraphTransitionPets(Ensemble):
             .sum()
         )  # sum over ensemble dimension
         nll += 0.01 * (self.max_logvar.sum() - self.min_logvar.sum())
+        return nll
+
+    def piecewise_nll_loss(self, model_in: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+        assert model_in.ndim == target.ndim
+        if model_in.ndim == 2:  # add ensemble dimension
+            model_in = model_in.unsqueeze(0)
+            target = target.unsqueeze(0)
+        pred_mean, pred_logvar = self.forward(model_in, use_propagation=False)
+        # if target.shape[0] != self.num_members:
+        n_dims = len(pred_mean.shape) - len(target.shape)
+        if n_dims > 0:
+            shp = np.array(pred_mean.shape)
+            shp[n_dims:] = 1
+            target = target.repeat(*shp)
+        nll = (
+            mbrl.util.math.gaussian_nll(pred_mean, pred_logvar, target, reduce=False)
+            # .mean((1, 2))  # average over batch and target dimension
+            # .sum()
+        )  # sum over ensemble dimension
+        # nll += 0.01 * (self.max_logvar.sum() - self.min_logvar.sum())
         return nll
 
     def loss(

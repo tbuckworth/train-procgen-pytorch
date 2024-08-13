@@ -1,3 +1,4 @@
+import mbrl
 import numpy as np
 import torch
 from torch.distributions import Categorical
@@ -400,11 +401,24 @@ class PetsSymbolicAgent:
                 )
             self.agent.set_trajectory_eval_fn(trajectory_eval_fn)
 
+    def reset(self):
+        self.agent.reset()
+
     def forward(self, observation):
+        return self.agent.act(observation)
+        # with torch.no_grad():
+        #     obs = torch.FloatTensor(observation).to(self.device)
+        #     act = self.agent.act(obs)
+        #     return act.cpu().numpy()
+
+    def sample_pre_act(self, observation, act):
         with torch.no_grad():
             obs = torch.FloatTensor(observation).to(self.device)
-            act = self.agent.act(obs)
-            return act.cpu().numpy()
+            if len(obs.shape) == 1:
+                obs = obs.unsqueeze(0)
+            action = torch.FloatTensor(act).to(self.device)
+            x = compile_obs_action(action, obs)
+            return self.t_in_out(x)
 
     def sample(self, observation):
         with torch.no_grad():
@@ -419,25 +433,27 @@ class PetsSymbolicAgent:
     def t_in_out(self, x):
         obs = x[..., :-1]
         action = x[..., -1]
-        # make a copy of action for each feature:
+
         n, h = self.trans_graph.prep_input(obs)
-        # actions = action.unsqueeze(-1).tile(*[1 for _ in action.shape], n).squeeze()
         msg_in = self.trans_graph.vectorize_for_message_pass(action, n, h)
         messages = self.trans_graph.messenger(msg_in)
-        u_in, u = self.trans_graph.vec_for_update(messages, h)
+        ui, u = self.trans_graph.vec_for_update(messages, h)
 
         flatten = lambda a: a.reshape(a.shape[0], -1, a.shape[-1]).cpu().numpy()
         msg_in = self.tile_ensemble_if_necessary(msg_in, messages)
-        u_in = self.tile_ensemble_if_necessary(u_in, u)
 
-        m_in = flatten(msg_in)
-        m_out = flatten(messages)
-        u_in = flatten(u_in)
-        u_out = flatten(u)
+        m_in = flatten(msg_in[:, :-1])
+        m_out = flatten(messages[:, :-1])
+        u_in = flatten(ui[:, :-1])
+        u_out = flatten(u[:, :-1])
 
-        return m_in, m_out, u_in, u_out
+        # loss = self.model_env.dynamics_model.model.piecewise_nll_loss(x[:-1], obs[-1:])
+        loss = mbrl.util.math.gaussian_nll(u[:,:-1,...,0],u[:,:-1,...,1],obs[1:], reduce=False)
+        eb_loss = loss.sum(dim=-1)
+
+        return m_in, m_out, u_in, u_out, eb_loss
 
     def tile_ensemble_if_necessary(self, x_in, x_out):
-        if x_in.shape != x_out.shape:
+        if x_in.shape[:-1] != x_out.shape[:-1]:
             x_in = torch.tile(x_in, (self.ensemble_size, *[1 for _ in x_in.shape]))
         return x_in
