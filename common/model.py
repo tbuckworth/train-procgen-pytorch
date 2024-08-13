@@ -1110,7 +1110,15 @@ class GraphValueModel(nn.Module):
         return self.concater(x, all_coor, -1)
 
 
+class NBatchPySRTorchMult(nn.Module):
+    def __init__(self, models):
+        super(NBatchPySRTorchMult, self).__init__()
+        assert isinstance(models, list)
+        self.models = [NBatchPySRTorch(model) for model in models]
 
+    def forward(self, X):
+        h = [m.forward(X).unsqueeze(-1) for m in self.models]
+        return torch.cat(h, dim=-1)
 
 
 class NBatchPySRTorch(nn.Module):

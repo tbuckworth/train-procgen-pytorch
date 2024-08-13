@@ -6,7 +6,7 @@ import torch
 from mbrl import models
 
 from common.env.env_constructor import get_pets_env_constructor
-from common.model import NBatchPySRTorch
+from common.model import NBatchPySRTorch, NBatchPySRTorchMult
 from double_graph_sr import create_symb_dir_if_exists, find_model
 from helper_local import get_latest_file_matching, get_config, DictToArgs, add_symbreg_args
 from pets.pets import generate_pets_cfg_dict, load_pets_agent
@@ -101,11 +101,31 @@ def generate_data(agent, env, n):
 
     return M_in, M_out, U_in, U_out, Loss
 
+def test_agent_mean_reward(agent, env, print_name, n=40, return_values=False, seed=0):
+    episodes = 0
+    obs, _ = env.reset(seed=seed)
+    agent.reset()
+    act = agent.forward(obs)
+    cum_rew = 0
+    episode_rewards = []
+    while episodes < n:
+        obs, rew, done, trunc, info = env.step(act)
+        cum_rew += rew
+        act = agent.forward(obs)
+        if done:
+            episodes += 1
+            episode_rewards += [cum_rew]
+            cum_rew = 0
+    print(f"{print_name}:\tEpisode:{episodes}\tMean Reward:{np.mean(episode_rewards):.2f}")
+    if return_values:
+        return episode_rewards
+    return np.mean(episode_rewards)
 
 def pets_sr(sr_args):
     logdir = sr_args.logdir
     symbdir, save_file = create_symb_dir_if_exists(logdir)
     print(f"symbdir: '{symbdir}'")
+    #TODO: return env_valid
     agent, model_env, args, env = load_pets_dynamics_model(logdir)
 
 
@@ -129,7 +149,14 @@ def pets_sr(sr_args):
     up_model, _ = find_model(u_in, u_out, updir, save_file, u_weight, sr_args)
 
     msg_torch = NBatchPySRTorch(msg_model.pytorch())
-    up_torch = NBatchPySRTorch(up_model.pytorch())
+    up_torch = NBatchPySRTorchMult(up_model.pytorch())
+
+    s_agent = PetsSymbolicAgent(agent, model_env, args.num_particles, msg_torch, up_torch)
+    s_agent.forward(obs)
+
+    # test_s_agent
+    test_agent_mean_reward(s_agent, env, "symbolic", n=10)
+    test_agent_mean_reward(symb_agent, env, "Neural", n=10)
 
     print("next")
 
@@ -176,4 +203,18 @@ if __name__ == "__main__":
 
     sr_args.iterations = 1
 
+    sr_args.binary_operators = ["+", "-", "*", "greater", "/"]
+    sr_args.unary_operators = ["sin", "relu", "log", "exp", "sign", "sqrt", "square"]
+
+    sr_args.denoise = False
+    sr_args.use_wandb = True
+    sr_args.wandb_tags = ["test", "sr_pets0"]
+    sr_args.wandb_name = "manual"
+    # sr_args.fixed_nn = ["value"]
+    # sr_args.populations = 24
+    sr_args.model_selection = "best"
+    sr_args.ncycles_per_iteration = 4000
+    sr_args.seed = 0
+    sr_args.bumper = True
+    sr_args.loss_function = "mse"
     pets_sr(sr_args)
