@@ -439,7 +439,8 @@ class PetsSymbolicAgent:
         messages = self.trans_graph.messenger(msg_in)
         ui, u = self.trans_graph.vec_for_update(messages, h)
 
-        flatten = lambda a: a.reshape(a.shape[0], -1, a.shape[-1]).cpu().numpy()
+        # flatten = lambda a: a.reshape(a.shape[0], -1, a.shape[-1]).cpu().numpy()
+        flatten = lambda a: a.reshape(self.ensemble_size, a.shape[1],-1,a.shape[-1]).cpu().numpy()
         msg_in = self.tile_ensemble_if_necessary(msg_in, messages)
 
         m_in = flatten(msg_in[:, :-1])
@@ -447,9 +448,8 @@ class PetsSymbolicAgent:
         u_in = flatten(ui[:, :-1])
         u_out = flatten(u[:, :-1])
 
-        # loss = self.model_env.dynamics_model.model.piecewise_nll_loss(x[:-1], obs[-1:])
         loss = mbrl.util.math.gaussian_nll(u[:,:-1,...,0],u[:,:-1,...,1],obs[1:], reduce=False)
-        eb_loss = loss.sum(dim=-1)
+        eb_loss = loss.sum(dim=-1).cpu().numpy()
 
         return m_in, m_out, u_in, u_out, eb_loss
 

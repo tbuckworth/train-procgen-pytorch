@@ -74,22 +74,31 @@ def generate_data(agent, env, n):
     A = np.expand_dims(act.copy(), 0)
     ep_count = 0
     while ep_count < n:
-        observation, rew, done, trunc, info = env.step(act)
-        ep_count += done
+        x, rew, done, trunc, info = env.step(act)
         act = env.action_space.sample()
-        if ep_count == 0:
-            act = agent.forward(observation)
-        X = np.append(X, np.expand_dims(obs, 0), axis=0)
+        if ep_count == 0 and not done:
+            act = agent.forward(x)
+        if done:
+            ep_count += 1
+            m_in, m_out, u_in, u_out, loss = agent.sample_pre_act(X, A)
+            X = np.expand_dims(x, 0)
+            A = np.expand_dims(act, 0)
+            if ep_count == 1:
+                M_in, M_out, U_in, U_out, Loss = m_in, m_out, u_in, u_out, loss
+            else:
+                M_in = np.append(M_in, m_in, axis=1)
+                M_out = np.append(M_out, m_out, axis=1)
+                U_in = np.append(U_in, u_in, axis=1)
+                U_out = np.append(U_out, u_out, axis=1)
+                Loss = np.append(Loss, loss, axis=1)
+
+        X = np.append(X, np.expand_dims(x, 0), axis=0)
         A = np.append(A, np.expand_dims(act, 0), axis=0)
-        m_in, m_out, u_in, u_out, X_next = agent.sample_pre_act(X, A)
 
-    # actions = np.array([env.action_space.sample() for _ in X])
-
-    m_in, m_out, u_in, u_out, X_next = agent.sample_pre_act(X, A)
-    return m_in, m_out, u_in, u_out
+    return M_in, M_out, U_in, U_out, Loss
 
 
-if __name__ == "__main__":
+def run_load_pets():
     logdir = "logs/pets/cartpole_continuous/2024-08-05__02-43-29__seed_6033"
     agent, model_env, args, env = load_pets_dynamics_model(logdir)
 
@@ -99,9 +108,36 @@ if __name__ == "__main__":
     obs, _ = env.reset(args.seed)
     # generate training data
 
-    m_in, m_out, u_in, u_out = generate_data(symb_agent, env, n=5)
+    m_in_f, m_out_f, u_in_f, u_out_f, loss = generate_data(symb_agent, env, n=5)
+    # filter by loss:
 
+    m_in, m_out, m_weight, u_in, u_out, u_weight = filter_data(m_in_f, m_out_f, u_in_f, u_out_f, loss)
     # do symbolic regression
+
+
     print("next")
 
 
+def filter_data(m_in, m_out, u_in, u_out, loss):
+    elite_ensemble = loss.mean(-1).argmin()
+    eloss = loss[elite_ensemble]
+    weight = eloss.max() - eloss
+    w = np.expand_dims(weight, 1)
+    m_in = m_in[elite_ensemble]
+    m_out = m_out[elite_ensemble]
+    u_in = u_in[elite_ensemble]
+    u_out = u_out[elite_ensemble]
+    m_weight = np.tile(w, (1, m_in.shape[1]))
+    u_weight = np.tile(w, (1, u_in.shape[1]))
+    flatten = lambda a: a.reshape(-1, a.shape[-1])
+    m_in = flatten(m_in)
+    m_out = flatten(m_out)
+    m_weight = flatten(m_weight)
+    u_in = flatten(u_in)
+    u_out = flatten(u_out)
+    u_weight = flatten(u_weight)
+    return m_in, m_out, m_weight, u_in, u_out, u_weight
+
+
+if __name__ == "__main__":
+    run_load_pets()
