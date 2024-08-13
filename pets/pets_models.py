@@ -94,12 +94,13 @@ class MLPModel(nn.Module):
 
     def set_elite(self, elite_models: Sequence[int]):
         for i, layer in enumerate(self.model.children()):
-            #TODO: finish this
-            layer.set_elite(self.elite_models)
+            if type(layer) is EnsembleLinearLayer:
+                layer.set_elite(elite_models)
 
     def toggle_use_only_elite(self):
-        for layer in self.model.children():
-            layer.toggle_use_only_elite()
+        for i, layer in enumerate(self.model.children()):
+            if type(layer) is EnsembleLinearLayer:
+                layer.toggle_use_only_elite()
 
 class GraphTransitionModel(nn.Module):
     def __init__(self, linear_cons, in_channels, depth, mid_weight, latent_size, device, deterministic=False):
