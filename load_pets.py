@@ -1,10 +1,14 @@
+import argparse
+
 import mbrl.util.common as common_util
 import numpy as np
 import torch
 from mbrl import models
 
 from common.env.env_constructor import get_pets_env_constructor
-from helper_local import get_latest_file_matching, get_config, DictToArgs
+from common.model import NBatchPySRTorch
+from double_graph_sr import create_symb_dir_if_exists, find_model
+from helper_local import get_latest_file_matching, get_config, DictToArgs, add_symbreg_args
 from pets.pets import generate_pets_cfg_dict, load_pets_agent
 from symbreg.agents import PetsSymbolicAgent
 import mbrl.env.reward_fns as reward_fns
@@ -98,8 +102,10 @@ def generate_data(agent, env, n):
     return M_in, M_out, U_in, U_out, Loss
 
 
-def run_load_pets():
-    logdir = "logs/pets/cartpole_continuous/2024-08-05__02-43-29__seed_6033"
+def pets_sr(sr_args):
+    logdir = sr_args.logdir
+    symbdir, save_file = create_symb_dir_if_exists(logdir)
+    print(f"symbdir: '{symbdir}'")
     agent, model_env, args, env = load_pets_dynamics_model(logdir)
 
 
@@ -113,7 +119,17 @@ def run_load_pets():
 
     m_in, m_out, m_weight, u_in, u_out, u_weight = filter_data(m_in_f, m_out_f, u_in_f, u_out_f, loss)
     # do symbolic regression
+    print("data generated")
+    msgdir, _ = create_symb_dir_if_exists(symbdir, "msg")
+    updir, _ = create_symb_dir_if_exists(symbdir, "upd")
 
+    print("\nTransition Messenger:")
+    msg_model, _ = find_model(m_in, m_out, msgdir, save_file, m_weight, sr_args)
+    print("\nTransition Updater:")
+    up_model, _ = find_model(u_in, u_out, updir, save_file, u_weight, sr_args)
+
+    msg_torch = NBatchPySRTorch(msg_model.pytorch())
+    up_torch = NBatchPySRTorch(up_model.pytorch())
 
     print("next")
 
@@ -140,4 +156,12 @@ def filter_data(m_in, m_out, u_in, u_out, loss):
 
 
 if __name__ == "__main__":
-    run_load_pets()
+    parser = argparse.ArgumentParser()
+    parser = add_symbreg_args(parser)
+
+    sr_args = parser.parse_args()
+    sr_args.logdir = "logs/pets/cartpole_continuous/2024-08-05__02-43-29__seed_6033"
+
+    sr_args.iterations = 1
+
+    pets_sr(sr_args)
