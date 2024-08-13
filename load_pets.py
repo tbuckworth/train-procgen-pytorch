@@ -59,9 +59,9 @@ if __name__ == "__main__":
     # generate env data
     obs, _ = env.reset(args.seed)
     # generate training data
-    symb_agent.sample(obs)
+    m_in, m_out, u_in, u_out = symb_agent.sample(obs)
 
     # do symbolic regression
-
+    print("next")
 
 

@@ -414,11 +414,7 @@ class PetsSymbolicAgent:
                 obs = obs.unsqueeze(0)
             action = torch.FloatTensor(act).to(self.device)
             x = compile_obs_action(action, obs)
-            data_list = self.t_in_out(x)
-            dl = invert_list_levels(data_list)
-            dt = [np.concatenate(l, axis=0) for l in dl]
-
-            return dt[0], dt[1], dt[2], dt[3]
+            return self.t_in_out(x)
 
     def t_in_out(self, x):
         obs = x[..., :-1]
@@ -431,8 +427,8 @@ class PetsSymbolicAgent:
         u_in, u = self.trans_graph.vec_for_update(messages, h)
 
         flatten = lambda a: a.reshape(a.shape[0], -1, a.shape[-1]).cpu().numpy()
-        if msg_in.shape != messages.shape:
-            msg_in = torch.tile(msg_in, (self.ensemble_size, *[1 for _ in msg_in.shape]))
+        msg_in = self.tile_ensemble_if_necessary(msg_in, messages)
+        u_in = self.tile_ensemble_if_necessary(u_in, u)
 
         m_in = flatten(msg_in)
         m_out = flatten(messages)
@@ -440,3 +436,8 @@ class PetsSymbolicAgent:
         u_out = flatten(u)
 
         return m_in, m_out, u_in, u_out
+
+    def tile_ensemble_if_necessary(self, x_in, x_out):
+        if x_in.shape != x_out.shape:
+            x_in = torch.tile(x_in, (self.ensemble_size, *[1 for _ in x_in.shape]))
+        return x_in
