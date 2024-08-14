@@ -19,16 +19,16 @@ class BaseDiscreteEnvTest(unittest.TestCase):
     def run_step(self):
         for i in range(100):
             actions = [self.env.action_space.sample() for _ in range(self.env.n_envs)]
-            actions = [0 for _ in range(self.env.n_envs)]
+            # actions = [0 for _ in range(self.env.n_envs)]
             obs, rew, done, info = self.env.step(actions)
             if done[0]:
                 print(i)
-        for i in range(100):
-            actions = [self.env.action_space.sample() for _ in range(self.env.n_envs)]
-            actions = [1 for _ in range(self.env.n_envs)]
-            obs, rew, done, info = self.env.step(actions)
-            if done[0]:
-                print(i)
+        # for i in range(100):
+        #     actions = [self.env.action_space.sample() for _ in range(self.env.n_envs)]
+        #     actions = [1 for _ in range(self.env.n_envs)]
+        #     obs, rew, done, info = self.env.step(actions)
+        #     if done[0]:
+        #         print(i)
 
 
 class TestMountainCar(BaseDiscreteEnvTest):

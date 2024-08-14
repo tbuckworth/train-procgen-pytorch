@@ -121,9 +121,11 @@ class MountainCarVecEnv(PreVecEnv):
                  max_steps=500,
                  sparse_rewards=True,
                  seed=0,
+                 drop_same=False,
                  render_mode: Optional[str] = None,
                  ):
         n_actions = 3
+        self.drop_same = drop_same
         self._np_random = None
         self.sparse_rewards = sparse_rewards
         self.max_gravity = max_gravity
