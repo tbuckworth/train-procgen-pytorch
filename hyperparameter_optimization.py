@@ -485,6 +485,13 @@ def pets_graph_transition_cartpole():
         "use_wandb": True,
         "deterministic": False,
         "trial_length": 500,
+        # "drop_same": True,
+        # "min_cart_mass": 1.0,
+        # "max_cart_mass": 1.0,
+        # "min_pole_mass": 0.1,
+        # "max_pole_mass": 0.1,
+        # "min_force_mag": 10.,
+        # "max_force_mag": 10.,
     }
     bounds = {
         # 'trial_length': [200, 200],
@@ -509,7 +516,7 @@ def pets_graph_transition_cartpole():
     while True:
         project = get_project(fixed["env_name"], fixed["exp_name"])
         id_tag = fixed["wandb_tags"][0]
-        optimize_hyperparams(bounds, fixed, project, id_tag, run_pets_hyperparameters, opt_metric="total_reward")
+        optimize_hyperparams(bounds, fixed, project, id_tag, run_pets_hyperparameters, opt_metric="trial/total_reward")
 
 
 if __name__ == "__main__":
