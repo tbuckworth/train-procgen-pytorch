@@ -57,6 +57,6 @@ def assign_env_vars(hyperparameters, is_valid, defaults):
         if is_valid and k == "n_envs":
             override_value(env_args, hyperparameters, "", k, v[i])
         override_value(env_args, hyperparameters, suffix, k, v[i])
-    extras = {k:v for k,v in hyperparameters.items() if k not in env_args}
+    extras = {k:v for k,v in hyperparameters.items() if k not in env_args and not k.endswith("_v")}
     env_args.update(extras)
     return env_args

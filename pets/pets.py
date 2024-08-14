@@ -23,6 +23,7 @@ mpl.rcParams.update({"font.size": 16})
 
 def get_env_hyperparameters(args, env_cons):
     params = inspect.signature(env_cons(args, {}).env.env.__init__).parameters.keys()
+    params = [f"{p}_v" for p in params] + list(params)
     return {k: v for k, v in args.__dict__.items() if k in params}
 
 
@@ -38,8 +39,9 @@ def run_pets(args):
     env_hyperparameters = get_env_hyperparameters(args, env_cons)
     env = env_cons(args, env_hyperparameters)
     env_valid = env_cons(args, env_hyperparameters, is_valid=True)
-    env.reset(seed)
-    env_valid.reset(seed)
+    obs, _ = env.reset(seed)
+    vobs, _ = env_valid.reset(seed)
+    assert obs.shape == vobs.shape
     rng = np.random.default_rng(seed=0)
     generator = torch.Generator(device=device)
     generator.manual_seed(seed)

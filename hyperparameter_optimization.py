@@ -492,6 +492,12 @@ def pets_graph_transition_cartpole():
         "max_pole_mass": 0.1,
         "min_force_mag": 10.,
         "max_force_mag": 10.,
+        "min_cart_mass_v": 1.0,
+        "max_cart_mass_v": 1.0,
+        "min_pole_mass_v": 0.1,
+        "max_pole_mass_v": 0.1,
+        "min_force_mag_v": 10.,
+        "max_force_mag_v": 10.,
     }
     bounds = {
         # 'trial_length': [200, 200],
