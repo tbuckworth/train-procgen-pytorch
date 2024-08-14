@@ -243,13 +243,14 @@ def keep_best(m_in, m_out, max_obs, rank):
 
 
 if __name__ == "__main__":
-    load_pets_sr_and_test()
-    exit(0)
+    # load_pets_sr_and_test()
+    # exit(0)
     parser = argparse.ArgumentParser()
     parser = add_symbreg_args(parser)
 
     sr_args = parser.parse_args()
     sr_args.logdir = "logs/pets/cartpole_continuous/2024-08-05__02-43-29__seed_6033"
+    sr_args.logdir = "logs/pets/cartpole_continuous/2024-08-05__08-40-15__seed_6033"
 
     sr_args.iterations = 5
 
