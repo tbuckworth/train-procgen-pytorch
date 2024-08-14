@@ -1,3 +1,4 @@
+import inspect
 import os
 import re
 
@@ -7,7 +8,6 @@ import numpy as np
 import torch
 import omegaconf
 
-import mbrl.env.cartpole_continuous as cartpole_env
 import mbrl.env.reward_fns as reward_fns
 import mbrl.env.termination_fns as termination_fns
 import mbrl.models as models
@@ -21,6 +21,11 @@ from helper_local import create_logdir, wandb_login, get_project
 mpl.rcParams.update({"font.size": 16})
 
 
+def get_env_hyperparameters(args, env_cons):
+    params = inspect.signature(env_cons(args, {}).env.env.__init__).parameters.keys()
+    return {k: v for k, v in args.__dict__.items() if k in params}
+
+
 def run_pets(args):
     # possible dynamics model:
     # pets.pets_models.GraphTransitionPets
@@ -30,8 +35,9 @@ def run_pets(args):
     seed = args.seed
     # env = cartpole_env.CartPoleEnv(render_mode="rgb_array")
     env_cons = get_pets_env_constructor(args.env_name)
-    env = env_cons(args, {})
-    env_valid = env_cons(args, {}, is_valid=True)
+    env_hyperparameters = get_env_hyperparameters(args, env_cons)
+    env = env_cons(args, env_hyperparameters)
+    env_valid = env_cons(args, env_hyperparameters, is_valid=True)
     env.reset(seed)
     env_valid.reset(seed)
     rng = np.random.default_rng(seed=0)
@@ -124,7 +130,7 @@ def run_pets(args):
     def train_callback_tr(trial):
         def train_callback(_model, _total_calls, _epoch, tr_loss, val_score, _best_val):
             train_losses.append(tr_loss)
-            val_scores.append(val_score.mean().item())# this returns val score per ensemble model
+            val_scores.append(val_score.mean().item())  # this returns val score per ensemble model
             train_step[-1] += 1
             log_names = ["train/step", "train/trial", "train/epoch", "train/train_loss", "train/val_score"]
             log = [train_step[-1], trial, _epoch, tr_loss, val_score.mean().item()]
@@ -132,7 +138,6 @@ def run_pets(args):
                 wandb.log({k: v for k, v in zip(log_names, log)})
 
         return train_callback
-
 
     # Create a trainer for the model
     model_trainer = models.ModelTrainer(dynamics_model,
@@ -147,7 +152,7 @@ def run_pets(args):
     # Main PETS loop
     save_every = num_trials // args.num_checkpoints
     checkpoint_cnt = 0
-    checkpoints = [(i + 1) * save_every for i in range(args.num_checkpoints)] + [num_trials-2]
+    checkpoints = [(i + 1) * save_every for i in range(args.num_checkpoints)] + [num_trials - 2]
     checkpoints.sort()
     all_rewards = [0]
     val_rewards = [0]
@@ -210,7 +215,8 @@ def run_pets(args):
                      "trial/train_loss",
                      "trial/val_score",
                      "trial/cum_max_total_reward"]
-        log = [trial_step, trial, total_reward, total_val_reward, train_losses[-1], val_scores[-1], max(all_rewards)]
+        log = [trial_step, trial, total_reward, total_val_reward, train_losses[-1], val_scores[-1],
+               max(all_rewards)]
         print(f"Trial:\t\t{trial}")
         print(f"Reward:\t\t{total_reward}")
         print(f"Val.Reward:\t{total_val_reward}")
@@ -242,7 +248,6 @@ def run_pets(args):
     #
     # print("nothing")
 
-
 def load_pets_agent(args, device, model_env):
     agent_cfg = omegaconf.OmegaConf.create({
         # this class evaluates many trajectories and picks the best one
@@ -272,7 +277,6 @@ def load_pets_agent(args, device, model_env):
         num_particles=args.num_particles,  # 20
     )
     return agent
-
 
 def generate_pets_cfg_dict(args, device):
     cfg_dict = {
@@ -310,7 +314,6 @@ def generate_pets_cfg_dict(args, device):
     }
     cfg = omegaconf.OmegaConf.create(cfg_dict)
     return cfg
-
 
 def run_agent_in_env(agent, env, trial_length):
     obs, _ = env.reset(None)

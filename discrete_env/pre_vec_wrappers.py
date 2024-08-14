@@ -8,6 +8,10 @@ class PetsWrapper(gym.Env):
         self.env = env
         self.observation_space = env.observation_space
         self.action_space = env.action_space
+
+    def get_customizable_params(self):
+        return self.env.get_customizable_params()
+
     def step(self, action):
         obs, rew, done, info = self.env.step(action)
         return obs, rew, done, False, info
@@ -35,6 +39,9 @@ class DeVecEnvWrapper(gym.Env):
         self.n_envs = self.env.n_envs
         self.observation_space = env.observation_space
         self.action_space = env.action_space
+
+    def get_customizable_params(self):
+        return self.env.customizable_params
 
     def step(self, action):
         # is adding a dimension wrong?

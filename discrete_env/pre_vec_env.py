@@ -33,6 +33,8 @@ class PreVecEnv(Env):
                  seed=0,
                  render_mode: Optional[str] = None):
         self.non_drop_index = self.high != self.low
+        if not self.drop_same:
+            self.non_drop_index = self.high == self.high
         self.env_name = env_name
         if n_envs < 2:
             raise Exception("n_envs must be greater than or equal to 2")
@@ -42,7 +44,7 @@ class PreVecEnv(Env):
         self.np_random_seed = None
         self._np_random = None
         self.action_space = spaces.Discrete(self.n_actions)
-        self.observation_space = spaces.Box(self.low, self.high, dtype=np.float32)
+        self.observation_space = spaces.Box(self.low[self.non_drop_index], self.high[self.non_drop_index], dtype=np.float32)
         self.render_mode = render_mode
         self.screen_width = 600 if self.screen_width is None else self.screen_width
         self.screen_height = 400 if self.screen_height is None else self.screen_width

@@ -23,9 +23,16 @@ if __name__ == '__main__':
         "num_layers": 6,
         "seed": 6033,
         "use_wandb": True,
-        "wandb_tags": ["pgt1"],
+        "wandb_tags": ["pgt2"],
         "use_custom_reward_fn": False,
         "num_epochs": 1000,
         "overfit": True,
+        "drop_same": True,
+        "min_cart_mass": 1.0,
+        "max_cart_mass": 1.0,
+        "min_pole_mass": 0.1,
+        "max_pole_mass": 0.1,
+        "min_force_mag": 10.,
+        "max_force_mag": 10.,
     }
     run_pets_hyperparameters(hparams)
