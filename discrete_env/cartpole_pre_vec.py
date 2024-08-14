@@ -247,7 +247,8 @@ class CartPoleVecEnv(PreVecEnv):
         return force
 
     def done_func(self, state):
-        xt, _, thetat, _, _, _, _, _, _ = state.T
+        xt = state[..., 0]
+        thetat = state[..., 2]
         x = xt.T
         theta = thetat.T
         oob = np.bitwise_or(x < -self.x_threshold,
