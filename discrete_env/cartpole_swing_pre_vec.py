@@ -102,9 +102,11 @@ class CartPoleSwingVecEnv(PreVecEnv):
                  max_force_mag=10.,
                  max_steps=1000,
                  seed=0,
+                 drop_same=False,
                  render_mode: Optional[str] = None, ):
 
         n_actions = 2
+        self.drop_same = drop_same
         self.min_gravity = min_gravity
         self.max_gravity = max_gravity
         self.min_cart_mass = min_cart_mass

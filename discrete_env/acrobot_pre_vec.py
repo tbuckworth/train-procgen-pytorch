@@ -176,7 +176,9 @@ class AcrobotVecEnv(PreVecEnv):
                  max_steps=500,
                  unprocessed_features=False,
                  seed=0,
+                 drop_same=False,
                  render_mode: Optional[str] = None):
+        self.drop_same = drop_same
         self.unprocessed_features = unprocessed_features
         self.gravity = gravity
         self.link_length_1 = link_length_1
