@@ -71,7 +71,37 @@ def as_bool(x):
 
 def if_then_else(*conds):
     a, b, c = conds
-    return torch.where(a, torch.where(b, True, False), torch.where(c, True, False))
+    device = get_device(a, b, c)
+    if device is not None:
+        a = try_to_bool(a, device)
+        b = try_to_bool(b, device)
+        c = try_to_bool(c, device)
+        return torch.where(a, torch.where(b, True, False), torch.where(c, True, False))
+    if a:
+        return b
+    return c
+
+
+
+def get_device(a, b, c):
+    try:
+        return a.device
+    except Exception:
+        try:
+            return b.device
+        except Exception:
+            try:
+                return c.device
+            except Exception:
+                return None
+
+def try_to_bool(a, device):
+    try:
+        a = a.to(bool)
+    except AttributeError:
+        return torch.BoolTensor([a]).to(device=device)
+    return a
+
 
 def exp1():
     return torch.exp(torch.FloatTensor([1]))

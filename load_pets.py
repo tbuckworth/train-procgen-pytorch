@@ -1,4 +1,7 @@
+from pysr import PySRRegressor
 import argparse
+import os
+import re
 
 import mbrl.util.common as common_util
 import numpy as np
@@ -8,11 +11,15 @@ from mbrl import models
 from common.env.env_constructor import get_pets_env_constructor
 from common.model import NBatchPySRTorch, NBatchPySRTorchMult
 from double_graph_sr import create_symb_dir_if_exists, find_model
+from graph_sr import get_pysr_dir
 from helper_local import get_latest_file_matching, get_config, DictToArgs, add_symbreg_args
 from pets.pets import generate_pets_cfg_dict, load_pets_agent
 from symbreg.agents import PetsSymbolicAgent
 import mbrl.env.reward_fns as reward_fns
 import mbrl.env.termination_fns as termination_fns
+
+from symbreg.extra_mappings import get_extra_torch_mappings
+
 
 def load_pets_dynamics_model(logdir):
     model_dir = get_latest_file_matching(r"model_(\d*)", 1, logdir)
@@ -21,7 +28,7 @@ def load_pets_dynamics_model(logdir):
 
     env_cons = get_pets_env_constructor(args.env_name)
     env = env_cons(args, {})
-    env_valid = env_cons(args, {}, valid=True)
+    env_valid = env_cons(args, {}, is_valid=True)
     env.reset(args.seed)
     generator = torch.Generator(device=device)
     generator.manual_seed(args.seed)
@@ -102,7 +109,7 @@ def generate_data(agent, env, n):
 
     return M_in, M_out, U_in, U_out, Loss
 
-def test_agent_mean_reward(agent, env, print_name, n=40, return_values=False, seed=0):
+def trial_agent_mean_reward(agent, env, print_name, n=40, return_values=False, seed=0):
     episodes = 0
     obs, _ = env.reset(seed=seed)
     agent.reset()
@@ -126,19 +133,16 @@ def pets_sr(sr_args):
     logdir = sr_args.logdir
     symbdir, save_file = create_symb_dir_if_exists(logdir)
     print(f"symbdir: '{symbdir}'")
-    #TODO: return env_valid
     agent, model_env, args, env, env_valid = load_pets_dynamics_model(logdir)
-
-
     pets_agent = PetsSymbolicAgent(agent, model_env, args.num_particles)
+
     # generate env data
     obs, _ = env.reset(args.seed)
-    # generate training data
-
     m_in_f, m_out_f, u_in_f, u_out_f, loss = generate_data(pets_agent, env, n=5)
-    # filter by loss:
 
+    # filter by loss:
     m_in, m_out, m_weight, u_in, u_out, u_weight = filter_data(m_in_f, m_out_f, u_in_f, u_out_f, loss)
+
     # do symbolic regression
     print("data generated")
     msgdir, _ = create_symb_dir_if_exists(symbdir, "msg")
@@ -153,15 +157,56 @@ def pets_sr(sr_args):
     up_torch = NBatchPySRTorchMult(up_model.pytorch())
 
     symb_agent = PetsSymbolicAgent(agent, model_env, args.num_particles, msg_torch, up_torch)
-    symb_agent.forward(obs)
 
-    # test_s_agent
-    neural_train_score = test_agent_mean_reward(pets_agent, env, "Neural Train", n=10)
-    symb_train_score = test_agent_mean_reward(symb_agent, env, "Symbolic Train", n=10)
-    neural_test_score = test_agent_mean_reward(pets_agent, env_valid, "Neural Test", n=10)
-    symb_test_score = test_agent_mean_reward(symb_agent, env_valid, "Symbolic Test", n=10)
+    neural_train_score = trial_agent_mean_reward(pets_agent, env, "Neural Train", n=10)
+    symb_train_score = trial_agent_mean_reward(symb_agent, env, "Symbolic Train", n=10)
+    neural_test_score = trial_agent_mean_reward(pets_agent, env_valid, "Neural Test", n=10)
+    symb_test_score = trial_agent_mean_reward(symb_agent, env_valid, "Symbolic Test", n=10)
 
     print("next")
+
+def load_pysr_model(msgdir):
+    pickle_filename = os.path.join(msgdir, "symb_reg.pkl")
+    return PySRRegressor.from_file(pickle_filename, extra_torch_mappings=get_extra_torch_mappings())
+
+
+
+
+def load_pets_sr_and_test():
+    symbdir = "logs/pets/cartpole_continuous/2024-08-05__02-43-29__seed_6033/symbreg/2024-08-14__10-10-48"
+    logdir = re.search(r"(logs.*)symbreg", symbdir).group(1)
+
+    agent, model_env, args, env, env_valid = load_pets_dynamics_model(logdir)
+
+    pets_agent = PetsSymbolicAgent(agent, model_env, args.num_particles)
+
+    msgdir = get_pysr_dir(symbdir, "msg")
+    updir = get_pysr_dir(symbdir, "upd")
+
+    msg_model = load_pysr_model(msgdir)
+    up_model = load_pysr_model(updir)
+
+    msg_torch = NBatchPySRTorch(msg_model.pytorch())
+    up_torch = NBatchPySRTorchMult(up_model.pytorch())
+
+    symb_agent = PetsSymbolicAgent(agent, model_env, args.num_particles, msg_torch, up_torch)
+
+    obs, _ = env.reset(seed=0)
+
+    # This is in case something has gone wrong, we can debug it
+    try:
+        symb_agent.forward(obs)
+    except Exception as e:
+        raise e
+
+    neural_train_score = trial_agent_mean_reward(pets_agent, env, "Neural Train", n=10)
+    symb_train_score = trial_agent_mean_reward(symb_agent, env, "Symbolic Train", n=10)
+    neural_test_score = trial_agent_mean_reward(pets_agent, env_valid, "Neural Test", n=10)
+    symb_test_score = trial_agent_mean_reward(symb_agent, env_valid, "Symbolic Test", n=10)
+
+    print("next")
+
+
 
 
 def filter_data(m_in, m_out, u_in, u_out, loss, max_obs=2000):
@@ -198,6 +243,8 @@ def keep_best(m_in, m_out, max_obs, rank):
 
 
 if __name__ == "__main__":
+    load_pets_sr_and_test()
+    exit(0)
     parser = argparse.ArgumentParser()
     parser = add_symbreg_args(parser)
 
