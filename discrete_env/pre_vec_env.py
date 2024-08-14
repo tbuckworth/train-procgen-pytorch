@@ -26,11 +26,13 @@ class PreVecEnv(Env):
     screen_width=None
     screen_height=None
     input_adjust=0
+    drop_same=False
     def __init__(self, n_envs, n_actions,
                  env_name,
                  max_steps=500,
                  seed=0,
                  render_mode: Optional[str] = None):
+        self.non_drop_index = self.high != self.low
         self.env_name = env_name
         if n_envs < 2:
             raise Exception("n_envs must be greater than or equal to 2")
@@ -168,6 +170,8 @@ class PreVecEnv(Env):
 
     def _get_ob(self):
         assert self.state is not None, "Call reset before using PreVecEnv object."
+        if self.drop_same:
+            return self.state[...,self.non_drop_index]
         return self.state
 
     def get_info(self):

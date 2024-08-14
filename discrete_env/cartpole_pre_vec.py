@@ -105,9 +105,11 @@ class CartPoleVecEnv(PreVecEnv):
                  max_steps=500,
                  seed=0,
                  continuous=False,
+                 drop_same=False,
                  render_mode: Optional[str] = None, ):
 
         self.continuous = continuous
+        self.drop_same = drop_same
         n_actions = 2
         self.reward = np.ones((n_envs))
         self.info = [{"env_reward": self.reward[i]} for i in range(len(self.reward))]

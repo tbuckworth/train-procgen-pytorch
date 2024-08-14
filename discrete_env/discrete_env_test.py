@@ -12,7 +12,7 @@ from helper_local import DictToArgs
 class BaseDiscreteEnvTest(unittest.TestCase):
     def setUp(cls) -> None:
         cls.env_cons = get_env_constructor(cls.env_name)
-        cls.env = cls.env_cons(DictToArgs({"render": "human", "seed": 0}), {"max_steps":30},
+        cls.env = cls.env_cons(DictToArgs({"render": "human", "seed": 0}), {"max_steps":30, "drop_same":True},
                                False)  # n_envs=2, max_steps=50, render_mode="human")
         cls.env.reset(seed=np.random.randint(0, 1000))
 
