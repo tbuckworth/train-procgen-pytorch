@@ -2,8 +2,6 @@ import sympy
 import torch
 
 
-
-
 # Allows PyTorch to map Piecewise functions:
 def expr_cond_pair(expr, cond):
     if isinstance(cond, torch.Tensor) and not isinstance(expr, torch.Tensor):
@@ -82,18 +80,18 @@ def if_then_else(*conds):
     return c
 
 
-
 def get_device(a, b, c):
     try:
         return a.device
-    except Exception:
+    except AttributeError:
         try:
             return b.device
-        except Exception:
+        except AttributeError:
             try:
                 return c.device
-            except Exception:
+            except AttributeError:
                 return None
+
 
 def try_to_bool(a, device):
     try:
@@ -106,11 +104,14 @@ def try_to_bool(a, device):
 def exp1():
     return torch.exp(torch.FloatTensor([1]))
 
+
 def inf():
     return torch.FloatTensor([torch.inf])
 
+
 def exp(x):
     return torch.exp(torch.FloatTensor(x))
+
 
 # TODO: Add test that makes sure tensors are on the same device
 def get_extra_torch_mappings():
