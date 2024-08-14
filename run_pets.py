@@ -35,4 +35,38 @@ if __name__ == '__main__':
         "min_force_mag": 10.,
         "max_force_mag": 10.,
     }
+
+    hparams = {
+        "alpha": 0.1,
+        "detect_nan": False,
+        "deterministic": False,
+        "dyn_model": "pets.pets_models.GraphTransitionPets",
+        "elite_ratio": 0.1,
+        "ensemble_size": 5,
+        "env_name": "cartpole_continuous",
+        "exp_name": "",
+        "hid_size": 106,
+        "learning_rate": 0.000688,
+        "logdir": "logs/pets/cartpole_continuous/2024-08-05__02-43-29__seed_6033",
+        "model_batch_size": 19,
+        "num_checkpoints": 4,
+        "num_epochs": 50,
+        "num_iterations": 5,
+        "num_layers": 5,
+        "num_particles": 20,
+        "num_trials": 20,
+        "patience": 50,
+        "planning_horizon": 15,
+        "population_size": 500,
+        "render": False,
+        "replan_freq": 1,
+        "seed": 6033,
+        "trial_length": 500,
+        "use_wandb": True,
+        "validation_ratio": 0.05,
+        "wandb_tags": ["pgt1"],
+        "1": "graph-transition",
+        "weight_decay": 0.00005,
+    }
+
     run_pets_hyperparameters(hparams)
