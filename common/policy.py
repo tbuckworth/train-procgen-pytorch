@@ -403,3 +403,102 @@ class DoubleTransitionPolicy(nn.Module):
         return s1.unsqueeze(1).tile(shp)
 
 
+class PureTransitionPolicy(nn.Module):
+    def __init__(self,
+                 transition_model,
+                 action_size,
+                 n_rollouts,
+                 temperature,
+                 gamma,
+                 done_func,
+                 rew_func,
+                 ):
+        """
+        embedder: (torch.Tensor) model to extract the embedding for observation
+        action_size: number of the categorical actions
+        """
+        super(PureTransitionPolicy, self).__init__()
+        assert n_rollouts > 0, "n_rollouts must be > 0"
+        self.n_rollouts = n_rollouts
+        self.temperature = temperature
+        self.gamma = gamma
+        self.has_vq = False
+        self.action_size = action_size
+
+        self.done_func = done_func
+        self.rew_func = rew_func
+        self.transition_model = transition_model
+
+
+    def dr(self, state):
+        s = state.detach().cpu().numpy()
+        d = self.done_func(s)
+        r = self.rew_func(s).squeeze()
+        d = torch.FloatTensor(d).to(device=self.device),
+        r = torch.FloatTensor(r).to(device=self.device)
+        return d, r
+
+    def is_recurrent(self):
+        return False
+
+    def actions_like(self, s, i):
+        return torch.full((s.shape[:-1]), i).to(device=self.device)
+
+    def all_actions_like(self, s):
+        a = torch.FloatTensor([i for i in range(self.action_size)])
+        return a.tile((*s.shape[:-1], 1)).to(device=self.device)
+
+    def forward(self, x):
+        rews = []
+        cont = []
+        s = x
+        for _ in range(self.n_rollouts):
+            next_states = [self.transition_model(s, self.actions_like(s, i)).unsqueeze(1) for i in
+                           range(self.action_size)]
+            s = torch.concat(next_states, dim=1)
+            d, r = self.dr(s)
+            cont.append(d)
+            rews.append(r)
+
+        # adding discounted rewards
+        cum = torch.zeros((rews[0].shape)).to(device=self.device)
+        for r in rews[:-1]:
+            cum = ((cum + r) * self.gamma).unsqueeze(-2).tile([self.action_size, 1])
+        # cum = cum.to(device=self.device)
+
+        # vs = torch.zeros_like(s).to(device=self.device)
+        vs = cum.squeeze()
+        for i in range(self.n_rollouts - 1):
+            vs[cont[-(i + 1)] == 1] = 0
+            vs = ((vs / self.temperature).softmax(-1) * vs).sum(-1)
+            # vs = vs.max(-1)[0]
+
+        log_probs = F.log_softmax(vs / self.temperature, dim=1)
+        if log_probs.isnan().any():
+            print("check")
+        p = Categorical(logits=log_probs)
+        if p.probs.isnan().any():
+            print("check")
+        return p
+
+    def all_dones_rewards(self, s):
+        sa = self.states_with_all_actions(s)
+        dones, rew = self.dr(sa)
+        return dones, rew
+
+
+    def states_with_all_actions(self, s):
+        s1 = s.unsqueeze(-2).tile([self.action_size, 1])
+        a = self.all_actions_like(s)
+        sa = torch.concat([s1, a.unsqueeze(-1)], dim=-1)
+        return sa
+
+    def vectorized_attempt(self, x):
+        s1 = x
+        for _ in range(self.n_rollouts):
+            s1 = self.transition_model(self.expand_for_actions(s1), self.all_actions_like(s1))
+
+    def expand_for_actions(self, s1):
+        k = len(s1.shape)
+        shp = [self.action_size] + [1 for _ in range(k - 1)]
+        return s1.unsqueeze(1).tile(shp)

@@ -250,7 +250,7 @@ if __name__ == "__main__":
 
     sr_args = parser.parse_args()
     sr_args.logdir = "logs/pets/cartpole_continuous/2024-08-05__02-43-29__seed_6033"
-    sr_args.logdir = "logs/pets/cartpole_continuous/2024-08-05__08-40-15__seed_6033"
+    # sr_args.logdir = "logs/pets/cartpole_continuous/2024-08-05__08-40-15__seed_6033"
 
     sr_args.iterations = 5
 

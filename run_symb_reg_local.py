@@ -11,7 +11,7 @@ from matplotlib import pyplot as plt
 from cartpole.create_cartpole import create_cartpole_env_pre_vec
 from common.env.env_constructor import get_env_constructor
 from double_graph_sr import run_double_graph_neurosymbolic_search
-from graph_sr import run_graph_neurosymbolic_search
+from graph_sr import run_graph_neurosymbolic_search, get_pysr_dir, load_pysr_to_torch
 
 if os.name != "nt":
     from pysr import PySRRegressor
@@ -530,6 +530,22 @@ def wrap_latex_in_table(caption, label, formula, latex):
     tabulars = '\n'.join(latex)
     return f"\\begin{{table}}\n\\caption{{{caption}\\\\\\\\\n\\textbf{{Symbolic Formula: {formula}}}}}\n\\label{{{label}}}\n\\centering\n{tabulars}\n\\end{{table}}"
 
+
+def run_saved_double_graph_model():
+    symbdir = "logs/train/cartpole/2024-07-11__04-48-25__seed_6033/symbreg/2024-07-21__21-03-58"
+    logdir = get_logdir_from_symbdir(symbdir)
+    policy, _, symbolic_agent_constructor, _ = load_nn_policy(logdir)
+
+    msgdir = get_pysr_dir(symbdir, "msg")
+    updir = get_pysr_dir(symbdir, "upd")
+
+    msg_torch = load_pysr_to_torch(msgdir)
+    up_torch = load_pysr_to_torch(updir)
+
+    new_policy = PureTransitionPolicy
+
+    ns_agent = symbolic_agent_constructor(policy, msg_torch, up_torch)
+    return logdir, ns_agent
 
 def run_saved_model():
     # data_size = 1000
