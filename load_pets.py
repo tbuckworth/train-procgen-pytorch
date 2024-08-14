@@ -21,6 +21,7 @@ def load_pets_dynamics_model(logdir):
 
     env_cons = get_pets_env_constructor(args.env_name)
     env = env_cons(args, {})
+    env_valid = env_cons(args, {}, valid=True)
     env.reset(args.seed)
     generator = torch.Generator(device=device)
     generator.manual_seed(args.seed)
@@ -48,7 +49,7 @@ def load_pets_dynamics_model(logdir):
 
     # agent.set_trajectory_eval_fn()
 
-    return agent, model_env, args, env
+    return agent, model_env, args, env, env_valid
 
 def generate_data(agent, env, n):
     Obs, _ = env.reset()
@@ -126,15 +127,15 @@ def pets_sr(sr_args):
     symbdir, save_file = create_symb_dir_if_exists(logdir)
     print(f"symbdir: '{symbdir}'")
     #TODO: return env_valid
-    agent, model_env, args, env = load_pets_dynamics_model(logdir)
+    agent, model_env, args, env, env_valid = load_pets_dynamics_model(logdir)
 
 
-    symb_agent = PetsSymbolicAgent(agent, model_env, args.num_particles)
+    pets_agent = PetsSymbolicAgent(agent, model_env, args.num_particles)
     # generate env data
     obs, _ = env.reset(args.seed)
     # generate training data
 
-    m_in_f, m_out_f, u_in_f, u_out_f, loss = generate_data(symb_agent, env, n=5)
+    m_in_f, m_out_f, u_in_f, u_out_f, loss = generate_data(pets_agent, env, n=5)
     # filter by loss:
 
     m_in, m_out, m_weight, u_in, u_out, u_weight = filter_data(m_in_f, m_out_f, u_in_f, u_out_f, loss)
@@ -151,12 +152,14 @@ def pets_sr(sr_args):
     msg_torch = NBatchPySRTorch(msg_model.pytorch())
     up_torch = NBatchPySRTorchMult(up_model.pytorch())
 
-    s_agent = PetsSymbolicAgent(agent, model_env, args.num_particles, msg_torch, up_torch)
-    s_agent.forward(obs)
+    symb_agent = PetsSymbolicAgent(agent, model_env, args.num_particles, msg_torch, up_torch)
+    symb_agent.forward(obs)
 
     # test_s_agent
-    test_agent_mean_reward(s_agent, env, "symbolic", n=10)
-    test_agent_mean_reward(symb_agent, env, "Neural", n=10)
+    neural_train_score = test_agent_mean_reward(pets_agent, env, "Neural Train", n=10)
+    symb_train_score = test_agent_mean_reward(symb_agent, env, "Symbolic Train", n=10)
+    neural_test_score = test_agent_mean_reward(pets_agent, env_valid, "Neural Test", n=10)
+    symb_test_score = test_agent_mean_reward(symb_agent, env_valid, "Symbolic Test", n=10)
 
     print("next")
 
@@ -201,7 +204,7 @@ if __name__ == "__main__":
     sr_args = parser.parse_args()
     sr_args.logdir = "logs/pets/cartpole_continuous/2024-08-05__02-43-29__seed_6033"
 
-    sr_args.iterations = 1
+    sr_args.iterations = 5
 
     sr_args.binary_operators = ["+", "-", "*", "greater", "/"]
     sr_args.unary_operators = ["sin", "relu", "log", "exp", "sign", "sqrt", "square"]
