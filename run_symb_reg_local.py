@@ -10,6 +10,7 @@ from matplotlib import pyplot as plt
 
 from cartpole.create_cartpole import create_cartpole_env_pre_vec
 from common.env.env_constructor import get_env_constructor
+from common.policy import PureTransitionPolicy
 from double_graph_sr import run_double_graph_neurosymbolic_search
 from graph_sr import run_graph_neurosymbolic_search, get_pysr_dir, load_pysr_to_torch
 
@@ -19,7 +20,7 @@ if os.name != "nt":
 from helper_local import add_symbreg_args, get_config, DictToArgs, sigmoid, entropy_from_binary_prob, \
     get_actions_from_all, map_actions_to_values, concat_np_list, match, get_logdir_from_symbdir
 from symbolic_regression import run_neurosymbolic_search, load_nn_policy, generate_data  # , test_agent_mean_reward
-from symbreg.agents import NeuralAgent, DeterministicNeuralAgent
+from symbreg.agents import NeuralAgent, DeterministicNeuralAgent, PureGraphSymbolicAgent
 
 
 def run_deterministic_agent():
@@ -37,7 +38,7 @@ def run_deterministic_agent():
     dn_score_test = test_agent(dn_agent, test_env, "DetNeural Test", 300)
 
 
-def test_agent_specific_environment():
+def trial_agent_specific_environment():
     # Here we test different planet gravities
     n_envs = 32
     logdir = "logs/train/cartpole/cartpole/2024-03-28__11-49-51__seed_6033"
@@ -84,7 +85,7 @@ def test_agent_specific_environment():
     print("done")
 
 
-def test_agent_mean_reward(agent, env, print_name, n=40, return_values=False):
+def trial_agent_mean_reward(agent, env, print_name, n=40, return_values=False):
     episodes = 0
     obs = env.reset()
     act = agent.forward(obs)
@@ -120,12 +121,12 @@ def run_tests():
     ]
     for symbdir in dirs:
         try:
-            test_saved_model(symbdir, n_envs=1000, n_rounds=1000)  # , override_model=CustomModel(degrees=16))
+            trial_saved_model(symbdir, n_envs=1000, n_rounds=1000)  # , override_model=CustomModel(degrees=16))
         except Exception as e:
             print(e)
 
 
-def test_saved_model(symbdir, n_envs=10, n_rounds=10, override_model=None):
+def trial_saved_model(symbdir, n_envs=10, n_rounds=10, override_model=None):
     # symbdir = "logs/train/acrobot/test/2024-05-01__12-22-24__seed_6033/symbreg/2024-05-02__02-06-38"
     # symbdir = "logs/train/cartpole/test/2024-05-01__11-17-16__seed_6033/symbreg/2024-05-02__12-03-40"
     # symbdir = "logs/train/cartpole/test/2024-05-01__11-17-16__seed_6033/symbreg/2024-05-02__13-37-11"
@@ -237,9 +238,9 @@ def test_saved_model(symbdir, n_envs=10, n_rounds=10, override_model=None):
         temp_env = env_cons(None, param, False)
         temp_env.reset(seed=6033)
         assert temp_env.get_params() == param, "params do not match"
-        ns_reward, ns_context = test_agent_mean_reward(ns_agent, temp_env, f"NeuroSymb {group}", args.rounds, True)
+        ns_reward, ns_context = trial_agent_mean_reward(ns_agent, temp_env, f"NeuroSymb {group}", args.rounds, True)
         temp_env.reset(seed=6033)
-        nn_reward, nn_context = test_agent_mean_reward(nn_agent, temp_env, f"Neural    {group}", args.rounds, True)
+        nn_reward, nn_context = trial_agent_mean_reward(nn_agent, temp_env, f"Neural    {group}", args.rounds, True)
         results[group] = {"ns_mean": np.mean(ns_reward),
                           "ns_std": np.std(ns_reward),
                           "nn_mean": np.mean(nn_reward),
@@ -534,7 +535,7 @@ def wrap_latex_in_table(caption, label, formula, latex):
 def run_saved_double_graph_model():
     symbdir = "logs/train/cartpole/2024-07-11__04-48-25__seed_6033/symbreg/2024-07-21__21-03-58"
     logdir = get_logdir_from_symbdir(symbdir)
-    policy, _, symbolic_agent_constructor, _ = load_nn_policy(logdir)
+    policy, env, symbolic_agent_constructor, test_env = load_nn_policy(logdir)
 
     msgdir = get_pysr_dir(symbdir, "msg")
     updir = get_pysr_dir(symbdir, "upd")
@@ -542,10 +543,25 @@ def run_saved_double_graph_model():
     msg_torch = load_pysr_to_torch(msgdir)
     up_torch = load_pysr_to_torch(updir)
 
-    new_policy = PureTransitionPolicy
+    new_policy = PureTransitionPolicy(policy.transition_model,
+                                      policy.action_size,
+                                      policy.n_rollouts,
+                                      policy.temperature,
+                                      policy.gamma,
+                                      policy.done_func,
+                                      policy.rew_func)
+    new_policy.device = policy.device
 
-    ns_agent = symbolic_agent_constructor(policy, msg_torch, up_torch)
-    return logdir, ns_agent
+    ns_agent = PureGraphSymbolicAgent(new_policy, msg_torch, up_torch)
+
+    train_score = trial_agent_mean_reward(ns_agent, env, "Symb Train")
+    test_score = trial_agent_mean_reward(ns_agent, test_env, "Symb Test")
+
+    print("done")
+
+
+
+
 
 def run_saved_model():
     # data_size = 1000
@@ -574,7 +590,7 @@ def run_saved_model():
     ns_agent = symbolic_agent_constructor(pysr_model, policy, args.stochastic, action_mapping)
     # X, Y, V = generate_data(ns_agent, env, int(1000))
     # nn_agent = NeuralAgent(policy)
-    ns_score_train = test_agent_mean_reward(ns_agent, env, "NeuroSymb Train", args.rounds)
+    ns_score_train = trial_agent_mean_reward(ns_agent, env, "NeuroSymb Train", args.rounds)
     # nn_score_train = test_agent(nn_agent, env, "Neural    Train", args.rounds)
     return
     Y, Y_hat = plot_action_entropy_vs_pole_angle(X, Y, args, policy, pysr_model, sampler, symbdir)
@@ -689,6 +705,8 @@ def run_symb_reg_local():
 
 
 if __name__ == "__main__":
+    run_saved_double_graph_model()
+    exit(0)
     # run_tests()
     # format_results()
     # test_saved_model()

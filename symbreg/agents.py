@@ -315,6 +315,51 @@ class MostlyNeuralAgent:
         return x.cpu().numpy(), y, act, value.cpu().numpy()
 
 
+class PureGraphSymbolicAgent:
+    def __init__(self, policy,
+                 msg_model=None,
+                 up_model=None,
+                 ):
+        self.policy = policy
+        if msg_model is not None:
+            self.policy.transition_model.messenger = msg_model.to(device=policy.device)
+        if up_model is not None:
+            self.policy.transition_model.updater = up_model.to(device=policy.device)
+
+    def forward(self, observation):
+        with torch.no_grad():
+            obs = torch.FloatTensor(observation).to(self.policy.device)
+            dist = self.policy(obs)
+            act = dist.sample()
+            return act.cpu().numpy()
+
+    def sample(self, observation):
+        with torch.no_grad():
+            obs = torch.FloatTensor(observation).to(self.policy.device)
+            # dist, value, reward = self.policy(obs)
+            data_list = [self.t_in_out(i, obs) for i in range(self.policy.action_size)]
+            dl = invert_list_levels(data_list)
+            dt = [np.concatenate(l, axis=0) for l in dl]
+
+            return dt[0], dt[1], dt[2], dt[3]
+
+    def t_in_out(self, i, obs):
+        action = self.policy.actions_like(obs, i)
+        n, x = self.policy.transition_model.prep_input(obs)
+        msg_in = self.policy.transition_model.vectorize_for_message_pass(action, n, x)
+        messages = self.policy.transition_model.messenger(msg_in)
+        h, u = self.policy.transition_model.vec_for_update(messages, x)
+
+        m_in = flatten_batches_to_numpy(msg_in)
+        m_out = flatten_batches_to_numpy(messages)
+        u_in = flatten_batches_to_numpy(h)
+        u_out = flatten_batches_to_numpy(u)
+
+        return m_in, m_out, u_in, u_out
+
+
+
+
 class DoubleGraphSymbolicAgent:
     def __init__(self, policy,
                  msg_model=None,

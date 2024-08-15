@@ -3,6 +3,7 @@ Classic cart-pole system implemented by Rich Sutton et al.
 Copied from http://incompleteideas.net/sutton/book/code/pole.c
 permalink: https://perma.cc/C9ZM-652R
 """
+import inspect
 import math
 from typing import Optional
 
@@ -198,4 +199,9 @@ def create_pre_vec(args, hyperparameters, param_range, env_cons, is_valid):
     env_args["n_envs"] = n_envs
     env_args["render_mode"] = "human" if args.render else None
     env_args["seed"] = args.seed
+    env_args = filter_out_non_relevant_params(env_args, env_cons)
     return env_cons(**env_args)
+
+def filter_out_non_relevant_params(env_args, env_cons):
+    params = inspect.signature(env_cons.__init__).parameters.keys()
+    return {k: v for k, v in env_args.items() if k in params}
