@@ -11,6 +11,7 @@ from cartpole.create_cartpole import create_cartpole_env_pre_vec
 from common.env.env_constructor import get_env_constructor
 from common.model import ImpalaVQMHAModel, ImpalaFSQModel, ImpalaModel, Decoder, VQVAE, ImpalaFSQMHAModel, \
     RibFSQMHAModel
+from common.policy import PureTransitionPolicy
 from common.storage import Storage
 from helper_local import initialize_model, get_config, get_saved_hyperparams, load_hparams_for_model
 from common.env.procgen_wrappers import create_env
@@ -251,7 +252,7 @@ class CartPoleTestModel(unittest.TestCase):
         print(f"Looped:\t{end-mid:.4f}")
         print(f"Ratio:\t{(end-mid)/(mid-start):.2f}")
 
-    def test_pure_graph_policy(self):
+    def test_full_graph_policy(self):
         hyperparameters = get_hyperparams("full-graph-transition")
         model, obs_shape, policy = initialize_model(self.device, self.env, hyperparameters)
         action = torch.FloatTensor([self.env.action_space.sample() for _ in range(self.n_envs)])
@@ -276,6 +277,18 @@ class CartPoleTestModel(unittest.TestCase):
         policy.forward(self.obs)
 
 
+    def test_pure_graph_policy(self):
+        hyperparameters = get_hyperparams("double-graph")
+        model, obs_shape, policy = initialize_model(self.device, self.env, hyperparameters)
+        new_policy = PureTransitionPolicy(policy.transition_model,
+                                          policy.action_size,
+                                          policy.n_rollouts,
+                                          policy.temperature,
+                                          policy.gamma,
+                                          policy.done_func,
+                                          policy.rew_func)
+        new_policy.device = policy.device
+        new_policy.forward(self.obs)
 
 
 

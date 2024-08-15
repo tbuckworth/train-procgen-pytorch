@@ -331,7 +331,7 @@ class DoubleTransitionPolicy(nn.Module):
         s = state.detach().cpu().numpy()
         d = self.done_func(s)
         r = self.rew_func(s).squeeze()
-        d = torch.FloatTensor(d).to(device=self.device),
+        d = torch.FloatTensor(d).to(device=self.device)
         r = torch.FloatTensor(r).to(device=self.device)
         return d, r
 
@@ -434,7 +434,7 @@ class PureTransitionPolicy(nn.Module):
         s = state.detach().cpu().numpy()
         d = self.done_func(s)
         r = self.rew_func(s).squeeze()
-        d = torch.FloatTensor(d).to(device=self.device),
+        d = torch.FloatTensor(d).to(device=self.device)
         r = torch.FloatTensor(r).to(device=self.device)
         return d, r
 
@@ -466,18 +466,19 @@ class PureTransitionPolicy(nn.Module):
             cum = ((cum + r) * self.gamma).unsqueeze(-2).tile([self.action_size, 1])
         # cum = cum.to(device=self.device)
 
-        # vs = torch.zeros_like(s).to(device=self.device)
-        vs = cum.squeeze()
+        vs = torch.zeros(s.shape[:-1]).to(device=self.device)
+        vs += cum.squeeze()
         for i in range(self.n_rollouts - 1):
             vs[cont[-(i + 1)] == 1] = 0
             vs = ((vs / self.temperature).softmax(-1) * vs).sum(-1)
             # vs = vs.max(-1)[0]
 
-        log_probs = F.log_softmax(vs / self.temperature, dim=1)
-        if log_probs.isnan().any():
-            print("check")
+        log_probs = F.log_softmax(vs / self.temperature, dim=-1)
+        # if log_probs.isnan().any():
+        #     print("check")
         p = Categorical(logits=log_probs)
-        if p.probs.isnan().any():
+        if (p.probs != 0.5).any():
+        # if p.probs.isnan().any():
             print("check")
         return p
 

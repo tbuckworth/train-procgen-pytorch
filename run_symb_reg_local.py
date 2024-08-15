@@ -533,9 +533,15 @@ def wrap_latex_in_table(caption, label, formula, latex):
 
 
 def run_saved_double_graph_model():
+    # best mean reward:
     symbdir = "logs/train/cartpole/2024-07-11__04-48-25__seed_6033/symbreg/2024-07-21__21-03-58"
+    # high val reward:
+    symbdir = "logs/train/cartpole/2024-07-11__04-48-25__seed_6033/symbreg/2024-07-24__22-02-10"
+    # Lowest transition loss:
+    symbdir = "logs/train/cartpole/2024-07-11__04-48-25__seed_6033/symbreg/2024-07-24__23-06-18"
+
     logdir = get_logdir_from_symbdir(symbdir)
-    policy, env, symbolic_agent_constructor, test_env = load_nn_policy(logdir)
+    policy, env, symbolic_agent_constructor, test_env = load_nn_policy(logdir, n_envs=32)
 
     msgdir = get_pysr_dir(symbdir, "msg")
     updir = get_pysr_dir(symbdir, "upd")
@@ -543,9 +549,11 @@ def run_saved_double_graph_model():
     msg_torch = load_pysr_to_torch(msgdir)
     up_torch = load_pysr_to_torch(updir)
 
+    n_rollouts = 10
+
     new_policy = PureTransitionPolicy(policy.transition_model,
                                       policy.action_size,
-                                      policy.n_rollouts,
+                                      n_rollouts,
                                       policy.temperature,
                                       policy.gamma,
                                       policy.done_func,
@@ -556,6 +564,16 @@ def run_saved_double_graph_model():
 
     train_score = trial_agent_mean_reward(ns_agent, env, "Symb Train")
     test_score = trial_agent_mean_reward(ns_agent, test_env, "Symb Test")
+
+    nn_agent = PureGraphSymbolicAgent(new_policy)
+    nn_agent = symbolic_agent_constructor(policy)
+    train_score = trial_agent_mean_reward(nn_agent, env, "Neural Train")
+    test_score = trial_agent_mean_reward(nn_agent, test_env, "Neural Test")
+
+    nns_agent = symbolic_agent_constructor(policy, msg_torch, up_torch)
+    train_score = trial_agent_mean_reward(nns_agent, env, "Neuro-Symbolic Train")
+    test_score = trial_agent_mean_reward(nns_agent, test_env, "Neuro-Symbolic Test")
+
 
     print("done")
 

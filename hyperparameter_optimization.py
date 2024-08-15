@@ -384,14 +384,15 @@ def graph_symbreg_ft_hparams():
 
 def double_graph_symbreg_ft_hparams():
     fixed = {
-        "env_name": 'cartpole',
+        "env_name": 'cartpole_swing',
         "exp_name": 'symbreg',  # IMPORTANT!
         "param_name": 'double-graph',
         "device": "gpu",
         "seed": 6033,
         "maxsize": 40,
-        "wandb_tags": ["ftdg01", "double-graph", "graph-transition"],
-        "logdir": "logs/train/cartpole/2024-07-11__04-48-25__seed_6033",
+        "wandb_tags": ["ftdg01_swing", "double-graph", "graph-transition"],
+        # "logdir": "logs/train/cartpole/2024-07-11__04-48-25__seed_6033",
+        "logdir": "logs/train/cartpole_swing/test/2024-06-12__11-15-29__seed_6033",
         "timeout_in_seconds": 3600 * 10,
         "n_envs": 2,
         "denoise": False,
@@ -526,4 +527,5 @@ def pets_graph_transition_cartpole():
 
 
 if __name__ == "__main__":
-    pets_graph_transition_cartpole()
+    double_graph_symbreg_ft_hparams()
+    # pets_graph_transition_cartpole()
