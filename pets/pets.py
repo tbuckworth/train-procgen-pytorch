@@ -14,6 +14,7 @@ import mbrl.models as models
 import mbrl.planning as planning
 import mbrl.util.common as common_util
 import wandb
+from sqlalchemy.ext.asyncio import AsyncTransaction
 
 from common.env.env_constructor import get_pets_env_constructor
 from helper_local import create_logdir, wandb_login, get_project
@@ -314,6 +315,11 @@ def generate_pets_cfg_dict(args, device):
             "validation_ratio": args.validation_ratio,  # 0.05
         }
     }
+    try:
+        cfg_dict["dynamics_model"]["residual"] = args.residual
+    except AttributeError:
+        pass
+
     cfg = omegaconf.OmegaConf.create(cfg_dict)
     return cfg
 

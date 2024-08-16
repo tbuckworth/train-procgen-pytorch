@@ -993,13 +993,14 @@ def add_pets_args(parser):
     parser.add_argument('--render', action="store_true")
     parser.add_argument('--overfit', action="store_true")
     parser.add_argument('--use_custom_reward_fn', action="store_true")
-
+    parser.add_argument('--residual', action="store_true")
     #
     parser.add_argument('--no-deterministic', dest='deterministic', action="store_false")
     parser.add_argument('--no-detect_nan', dest='detect_nan', action="store_false")
     parser.add_argument('--no-render', dest='render', action="store_false")
     parser.add_argument('--no-overfit', dest='overfit', action="store_false")
     parser.add_argument('--no-use_custom_reward_fn', dest='use_custom_reward_fn', action="store_false")
+    parser.add_argument('--no-residual', dest='residual', action="store_false")
 
     # parser.add_argument('--no-use_valid_env', dest='use_valid_env', action="store_false")
     parser.add_argument('--no-use_wandb', dest='use_wandb', action="store_false")
@@ -1012,6 +1013,7 @@ def add_pets_args(parser):
         use_custom_reward_fn=True,
         # use_valid_env=True,
         use_wandb=True,
+        residual=False,
     )
 
     return parser

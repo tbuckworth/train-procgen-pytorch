@@ -482,9 +482,10 @@ def pets_graph_transition_cartpole():
         "env_name": 'cartpole_continuous',
         "exp_name": "",
         "seed": 6033,
-        "wandb_tags": ["pgt2", "graph-transition"],
+        "wandb_tags": ["pgt3", "graph-transition", "residual"],
         "use_wandb": True,
         "deterministic": False,
+        "residual": True,
         "trial_length": 500,
         "drop_same": True,
         "min_cart_mass": 1.0,
@@ -527,5 +528,5 @@ def pets_graph_transition_cartpole():
 
 
 if __name__ == "__main__":
-    double_graph_symbreg_ft_hparams()
-    # pets_graph_transition_cartpole()
+    # double_graph_symbreg_ft_hparams()
+    pets_graph_transition_cartpole()

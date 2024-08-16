@@ -103,13 +103,14 @@ class MLPModel(nn.Module):
                 layer.toggle_use_only_elite()
 
 class GraphTransitionModel(nn.Module):
-    def __init__(self, linear_cons, in_channels, depth, mid_weight, latent_size, device, deterministic=False):
+    def __init__(self, linear_cons, in_channels, depth, mid_weight, latent_size, device, deterministic=False, residual=False):
         super(GraphTransitionModel, self).__init__()
         self.input_size = in_channels
         self.depth = depth
         self.mid_weight = mid_weight
         self.output_dim = latent_size
         self.device = device
+        self.residual = residual
 
         ndim = 4 # this depends on dimensions of input observation
         self.messenger = MLPModel(linear_cons, 5, depth, mid_weight, latent_size, is_first=True, ndim=ndim)
@@ -138,7 +139,10 @@ class GraphTransitionModel(nn.Module):
         # Normalize actions?
         n, h = self.prep_input(obs)
         msg = self.sum_all_messages(n, h, action)
-        return self.update(h, msg).squeeze(dim=-1)
+        u = self.update(h, msg).squeeze(dim=-1)
+        if self.residual:
+            return obs + u
+        return u
 
     def prep_input(self, obs):
         x = self.append_index(obs.squeeze(dim=-1))
@@ -183,6 +187,7 @@ class GraphTransitionPets(Ensemble):
             propagation_method: Optional[str] = None,
             learn_logvar_bounds: bool = False,
             activation_fn_cfg: Optional[Union[Dict, omegaconf.DictConfig]] = None,
+            residual = False,
     ):
         super().__init__(
             ensemble_size, device, propagation_method, deterministic=deterministic
@@ -218,7 +223,7 @@ class GraphTransitionPets(Ensemble):
         # self.hidden_layers = nn.Sequential(*hidden_layers)
 
         self.hidden_layers = GraphTransitionModel(create_linear_layer, self.in_size, num_layers, hid_size, 1,
-                                                  self.device, deterministic)
+                                                  self.device, deterministic, residual)
 
         if not deterministic:
             self.min_logvar = nn.Parameter(
