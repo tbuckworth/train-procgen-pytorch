@@ -141,7 +141,7 @@ class GraphTransitionModel(nn.Module):
         msg = self.sum_all_messages(n, h, action)
         u = self.update(h, msg).squeeze(dim=-1)
         if self.residual:
-            return obs + u
+            u[...,0] += obs
         return u
 
     def prep_input(self, obs):

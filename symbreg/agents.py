@@ -484,7 +484,7 @@ class PetsSymbolicAgent:
         messages = self.trans_graph.messenger(msg_in)
         ui, u = self.trans_graph.vec_for_update(messages, h)
         if self.trans_graph.residual:
-            u = obs + u
+            u[...,0] += obs
         # flatten = lambda a: a.reshape(a.shape[0], -1, a.shape[-1]).cpu().numpy()
         flatten = lambda a: a.reshape(self.ensemble_size, a.shape[1],-1,a.shape[-1]).cpu().numpy()
         msg_in = self.tile_ensemble_if_necessary(msg_in, messages)

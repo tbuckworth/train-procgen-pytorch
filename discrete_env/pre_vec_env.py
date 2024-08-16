@@ -196,10 +196,10 @@ def create_pre_vec(args, hyperparameters, param_range, env_cons, is_valid):
     n_envs = hyperparameters.get('n_envs', 32)
 
     env_args = assign_env_vars(hyperparameters, is_valid, param_range)
+    env_args = filter_out_non_relevant_params(env_args, env_cons)
     env_args["n_envs"] = n_envs
     env_args["render_mode"] = "human" if args.render else None
     env_args["seed"] = args.seed
-    env_args = filter_out_non_relevant_params(env_args, env_cons)
     return env_cons(**env_args)
 
 def filter_out_non_relevant_params(env_args, env_cons):
