@@ -80,6 +80,8 @@ class MLPModel(nn.Module):
         for _ in range(depth - 2):
             mid_layers.append(linear_cons(self.mid_weight, self.mid_weight))
             mid_layers.append(nn.ReLU())
+            mid_layers.append(nn.LayerNorm(self.mid_weight))
+
 
         self.model = nn.Sequential(
             linear_cons(self.input_size, self.mid_weight, first=is_first, ndim=ndim),
@@ -142,6 +144,8 @@ class GraphTransitionModel(nn.Module):
         u = self.update(h, msg).squeeze(dim=-1)
         if self.residual:
             u[...,0] += obs
+        if torch.isnan(u).any():
+            raise RuntimeError
         return u
 
     def prep_input(self, obs):
@@ -255,15 +259,20 @@ class GraphTransitionPets(Ensemble):
         self._maybe_toggle_layers_use_only_elite(only_elite)
         if self.deterministic:
             return mean_and_logvar, None
-        else:
-            mean = mean_and_logvar[..., 0]
-            logvar = mean_and_logvar[..., 1]
-            try:
-                logvar = self.max_logvar - F.softplus(self.max_logvar - logvar)
-            except RuntimeError as e:
-                raise e
-            logvar = self.min_logvar + F.softplus(logvar - self.min_logvar)
-            return mean, logvar
+        mean = mean_and_logvar[..., 0]
+        logvar = mean_and_logvar[..., 1]
+        logvar = self.max_logvar - F.softplus(self.max_logvar - logvar)
+        logvar = self.min_logvar + F.softplus(logvar - self.min_logvar)
+
+        variance = logvar.exp()
+        std = torch.sqrt(variance)
+        try:
+            torch.normal(mean, std)
+        except RuntimeError as e:
+            raise e
+
+        return mean, logvar
+
 
     def _forward_from_indices(
             self, x: torch.Tensor, model_shuffle_indices: torch.Tensor

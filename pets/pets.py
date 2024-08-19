@@ -195,6 +195,7 @@ def run_pets(args):
             next_obs, reward, terminated, truncated, _ = common_util.step_env_and_add_to_buffer(
                 env, obs, agent, {}, replay_buffer)
 
+
             obs = next_obs
             total_reward += reward
             steps_trial += 1
