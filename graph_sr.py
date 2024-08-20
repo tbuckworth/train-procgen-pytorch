@@ -7,6 +7,8 @@ import time
 import numpy as np
 import pandas as pd
 import sympy
+import torch
+
 # from torch import cuda
 
 import wandb
@@ -400,6 +402,13 @@ def fine_tune(policy, logdir, symbdir, hp_override, cont=False):
                      env_valid=env_valid,
                      storage_valid=storage_valid,
                      **hyperparameters)
+
+    if cont:
+        model_file = get_pysr_dir(symbdir, "fine_tune")
+        checkpoint = torch.load(model_file, map_location=policy.device)
+        agent.policy.load_state_dict(checkpoint["model_state_dict"])
+        agent.v_optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+
 
     agent.train(args.num_timesteps)
     wandb.finish()

@@ -539,21 +539,14 @@ def fine_tune_double_graph_model():
     symbdir = "logs/train/cartpole/2024-07-11__04-48-25__seed_6033/symbreg/2024-07-22__04-36-52"
     logdir, ns_agent = load_double_graph_agent(symbdir)
 
-    ftdir = get_pysr_dir(symbdir, "fine_tune")
-
-    checkpoint = torch.load(args.model_file, map_location=device)
-    agent.policy.load_state_dict(checkpoint["model_state_dict"])
-    agent.v_optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-
-
 
     hp_override = get_config(symbdir)
     hp_override["num_timesteps"] = int(1e7)
-    # TODO: add newdir to this
+    hp_override["wandb_tags"] += ["continued"]
     init_wandb(hp_override)
 
     del hp_override["symbdir"]
-    fine_tune(ns_agent.policy, logdir, symbdir, hp_override)
+    fine_tune(ns_agent.policy, logdir, symbdir, hp_override, cont=True)
 
 
 def run_saved_double_graph_model():
