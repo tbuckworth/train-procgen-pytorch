@@ -386,7 +386,7 @@ def load_learning_objects(logdir, ftdir, device):
     return env, env_valid, logger, storage, storage_valid, hyperparameters, args, agent_cons
 
 
-def fine_tune(policy, logdir, symbdir, hp_override):
+def fine_tune(policy, logdir, symbdir, hp_override, cont=False):
     ftdir = os.path.join(symbdir, "fine_tune")
     if not os.path.exists(ftdir):
         os.mkdir(ftdir)
@@ -649,6 +649,24 @@ if __name__ == "__main__":
         raise Exception("No oracle provided. Please provide logdir argument")
         print(f"No oracle provided.\nUsing Logdir: {args.logdir}")
     run_graph_neurosymbolic_search(args)
+
+def load_double_graph_agent(symbdir):
+    # symbdir = "logs/train/cartpole/2024-07-11__04-48-25__seed_6033/symbreg/2024-07-22__04-36-52"
+    logdir = get_logdir_from_symbdir(symbdir)
+    policy, _, symbolic_agent_constructor, _ = load_nn_policy(logdir)
+
+    msgdir = get_pysr_dir(symbdir, "msg")
+    updir = get_pysr_dir(symbdir, "upd")
+    vmdir = get_pysr_dir(symbdir, "vm")
+    vudir = get_pysr_dir(symbdir, "vu")
+
+    msg_torch = load_pysr_to_torch(msgdir)
+    up_torch = load_pysr_to_torch(updir)
+    vm_torch = load_pysr_to_torch(vmdir)
+    vu_torch = load_pysr_to_torch(vudir)
+
+    ns_agent = symbolic_agent_constructor(policy, msg_torch, up_torch, vm_torch, vu_torch)
+    return logdir, ns_agent
 
 
 def load_sr_graph_agent(symbdir):

@@ -12,13 +12,16 @@ from cartpole.create_cartpole import create_cartpole_env_pre_vec
 from common.env.env_constructor import get_env_constructor
 from common.policy import PureTransitionPolicy
 from double_graph_sr import run_double_graph_neurosymbolic_search
-from graph_sr import run_graph_neurosymbolic_search, get_pysr_dir, load_pysr_to_torch
+from graph_sr import run_graph_neurosymbolic_search, get_pysr_dir, load_pysr_to_torch, load_double_graph_agent, \
+    fine_tune
+from hyperparameter_optimization import init_wandb
 
 if os.name != "nt":
     from pysr import PySRRegressor
 
 from helper_local import add_symbreg_args, get_config, DictToArgs, sigmoid, entropy_from_binary_prob, \
-    get_actions_from_all, map_actions_to_values, concat_np_list, match, get_logdir_from_symbdir
+    get_actions_from_all, map_actions_to_values, concat_np_list, match, get_logdir_from_symbdir, \
+    get_latest_file_matching
 from symbolic_regression import run_neurosymbolic_search, load_nn_policy, generate_data  # , test_agent_mean_reward
 from symbreg.agents import NeuralAgent, DeterministicNeuralAgent, PureGraphSymbolicAgent
 
@@ -531,6 +534,27 @@ def wrap_latex_in_table(caption, label, formula, latex):
     tabulars = '\n'.join(latex)
     return f"\\begin{{table}}\n\\caption{{{caption}\\\\\\\\\n\\textbf{{Symbolic Formula: {formula}}}}}\n\\label{{{label}}}\n\\centering\n{tabulars}\n\\end{{table}}"
 
+def fine_tune_double_graph_model():
+    # high val_reward, needs more training:
+    symbdir = "logs/train/cartpole/2024-07-11__04-48-25__seed_6033/symbreg/2024-07-22__04-36-52"
+    logdir, ns_agent = load_double_graph_agent(symbdir)
+
+    ftdir = get_pysr_dir(symbdir, "fine_tune")
+
+    checkpoint = torch.load(args.model_file, map_location=device)
+    agent.policy.load_state_dict(checkpoint["model_state_dict"])
+    agent.v_optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+
+
+
+    hp_override = get_config(symbdir)
+    hp_override["num_timesteps"] = int(1e7)
+    # TODO: add newdir to this
+    init_wandb(hp_override)
+
+    del hp_override["symbdir"]
+    fine_tune(ns_agent.policy, logdir, symbdir, hp_override)
+
 
 def run_saved_double_graph_model():
     # best mean reward:
@@ -723,7 +747,7 @@ def run_symb_reg_local():
 
 
 if __name__ == "__main__":
-    run_saved_double_graph_model()
+    fine_tune_double_graph_model()
     exit(0)
     # run_tests()
     # format_results()
