@@ -461,6 +461,12 @@ def last_folder(dir, n=1):
     sl_files = dict(sorted(sl_files.items(), key=lambda item: item[1]))
     return list(sl_files.keys())[-n]
 
+def get_model_with_largest_checkpoint(folder):
+    files = [os.path.join(folder, x) for x in os.listdir(folder)]
+    search = lambda x: re.search(r"model_(\d*).pth",x)
+    last_checkpoint = max([int(search(x).group(1)) for x in files if search(x)])
+    return [x for x in files if re.search(f"model_{last_checkpoint}.pth", x)][0]
+
 
 def get_latest_file_matching(pattern, n, folder=""):
     if folder == "":
