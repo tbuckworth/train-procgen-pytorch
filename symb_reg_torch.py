@@ -12,7 +12,9 @@ from sklearn.linear_model import Ridge, LinearRegression
 from sklearn.neighbors import KernelDensity
 from torch import nn
 
+from double_graph_sr import generate_data
 from helper_local import softmax
+from symbolic_regression import load_nn_policy
 
 
 def _reduce(fn):
@@ -63,6 +65,7 @@ input_types = {
     "atanh": ["float", "int", "bool"],
     "square": ["float", "int", "bool"],
     "cube": ["float", "int", "bool"],
+    "relu": ["float", "int", "bool"],
 }
 
 output_types = {
@@ -107,6 +110,7 @@ output_types = {
     # "pow": "input",
     "square": "input",
     "cube": "input",
+    "relu": "input",
 }
 
 binary_functions = {
@@ -211,7 +215,7 @@ class Node(ABC):
             self.corr = torch.corrcoef(torch.cat((y_hat, y))).abs().item()
             if self.output_type != "bool":
                 e = y_hat - y
-                self.n_outliers = (np.abs(e) - 2 * e.std() > 0).sum().item()
+                self.n_outliers = (torch.abs(e) - 2 * e.std() > 0).sum().item()
             self.loss = loss_fn(y, y_hat).item()
         self.min_loss = np.min([self.loss, self.min_loss])
         if np.isnan(self.loss) or np.isinf(self.loss):
@@ -281,7 +285,7 @@ class BaseNode(Node):
 def unary_node_cons(func, date, x1):
     f = unary_functions.get(func)
     if type(x1) is ScalarNode:
-        val = f(x1.value).unique().item()
+        val = f(x1.value.unique()).item()
         return ScalarNode(like=x1.value, name=f"{val:.2f}", value=val)
     return UnaryNode(func, date, x1)
 
@@ -333,6 +337,7 @@ def get_output_type(xs):
 
 
 def get_kde_minima_1d(a):
+    a = a.cpu()
     # y_hat = np.random.random(y.shape)
     # y_hat = -y
     # y_hat[::2] = y[::2]
@@ -484,6 +489,7 @@ class FunctionTree:
                  max_complexity=20,
                  validation_ratio=0.1,
                  use_sindy=True):
+        y = y.squeeze()
         self.use_sindy = use_sindy
         self.max_complexity = max_complexity
         self.binary_funcs = ["*", "/", "max", "min", "mod", "atan2"] if binary_funcs is None else binary_funcs
@@ -491,7 +497,7 @@ class FunctionTree:
         self.stls_vars = []
 
         order = y.argsort()
-        n = np.ceil(order.max() * validation_ratio / 2)
+        n = torch.ceil(order.max() * validation_ratio / 2)
         flt = torch.bitwise_or(order <= n, order >= order.max() - n)
 
         self.train_x = x[~flt]
@@ -781,7 +787,7 @@ class FunctionTree:
 
     def sindySTLS(self, threshold=0.1, thresh_inc=0.05, max_thresh=100, n_param_target=5):
         opt = STLSQ(threshold)
-        opt.fit(self.get_library(), self.train_y)
+        opt.fit(self.get_library(), self.train_y.cpu())
         idx = opt.ind_.squeeze()
         coef = opt.coef_.squeeze()[idx]
         return coef, idx, None, None
@@ -799,7 +805,7 @@ class FunctionTree:
             n_cmp = -1
             threshold += thresh_inc
             while n_cmp != dtmp.shape[-1]:
-                clf.fit(dtmp, self.train_y)
+                clf.fit(dtmp, self.train_y.cpu())
                 coef = clf.coef_
                 y_hat = clf.predict(dtmp)
                 loss = self.loss_fn(torch.Tensor(y_hat).to(device=self.train_y.device), self.train_y)
@@ -829,7 +835,7 @@ class FunctionTree:
         # Lots of scalars would ruin the ridge regression
         self.lib_vars = [v for i, v in enumerate(self.all_vars) if i < self.n_base or type(v) is not ScalarNode]
         dictionary = [v.value for v in self.lib_vars]
-        d = torch.cat(dictionary, dim=1)
+        d = torch.cat(dictionary, dim=1).cpu()
         return d
 
     def compute_stls(self, keep_overfit=False):
@@ -919,10 +925,46 @@ def linearly_independent_columns(matrix, tol=1e-10):
 
 def non_duplicate_columns(data):
     if type(data) is torch.Tensor:
-        data = data.numpy()
+        data = data.cpu().numpy()
     ind = np.lexsort(data)
     diff = np.any(data.T[ind[1:]] != data.T[ind[:-1]], axis=1)
     edges = np.where(diff)[0] + 1
     result = np.split(ind, edges)
     keep_ind = np.sort([group[0] for group in result])
     return keep_ind
+
+def imitate_graph_transition(logdir):
+    n_envs = 2
+    data_size = 1000
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    # load policy
+    policy, env, symbolic_agent_constructor, test_env = load_nn_policy(logdir, n_envs)
+    nn_agent = symbolic_agent_constructor(policy)
+    # generate data
+    m_in, m_out, u_in, u_out, vm_in, vm_out, vu_in, vu_out = generate_data(nn_agent, env, int(data_size))
+
+    x = torch.FloatTensor(m_in).to(device=device)
+    y = torch.FloatTensor(m_out).to(device=device)
+
+    #
+    tree = FunctionTree(x, y, torch.nn.MSELoss(),
+                        # unary_funcs=u_funcs,
+                        # binary_funcs=b_funcs,
+                        max_complexity=20,
+                        validation_ratio=0.2,
+                        use_sindy=False)
+
+    tree.train(pop_size=200, epochs=5, find_split_points=True)
+
+    model = tree.get_best()
+
+    y_hat = model.forward(x)
+
+    plt.scatter(y, y)
+    plt.scatter(y, y_hat)
+    plt.show()
+
+
+if __name__ == "__main__":
+    logdir = "logs/train/cartpole/2024-07-21__09-27-36__seed_6033"
+    imitate_graph_transition(logdir)
