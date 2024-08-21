@@ -113,13 +113,13 @@ def overfit(use_wandb=True):
             msgdir, _ = create_symb_dir_if_exists(symbdir, "msg")
             updir, _ = create_symb_dir_if_exists(symbdir, "upd")
 
-            sr_args.data_size = len(m_in)
-            print("\nTransition Messenger:")
-            msg_model, _ = find_model(m_in, m_out, msgdir, save_file, weights, sr_args)
+            idx = np.random.permutation(len(m_in))[:sr_args.data_size]
 
-            sr_args.data_size = len(u_in)
+            print("\nTransition Messenger:")
+            msg_model, _ = find_model(m_in[idx], m_out[idx], msgdir, save_file, weights, sr_args)
+
             print("\nTransition Updater:")
-            up_model, _ = find_model(u_in, u_out, updir, save_file, weights, sr_args)
+            up_model, _ = find_model(u_in[idx], u_out[idx], updir, save_file, weights, sr_args)
 
             msg_torch = NBatchPySRTorch(msg_model)
             up_torch = NBatchPySRTorch(up_model)

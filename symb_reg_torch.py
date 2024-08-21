@@ -904,6 +904,7 @@ def run_tree(x, y, pop_size, epochs):
 
 
 def linearly_independent_columns(matrix, tol=1e-10):
+    matrix = matrix.cpu()
     # Convert input to numpy array if it's not already
     A = np.array(matrix, dtype=float)
 
