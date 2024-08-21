@@ -53,6 +53,7 @@ def overfit(use_wandb=True):
         depth=4,
         mid_weight=256,
         latent_size=1,
+        weights=None,
     )
     a = DictToArgs(cfg)
     env_cons = get_env_constructor(a.env_name)
@@ -95,12 +96,14 @@ def overfit(use_wandb=True):
 
         if epoch % a.sr_every == 0:
             m_in, m_out, u_in, u_out = collect_messages(acts, model, obs)
-            weights = flatten_batches_to_numpy(torch.exp(-((nobs_guess - nobs) ** 2)))
-            weights = None
+            weights = get_weights(a, nobs, nobs_guess)
+
             msgdir, _ = create_symb_dir_if_exists(symbdir, "msg")
             updir, _ = create_symb_dir_if_exists(symbdir, "upd")
+
             print("\nTransition Messenger:")
             msg_model, _ = find_model(m_in, m_out, msgdir, save_file, weights, sr_args)
+
             print("\nTransition Updater:")
             up_model, _ = find_model(u_in, u_out, updir, save_file, weights, sr_args)
 
@@ -142,6 +145,14 @@ def overfit(use_wandb=True):
                        })
 
 
+def get_weights(a, nobs, nobs_guess):
+    if a.weights is None:
+        weights = None
+    elif a.weights == "neg_exp":
+        weights = flatten_batches_to_numpy(torch.exp(-((nobs_guess - nobs) ** 2)))
+    else:
+        raise NotImplementedError(f"weights must be None or 'neg_exp', not {a.weights}")
+    return weights
 
 
 def collect_messages(acts, model, obs):
