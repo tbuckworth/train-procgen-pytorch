@@ -545,7 +545,7 @@ def fine_tune_double_graph_model():
     hp_override["wandb_tags"] += ["continued"]
     init_wandb(hp_override)
 
-    fine_tune(ns_agent.policy, logdir, symbdir, hp_override, cont=False)
+    fine_tune(ns_agent.policy, logdir, symbdir, hp_override, cont=True)
 
 
 def run_saved_double_graph_model():

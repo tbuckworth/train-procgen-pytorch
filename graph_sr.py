@@ -1,5 +1,6 @@
 import argparse
 import copy
+import inspect
 import os
 import re
 import time
@@ -7,7 +8,7 @@ import time
 import numpy as np
 import pandas as pd
 import sympy
-import torch
+import pickle as pkl
 
 # from torch import cuda
 
@@ -26,8 +27,9 @@ from windows_dll_setup import windows_dll_setup_for_pysr
 
 windows_dll_setup_for_pysr()
 from pysr import PySRRegressor
+from pysr.utils import _csv_filename_to_pkl_filename
 # Important! keep torch after pysr
-# import torch
+import torch
 from common.env.procgen_wrappers import create_env, create_procgen_env
 from helper_local import get_config, get_path, balanced_reward, load_storage_and_policy, \
     load_hparams_for_model, floats_to_dp, dict_to_html_table, wandb_login, add_symbreg_args, DictToArgs, \
@@ -707,8 +709,94 @@ def get_pysr_dir(symbdir, sub_folder):
 def load_pysr_to_torch(msgdir):
     try:
         pickle_filename = os.path.join(msgdir, "symb_reg.pkl")
-        msg_model = PySRRegressor.from_file(pickle_filename, extra_torch_mappings=get_extra_torch_mappings())
+        # msg_model = PySRRegressor.from_file(pickle_filename, extra_torch_mappings=get_extra_torch_mappings())
+        msg_model = pysr_from_file(pickle_filename, extra_torch_mappings=get_extra_torch_mappings())
         msg_torch = NBatchPySRTorch(msg_model.pytorch())
         return msg_torch
     except Exception:
         return None
+
+
+def pysr_from_file(
+        equation_file,
+        *,
+        binary_operators=None,
+        unary_operators=None,
+        n_features_in=None,
+        feature_names_in=None,
+        selection_mask=None,
+        nout=1,
+        **pysr_kwargs,
+    ):
+        """
+        Create a model from a saved model checkpoint or equation file.
+
+        Parameters
+        ----------
+        equation_file : str
+            Path to a pickle file containing a saved model, or a csv file
+            containing equations.
+        binary_operators : list[str]
+            The same binary operators used when creating the model.
+            Not needed if loading from a pickle file.
+        unary_operators : list[str]
+            The same unary operators used when creating the model.
+            Not needed if loading from a pickle file.
+        n_features_in : int
+            Number of features passed to the model.
+            Not needed if loading from a pickle file.
+        feature_names_in : list[str]
+            Names of the features passed to the model.
+            Not needed if loading from a pickle file.
+        selection_mask : list[bool]
+            If using select_k_features, you must pass `model.selection_mask_` here.
+            Not needed if loading from a pickle file.
+        nout : int
+            Number of outputs of the model.
+            Not needed if loading from a pickle file.
+            Default is `1`.
+        **pysr_kwargs : dict
+            Any other keyword arguments to initialize the PySRRegressor object.
+            These will overwrite those stored in the pickle file.
+            Not needed if loading from a pickle file.
+
+        Returns
+        -------
+        model : PySRRegressor
+            The model with fitted equations.
+        """
+
+        pkl_filename = _csv_filename_to_pkl_filename(equation_file)
+
+        # Try to load model from <equation_file>.pkl
+        print(f"Checking if {pkl_filename} exists...")
+        if os.path.exists(pkl_filename):
+            print(f"Loading model from {pkl_filename}")
+            assert binary_operators is None
+            assert unary_operators is None
+            assert n_features_in is None
+            with open(pkl_filename, "rb") as f:
+                model = pkl.load(f)
+            # Change equation_file_ to be in the same dir as the pickle file
+            base_dir = os.path.dirname(pkl_filename)
+            base_equation_file = os.path.basename(model.equation_file_)
+            model.equation_file_ = os.path.join(base_dir, base_equation_file)
+
+            # Get constructor parameters and default values
+            params = inspect.signature(model.__init__).parameters
+
+            # Filter for missing parameters excluding kwargs
+            missing_params = {k: v for k, v in params.items() if
+                              k not in model.__dict__.keys() and v.name != "self" and v.kind != v.VAR_KEYWORD}
+
+            # Assign missing attributes
+            for k, v in missing_params.items():
+                setattr(model, k, v)
+
+            # Update any parameters if necessary, such as
+            # extra_sympy_mappings:
+            model.set_params(**pysr_kwargs)
+            if "equations_" not in model.__dict__ or model.equations_ is None:
+                model.refresh()
+
+            return model

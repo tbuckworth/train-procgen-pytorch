@@ -457,5 +457,17 @@ def pipe_input_boolean(grid, char_list):
     return np.array([grid == c for c in char_list] + [np.bitwise_and(grid >= 'A', grid <= 'Z')]).sum(0) > 0
 
 
+def fix_sr_from_file(model, inspect, pysr_kwargs):
+    params = inspect.signature(model.__init__).parameters
+
+    missing_params = {k: v for k, v in params.items() if
+                      k not in model.__dict__.keys() and v.name != "self" and v.kind != v.VAR_KEYWORD}
+
+    for k, v in missing_params.items():
+        setattr(model, k, v)
+
+    model.set_params(**pysr_kwargs)
+
+
 if __name__ == "__main__":
     test_pipe_checker()
