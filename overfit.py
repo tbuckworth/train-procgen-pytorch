@@ -114,10 +114,10 @@ def overfit(use_wandb=True):
             updir, _ = create_symb_dir_if_exists(symbdir, "upd")
 
             idx = np.random.permutation(len(m_in))[:sr_args.data_size]
-
             print("\nTransition Messenger:")
             msg_model, _ = find_model(m_in[idx], m_out[idx], msgdir, save_file, weights, sr_args)
 
+            idx = np.random.permutation(len(u_in))[:sr_args.data_size]
             print("\nTransition Updater:")
             up_model, _ = find_model(u_in[idx], u_out[idx], updir, save_file, weights, sr_args)
 
