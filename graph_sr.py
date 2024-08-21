@@ -402,7 +402,7 @@ def fine_tune(policy, logdir, symbdir, hp_override, cont=False):
     hyperparameters.update(hp_override)
     del hyperparameters["device"]
     agent = AGENT(env, policy, logger, storage, policy.device,
-                     args.num_checkpoints,
+                     hyperparameters.get("num_checkpoints", args.num_checkpoints),
                      env_valid=env_valid,
                      storage_valid=storage_valid,
                      **hyperparameters)
@@ -663,7 +663,7 @@ if __name__ == "__main__":
         print(f"No oracle provided.\nUsing Logdir: {args.logdir}")
     run_graph_neurosymbolic_search(args)
 
-def load_double_graph_agent(symbdir):
+def load_double_graph_agent(symbdir, load_weights=False):
     # symbdir = "logs/train/cartpole/2024-07-11__04-48-25__seed_6033/symbreg/2024-07-22__04-36-52"
     logdir = get_logdir_from_symbdir(symbdir)
     policy, _, symbolic_agent_constructor, _ = load_nn_policy(logdir)
@@ -679,6 +679,14 @@ def load_double_graph_agent(symbdir):
     vu_torch = load_pysr_to_torch(vudir)
 
     ns_agent = symbolic_agent_constructor(policy, msg_torch, up_torch, vm_torch, vu_torch)
+
+    if load_weights:
+        model_dir = get_pysr_dir(symbdir, "fine_tune")
+        model_file = get_model_with_largest_checkpoint(model_dir)
+        checkpoint = torch.load(model_file, map_location=policy.device)
+        ns_agent.policy.load_state_dict(checkpoint["model_state_dict"])
+        ns_agent.v_optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+
     return logdir, ns_agent
 
 

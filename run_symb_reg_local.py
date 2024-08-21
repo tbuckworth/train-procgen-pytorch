@@ -537,35 +537,42 @@ def wrap_latex_in_table(caption, label, formula, latex):
 def fine_tune_double_graph_model():
     # high val_reward, needs more training:
     symbdir = "logs/train/cartpole/2024-07-11__04-48-25__seed_6033/symbreg/2024-07-22__04-36-52"
+
+    # high mean reward, needs re-training
+    symbdir = "logs/train/cartpole/2024-07-11__04-48-25__seed_6033/symbreg/2024-07-21__21-03-58"
+
     logdir, ns_agent = load_double_graph_agent(symbdir)
 
 
     hp_override = get_config(symbdir)
-    hp_override["num_timesteps"] = int(1e7)
-    hp_override["wandb_tags"] += ["continued"]
+    # hp_override["num_timesteps"] = int(1e7)
+    hp_override["num_checkpoints"] = 24
+    hp_override["wandb_tags"] += ["repeated"]
     init_wandb(hp_override)
 
-    fine_tune(ns_agent.policy, logdir, symbdir, hp_override, cont=True)
+    fine_tune(ns_agent.policy, logdir, symbdir, hp_override, cont=False)
 
 
 def run_saved_double_graph_model():
     # best mean reward:
     symbdir = "logs/train/cartpole/2024-07-11__04-48-25__seed_6033/symbreg/2024-07-21__21-03-58"
-    # high val reward:
-    symbdir = "logs/train/cartpole/2024-07-11__04-48-25__seed_6033/symbreg/2024-07-24__22-02-10"
-    # Lowest transition loss:
-    symbdir = "logs/train/cartpole/2024-07-11__04-48-25__seed_6033/symbreg/2024-07-24__23-06-18"
+    # # high val reward:
+    # symbdir = "logs/train/cartpole/2024-07-11__04-48-25__seed_6033/symbreg/2024-07-24__22-02-10"
+    # # Lowest transition loss:
+    # symbdir = "logs/train/cartpole/2024-07-11__04-48-25__seed_6033/symbreg/2024-07-24__23-06-18"
 
-    logdir = get_logdir_from_symbdir(symbdir)
-    policy, env, symbolic_agent_constructor, test_env = load_nn_policy(logdir, n_envs=32)
+    logdir, ns_agent = load_double_graph_agent(symbdir, load_weights=True)
 
-    msgdir = get_pysr_dir(symbdir, "msg")
-    updir = get_pysr_dir(symbdir, "upd")
+    old_policy, env, symbolic_agent_constructor, test_env = load_nn_policy(logdir, n_envs=32)
 
-    msg_torch = load_pysr_to_torch(msgdir)
-    up_torch = load_pysr_to_torch(updir)
 
+
+
+    # Pure Transition test:
+    msg_torch = ns_agent.policy.transition_model.msg_model
+    up_torch = ns_agent.policy.transition_model.up_model
     n_rollouts = 10
+    policy = ns_agent.policy
 
     new_policy = PureTransitionPolicy(policy.transition_model,
                                       policy.action_size,
@@ -582,11 +589,11 @@ def run_saved_double_graph_model():
     test_score = trial_agent_mean_reward(ns_agent, test_env, "Symb Test")
 
     nn_agent = PureGraphSymbolicAgent(new_policy)
-    nn_agent = symbolic_agent_constructor(policy)
+    nn_agent = symbolic_agent_constructor(old_policy)
     train_score = trial_agent_mean_reward(nn_agent, env, "Neural Train")
     test_score = trial_agent_mean_reward(nn_agent, test_env, "Neural Test")
 
-    nns_agent = symbolic_agent_constructor(policy, msg_torch, up_torch)
+    nns_agent = symbolic_agent_constructor(old_policy, msg_torch, up_torch)
     train_score = trial_agent_mean_reward(nns_agent, env, "Neuro-Symbolic Train")
     test_score = trial_agent_mean_reward(nns_agent, test_env, "Neuro-Symbolic Test")
 
@@ -739,6 +746,7 @@ def run_symb_reg_local():
 
 
 if __name__ == "__main__":
+    # run_saved_double_graph_model()
     fine_tune_double_graph_model()
     exit(0)
     # run_tests()
