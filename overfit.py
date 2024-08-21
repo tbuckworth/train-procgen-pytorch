@@ -72,10 +72,16 @@ def overfit(use_wandb=True):
 
     model.to(device)
 
+    sr_params = {
+        "binary_operators": ["+", "-", "greater", "*", "/"],
+        "unary_operators": ["sin", "relu", "log", "exp", "sign", "sqrt", "square"],
+    }
+
     parser = argparse.ArgumentParser()
     parser = add_symbreg_args(parser)
     args = parser.parse_args()
     parser_dict = vars(args)
+    parser_dict.update(sr_params)
     sr_args = DictToArgs(parser_dict)
 
     logdir = create_logdir_train("", a.env_name, a.exp_name, a.seed)
