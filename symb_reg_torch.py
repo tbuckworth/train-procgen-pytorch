@@ -250,7 +250,7 @@ class ScalarNode(Node):
         super().__init__()
 
     def forward(self, x):
-        return torch.full((x.shape[0], *self.x.shape[1:]), self.scalar).squeeze()
+        return torch.full((x.shape[0], *self.x.shape[1:]), self.scalar).squeeze().to(device=x.device)
 
     def evaluate(self):
         return self.x
@@ -372,6 +372,7 @@ class BinaryNode(Node):
 
     def forward(self, x):
         return self.f(self.x1.forward(x), self.x2.forward(x))
+
 
     def evaluate(self, x1=None, x2=None):
         if x1 is None:
@@ -605,6 +606,8 @@ class FunctionTree:
         n_funcs = max_funcs
         conds = [v for v in self.all_vars if v.output_type == "bool" and v.complexity < max_complexity]
         new_vars = []
+        if conds == []:
+            return new_vars
         selected_conds = self.sample_by_inverse_complexity(n_funcs, conds)
         for cond in selected_conds:
             poss_x1 = [v for v in self.all_vars if v.complexity < max_complexity]
@@ -621,6 +624,8 @@ class FunctionTree:
         tmp_vars = self.stls_vars + self.all_vars
         # works from existing bool_vars, but new bool_vars could be searched for or added
         bool_vars = [v for v in self.all_vars if v.output_type == "bool"]
+        if len(bool_vars) == 0:
+            return []
         all_bools = torch.cat([v.value for v in bool_vars], axis=-1)
         losses = self.piecewise_loss(tmp_vars)
         threshold = 0
@@ -897,6 +902,7 @@ class FunctionTree:
             v.val_loss = l
 
 
+
 def run_tree(x, y, pop_size, epochs):
     tree = FunctionTree(x, y, torch.nn.MSELoss())
     tree.train(pop_size=pop_size, epochs=epochs)
@@ -959,10 +965,10 @@ def imitate_graph_transition(logdir):
 
     model = tree.get_best()
 
-    y_hat = model.forward(x)
-
-    plt.scatter(y, y)
-    plt.scatter(y, y_hat)
+    y_hat = model.forward(x).cpu()
+    yplot = y.cpu()
+    plt.scatter(yplot, yplot)
+    plt.scatter(yplot, y_hat)
     plt.show()
 
 
