@@ -1,3 +1,5 @@
+import argparse
+
 import numpy as np
 import torch
 import wandb
@@ -54,6 +56,7 @@ def overfit(use_wandb=True):
         mid_weight=256,
         latent_size=1,
         weights=None,
+        wandb_tags=[],
     )
     a = DictToArgs(cfg)
     env_cons = get_env_constructor(a.env_name)
@@ -68,10 +71,13 @@ def overfit(use_wandb=True):
     optimizer = torch.optim.Adam(model.parameters(), lr=a.learning_rate)
 
     model.to(device)
-    hparams = {}
-    parser_dict = add_symbreg_args_dict()
-    parser_dict.update(hparams)
+
+    parser = argparse.ArgumentParser()
+    parser = add_symbreg_args(parser)
+    args = parser.parse_args()
+    parser_dict = vars(args)
     sr_args = DictToArgs(parser_dict)
+
     logdir = create_logdir_train("", a.env_name, a.exp_name, a.seed)
     symbdir, save_file = create_symb_dir_if_exists(logdir)
 
@@ -101,9 +107,11 @@ def overfit(use_wandb=True):
             msgdir, _ = create_symb_dir_if_exists(symbdir, "msg")
             updir, _ = create_symb_dir_if_exists(symbdir, "upd")
 
+            sr_args.data_size = len(m_in)
             print("\nTransition Messenger:")
             msg_model, _ = find_model(m_in, m_out, msgdir, save_file, weights, sr_args)
 
+            sr_args.data_size = len(u_in)
             print("\nTransition Updater:")
             up_model, _ = find_model(u_in, u_out, updir, save_file, weights, sr_args)
 
