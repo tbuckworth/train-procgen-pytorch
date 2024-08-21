@@ -121,8 +121,8 @@ def overfit(use_wandb=True):
             print("\nTransition Updater:")
             up_model, _ = find_model(u_in[idx], u_out[idx], updir, save_file, weights, sr_args)
 
-            msg_torch = NBatchPySRTorch(msg_model)
-            up_torch = NBatchPySRTorch(up_model)
+            msg_torch = NBatchPySRTorch(msg_model.pytorch())
+            up_torch = NBatchPySRTorch(up_model.pytorch())
 
             symb_model.messenger = msg_torch
             symb_model.updater = up_torch
@@ -137,11 +137,11 @@ def overfit(use_wandb=True):
         nobs_guess = symb_model(obs, acts)
         s_loss = MSELoss()(nobs_guess, nobs)
 
-        loss.backwards()
+        loss.backward()
         optimizer.step()
         optimizer.zero_grad()
 
-        s_loss.backwards()
+        s_loss.backward()
         s_optimizer.step()
         s_optimizer.zero_grad()
 
@@ -157,7 +157,7 @@ def overfit(use_wandb=True):
                        "Symb Loss": s_loss.item(),
                        "Symb Validation Loss": s_loss_v.item(),
                        })
-
+    wandb.finish()
 
 def get_weights(a, nobs, nobs_guess):
     if a.weights is None:
