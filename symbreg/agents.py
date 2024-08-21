@@ -314,6 +314,9 @@ class MostlyNeuralAgent:
                 act = y.argmax(axis=1)
         return x.cpu().numpy(), y, act, value.cpu().numpy()
 
+class DummyPolicy:
+    def __init__(self, transition_model):
+        self.transition_model = transition_model
 
 class PureGraphSymbolicAgent:
     def __init__(self, policy,
