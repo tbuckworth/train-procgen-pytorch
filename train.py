@@ -128,7 +128,7 @@ def train_ppo(args):
     ############
 
     print('INITIALIZING LOGGER...')
-    logdir = create_logdir_train(args, env_name, exp_name, seed)
+    logdir = create_logdir_train(args.model_file, env_name, exp_name, seed)
     # write hyperparameters to file
     np.save(os.path.join(logdir, "hyperparameters.npy"), hyperparameters)
     print(f'Logging to {logdir}')
@@ -220,7 +220,7 @@ def train_ppo(args):
     return logdir
 
 
-def create_logdir_train(args, env_name, exp_name, seed):
+def create_logdir_train(model_file, env_name, exp_name, seed):
     def listdir(path):
         return [os.path.join(path, d) for d in os.listdir(path)]
 
@@ -231,7 +231,7 @@ def create_logdir_train(args, env_name, exp_name, seed):
         return list(os.listdir(model_dir))[np.argmax(steps)]
 
     logdir = os.path.join('logs', 'train', env_name, exp_name)
-    if args.model_file == "auto":  # try to figure out which file to load
+    if model_file == "auto":  # try to figure out which file to load
         logdirs_with_model = [d for d in listdir(logdir) if any(['model' in filename for filename in os.listdir(d)])]
         if len(logdirs_with_model) > 1:
             raise ValueError("Received args.model_file = 'auto', but there are multiple experiments"
@@ -240,7 +240,7 @@ def create_logdir_train(args, env_name, exp_name, seed):
             raise ValueError("Received args.model_file = 'auto', but there are"
                              f" no saved models under experiment_name {exp_name}.")
         model_dir = logdirs_with_model[0]
-        args.model_file = os.path.join(model_dir, get_latest_model(model_dir))
+        model_file = os.path.join(model_dir, get_latest_model(model_dir))
         logdir = model_dir  # reuse logdir
     else:
         run_name = time.strftime("%Y-%m-%d__%H-%M-%S") + f'__seed_{seed}'

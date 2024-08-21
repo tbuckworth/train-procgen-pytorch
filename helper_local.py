@@ -929,6 +929,8 @@ def get_project(env_name, exp_name):
         project = "MountainCar Continuous Reward"
     else:
         project = env_name
+    if exp_name == "overfit":
+        project = "Overfit"
     return project
 
 

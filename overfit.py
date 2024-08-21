@@ -1,11 +1,16 @@
 import numpy as np
 import torch
+import wandb
 from torch.nn import MSELoss
 
 from common.env.env_constructor import get_env_constructor
-from common.model import GraphTransitionModel
-from double_graph_sr import find_model
+from common.model import GraphTransitionModel, NBatchPySRTorch
+from create_sh_files import add_symbreg_args_dict
+from double_graph_sr import find_model, create_symb_dir_if_exists
+from helper_local import add_symbreg_args, DictToArgs, n_params
+from hyperparameter_optimization import init_wandb
 from symbreg.agents import PureGraphSymbolicAgent, DummyPolicy, flatten_batches_to_numpy
+from train import create_logdir_train
 
 
 def collect_transition_samples(env, n, device):
@@ -13,19 +18,18 @@ def collect_transition_samples(env, n, device):
     x = np.expand_dims(obs, axis=1)
     a = None
     d = None
-    while np.prod(x.shape[:2])<n:
+    while np.prod(x.shape[:2]) < n:
         act = np.array([env.action_space.sample() for _ in range(env.n_envs)])
         obs, rew, done, info = env.step(act)
         a = append_or_create(a, act)
         d = append_or_create(d, done)
         x = append_or_create(x, obs)
 
-    obs = torch.FloatTensor(x[:,:-1]).to(device=device)
-    nobs = torch.FloatTensor(x[:,1:]).to(device=device)
-    acts = torch.FloatTensor(a[:,:-1]).to(device=device)
-    dones = torch.BoolTensor(d[:,:-1]).to(device=device)
+    obs = torch.FloatTensor(x[:, :-1]).to(device=device)
+    nobs = torch.FloatTensor(x[:, 1:]).to(device=device)
+    acts = torch.FloatTensor(a[:, :-1]).to(device=device)
+    dones = torch.BoolTensor(d[:, :-1]).to(device=device)
     return obs[~dones], nobs[~dones], acts[~dones]
-
 
 
 def append_or_create(a, act):
@@ -36,24 +40,50 @@ def append_or_create(a, act):
     return a
 
 
-def overfit():
-    epochs = 1000
-    env_cons = get_env_constructor("cartpole")
+def overfit(use_wandb=True):
+    cfg = dict(
+        epochs=1000,
+        env_name="cartpole",
+        exp_name="overfit",
+        seed=0,
+        n_envs=2,
+        data_size=100,
+        sr_every=100,
+        learning_rate=1e-5,
+        depth=4,
+        mid_weight=256,
+        latent_size=1,
+    )
+    a = DictToArgs(cfg)
+    env_cons = get_env_constructor(a.env_name)
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    n_envs = 2
-    env = env_cons(None, {"n_envs": n_envs})
-    env_v = env_cons(None, {"n_envs": n_envs}, is_valid=True)
+    env = env_cons(None, {"n_envs": a.n_envs})
+    env_v = env_cons(None, {"n_envs": a.n_envs}, is_valid=True)
     observation_shape = env.observation_space.shape
     in_channels = observation_shape[0]
-    model = GraphTransitionModel(in_channels, depth=4, mid_weight=256, latent_size=1, device=device)
+    model = GraphTransitionModel(in_channels, a.depth, a.mid_weight, a.latent_size, device)
+    symb_model = GraphTransitionModel(in_channels, a.depth, a.mid_weight, a.latent_size, device)
+
+    optimizer = torch.optim.Adam(model.parameters(), lr=a.learning_rate)
 
     model.to(device)
+    hparams = {}
+    parser_dict = add_symbreg_args_dict()
+    parser_dict.update(hparams)
+    sr_args = DictToArgs(parser_dict)
+    logdir = create_logdir_train("", a.env_name, a.exp_name, a.seed)
+    symbdir, save_file = create_symb_dir_if_exists(logdir)
+
+    init_wandb(cfg, prefix="GNN")
 
     # collect transition samples
-    obs, nobs, acts = collect_transition_samples(env, n=100, device=device)
-    obs_v, nobs_v, acts_v = collect_transition_samples(env_v, n=100, device=device)
 
-    for epoch in range(epochs):
+    obs, nobs, acts = collect_transition_samples(env, n=a.data_size, device=device)
+    obs_v, nobs_v, acts_v = collect_transition_samples(env_v, n=a.data_size, device=device)
+
+    loss_list, loss_v_list, s_loss_list, s_loss_v_list = [], [], [], []
+
+    for epoch in range(a.epochs):
         with torch.no_grad():
             nobs_guess_v = model(obs_v, acts_v)
             loss_v = MSELoss()(nobs_guess_v, nobs_v)
@@ -61,15 +91,57 @@ def overfit():
         nobs_guess = model(obs, acts)
         loss = MSELoss()(nobs_guess, nobs)
 
-        #do sr
-        if epoch % 100 == 0:
+        # do sr
+
+        if epoch % a.sr_every == 0:
             m_in, m_out, u_in, u_out = collect_messages(acts, model, obs)
-            weights = flatten_batches_to_numpy(torch.exp(-((nobs_guess-nobs)**2)))
+            weights = flatten_batches_to_numpy(torch.exp(-((nobs_guess - nobs) ** 2)))
             weights = None
+            msgdir, _ = create_symb_dir_if_exists(symbdir, "msg")
+            updir, _ = create_symb_dir_if_exists(symbdir, "upd")
             print("\nTransition Messenger:")
-            msg_model, _ = find_model(m_in, m_out, msgdir, save_file, weights, args)
+            msg_model, _ = find_model(m_in, m_out, msgdir, save_file, weights, sr_args)
             print("\nTransition Updater:")
-            up_model, _ = find_model(u_in, u_out, updir, save_file, weights, args)
+            up_model, _ = find_model(u_in, u_out, updir, save_file, weights, sr_args)
+
+            msg_torch = NBatchPySRTorch(msg_model)
+            up_torch = NBatchPySRTorch(up_model)
+
+            symb_model.messenger = msg_torch
+            symb_model.updater = up_torch
+            print(f"Neural Parameters: {n_params(model)}")
+            print(f"Symbol Parameters: {n_params(symb_model)}")
+            s_optimizer = torch.optim.Adam(symb_model.parameters(), lr=a.learning_rate)
+
+        with torch.no_grad():
+            nobs_guess_v = symb_model(obs_v, acts_v)
+            s_loss_v = MSELoss()(nobs_guess_v, nobs_v)
+
+        nobs_guess = symb_model(obs, acts)
+        s_loss = MSELoss()(nobs_guess, nobs)
+
+        loss.backwards()
+        optimizer.step()
+        optimizer.zero_grad()
+
+        s_loss.backwards()
+        s_optimizer.step()
+        s_optimizer.zero_grad()
+
+        loss_list += [loss.item()]
+        loss_v_list += [loss_v.item()]
+        s_loss_list += [s_loss.item()]
+        s_loss_v_list += [s_loss_v.item()]
+
+        if use_wandb:
+            wandb.log({"Epoch": epoch,
+                       "GNN Loss": loss.item(),
+                       "GNN Validation Loss": loss_v.item(),
+                       "Symb Loss": s_loss.item(),
+                       "Symb Validation Loss": s_loss_v.item(),
+                       })
+
+
 
 
 def collect_messages(acts, model, obs):

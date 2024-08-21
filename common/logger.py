@@ -135,6 +135,7 @@ class Logger(object):
         if self.use_wandb:
             wandb.log({k: v for k, v in zip(self.log.columns, log)})
 
+
     def _get_episode_statistics(self):
         episode_statistics = {}
         episode_statistics['Rewards/max_episodes'] = np.max(self.episode_reward_buffer, initial=0)

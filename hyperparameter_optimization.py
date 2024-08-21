@@ -274,13 +274,13 @@ def cartpole_full_graph_hyperparams():
         optimize_hyperparams(bounds, fixed, project, id_tag, run_next_hyperparameters)
 
 
-def init_wandb(cfg):
+def init_wandb(cfg, prefix="symbolic_graph"):
     name = np.random.randint(1e5)
     wandb_login()
     wb_resume = "allow"  # if args.model_file is None else "must"
     project = get_project(cfg["env_name"], cfg["exp_name"])
     wandb.init(project=project, config=cfg, sync_tensorboard=True,
-               tags=cfg["wandb_tags"], resume=wb_resume, name=f"symbolic_graph-{name}")
+               tags=cfg["wandb_tags"], resume=wb_resume, name=f"{prefix}-{name}")
 
 
 def fine_tune_sr(hp_override):
