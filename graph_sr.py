@@ -4,6 +4,7 @@ import inspect
 import os
 import re
 import time
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -398,21 +399,20 @@ def fine_tune(policy, logdir, symbdir, hp_override, cont=False):
         model_dir = get_pysr_dir(symbdir, "fine_tune")
 
     env, env_valid, logger, storage, storage_valid, hyperparameters, args, AGENT = load_learning_objects(logdir, ftdir,
-                                                                                                  policy.device)
+                                                                                                         policy.device)
     hyperparameters.update(hp_override)
     del hyperparameters["device"]
     agent = AGENT(env, policy, logger, storage, policy.device,
-                     hyperparameters.get("num_checkpoints", args.num_checkpoints),
-                     env_valid=env_valid,
-                     storage_valid=storage_valid,
-                     **hyperparameters)
+                  hyperparameters.get("num_checkpoints", args.num_checkpoints),
+                  env_valid=env_valid,
+                  storage_valid=storage_valid,
+                  **hyperparameters)
 
     if cont:
         model_file = get_model_with_largest_checkpoint(model_dir)
         checkpoint = torch.load(model_file, map_location=policy.device)
         agent.policy.load_state_dict(checkpoint["model_state_dict"])
         agent.v_optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-
 
     agent.train(args.num_timesteps)
     wandb.finish()
@@ -663,6 +663,7 @@ if __name__ == "__main__":
         print(f"No oracle provided.\nUsing Logdir: {args.logdir}")
     run_graph_neurosymbolic_search(args)
 
+
 def load_double_graph_agent(symbdir, load_weights=False):
     # symbdir = "logs/train/cartpole/2024-07-11__04-48-25__seed_6033/symbreg/2024-07-22__04-36-52"
     logdir = get_logdir_from_symbdir(symbdir)
@@ -735,76 +736,83 @@ def pysr_from_file(
         selection_mask=None,
         nout=1,
         **pysr_kwargs,
-    ):
-        """
-        Create a model from a saved model checkpoint or equation file.
+):
+    """
+    Create a model from a saved model checkpoint or equation file.
 
-        Parameters
-        ----------
-        equation_file : str
-            Path to a pickle file containing a saved model, or a csv file
-            containing equations.
-        binary_operators : list[str]
-            The same binary operators used when creating the model.
-            Not needed if loading from a pickle file.
-        unary_operators : list[str]
-            The same unary operators used when creating the model.
-            Not needed if loading from a pickle file.
-        n_features_in : int
-            Number of features passed to the model.
-            Not needed if loading from a pickle file.
-        feature_names_in : list[str]
-            Names of the features passed to the model.
-            Not needed if loading from a pickle file.
-        selection_mask : list[bool]
-            If using select_k_features, you must pass `model.selection_mask_` here.
-            Not needed if loading from a pickle file.
-        nout : int
-            Number of outputs of the model.
-            Not needed if loading from a pickle file.
-            Default is `1`.
-        **pysr_kwargs : dict
-            Any other keyword arguments to initialize the PySRRegressor object.
-            These will overwrite those stored in the pickle file.
-            Not needed if loading from a pickle file.
+    Parameters
+    ----------
+    equation_file : str
+        Path to a pickle file containing a saved model, or a csv file
+        containing equations.
+    binary_operators : list[str]
+        The same binary operators used when creating the model.
+        Not needed if loading from a pickle file.
+    unary_operators : list[str]
+        The same unary operators used when creating the model.
+        Not needed if loading from a pickle file.
+    n_features_in : int
+        Number of features passed to the model.
+        Not needed if loading from a pickle file.
+    feature_names_in : list[str]
+        Names of the features passed to the model.
+        Not needed if loading from a pickle file.
+    selection_mask : list[bool]
+        If using select_k_features, you must pass `model.selection_mask_` here.
+        Not needed if loading from a pickle file.
+    nout : int
+        Number of outputs of the model.
+        Not needed if loading from a pickle file.
+        Default is `1`.
+    **pysr_kwargs : dict
+        Any other keyword arguments to initialize the PySRRegressor object.
+        These will overwrite those stored in the pickle file.
+        Not needed if loading from a pickle file.
 
-        Returns
-        -------
-        model : PySRRegressor
-            The model with fitted equations.
-        """
+    Returns
+    -------
+    model : PySRRegressor
+        The model with fitted equations.
+    """
 
-        pkl_filename = _csv_filename_to_pkl_filename(equation_file)
+    pkl_filename = _csv_filename_to_pkl_filename(equation_file)
 
-        # Try to load model from <equation_file>.pkl
-        print(f"Checking if {pkl_filename} exists...")
-        if os.path.exists(pkl_filename):
-            print(f"Loading model from {pkl_filename}")
-            assert binary_operators is None
-            assert unary_operators is None
-            assert n_features_in is None
-            with open(pkl_filename, "rb") as f:
-                model = pkl.load(f)
-            # Change equation_file_ to be in the same dir as the pickle file
-            base_dir = os.path.dirname(pkl_filename)
-            base_equation_file = os.path.basename(model.equation_file_)
-            model.equation_file_ = os.path.join(base_dir, base_equation_file)
+    # Try to load model from <equation_file>.pkl
+    print(f"Checking if {pkl_filename} exists...")
+    if os.path.exists(pkl_filename):
+        print(f"Loading model from {pkl_filename}")
+        assert binary_operators is None
+        assert unary_operators is None
+        assert n_features_in is None
+        with open(pkl_filename, "rb") as f:
+            model = pkl.load(f)
+        # Change equation_file_ to be in the same dir as the pickle file
+        base_dir = os.path.dirname(pkl_filename)
+        base_equation_file = os.path.basename(model.equation_file_)
+        model.equation_file_ = os.path.join(base_dir, base_equation_file)
 
-            # Get constructor parameters and default values
-            params = inspect.signature(model.__init__).parameters
+        # Get constructor parameters and default values
+        params = inspect.signature(model.__init__).parameters
 
-            # Filter for missing parameters excluding kwargs
-            missing_params = {k: v for k, v in params.items() if
-                              k not in model.__dict__.keys() and v.name != "self" and v.kind != v.VAR_KEYWORD}
+        # Filter for missing parameters excluding kwargs
+        missing_params = {k: v for k, v in params.items() if
+                          k not in model.__dict__.keys() and v.name != "self" and v.kind != v.VAR_KEYWORD}
 
-            # Assign missing attributes
-            for k, v in missing_params.items():
-                setattr(model, k, v)
+        if len(missing_params) > 0:
+            warnings.warn(
+                "The following missing parameters will be assigned with default values:"
+                f"{', '.join(missing_params.keys())}"
+                "This may be due to the model being saved under an old package version."
+            )
 
-            # Update any parameters if necessary, such as
-            # extra_sympy_mappings:
-            model.set_params(**pysr_kwargs)
-            if "equations_" not in model.__dict__ or model.equations_ is None:
-                model.refresh()
+        # Assign missing attributes
+        for k, v in missing_params.items():
+            setattr(model, k, v)
 
-            return model
+        # Update any parameters if necessary, such as
+        # extra_sympy_mappings:
+        model.set_params(**pysr_kwargs)
+        if "equations_" not in model.__dict__ or model.equations_ is None:
+            model.refresh()
+
+        return model

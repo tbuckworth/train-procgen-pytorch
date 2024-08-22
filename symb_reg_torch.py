@@ -65,7 +65,7 @@ input_types = {
     "atanh": ["float", "int", "bool"],
     "square": ["float", "int", "bool"],
     "cube": ["float", "int", "bool"],
-    "relu": ["float", "int", "bool"],
+    "relu": ["float", "int"],
 }
 
 output_types = {
@@ -373,7 +373,6 @@ class BinaryNode(Node):
     def forward(self, x):
         return self.f(self.x1.forward(x), self.x2.forward(x))
 
-
     def evaluate(self, x1=None, x2=None):
         if x1 is None:
             x1 = self.x1.evaluate()
@@ -489,8 +488,10 @@ class FunctionTree:
                  unary_funcs=None,
                  max_complexity=20,
                  validation_ratio=0.1,
-                 use_sindy=True):
+                 use_sindy=True,
+                 x_indices=None):
         y = y.squeeze()
+        self.x_indices = np.array(x_indices)
         self.use_sindy = use_sindy
         self.max_complexity = max_complexity
         self.binary_funcs = ["*", "/", "max", "min", "mod", "atan2"] if binary_funcs is None else binary_funcs
@@ -518,6 +519,8 @@ class FunctionTree:
         self.all_vars = self.base_vars
         self.loss = np.array([])
         self.date = 0
+        if self.x_indices is not None:
+            self.all_vars += self.index_vars()
         self.all_vars += self.all_combos()
         self.remove_duplicates()
         self.compute_stls()
@@ -645,11 +648,11 @@ class FunctionTree:
             matches = totals > score_threshold
             if sum(matches) == 0:
                 continue
-            full_match_fltr = torch.cat([torch.BoolTensor([False for _ in range(i+1)]), matches])
+            full_match_fltr = torch.cat([torch.BoolTensor([False for _ in range(i + 1)]), matches])
             matched_low_loss_bools = low_loss_bool[:, full_match_fltr]
 
             all_bools_expanded = all_bools.unsqueeze(-1).tile(1, 1, matched_low_loss_bools.shape[1])
-            bool_scores = (all_bools_expanded == matched_low_loss_bools.unsqueeze(1)).sum(0)/n
+            bool_scores = (all_bools_expanded == matched_low_loss_bools.unsqueeze(1)).sum(0) / n
             try:
                 score = bool_scores.max()
             except RuntimeError as e:
@@ -901,7 +904,16 @@ class FunctionTree:
         for l, v in zip(val_losses, self.all_vars + self.stls_vars):
             v.val_loss = l
 
-
+    def index_vars(self):
+        nodes = []
+        comps = ["==", "<", ">"]
+        for idx in self.x_indices:
+            x = self.base_vars[idx]
+            vals = x.value.unique()
+            for val in vals:
+                snode = ScalarNode(x.value, f"{val:.2f}", val)
+                nodes += [BinaryNode(comp, self.date, x, snode) for comp in comps]
+        return nodes
 
 def run_tree(x, y, pop_size, epochs):
     tree = FunctionTree(x, y, torch.nn.MSELoss())
@@ -940,6 +952,7 @@ def non_duplicate_columns(data):
     keep_ind = np.sort([group[0] for group in result])
     return keep_ind
 
+
 def imitate_graph_transition(logdir):
     n_envs = 2
     data_size = 1000
@@ -959,7 +972,8 @@ def imitate_graph_transition(logdir):
                         # binary_funcs=b_funcs,
                         max_complexity=20,
                         validation_ratio=0.2,
-                        use_sindy=False)
+                        use_sindy=False,
+                        x_indices=[1, 3])
 
     tree.train(pop_size=200, epochs=5, find_split_points=True)
 
