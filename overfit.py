@@ -45,6 +45,7 @@ def append_or_create(a, act):
 def overfit(use_wandb=True):
     cfg = dict(
         epochs=1000,
+        resample_every=10,
         env_name="cartpole",
         exp_name="overfit",
         seed=0,
@@ -94,12 +95,16 @@ def overfit(use_wandb=True):
 
     # collect transition samples
 
-    obs, nobs, acts = collect_transition_samples(env, n=a.data_size, device=device)
-    obs_v, nobs_v, acts_v = collect_transition_samples(env_v, n=a.data_size, device=device)
+    # obs, nobs, acts = collect_transition_samples(env, n=a.data_size, device=device)
+    # obs_v, nobs_v, acts_v = collect_transition_samples(env_v, n=a.data_size, device=device)
 
     loss_list, loss_v_list, s_loss_list, s_loss_v_list = [], [], [], []
 
     for epoch in range(a.epochs):
+        if epoch % a.resample_every == 0:
+            obs, nobs, acts = collect_transition_samples(env, n=a.data_size, device=device)
+            obs_v, nobs_v, acts_v = collect_transition_samples(env_v, n=a.data_size, device=device)
+
         with torch.no_grad():
             nobs_guess_v = model(obs_v, acts_v)
             loss_v = MSELoss()(nobs_guess_v, nobs_v)
