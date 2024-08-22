@@ -6,12 +6,22 @@ import wandb
 from torch.nn import MSELoss
 
 from common.env.env_constructor import get_env_constructor
-from common.model import GraphTransitionModel, NBatchPySRTorch
+from common.model import GraphTransitionModel, NBatchPySRTorch, GraphValueModel
+from common.storage import BasicStorage
 from double_graph_sr import find_model, create_symb_dir_if_exists
 from helper_local import add_symbreg_args, DictToArgs, n_params
 from hyperparameter_optimization import init_wandb
 from symbreg.agents import flatten_batches_to_numpy
 from train import create_logdir_train
+
+
+def collect_transition_samples_value(env, n, storage):
+    obs = env.reset()
+    for _ in range(n // env.n_envs):
+        act = np.array([env.action_space.sample() for _ in range(env.n_envs)])
+        new_obs, rew, done, info = env.step(act)
+        storage.store(obs, act, rew, done, info)
+        obs = new_obs
 
 
 def collect_transition_samples(env, n, device):
@@ -43,9 +53,10 @@ def append_or_create(a, act):
 
 def overfit(use_wandb=True):
     cfg = dict(
+        type="dynamics",
         epochs=1000,
         resample_every=31,
-        env_name="cartpole",
+        env_name="acrobot",
         exp_name="overfit",
         seed=0,
         n_envs=2,
@@ -58,6 +69,8 @@ def overfit(use_wandb=True):
         latent_size=1,
         weights=None,
         wandb_tags=[],
+        gamma=.998,
+        lmbda=0.735,
     )
     a = DictToArgs(cfg)
     env_cons = get_env_constructor(a.env_name)
@@ -66,8 +79,19 @@ def overfit(use_wandb=True):
     env_v = env_cons(None, {"n_envs": a.n_envs}, is_valid=True)
     observation_shape = env.observation_space.shape
     in_channels = observation_shape[0]
-    model = GraphTransitionModel(in_channels, a.depth, a.mid_weight, a.latent_size, device)
-    symb_model = GraphTransitionModel(in_channels, a.depth, a.mid_weight, a.latent_size, device)
+
+    storage = BasicStorage(observation_shape, a.data_size // a.n_envs, a.n_envs, device)
+    storage.reset()
+
+    if a.type == "value":
+        model_cons = GraphValueModel
+    elif a.type == "dynamics":
+        model_cons = GraphTransitionModel
+    else:
+        raise NotImplementedError(f"type must be one of 'value','dynamics'. Not {a.type}")
+
+    model = model_cons(in_channels, a.depth, a.mid_weight, a.latent_size, device)
+    symb_model = model_cons(in_channels, a.depth, a.mid_weight, a.latent_size, device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=a.learning_rate)
 
@@ -96,13 +120,16 @@ def overfit(use_wandb=True):
 
     # obs, nobs, acts = collect_transition_samples(env, n=a.data_size, device=device)
     # obs_v, nobs_v, acts_v = collect_transition_samples(env_v, n=a.data_size, device=device)
+    collect_transition_samples_value(env, a.data_size, storage)
+    storage.compute_estimates(a.gamma, a.lmbda, True, True)
 
     loss_list, loss_v_list, s_loss_list, s_loss_v_list = [], [], [], []
 
     for epoch in range(a.epochs):
         if epoch % a.resample_every == 0:
             obs, nobs, acts = collect_transition_samples(env, n=a.data_size, device=device)
-            obs_v, nobs_v, acts_v = collect_transition_samples(env_v, n=a.data_size, device=device)
+            if epoch == 0:
+                obs_v, nobs_v, acts_v = collect_transition_samples(env_v, n=a.data_size, device=device)
 
         with torch.no_grad():
             nobs_guess_v = model(obs_v, acts_v)
@@ -113,7 +140,7 @@ def overfit(use_wandb=True):
 
         # do sr
 
-        if epoch == 0 or (loss.item() < s_loss.item() and epoch % a.sr_every == 0):
+        if epoch == 0 or s_loss.isnan() or (loss.item() < s_loss.item() and epoch % a.sr_every == 0):
             m_in, m_out, u_in, u_out = collect_messages(acts, model, obs)
             weights = get_weights(a, nobs, nobs_guess)
 
@@ -165,6 +192,7 @@ def overfit(use_wandb=True):
                        "Symb Validation Loss": s_loss_v.item(),
                        })
     wandb.finish()
+
 
 def get_weights(a, nobs, nobs_guess):
     if a.weights is None:
