@@ -109,7 +109,7 @@ def overfit(use_wandb=True):
 
         # do sr
 
-        if epoch % a.sr_every == 0:
+        if epoch == 0 or (loss.item() < s_loss.item() and epoch % a.sr_every == 0):
             m_in, m_out, u_in, u_out = collect_messages(acts, model, obs)
             weights = get_weights(a, nobs, nobs_guess)
 
