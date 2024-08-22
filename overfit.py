@@ -75,7 +75,7 @@ def overfit(use_wandb=True):
     sr_params = {
         "binary_operators": ["+", "-", "greater", "*", "/"],
         "unary_operators": ["sin", "relu", "log", "exp", "sign", "sqrt", "square"],
-        "iterations": 5,
+        "iterations": 20,
     }
 
     parser = argparse.ArgumentParser()
