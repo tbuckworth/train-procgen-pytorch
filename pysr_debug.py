@@ -18,13 +18,19 @@ def run():
     parser = add_symbreg_args(parser)
     args = parser.parse_args()
 
+    args.binary_operators = ["+", "-", "greater", "*", "/"]
+    args.unary_operators = ["sin", "relu", "log", "exp", "sign", "sqrt", "square"]
+
     symbdir = "logs/test/" + strftime("%Y%m%d-%H%M%S")
     if not os.path.exists(symbdir):
         os.makedirs(symbdir)
 
-    model = find_model(x, y, symbdir, "symb_reg.csv", None, args)
+    model, _ = find_model(x, y, symbdir, "symb_reg.csv", None, args)
+
 
     msg_torch = NBatchPySRTorch(model.pytorch())
+
+    msg_torch.forward(x)
 
 if __name__ == '__main__':
     run()

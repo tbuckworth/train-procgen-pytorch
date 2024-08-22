@@ -52,6 +52,7 @@ def overfit(use_wandb=True):
         data_size=100,
         sr_every=100,
         learning_rate=1e-5,
+        s_learning_rate=1e-2,
         depth=4,
         mid_weight=256,
         latent_size=1,
@@ -75,7 +76,7 @@ def overfit(use_wandb=True):
     sr_params = {
         "binary_operators": ["+", "-", "greater", "*", "/"],
         "unary_operators": ["sin", "relu", "log", "exp", "sign", "sqrt", "square"],
-        "iterations": 20,
+        "iterations": 1,
     }
 
     parser = argparse.ArgumentParser()
@@ -130,7 +131,7 @@ def overfit(use_wandb=True):
             symb_model.updater = up_torch
             print(f"Neural Parameters: {n_params(model)}")
             print(f"Symbol Parameters: {n_params(symb_model)}")
-            s_optimizer = torch.optim.Adam(symb_model.parameters(), lr=a.learning_rate)
+            s_optimizer = torch.optim.Adam(symb_model.parameters(), lr=a.s_learning_rate)
 
         with torch.no_grad():
             nobs_guess_v = symb_model(obs_v, acts_v)
