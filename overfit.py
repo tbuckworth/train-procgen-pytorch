@@ -45,12 +45,12 @@ def append_or_create(a, act):
 def overfit(use_wandb=True):
     cfg = dict(
         epochs=1000,
-        resample_every=10,
+        resample_every=1000,
         env_name="cartpole",
         exp_name="overfit",
         seed=0,
         n_envs=2,
-        data_size=100,
+        data_size=1000,
         sr_every=100,
         learning_rate=1e-5,
         s_learning_rate=1e-2,
