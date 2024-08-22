@@ -19,9 +19,8 @@ def test_cust():
     expression = Piecewise((1.0, x > y), (0.0, True))
     expression = GreaterThan(x, y)
     expression = exp(sign(0.44796443))*exp(sign(0.44796443))
-    expression = exp(2)
-    expression = log(4)
-    module = sympy2torch(expression, [x, y])#, extra_torch_mappings=get_extra_torch_mappings())
+    expression = exp(-1)
+    module = sympy2torch(expression, [x, y], extra_torch_mappings=get_extra_torch_mappings())
     X = torch.rand(100, 2).float() * 10
 
     torch_out = module(X)

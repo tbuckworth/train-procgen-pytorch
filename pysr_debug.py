@@ -4,6 +4,7 @@ from time import strftime
 
 import numpy as np
 from pysr import PySRRegressor
+import torch
 
 from common.model import NBatchPySRTorch
 from double_graph_sr import find_model
@@ -11,7 +12,7 @@ from helper_local import add_symbreg_args
 
 
 def run():
-    x = np.random.randn(100,2)
+    x = np.random.randn(100,1)
     y = np.repeat(np.exp(-1),100)
 
     parser = argparse.ArgumentParser()
@@ -19,7 +20,8 @@ def run():
     args = parser.parse_args()
 
     args.binary_operators = ["+", "-", "greater", "*", "/"]
-    args.unary_operators = ["sin", "relu", "log", "exp", "sign", "sqrt", "square"]
+    args.unary_operators = ["exp", "sign"]
+    args.iterations = 1
 
     symbdir = "logs/test/" + strftime("%Y%m%d-%H%M%S")
     if not os.path.exists(symbdir):
@@ -31,6 +33,9 @@ def run():
     msg_torch = NBatchPySRTorch(model.pytorch())
 
     msg_torch.forward(x)
+
+
+    print("done")
 
 if __name__ == '__main__':
     run()
