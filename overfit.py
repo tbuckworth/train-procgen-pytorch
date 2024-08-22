@@ -7,11 +7,10 @@ from torch.nn import MSELoss
 
 from common.env.env_constructor import get_env_constructor
 from common.model import GraphTransitionModel, NBatchPySRTorch
-from create_sh_files import add_symbreg_args_dict
 from double_graph_sr import find_model, create_symb_dir_if_exists
 from helper_local import add_symbreg_args, DictToArgs, n_params
 from hyperparameter_optimization import init_wandb
-from symbreg.agents import PureGraphSymbolicAgent, DummyPolicy, flatten_batches_to_numpy
+from symbreg.agents import flatten_batches_to_numpy
 from train import create_logdir_train
 
 
@@ -45,7 +44,7 @@ def append_or_create(a, act):
 def overfit(use_wandb=True):
     cfg = dict(
         epochs=1000,
-        resample_every=1000,
+        resample_every=31,
         env_name="cartpole",
         exp_name="overfit",
         seed=0,
