@@ -75,6 +75,7 @@ def overfit(use_wandb=True):
     sr_params = {
         "binary_operators": ["+", "-", "greater", "*", "/"],
         "unary_operators": ["sin", "relu", "log", "exp", "sign", "sqrt", "square"],
+        "iterations": 5,
     }
 
     parser = argparse.ArgumentParser()
@@ -87,6 +88,7 @@ def overfit(use_wandb=True):
     logdir = create_logdir_train("", a.env_name, a.exp_name, a.seed)
     symbdir, save_file = create_symb_dir_if_exists(logdir)
 
+    cfg.update(parser_dict)
     init_wandb(cfg, prefix="GNN")
 
     # collect transition samples
