@@ -13,7 +13,7 @@ if __name__ == '__main__':
     args.env_name = "cartpole"
     # args.n_envs = 2
     args.param_name = "graph-cartpole"
-    args.num_timesteps = int(1e8)
+    args.num_timesteps = int(2e8)
     args.num_checkpoints = 1
     args.seed = 6033
     args.use_wandb = True

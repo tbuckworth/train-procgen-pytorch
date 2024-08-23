@@ -529,6 +529,7 @@ def pets_graph_transition_cartpole():
 def cartpole_graph_ppo():
     fixed = {
         "env_name": 'cartpole',
+        "exp_name": 'pure-graph',
         "param_name": 'graph-cartpole',
         "device": "gpu",
         "num_timesteps": int(2e8),
