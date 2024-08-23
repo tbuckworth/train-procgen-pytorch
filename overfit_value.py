@@ -15,15 +15,20 @@ from symbreg.agents import flatten_batches_to_numpy
 from train import create_logdir_train
 
 
-def collect_transition_samples_value(env, n, storage, model):
+def collect_transition_samples_value(env, args, storage, model):
     obs = env.reset()
-    for _ in range(n // env.n_envs):
+    for _ in range(args.n // env.n_envs):
         with torch.no_grad():
             value = model(obs)
         act = np.array([env.action_space.sample() for _ in range(env.n_envs)])
         new_obs, rew, done, info = env.step(act)
         storage.store(obs, act, rew, done, info, value)
         obs = new_obs
+    with torch.no_grad():
+        value = model(obs)
+    storage.store_last(obs, value)
+    storage.compute_estimates(args.gamma, args.lmbda, True, True)
+
 
 
 def collect_transition_samples(env, n, device):
@@ -55,10 +60,10 @@ def append_or_create(a, act):
 
 def overfit(use_wandb=True):
     cfg = dict(
-        type="dynamics",
+        type="value",
         epochs=1000,
         resample_every=31,
-        env_name="acrobot",
+        env_name="cartpole",
         exp_name="overfit",
         seed=0,
         n_envs=2,
@@ -84,6 +89,8 @@ def overfit(use_wandb=True):
 
     storage = BasicStorage(observation_shape, a.data_size // a.n_envs, a.n_envs, device)
     storage.reset()
+    storage_v = BasicStorage(observation_shape, a.data_size // a.n_envs, a.n_envs, device)
+    storage_v.reset()
 
     if a.type == "value":
         model_cons = GraphValueModel
@@ -93,11 +100,14 @@ def overfit(use_wandb=True):
         raise NotImplementedError(f"type must be one of 'value','dynamics'. Not {a.type}")
 
     model = model_cons(in_channels, a.depth, a.mid_weight, a.latent_size, device)
+    model_v = model_cons(in_channels, a.depth, a.mid_weight, a.latent_size, device)
     symb_model = model_cons(in_channels, a.depth, a.mid_weight, a.latent_size, device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=a.learning_rate)
+    optimizer_v = torch.optim.Adam(model_v.parameters(), lr=a.learning_rate)
 
     model.to(device)
+    model_v.to(device)
 
     sr_params = {
         "binary_operators": ["+", "-", "greater", "*", "/"],
@@ -118,33 +128,24 @@ def overfit(use_wandb=True):
     cfg.update(parser_dict)
     init_wandb(cfg, prefix="GNN")
 
-    # collect transition samples
-
-    # obs, nobs, acts = collect_transition_samples(env, n=a.data_size, device=device)
-    # obs_v, nobs_v, acts_v = collect_transition_samples(env_v, n=a.data_size, device=device)
-    collect_transition_samples_value(env, a.data_size, storage, model)
-    storage.compute_estimates(a.gamma, a.lmbda, True, True)
-
-    loss_list, loss_v_list, s_loss_list, s_loss_v_list = [], [], [], []
-
     for epoch in range(a.epochs):
+        # collect transition samples
         if epoch % a.resample_every == 0:
-            obs, nobs, acts = collect_transition_samples(env, n=a.data_size, device=device)
+            collect_transition_samples_value(env, a, storage, model)
             if epoch == 0:
-                obs_v, nobs_v, acts_v = collect_transition_samples(env_v, n=a.data_size, device=device)
+                collect_transition_samples_value(env_v, a, storage_v, model)
 
-        with torch.no_grad():
-            nobs_guess_v = model(obs_v, acts_v)
-            loss_v = MSELoss()(nobs_guess_v, nobs_v)
+        val_model_loss_v = optimize_value(args, storage_v, model_v, optimizer_v)
+        val_model_loss = optimize_value(args, storage, model_v, None, False)
 
-        nobs_guess = model(obs, acts)
-        loss = MSELoss()(nobs_guess, nobs)
+        loss = optimize_value(args, storage, model, optimizer)
+        loss_v = optimize_value(args, storage_v, model, None, False)
 
         # do sr
 
-        if epoch == 0 or s_loss.isnan() or (loss.item() < s_loss.item() and epoch % a.sr_every == 0):
-            m_in, m_out, u_in, u_out = collect_messages(acts, model, obs)
-            weights = get_weights(a, nobs, nobs_guess)
+        if epoch == 0 or np.isnan(s_loss) or (loss < s_loss and epoch % a.sr_every == 0):
+            m_in, m_out, u_in, u_out = collect_messages(model, storage)
+            weights = None#get_weights(a, nobs, nobs_guess)
 
             msgdir, _ = create_symb_dir_if_exists(symbdir, "msg")
             updir, _ = create_symb_dir_if_exists(symbdir, "upd")
@@ -166,34 +167,47 @@ def overfit(use_wandb=True):
             print(f"Symbol Parameters: {n_params(symb_model)}")
             s_optimizer = torch.optim.Adam(symb_model.parameters(), lr=a.s_learning_rate)
 
-        with torch.no_grad():
-            nobs_guess_v = symb_model(obs_v, acts_v)
-            s_loss_v = MSELoss()(nobs_guess_v, nobs_v)
-
-        nobs_guess = symb_model(obs, acts)
-        s_loss = MSELoss()(nobs_guess, nobs)
-
-        loss.backward()
-        optimizer.step()
-        optimizer.zero_grad()
-
-        s_loss.backward()
-        s_optimizer.step()
-        s_optimizer.zero_grad()
-
-        loss_list += [loss.item()]
-        loss_v_list += [loss_v.item()]
-        s_loss_list += [s_loss.item()]
-        s_loss_v_list += [s_loss_v.item()]
+        s_loss = optimize_value(args, storage, symb_model, s_optimizer)
+        s_loss_v = optimize_value(args, storage_v, symb_model, None, False)
 
         if use_wandb:
             wandb.log({"Epoch": epoch,
-                       "GNN Loss": loss.item(),
-                       "GNN Validation Loss": loss_v.item(),
-                       "Symb Loss": s_loss.item(),
-                       "Symb Validation Loss": s_loss_v.item(),
+                       "GNN Loss": loss,
+                       "GNN Validation Loss": loss_v,
+                       "Symb Loss": s_loss,
+                       "Symb Validation Loss": s_loss_v,
+                       "Valid-GNN Loss": val_model_loss,
+                       "Valid-GNN Validation Loss": val_model_loss_v,
                        })
     wandb.finish()
+
+
+
+def optimize_value(args, storage, model, optimizer, update=True):
+    generator = storage.fetch_train_generator(args.mini_batch_size, False)
+
+    loss_list = []
+    for sample in generator:
+        obs_batch, nobs_batch, act_batch, done_batch, \
+            old_value_batch, return_batch, adv_batch, rew_batch = sample
+
+        value_batch = model(obs_batch)
+
+        # Clipped Bellman-Error
+        clipped_value_batch = old_value_batch + (value_batch - old_value_batch).clamp(-args.eps_clip,
+                                                                                      args.eps_clip)
+        v_surr1 = (value_batch - return_batch).pow(2)
+        v_surr2 = (clipped_value_batch - return_batch).pow(2)
+        loss = 0.5 * torch.max(v_surr1, v_surr2).mean()
+        if update:
+            loss.backward()
+            optimizer.step()
+            optimizer.zero_grad()
+        loss_list += [loss.item()]
+    mean_loss = np.mean(loss_list)
+    return mean_loss
+
+
 
 
 def get_weights(a, nobs, nobs_guess):
@@ -206,18 +220,33 @@ def get_weights(a, nobs, nobs_guess):
     return weights
 
 
-def collect_messages(acts, model, obs):
+def collect_messages(model, storage, args):
+    generator = storage.fetch_train_generator(args.mini_batch_size, False)
+    mi = mo = ui = uo = None
     with torch.no_grad():
-        n, x = model.prep_input(obs)
-        msg_in = model.vectorize_for_message_pass(acts, n, x)
-        messages = model.messenger(msg_in)
-        h, u = model.vec_for_update(messages, x)
+        for sample in generator:
+            obs_batch, nobs_batch, act_batch, done_batch, \
+                old_value_batch, return_batch, adv_batch, rew_batch = sample
+            n, x = model.prep_input(obs_batch)
+            msg_in = model.vectorize_for_message_pass(n, x)
+            messages = model.messenger(msg_in)
+            h, u = model.vec_for_update(messages, x)
 
-        m_in = flatten_batches_to_numpy(msg_in)
-        m_out = flatten_batches_to_numpy(messages)
-        u_in = flatten_batches_to_numpy(h)
-        u_out = flatten_batches_to_numpy(u)
-    return m_in, m_out, u_in, u_out
+            m_in = flatten_batches_to_numpy(msg_in)
+            m_out = flatten_batches_to_numpy(messages)
+            u_in = flatten_batches_to_numpy(h)
+            u_out = flatten_batches_to_numpy(u)
+            if mi is None:
+                mi = m_in
+                mo = m_out
+                ui = u_in
+                uo = u_out
+            else:
+                mi = np.append(mi, m_in, axis=0)
+                mo = np.append(mo, m_out, axis=0)
+                ui = np.append(ui, u_in, axis=0)
+                uo = np.append(uo, u_out, axis=0)
+    return mi, mo, ui, uo
 
 
 if __name__ == "__main__":
