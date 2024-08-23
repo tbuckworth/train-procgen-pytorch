@@ -15,18 +15,20 @@ from symbreg.agents import flatten_batches_to_numpy
 from train import create_logdir_train
 
 
-def collect_transition_samples_value(env, args, storage, model):
+def collect_transition_samples_value(env, args, storage, model, device):
     obs = env.reset()
-    for _ in range(args.n // env.n_envs):
+    for _ in range(args.data_size // env.n_envs):
+        obs_t = torch.FloatTensor(obs).to(device=device)
         with torch.no_grad():
-            value = model(obs)
+            value = model(obs_t)
         act = np.array([env.action_space.sample() for _ in range(env.n_envs)])
         new_obs, rew, done, info = env.step(act)
-        storage.store(obs, act, rew, done, info, value)
+        storage.store(obs, act, rew, done, info, value.cpu().numpy())
         obs = new_obs
+    obs_t = torch.FloatTensor(obs).to(device=device)
     with torch.no_grad():
-        value = model(obs)
-    storage.store_last(obs, value)
+        value = model(obs_t)
+    storage.store_last(obs, value.cpu().numpy())
     storage.compute_estimates(args.gamma, args.lmbda, True, True)
 
 
@@ -60,7 +62,7 @@ def append_or_create(a, act):
 
 def overfit(use_wandb=True):
     cfg = dict(
-        type="value",
+        policy="random",
         epochs=1000,
         resample_every=1000,
         env_name="cartpole",
@@ -68,9 +70,10 @@ def overfit(use_wandb=True):
         seed=0,
         n_envs=2,
         data_size=1000,
+        mini_batch_size=128,
         sr_every=100,
-        learning_rate=1e-5,
-        s_learning_rate=1e-2,
+        learning_rate=1e-7,
+        s_learning_rate=1e-3,
         depth=4,
         mid_weight=256,
         latent_size=1,
@@ -78,6 +81,7 @@ def overfit(use_wandb=True):
         wandb_tags=[],
         gamma=.998,
         lmbda=0.735,
+        eps_clip=0.2,
     )
     a = DictToArgs(cfg)
     env_cons = get_env_constructor(a.env_name)
@@ -92,16 +96,18 @@ def overfit(use_wandb=True):
     storage_v = BasicStorage(observation_shape, a.data_size // a.n_envs, a.n_envs, device)
     storage_v.reset()
 
-    if a.type == "value":
-        model_cons = GraphValueModel
-    elif a.type == "dynamics":
-        model_cons = GraphTransitionModel
+    if a.policy == "random":
+        # TODO:
+        pass
+    elif a.policy == "optimal":
+        # TODO:
+        pass
     else:
-        raise NotImplementedError(f"type must be one of 'value','dynamics'. Not {a.type}")
+        raise NotImplementedError(f"policy must be one of 'random','optimal'. Not {a.policy}")
 
-    model = model_cons(in_channels, a.depth, a.mid_weight, a.latent_size, device)
-    model_v = model_cons(in_channels, a.depth, a.mid_weight, a.latent_size, device)
-    symb_model = model_cons(in_channels, a.depth, a.mid_weight, a.latent_size, device)
+    model = GraphValueModel(in_channels, a.depth, a.mid_weight, a.latent_size, device)
+    model_v = GraphValueModel(in_channels, a.depth, a.mid_weight, a.latent_size, device)
+    symb_model = GraphValueModel(in_channels, a.depth, a.mid_weight, a.latent_size, device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=a.learning_rate)
     optimizer_v = torch.optim.Adam(model_v.parameters(), lr=a.learning_rate)
@@ -126,25 +132,25 @@ def overfit(use_wandb=True):
     symbdir, save_file = create_symb_dir_if_exists(logdir)
 
     cfg.update(parser_dict)
-    init_wandb(cfg, prefix="GNN")
+    init_wandb(cfg, prefix="GVN")
 
     for epoch in range(a.epochs):
         # collect transition samples
         if epoch % a.resample_every == 0:
-            collect_transition_samples_value(env, a, storage, model)
+            collect_transition_samples_value(env, a, storage, model, device)
             if epoch == 0:
-                collect_transition_samples_value(env_v, a, storage_v, model)
+                collect_transition_samples_value(env_v, a, storage_v, model, device)
 
-        val_model_loss_v = optimize_value(args, storage_v, model_v, optimizer_v)
-        val_model_loss = optimize_value(args, storage, model_v, None, False)
+        val_model_loss_v = optimize_value(a, storage_v, model_v, optimizer_v)
+        val_model_loss = optimize_value(a, storage, model_v, None, False)
 
-        loss = optimize_value(args, storage, model, optimizer)
-        loss_v = optimize_value(args, storage_v, model, None, False)
+        loss = optimize_value(a, storage, model, optimizer)
+        loss_v = optimize_value(a, storage_v, model, None, False)
 
         # do sr
 
         if epoch == 0 or np.isnan(s_loss) or (loss < s_loss and epoch % a.sr_every == 0):
-            m_in, m_out, u_in, u_out = collect_messages(model, storage)
+            m_in, m_out, u_in, u_out = collect_messages(model, storage, a)
             weights = None#get_weights(a, nobs, nobs_guess)
 
             msgdir, _ = create_symb_dir_if_exists(symbdir, "msg")
@@ -167,8 +173,8 @@ def overfit(use_wandb=True):
             print(f"Symbol Parameters: {n_params(symb_model)}")
             s_optimizer = torch.optim.Adam(symb_model.parameters(), lr=a.s_learning_rate)
 
-        s_loss = optimize_value(args, storage, symb_model, s_optimizer)
-        s_loss_v = optimize_value(args, storage_v, symb_model, None, False)
+        s_loss = optimize_value(a, storage, symb_model, s_optimizer)
+        s_loss_v = optimize_value(a, storage_v, symb_model, None, False)
 
         if use_wandb:
             wandb.log({"Epoch": epoch,
