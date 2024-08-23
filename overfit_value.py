@@ -72,8 +72,8 @@ def overfit(use_wandb=True):
         data_size=1000,
         mini_batch_size=128,
         sr_every=100,
-        learning_rate=1e-7,
-        s_learning_rate=1e-3,
+        learning_rate=1e-8,
+        s_learning_rate=1e-5,
         depth=4,
         mid_weight=256,
         latent_size=1,
@@ -118,7 +118,7 @@ def overfit(use_wandb=True):
     sr_params = {
         "binary_operators": ["+", "-", "greater", "*", "/"],
         "unary_operators": ["sin", "relu", "log", "exp", "sign", "sqrt", "square"],
-        "iterations": 1,
+        "iterations": 5,
     }
 
     parser = argparse.ArgumentParser()

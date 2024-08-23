@@ -6,7 +6,7 @@ import wandb
 from torch.nn import MSELoss
 
 from common.env.env_constructor import get_env_constructor
-from common.model import GraphTransitionModel, NBatchPySRTorch, GraphValueModel
+from common.model import GraphTransitionModel, NBatchPySRTorch, GraphValueModel, MLPModel
 from common.storage import BasicStorage
 from double_graph_sr import find_model, create_symb_dir_if_exists
 from helper_local import add_symbreg_args, DictToArgs, n_params
@@ -63,8 +63,9 @@ def overfit(use_wandb=True):
         n_envs=2,
         data_size=1000,
         sr_every=100,
-        learning_rate=2e-5,
-        s_learning_rate=2e-2,
+        learning_rate=1e-5,
+        mlp_learning_rate=1e-5,
+        s_learning_rate=1e-2,
         depth=4,
         mid_weight=256,
         latent_size=1,
@@ -83,10 +84,13 @@ def overfit(use_wandb=True):
 
     model = GraphTransitionModel(in_channels, a.depth, a.mid_weight, a.latent_size, device)
     symb_model = GraphTransitionModel(in_channels, a.depth, a.mid_weight, a.latent_size, device)
+    mlp = MLPModel(in_channels+1,a.depth,a.midweight,in_channels)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=a.learning_rate)
+    mlp_opt = torch.optim.Adam(mlp.parameters(), lr=a.mlp_learning_rate)
 
     model.to(device)
+    mlp.to(device)
 
     sr_params = {
         "binary_operators": ["+", "-", "greater", "*", "/"],
@@ -115,12 +119,9 @@ def overfit(use_wandb=True):
             if epoch == 0:
                 obs_v, nobs_v, acts_v = collect_transition_samples(env_v, n=a.data_size, device=device)
 
-        with torch.no_grad():
-            nobs_guess_v = model(obs_v, acts_v)
-            loss_v = MSELoss()(nobs_guess_v, nobs_v)
+        loss, loss_v, nobs_guess = calc_losses(acts, acts_v, model, nobs, nobs_v, obs, obs_v)
 
-        nobs_guess = model(obs, acts)
-        loss = MSELoss()(nobs_guess, nobs)
+        mlp_loss, mlp_loss_v, _ = calc_losses(acts, acts_v, mlp, nobs, nobs_v, obs, obs_v)
 
         # do sr
 
@@ -148,16 +149,15 @@ def overfit(use_wandb=True):
             print(f"Symbol Parameters: {n_params(symb_model)}")
             s_optimizer = torch.optim.Adam(symb_model.parameters(), lr=a.s_learning_rate)
 
-        with torch.no_grad():
-            nobs_guess_v = symb_model(obs_v, acts_v)
-            s_loss_v = MSELoss()(nobs_guess_v, nobs_v)
-
-        nobs_guess = symb_model(obs, acts)
-        s_loss = MSELoss()(nobs_guess, nobs)
+        s_loss, s_loss_v, _ = calc_losses(acts, acts_v, symb_model, nobs, nobs_v, obs, obs_v)
 
         loss.backward()
         optimizer.step()
         optimizer.zero_grad()
+
+        mlp_loss.backward()
+        mlp_opt.step()
+        mlp_opt.zero_grad()
 
         s_loss.backward()
         s_optimizer.step()
@@ -169,8 +169,19 @@ def overfit(use_wandb=True):
                        "GNN Validation Loss": loss_v.item(),
                        "Symb Loss": s_loss.item(),
                        "Symb Validation Loss": s_loss_v.item(),
+                       "MLP Loss": mlp_loss.item(),
+                       "MLP Validation Loss": mlp_loss_v.item(),
                        })
     wandb.finish()
+
+
+def calc_losses(acts, acts_v, model, nobs, nobs_v, obs, obs_v):
+    with torch.no_grad():
+        nobs_guess_v = model(obs_v, acts_v)
+        loss_v = MSELoss()(nobs_guess_v, nobs_v)
+    nobs_guess = model(obs, acts)
+    loss = MSELoss()(nobs_guess, nobs)
+    return loss, loss_v, nobs_guess
 
 
 def get_weights(a, nobs, nobs_guess):
