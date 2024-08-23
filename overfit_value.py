@@ -55,6 +55,7 @@ def append_or_create(a, act):
 
 def overfit(use_wandb=True):
     cfg = dict(
+        type="dynamics",
         epochs=1000,
         resample_every=31,
         env_name="acrobot",
@@ -81,8 +82,18 @@ def overfit(use_wandb=True):
     observation_shape = env.observation_space.shape
     in_channels = observation_shape[0]
 
-    model = GraphTransitionModel(in_channels, a.depth, a.mid_weight, a.latent_size, device)
-    symb_model = GraphTransitionModel(in_channels, a.depth, a.mid_weight, a.latent_size, device)
+    storage = BasicStorage(observation_shape, a.data_size // a.n_envs, a.n_envs, device)
+    storage.reset()
+
+    if a.type == "value":
+        model_cons = GraphValueModel
+    elif a.type == "dynamics":
+        model_cons = GraphTransitionModel
+    else:
+        raise NotImplementedError(f"type must be one of 'value','dynamics'. Not {a.type}")
+
+    model = model_cons(in_channels, a.depth, a.mid_weight, a.latent_size, device)
+    symb_model = model_cons(in_channels, a.depth, a.mid_weight, a.latent_size, device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=a.learning_rate)
 
@@ -107,9 +118,16 @@ def overfit(use_wandb=True):
     cfg.update(parser_dict)
     init_wandb(cfg, prefix="GNN")
 
+    # collect transition samples
+
+    # obs, nobs, acts = collect_transition_samples(env, n=a.data_size, device=device)
+    # obs_v, nobs_v, acts_v = collect_transition_samples(env_v, n=a.data_size, device=device)
+    collect_transition_samples_value(env, a.data_size, storage, model)
+    storage.compute_estimates(a.gamma, a.lmbda, True, True)
+
+    loss_list, loss_v_list, s_loss_list, s_loss_v_list = [], [], [], []
 
     for epoch in range(a.epochs):
-        # collect transition samples
         if epoch % a.resample_every == 0:
             obs, nobs, acts = collect_transition_samples(env, n=a.data_size, device=device)
             if epoch == 0:
@@ -162,6 +180,11 @@ def overfit(use_wandb=True):
         s_loss.backward()
         s_optimizer.step()
         s_optimizer.zero_grad()
+
+        loss_list += [loss.item()]
+        loss_v_list += [loss_v.item()]
+        s_loss_list += [s_loss.item()]
+        s_loss_v_list += [s_loss_v.item()]
 
         if use_wandb:
             wandb.log({"Epoch": epoch,
