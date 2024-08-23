@@ -58,14 +58,19 @@ class GraphPolicy(nn.Module):
         super(GraphPolicy, self).__init__()
         self.embedder = embedder
         self.graph = graph
+        self.has_vq = False
+        self.recurrent = False
 
-    def forward(self, x):
+    def is_recurrent(self):
+        return self.recurrent
+
+    def forward(self, x, hx, masks):
         if self.embedder is not None:
             x = self.embedder(x)
         logits, value = self.graph(x)
         log_probs = F.log_softmax(logits, dim=1)
         p = Categorical(logits=log_probs)
-        return p, value
+        return p, value, hx
 
 
 class TransitionPolicy(nn.Module):

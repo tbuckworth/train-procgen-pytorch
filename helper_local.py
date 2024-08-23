@@ -963,6 +963,8 @@ def get_agent_constructor(algo):
         from agents.graph_agent import GraphAgent as AGENT
     elif algo == 'double-graph-agent':
         from agents.double_graph_agent import DoubleGraphAgent as AGENT
+    elif algo == 'ppo-pure':
+        from agents.ppo_pure import PPOPure as AGENT
     else:
         raise NotImplementedError
     return AGENT

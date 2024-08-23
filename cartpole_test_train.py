@@ -9,16 +9,18 @@ if __name__ == '__main__':
     parser = add_training_args(parser)
     args = parser.parse_args()
 
-    # args.exp_name = "test"
-    # args.env_name = "cartpole"
+    args.exp_name = "test"
+    args.env_name = "cartpole"
     # args.n_envs = 2
-    # args.param_name = "cartpole"
-    # args.num_timesteps = 1000000
-    # args.num_checkpoints = 1
-    # args.seed = 6033
-    # args.use_wandb = False
-    # args.use_valid_env = False
+    args.param_name = "graph-cartpole"
+    args.num_timesteps = int(1e8)
+    args.num_checkpoints = 1
+    args.seed = 6033
+    args.use_wandb = True
+    args.use_valid_env = True
     # args.render = True
+    train_ppo(args)
+    exit(0)
 
     # args.env_name = "cartpole"
     # args.start_level = 0

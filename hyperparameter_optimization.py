@@ -526,6 +526,41 @@ def pets_graph_transition_cartpole():
         id_tag = fixed["wandb_tags"][0]
         optimize_hyperparams(bounds, fixed, project, id_tag, run_pets_hyperparameters, opt_metric="trial/total_reward")
 
+def cartpole_graph_ppo():
+    fixed = {
+        "env_name": 'cartpole',
+        "param_name": 'graph-cartpole',
+        "device": "gpu",
+        "num_timesteps": int(2e8),
+        "seed": 6033,
+        "use_gae": True,
+        "clip_value": True,
+        "wandb_tags": ["gc1"],
+        "use_wandb": True,
+        "mirror_env": False,
+        "use_valid_env": True,
+        "anneal_temp": False,
+        # "n_envs": 64,
+        # "n_steps": 256,
+        # "output_dim": 24,#[24, 64],
+        # "depth": 4,#[2, 6],
+    }
+    bounds = {
+        # "gamma": [0.9999, 0.8],
+        # "lmbda": [0.0, 0.99999],
+        "epochs": [1, 10],
+        "learning_rate": [1e-8, 1e-3],
+        # "n_envs": [64],
+        # "n_steps": [256],
+        "output_dim": [24, 64],
+        "depth": [2, 6],
+    }
+    bounds = {}
+    while True:
+        project = get_project(fixed["env_name"], fixed["exp_name"])
+        id_tag = fixed["wandb_tags"][0]
+        optimize_hyperparams(bounds, fixed, project, id_tag, run_next_hyperparameters)
+
 
 if __name__ == "__main__":
     # double_graph_symbreg_ft_hparams()

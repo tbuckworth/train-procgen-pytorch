@@ -158,11 +158,12 @@ def train_ppo(args):
     algo = hyperparameters.get('algo', 'ppo')
     model_based = algo in ['ppo-model', 'graph-agent']
     double_graph = algo in ['double-graph-agent']
+    ppo_pure = algo in ['ppo-pure']
 
     print('INTIALIZING MODEL...')
     model, observation_shape, policy = initialize_model(device, env, hyperparameters)
     logger = Logger(n_envs, logdir, use_wandb=args.use_wandb, has_vq=policy.has_vq,
-                    transition_model=model_based, double_graph=double_graph)
+                    transition_model=model_based, double_graph=double_graph, ppo_pure=ppo_pure)
     logger.max_steps = max_steps
     #############
     ## STORAGE ##
@@ -210,6 +211,7 @@ def train_ppo(args):
         print("Loading agent from %s" % args.model_file)
         checkpoint = torch.load(args.model_file, map_location=device)
         agent.policy.load_state_dict(checkpoint["model_state_dict"])
+        # this will throw error for some agents:
         agent.v_optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
     ##############
     ## TRAINING ##
