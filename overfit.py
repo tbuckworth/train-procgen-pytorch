@@ -6,7 +6,7 @@ import wandb
 from torch.nn import MSELoss
 
 from common.env.env_constructor import get_env_constructor
-from common.model import GraphTransitionModel, NBatchPySRTorch, GraphValueModel, MLPModel
+from common.model import GraphTransitionModel, NBatchPySRTorch, GraphValueModel, MLPModel, MLPTransitionModel
 from common.storage import BasicStorage
 from double_graph_sr import find_model, create_symb_dir_if_exists
 from helper_local import add_symbreg_args, DictToArgs, n_params
@@ -64,7 +64,7 @@ def overfit(use_wandb=True):
         data_size=1000,
         sr_every=100,
         learning_rate=1e-5,
-        mlp_learning_rate=1e-5,
+        mlp_learning_rate=1e-4,
         s_learning_rate=1e-2,
         depth=4,
         mid_weight=256,
@@ -84,7 +84,7 @@ def overfit(use_wandb=True):
 
     model = GraphTransitionModel(in_channels, a.depth, a.mid_weight, a.latent_size, device)
     symb_model = GraphTransitionModel(in_channels, a.depth, a.mid_weight, a.latent_size, device)
-    mlp = MLPModel(in_channels+1,a.depth,a.midweight,in_channels)
+    mlp = MLPTransitionModel(in_channels,a.depth,a.mid_weight)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=a.learning_rate)
     mlp_opt = torch.optim.Adam(mlp.parameters(), lr=a.mlp_learning_rate)

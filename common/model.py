@@ -1,4 +1,5 @@
 import math
+from abc import ABC
 
 import numpy as np
 from torch import jit
@@ -928,6 +929,20 @@ class MHAModel(nn.Module):
         return x, output
         # return self.mha.get_attn_weights(x)
 
+class MLPTransitionModel(nn.Module):
+    def __init__(self, n_features, depth, mid_weight):
+        super(MLPTransitionModel, self).__init__()
+        self.input_size = n_features + 1
+        self.depth = depth
+        self.mid_weight = mid_weight
+        self.output_dim = n_features
+
+        self.model = MLPModel(n_features + 1, depth, mid_weight, n_features)
+
+    def forward(self, obs, act):
+        x = torch.cat([obs, act.unsqueeze(-1)], dim=-1)
+        return self.model(x)
+
 
 class MLPModel(nn.Module):
     def __init__(self, in_channels, depth, mid_weight, latent_size):
@@ -954,6 +969,62 @@ class MLPModel(nn.Module):
 
     def forward(self, x):
         return self.model(x)
+
+class GraphModel(nn.Module, ABC):
+    def prep_input(self, obs):
+        x = self.append_index(obs.squeeze())
+        n = x.shape[-2]
+        return n, x
+
+    def sum_all_messages(self, n, x):
+        msg_in = self.vectorize_for_message_pass(n, x)
+        messages = self.messenger(msg_in)
+        return torch.sum(messages, dim=-2).squeeze()
+
+    def vectorize_for_message_pass(self, n, x):
+        xi = x.unsqueeze(-2).tile([n, 1])
+        xj = x.unsqueeze(-3).tile([n, 1, 1])
+        msg_in = torch.concat([xi, xj], dim=-1)
+        return msg_in
+
+    def append_index(self, x):
+        n = x.shape[-1]
+        coor = torch.FloatTensor([i / n for i in range(n)])
+        shp = [i for i in x.shape[:-1]] + [1]
+        all_coor = torch.tile(coor, shp).to(device=self.device)
+        return self.concater(x, all_coor, -1)
+
+    def concater(self, x, y, axis):
+        return torch.concat([x.unsqueeze(axis), y.unsqueeze(axis)], axis=axis)
+
+
+
+class GraphActorCritic(GraphModel):
+    def __init__(self, in_channels, depth, mid_weight, latent_size, device):
+        super(GraphActorCritic, self).__init__()
+        self.input_size = in_channels
+        self.depth = depth
+        self.mid_weight = mid_weight
+        self.output_dim = latent_size
+        self.device = device
+
+        self.messenger = MLPModel(4, depth, mid_weight, latent_size)
+        self.actor = MLPModel(3, depth, mid_weight, latent_size)
+        self.critic = MLPModel(3, depth, mid_weight, latent_size)
+
+        self.apply(xavier_uniform_init)
+
+    def forward(self, obs):
+        logits = value = None
+        n, x = self.prep_input(obs)
+        msg = self.sum_all_messages(n, x)
+
+
+
+        return logits, value
+
+
+
 
 
 class GraphTransitionModel(nn.Module):

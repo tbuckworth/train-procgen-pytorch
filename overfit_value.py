@@ -72,16 +72,17 @@ def overfit(use_wandb=True):
         data_size=1000,
         mini_batch_size=128,
         sr_every=100,
-        learning_rate=1e-8,
-        s_learning_rate=1e-5,
+        learning_rate=1e-6,
+        s_learning_rate=1e-4,
         depth=4,
         mid_weight=256,
         latent_size=1,
         weights=None,
         wandb_tags=[],
-        gamma=.998,
-        lmbda=0.735,
+        gamma=.999,
+        lmbda=0.95,
         eps_clip=0.2,
+        clip_value=False,
     )
     a = DictToArgs(cfg)
     env_cons = get_env_constructor(a.env_name)
@@ -119,6 +120,7 @@ def overfit(use_wandb=True):
         "binary_operators": ["+", "-", "greater", "*", "/"],
         "unary_operators": ["sin", "relu", "log", "exp", "sign", "sqrt", "square"],
         "iterations": 5,
+        # "maxsize": 50,
     }
 
     parser = argparse.ArgumentParser()
@@ -136,16 +138,14 @@ def overfit(use_wandb=True):
 
     for epoch in range(a.epochs):
         # collect transition samples
-        if epoch % a.resample_every == 0:
-            collect_transition_samples_value(env, a, storage, model, device)
-            if epoch == 0:
-                collect_transition_samples_value(env_v, a, storage_v, model, device)
+        collect_transition_samples_value(env, a, storage, model, device)
+        collect_transition_samples_value(env_v, a, storage_v, model_v, device)
 
-        val_model_loss_v = optimize_value(a, storage_v, model_v, optimizer_v)
-        val_model_loss = optimize_value(a, storage, model_v, None, False)
+        val_model_loss_v = optimize_value(a, storage_v, model_v, optimizer_v, clip_value=a.clip_value)
+        val_model_loss = optimize_value(a, storage, model_v, None, False, clip_value=a.clip_value)
 
-        loss = optimize_value(a, storage, model, optimizer)
-        loss_v = optimize_value(a, storage_v, model, None, False)
+        loss = optimize_value(a, storage, model, optimizer, clip_value=a.clip_value)
+        loss_v = optimize_value(a, storage_v, model, None, False, clip_value=a.clip_value)
 
         # do sr
 
@@ -173,8 +173,8 @@ def overfit(use_wandb=True):
             print(f"Symbol Parameters: {n_params(symb_model)}")
             s_optimizer = torch.optim.Adam(symb_model.parameters(), lr=a.s_learning_rate)
 
-        s_loss = optimize_value(a, storage, symb_model, s_optimizer)
-        s_loss_v = optimize_value(a, storage_v, symb_model, None, False)
+        s_loss = optimize_value(a, storage, symb_model, s_optimizer, clip_value=a.clip_value)
+        s_loss_v = optimize_value(a, storage_v, symb_model, None, False, clip_value=a.clip_value)
 
         if use_wandb:
             wandb.log({"Epoch": epoch,
@@ -189,7 +189,8 @@ def overfit(use_wandb=True):
 
 
 
-def optimize_value(args, storage, model, optimizer, update=True):
+
+def optimize_value(args, storage, model, optimizer, update=True, clip_value=True):
     generator = storage.fetch_train_generator(args.mini_batch_size, False)
 
     loss_list = []
@@ -205,6 +206,9 @@ def optimize_value(args, storage, model, optimizer, update=True):
         v_surr1 = (value_batch - return_batch).pow(2)
         v_surr2 = (clipped_value_batch - return_batch).pow(2)
         loss = 0.5 * torch.max(v_surr1, v_surr2).mean()
+        if not clip_value:
+            loss = v_surr1.mean()
+
         if update:
             loss.backward()
             optimizer.step()

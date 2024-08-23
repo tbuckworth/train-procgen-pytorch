@@ -53,6 +53,20 @@ class CategoricalPolicy(nn.Module):
         v = self.fc_value(hidden).reshape(-1)
         return p, v
 
+class GraphPolicy(nn.Module):
+    def __init__(self, graph, embedder=None):
+        self.embedder = embedder
+        self.graph = graph
+        super(GraphPolicy, self).__init__()
+
+    def forward(self, x):
+        if self.embedder is not None:
+            x = self.embedder(x)
+        logits, value = self.graph(x)
+        log_probs = F.log_softmax(logits, dim=1)
+        p = Categorical(logits=log_probs)
+        return p, value
+
 
 class TransitionPolicy(nn.Module):
     def __init__(self,
