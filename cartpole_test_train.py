@@ -16,6 +16,7 @@ if __name__ == '__main__':
     args.num_timesteps = int(2e8)
     args.num_checkpoints = 1
     args.seed = 6033
+    args.wandb_tags = ["gc1"]
     args.use_wandb = True
     args.use_valid_env = True
     # args.render = True
