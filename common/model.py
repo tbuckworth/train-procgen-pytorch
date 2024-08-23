@@ -929,6 +929,7 @@ class MHAModel(nn.Module):
         return x, output
         # return self.mha.get_attn_weights(x)
 
+
 class MLPTransitionModel(nn.Module):
     def __init__(self, n_features, depth, mid_weight):
         super(MLPTransitionModel, self).__init__()
@@ -970,7 +971,11 @@ class MLPModel(nn.Module):
     def forward(self, x):
         return self.model(x)
 
+
 class GraphModel(nn.Module, ABC):
+    def __init__(self):
+        super(GraphModel, self).__init__()
+
     def prep_input(self, obs):
         x = self.append_index(obs.squeeze())
         n = x.shape[-2]
@@ -998,14 +1003,14 @@ class GraphModel(nn.Module, ABC):
         return torch.concat([x.unsqueeze(axis), y.unsqueeze(axis)], axis=axis)
 
 
-
 class GraphActorCritic(GraphModel):
-    def __init__(self, in_channels, depth, mid_weight, latent_size, device):
+    def __init__(self, in_channels, depth, mid_weight, latent_size, action_size, device):
         super(GraphActorCritic, self).__init__()
         self.input_size = in_channels
         self.depth = depth
         self.mid_weight = mid_weight
         self.output_dim = latent_size
+        self.action_size = action_size
         self.device = device
 
         self.messenger = MLPModel(4, depth, mid_weight, latent_size)
@@ -1015,16 +1020,46 @@ class GraphActorCritic(GraphModel):
         self.apply(xavier_uniform_init)
 
     def forward(self, obs):
-        logits = value = None
         n, x = self.prep_input(obs)
         msg = self.sum_all_messages(n, x)
+        m = self.append_index(msg)
 
-
+        logits = self.run_actor(m, n)
+        value = self.run_critic(m, obs)
 
         return logits, value
 
+    def run_critic(self, m, obs):
+        c_in = torch.cat([m, obs.unsqueeze(-1)], dim=-1)
+        c_out = self.critic(c_in)
+        return torch.sum(c_out, dim=-2).squeeze()
 
+    def run_actor(self, m, n):
+        acts = self.generate_actions(m, n)
+        am = self.vectorize_for_action_message_pass(n, m, acts)
+        am_messages = self.actor(am)
+        logits = torch.sum(am_messages, dim=-3).squeeze()
+        return logits
 
+    def generate_actions(self, m, n):
+        shp = np.array(m.shape)
+        flt = shp == n
+        shp[flt] = self.action_size
+        shp[~flt] = 1
+        acts = torch.arange(self.action_size).reshape(shp.tolist()).to(m.device)
+        shp = np.array(m.shape)
+        shp[flt] = 1
+        shp[-1] = 1
+        acts = acts.tile(shp.tolist())
+        return acts
+
+    def vectorize_for_action_message_pass(self, n, m, acts):
+        xi = m.unsqueeze(-2).tile([self.action_size, 1])
+
+        xj = acts.unsqueeze(-3).tile([n, 1, 1])
+
+        msg_in = torch.concat([xi, xj], dim=-1)
+        return msg_in
 
 
 class GraphTransitionModel(nn.Module):
@@ -1088,7 +1123,6 @@ class GraphTransitionModel(nn.Module):
         u = self.updater(h)
         return h, u
 
-
     def sum_messages(self, i, n, x, action):
         # This is kept as the logic is easier to follow and the result is the same (but much less efficient)
         xi = x[..., i, :].unsqueeze(-2).tile([n, 1])
@@ -1109,6 +1143,7 @@ class GraphTransitionModel(nn.Module):
         shp = [i for i in x.shape[:-1]] + [1]
         all_coor = torch.tile(coor, shp).to(device=self.device)
         return self.concater(x, all_coor, -1)
+
 
 class GraphValueModel(nn.Module):
     def __init__(self, in_channels, depth, mid_weight, latent_size, device):
@@ -1164,7 +1199,6 @@ class GraphValueModel(nn.Module):
         u = self.updater(h)
         return h, u
 
-
     def sum_messages(self, i, n, x, action):
         # This is kept as the logic is easier to follow and the result is the same (but much less efficient)
         xi = x[..., i, :].unsqueeze(-2).tile([n, 1])
@@ -1205,7 +1239,6 @@ class NBatchPySRTorch(nn.Module):
         except Exception:
             pass
 
-
     def fwd(self, X):
         if self.model._selection is not None:
             X = X[..., self.model._selection]
@@ -1217,4 +1250,3 @@ class NBatchPySRTorch(nn.Module):
             return self.fwd(X)
         h = self.fwd(X)
         return h.repeat(X.shape[:-1])
-

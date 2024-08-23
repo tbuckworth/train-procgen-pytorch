@@ -55,9 +55,9 @@ class CategoricalPolicy(nn.Module):
 
 class GraphPolicy(nn.Module):
     def __init__(self, graph, embedder=None):
+        super(GraphPolicy, self).__init__()
         self.embedder = embedder
         self.graph = graph
-        super(GraphPolicy, self).__init__()
 
     def forward(self, x):
         if self.embedder is not None:

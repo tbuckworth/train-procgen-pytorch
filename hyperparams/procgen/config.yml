@@ -1023,3 +1023,4 @@ graph-cartpole:
     use_gae: True
     architecture: graph
     recurrent: False
+    latent_size: 1
