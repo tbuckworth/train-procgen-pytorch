@@ -547,16 +547,15 @@ def cartpole_graph_ppo():
         # "depth": 4,#[2, 6],
     }
     bounds = {
-        # "gamma": [0.9999, 0.8],
-        # "lmbda": [0.0, 0.99999],
+        "gamma": [0.9999, 0.8],
+        "lmbda": [0.0, 0.99999],
         "epochs": [1, 10],
         "learning_rate": [1e-8, 1e-3],
         # "n_envs": [64],
         # "n_steps": [256],
-        "output_dim": [24, 64],
         "depth": [2, 6],
+        "mid_weight": [8, 256],
     }
-    bounds = {}
     while True:
         project = get_project(fixed["env_name"], fixed["exp_name"])
         id_tag = fixed["wandb_tags"][0]
@@ -564,5 +563,6 @@ def cartpole_graph_ppo():
 
 
 if __name__ == "__main__":
+    cartpole_graph_ppo()
     # double_graph_symbreg_ft_hparams()
-    pets_graph_transition_cartpole()
+    # pets_graph_transition_cartpole()
