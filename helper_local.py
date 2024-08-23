@@ -18,9 +18,9 @@ from matplotlib import pyplot as plt
 
 from common.model import NatureModel, ImpalaModel, MHAModel, ImpalaVQModel, ImpalaVQMHAModel, ImpalaFSQModel, ribMHA, \
     ImpalaFSQMHAModel, RibFSQMHAModel, MLPModel, TransformoBot, GraphTransitionModel, ImpalaCNN, \
-    GraphValueModel
+    GraphValueModel, GraphActorCritic
 from common.policy import CategoricalPolicy, TransitionPolicy, PixelTransPolicy, GraphTransitionPolicy, \
-    DoubleTransitionPolicy
+    DoubleTransitionPolicy, GraphPolicy
 from moviepy.editor import ImageSequenceClip
 
 from common.storage import Storage
@@ -362,6 +362,15 @@ def initialize_model(device, env, hyperparameters, in_channels=None):
         policy.to(device)
         policy.device = device
         return value_model, observation_shape, policy
+    elif architecture == 'graph':
+        depth = hyperparameters.get("depth", 4)
+        mid_weight = hyperparameters.get("mid_weight", 64)
+        latent_size = hyperparameters.get("latent_size", 256)
+        graph = GraphActorCritic(in_channels, depth, mid_weight, latent_size, device)
+        policy = GraphPolicy(graph)
+        policy.to(device)
+        policy.device = device
+        return graph, observation_shape, policy
     else:
         raise NotImplementedError(f"Architecture:{architecture} not found in helper.py")
     # Discrete action space
