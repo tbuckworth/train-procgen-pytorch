@@ -56,8 +56,8 @@ def append_or_create(a, act):
 def overfit(use_wandb=True):
     cfg = dict(
         epochs=1000,
-        resample_every=31,
-        env_name="acrobot",
+        resample_every=1000,
+        env_name="cartpole",
         exp_name="overfit",
         seed=0,
         n_envs=2,
