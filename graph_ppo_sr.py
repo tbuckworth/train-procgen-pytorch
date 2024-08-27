@@ -37,10 +37,11 @@ def generate_data(agent, env, n):
 
 def generate_data_supervised(agent, env, n):
     def predict(Obs):
-        Obs = torch.FloatTensor(Obs).to(agent.device)
-        Logits, value = agent.policy(Obs)
-        act = Logits.sample().detach().cpu().numpy()
-        return Logits, act, Obs
+        with torch.no_grad():
+            Obs = torch.FloatTensor(Obs).to(agent.policy.device)
+            Logits, value, _ = agent.policy(Obs)
+            act = Logits.sample().detach().cpu().numpy()
+        return Logits.logits, act, Obs
 
     Obs = env.reset()
     Logits, act, Obs = predict(Obs)
@@ -56,11 +57,16 @@ def generate_data_supervised(agent, env, n):
     return Obs, Logits
 
 
-def fine_tune_supervised(ns_agent, nn_agent, env, test_env, args):
-    mean_rewards = trial_agent_mean_reward(ns_agent, env, print_name="Symb Agent Train", n=args.n_tests, seed=args.seed)
-    val_mean_rewards = trial_agent_mean_reward(ns_agent, test_env, print_name="Symb Agent Test", n=args.n_tests,
-                                               seed=args.seed)
+def fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir):
+    mean_rewards = trial_agent_mean_reward(ns_agent, env, "", n=args.n_tests, seed=args.seed, print_results=False)
+    val_mean_rewards = trial_agent_mean_reward(ns_agent, test_env, "", n=args.n_tests,
+                                               seed=args.seed, print_results=False)
+    nc = args.num_checkpoints
+    save_every = args.num_timesteps//nc
+    checkpoints = [(i+1)*save_every for i in range(nc)] + [args.num_timesteps - 2]
+    checkpoints.sort()
     t = 0
+    i = 0
     wandb.log({
         'timesteps': t,
         'loss': np.nan,
@@ -71,24 +77,33 @@ def fine_tune_supervised(ns_agent, nn_agent, env, test_env, args):
     for _ in range(args.num_timesteps // args.batch_size):
         x, y = generate_data_supervised(nn_agent, env, args.batch_size)
         losses = []
-        for _ in args.epoch:
-            y_hat, _ = nn_agent.policy(x)
-            loss = nn.MSELoss()(y, y_hat)
+        for _ in range(args.epoch):
+            y_hat, _, _ = ns_agent.policy(x)
+            loss = nn.MSELoss()(y, y_hat.logits)
             loss.backward()
             optimizer.step()
             optimizer.zero_grad()
             losses += [loss.item()]
         t += len(x)
-        mean_rewards = trial_agent_mean_reward(ns_agent, env, print_name="Symb Agent Train", n=args.n_tests,
-                                               seed=args.seed)
-        val_mean_rewards = trial_agent_mean_reward(ns_agent, test_env, print_name="Symb Agent Test", n=args.n_tests,
-                                                   seed=args.seed)
-        wandb.log({
+        mean_rewards = trial_agent_mean_reward(ns_agent, env, "", n=args.n_tests,
+                                               seed=args.seed, print_results=False)
+        val_mean_rewards = trial_agent_mean_reward(ns_agent, test_env, "", n=args.n_tests,
+                                                   seed=args.seed, print_results=False)
+
+        log = {
             'timesteps': t,
             'loss': np.mean(losses),
             'mean_reward': mean_rewards,
             'val_mean_reward': val_mean_rewards
-        })
+        }
+        print(log)
+        wandb.log(log)
+        if t > checkpoints[i]:
+            print("Saving model.")
+            torch.save({'model_state_dict': ns_agent.policy.state_dict(),
+                        'optimizer_state_dict': optimizer.state_dict()},
+                       ftdir + '/model_' + str(t) + '.pth')
+            i += 1
 
 
 def run_graph_ppo_sr(args):
@@ -163,9 +178,13 @@ def run_graph_ppo_sr(args):
     print(f"Symbol Parameters: {n_params(ns_agent.policy)}")
 
     # supervised learning:
-    fine_tune_supervised(ns_agent, nn_agent, env, args)
+    _, env, _, test_env = load_nn_policy(logdir, n_envs=100)
+    ftdir = os.path.join(symbdir, "fine_tune")
+    if not os.path.exists(ftdir):
+        os.mkdir(ftdir)
 
-    fine_tuned_policy = fine_tune(ns_agent.policy, logdir, symbdir, hp_override)
+    fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir)
+    wandb.finish()
 
 
 if __name__ == "__main__":
@@ -175,13 +194,18 @@ if __name__ == "__main__":
     args = parser.parse_args()
     args.logdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033"
 
-    args.iterations = 1
+    args.iterations = 5
 
-    args.load_pysr = True
-    args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-08-27__10-39-50"
+    # args.load_pysr = True
+    # args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-08-27__10-39-50"
 
     args.binary_operators = ["+", "-", "*", "greater", "/"]
     args.unary_operators = ["sin", "relu", "log", "exp", "sign", "sqrt", "square"]
     args.device = "gpu" if torch.cuda.is_available() else "cpu"
     args.learning_rate = 1e-2
+    args.n_tests = 100
+    args.batch_size = 10000
+    args.num_checkpoints = 10
+    args.num_timesteps = int(1e7)
+    args.epoch = 100
     run_graph_ppo_sr(args)
