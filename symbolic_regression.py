@@ -13,7 +13,7 @@ from discrete_env.mountain_car_pre_vec import create_mountain_car
 
 from email_results import send_images_first_last
 from symbreg.agents import SymbolicAgent, NeuralAgent, RandomAgent, NeuroSymbolicAgent, GraphSymbolicAgent, \
-    DoubleGraphSymbolicAgent
+    DoubleGraphSymbolicAgent, PureGraphAgent
 
 if os.name != "nt":
     from pysr import PySRRegressor
@@ -101,6 +101,9 @@ def load_nn_policy(logdir, n_envs=2):
 
     if cfg['architecture'] == "double-graph":
         symbolic_agent_constructor = DoubleGraphSymbolicAgent
+
+    if cfg['architecture'] == 'graph':
+        symbolic_agent_constructor = PureGraphAgent
 
     device = torch.device("cuda") if cuda.is_available() else torch.device("cpu")
     hyperparameters, last_model = load_hparams_for_model(cfg["param_name"], logdir, n_envs)

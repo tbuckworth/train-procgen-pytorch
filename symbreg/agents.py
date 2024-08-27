@@ -506,3 +506,33 @@ class PetsSymbolicAgent:
         if x_in.shape[:-1] != x_out.shape[:-1]:
             x_in = torch.tile(x_in, (self.ensemble_size, *[1 for _ in x_in.shape]))
         return x_in
+
+
+class PureGraphAgent:
+    def __init__(self, policy,
+                 msg_model=None,
+                 act_model=None):
+        self.policy = policy
+        if msg_model is not None:
+            self.policy.graph.messenger = msg_model.to(device=policy.device)
+        if act_model is not None:
+            self.policy.graph.actor = act_model.to(device=policy.device)
+
+    def forward(self, observation):
+        with torch.no_grad():
+            obs = torch.FloatTensor(observation).to(self.policy.device)
+            dist, value = self.policy(obs)
+            act = dist.sample()
+            return act.cpu().numpy()
+
+    def sample(self, observation):
+        with torch.no_grad():
+            obs = torch.FloatTensor(observation).to(self.policy.device)
+            m_in, m_out, a_in, a_out = self.policy.graph.forward_for_imitation(obs)
+
+            m_in = flatten_batches_to_numpy(m_in)
+            m_out = flatten_batches_to_numpy(m_out)
+            a_in = flatten_batches_to_numpy(a_in)
+            a_out = flatten_batches_to_numpy(a_out)
+
+            return m_in, m_out, a_in, a_out

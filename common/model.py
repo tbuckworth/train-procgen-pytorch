@@ -1029,17 +1029,32 @@ class GraphActorCritic(GraphModel):
 
         return logits, value
 
+    def forward_for_imitation(self, obs):
+        n, x = self.prep_input(obs)
+        m_in = self.vectorize_for_message_pass(n, x)
+        m_out = self.messenger(m_in)
+        msg = torch.sum(m_out, dim=-2).squeeze()
+        m = self.append_index(msg)
+
+        a_in, a_out = self.collect_actor_in_out(m, n)
+
+        return m_in, m_out, a_in, a_out
+
     def run_critic(self, m, obs):
         c_in = torch.cat([m, obs.unsqueeze(-1)], dim=-1)
         c_out = self.critic(c_in)
         return torch.sum(c_out, dim=-2).squeeze()
 
     def run_actor(self, m, n):
+        am, am_messages = self.collect_actor_in_out(m, n)
+        logits = torch.sum(am_messages, dim=-3).squeeze()
+        return logits
+
+    def collect_actor_in_out(self, m, n):
         acts = self.generate_actions(m, n)
         am = self.vectorize_for_action_message_pass(n, m, acts)
         am_messages = self.actor(am)
-        logits = torch.sum(am_messages, dim=-3).squeeze()
-        return logits
+        return am, am_messages
 
     def generate_actions(self, m, n):
         shp = np.array(m.shape)

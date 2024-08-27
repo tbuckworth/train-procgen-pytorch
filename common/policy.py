@@ -64,7 +64,7 @@ class GraphPolicy(nn.Module):
     def is_recurrent(self):
         return self.recurrent
 
-    def forward(self, x, hx, masks):
+    def forward(self, x, hx=None, masks=None):
         if self.embedder is not None:
             x = self.embedder(x)
         logits, value = self.graph(x)
