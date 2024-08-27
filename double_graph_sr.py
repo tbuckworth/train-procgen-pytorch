@@ -134,7 +134,7 @@ def test_agent_balanced_reward(agent, env, print_name, n=40):
     return true_average_reward
 
 
-def test_agent_mean_reward(agent, env, print_name, n=40, return_values=False, seed=0):
+def trial_agent_mean_reward(agent, env, print_name, n=40, return_values=False, seed=0):
     print(print_name)
     episodes = 0
     obs = env.reset(seed=seed)

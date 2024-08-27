@@ -5,11 +5,12 @@ import os
 import numpy as np
 import pandas as pd
 import torch
+from torch import nn
 
 import wandb
 from common.model import NBatchPySRTorch
 
-from double_graph_sr import create_symb_dir_if_exists, find_model
+from double_graph_sr import create_symb_dir_if_exists, find_model, trial_agent_mean_reward
 from graph_sr import fine_tune, get_pysr_dir, load_pysr_to_torch
 from helper_local import add_symbreg_args, wandb_login, n_params, get_project
 from symbolic_regression import load_nn_policy
@@ -32,6 +33,62 @@ def generate_data(agent, env, n):
         A_out = np.append(A_out, a_out, axis=0)
 
     return M_in, M_out, A_in, A_out
+
+
+def generate_data_supervised(agent, env, n):
+    def predict(Obs):
+        Obs = torch.FloatTensor(Obs).to(agent.device)
+        Logits, value = agent.policy(Obs)
+        act = Logits.sample().detach().cpu().numpy()
+        return Logits, act, Obs
+
+    Obs = env.reset()
+    Logits, act, Obs = predict(Obs)
+    act[::2] = np.random.randint(0, env.action_space.n, len(act))[::2]
+    while len(Logits) < n:
+        obs, rew, done, info = env.step(act)
+        logits, act, obs = predict(obs)
+        act[::2] = np.random.randint(0, env.action_space.n, len(act))[::2]
+
+        Logits = torch.cat([Logits, logits], axis=0)
+        Obs = torch.cat([Obs, obs], axis=0)
+
+    return Obs, Logits
+
+
+def fine_tune_supervised(ns_agent, nn_agent, env, test_env, args):
+    mean_rewards = trial_agent_mean_reward(ns_agent, env, print_name="Symb Agent Train", n=args.n_tests, seed=args.seed)
+    val_mean_rewards = trial_agent_mean_reward(ns_agent, test_env, print_name="Symb Agent Test", n=args.n_tests,
+                                               seed=args.seed)
+    t = 0
+    wandb.log({
+        'timesteps': t,
+        'loss': np.nan,
+        'mean_reward': mean_rewards,
+        'val_mean_reward': val_mean_rewards
+    })
+    optimizer = torch.optim.Adam(ns_agent.policy.parameters(), lr=args.learning_rate)
+    for _ in range(args.num_timesteps // args.batch_size):
+        x, y = generate_data_supervised(nn_agent, env, args.batch_size)
+        losses = []
+        for _ in args.epoch:
+            y_hat, _ = nn_agent.policy(x)
+            loss = nn.MSELoss()(y, y_hat)
+            loss.backward()
+            optimizer.step()
+            optimizer.zero_grad()
+            losses += [loss.item()]
+        t += len(x)
+        mean_rewards = trial_agent_mean_reward(ns_agent, env, print_name="Symb Agent Train", n=args.n_tests,
+                                               seed=args.seed)
+        val_mean_rewards = trial_agent_mean_reward(ns_agent, test_env, print_name="Symb Agent Test", n=args.n_tests,
+                                                   seed=args.seed)
+        wandb.log({
+            'timesteps': t,
+            'loss': np.mean(losses),
+            'mean_reward': mean_rewards,
+            'val_mean_reward': val_mean_rewards
+        })
 
 
 def run_graph_ppo_sr(args):
@@ -100,15 +157,15 @@ def run_graph_ppo_sr(args):
         except Exception as e:
             pass
 
-
     ns_agent = symbolic_agent_constructor(copy.deepcopy(policy), msg_torch, act_torch)
 
     print(f"Neural Parameters: {n_params(nn_agent.policy)}")
     print(f"Symbol Parameters: {n_params(ns_agent.policy)}")
 
+    # supervised learning:
+    fine_tune_supervised(ns_agent, nn_agent, env, args)
 
     fine_tuned_policy = fine_tune(ns_agent.policy, logdir, symbdir, hp_override)
-
 
 
 if __name__ == "__main__":
