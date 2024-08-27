@@ -151,6 +151,9 @@ def bayesian_optimisation(xp, yp, bounds, gp_params=None, random_search=False, a
                                             n_restarts_optimizer=10,
                                             normalize_y=True)
 
+    flt = np.isnan(xp).any(axis=1)
+    xp = xp[~flt]
+    yp = yp[~flt]
     model.fit(xp, yp)
 
     # Sample next hyperparameter
