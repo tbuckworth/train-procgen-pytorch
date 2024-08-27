@@ -194,7 +194,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     args.logdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033"
 
-    args.iterations = 20
+    args.iterations = 100
 
     args.load_pysr = False
     # args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-08-27__10-39-50"
@@ -205,6 +205,7 @@ if __name__ == "__main__":
     args.unary_operators = ["sin", "relu", "log", "exp", "sign", "sqrt", "square"]
     args.device = "gpu" if torch.cuda.is_available() else "cpu"
     args.learning_rate = 1e-2
+    args.ncycles_per_iteration = 4000
     args.n_tests = 100
     args.batch_size = 1000
     args.num_checkpoints = 10
