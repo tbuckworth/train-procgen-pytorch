@@ -58,9 +58,9 @@ def generate_data_supervised(agent, env, n):
 
 
 def fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir):
-    mean_rewards = trial_agent_mean_reward(ns_agent, env, "", n=args.n_tests, seed=args.seed, print_results=False)
+    mean_rewards = trial_agent_mean_reward(ns_agent, env, "", n=args.n_tests, seed=args.seed, print_results=False, reset=False)
     val_mean_rewards = trial_agent_mean_reward(ns_agent, test_env, "", n=args.n_tests,
-                                               seed=args.seed, print_results=False)
+                                               seed=args.seed, print_results=False, reset=False)
     nc = args.num_checkpoints
     save_every = args.num_timesteps//nc
     checkpoints = [(i+1)*save_every for i in range(nc)] + [args.num_timesteps - 2]
@@ -86,9 +86,9 @@ def fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir):
             losses += [loss.item()]
         t += len(x)
         mean_rewards = trial_agent_mean_reward(ns_agent, env, "", n=args.n_tests,
-                                               seed=args.seed, print_results=False)
+                                               seed=args.seed, print_results=False, reset=False)
         val_mean_rewards = trial_agent_mean_reward(ns_agent, test_env, "", n=args.n_tests,
-                                                   seed=args.seed, print_results=False)
+                                                   seed=args.seed, print_results=False, reset=False)
 
         log = {
             'timesteps': t,
@@ -196,9 +196,10 @@ if __name__ == "__main__":
 
     args.iterations = 5
 
-    # args.load_pysr = True
+    args.load_pysr = False
     # args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-08-27__10-39-50"
 
+    args.model_selection = "accuracy"
     args.binary_operators = ["+", "-", "*", "greater", "/"]
     args.unary_operators = ["sin", "relu", "log", "exp", "sign", "sqrt", "square"]
     args.device = "gpu" if torch.cuda.is_available() else "cpu"

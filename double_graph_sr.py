@@ -134,10 +134,13 @@ def test_agent_balanced_reward(agent, env, print_name, n=40):
     return true_average_reward
 
 
-def trial_agent_mean_reward(agent, env, print_name, n=40, return_values=False, seed=0, print_results=True):
+def trial_agent_mean_reward(agent, env, print_name, n=40, return_values=False, seed=0, print_results=True, reset=True):
     print(print_name)
     episodes = 0
-    obs = env.reset(seed=seed)
+    if reset:
+        obs = env.reset(seed=seed)
+    else:
+        obs = env.reset()
     act = agent.forward(obs)
     cum_rew = np.zeros(len(act))
     episode_rewards = []
