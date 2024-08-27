@@ -1047,7 +1047,7 @@ class GraphActorCritic(GraphModel):
 
     def run_actor(self, m, n):
         am, am_messages = self.collect_actor_in_out(m, n)
-        logits = torch.sum(am_messages, dim=-3).squeeze()
+        logits = torch.sum(am_messages.squeeze(), dim=-2).squeeze()
         return logits
 
     def collect_actor_in_out(self, m, n):

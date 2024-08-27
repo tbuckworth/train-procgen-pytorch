@@ -10,7 +10,7 @@ import wandb
 from common.model import NBatchPySRTorch
 
 from double_graph_sr import create_symb_dir_if_exists, find_model
-from graph_sr import fine_tune
+from graph_sr import fine_tune, get_pysr_dir, load_pysr_to_torch
 from helper_local import add_symbreg_args, wandb_login, n_params, get_project
 from symbolic_regression import load_nn_policy
 
@@ -44,7 +44,11 @@ def run_graph_ppo_sr(args):
         # "epoch": args.epoch,
         "learning_rate": args.learning_rate,
     }
-    symbdir, save_file = create_symb_dir_if_exists(logdir)
+    if args.load_pysr:
+        symbdir = args.symbdir
+        save_file = "symb_reg.csv"
+    else:
+        symbdir, save_file = create_symb_dir_if_exists(logdir)
     cfg = vars(args)
     np.save(os.path.join(symbdir, "config.npy"), cfg)
 
@@ -70,25 +74,31 @@ def run_graph_ppo_sr(args):
     m_in, m_out, a_in, a_out = generate_data(nn_agent, env, int(data_size))
 
     print("data generated")
-    weights = None
-    msgdir, _ = create_symb_dir_if_exists(symbdir, "msg")
-    actdir, _ = create_symb_dir_if_exists(symbdir, "act")
+    if args.load_pysr:
+        msgdir = get_pysr_dir(symbdir, "msg")
+        actdir = get_pysr_dir(symbdir, "act")
+        msg_torch = load_pysr_to_torch(msgdir)
+        act_torch = load_pysr_to_torch(actdir)
+    else:
+        weights = None
+        msgdir, _ = create_symb_dir_if_exists(symbdir, "msg")
+        actdir, _ = create_symb_dir_if_exists(symbdir, "act")
 
-    print("\nMessenger:")
-    msg_model, _ = find_model(m_in, m_out, msgdir, save_file, weights, args)
-    print("\nActor:")
-    act_model, _ = find_model(a_in, a_out, actdir, save_file, weights, args)
+        print("\nMessenger:")
+        msg_model, _ = find_model(m_in, m_out, msgdir, save_file, weights, args)
+        print("\nActor:")
+        act_model, _ = find_model(a_in, a_out, actdir, save_file, weights, args)
 
-    msg_torch = NBatchPySRTorch(msg_model.pytorch())
-    act_torch = NBatchPySRTorch(act_model.pytorch())
+        msg_torch = NBatchPySRTorch(msg_model.pytorch())
+        act_torch = NBatchPySRTorch(act_model.pytorch())
 
-    try:
-        wandb.log({
-            "messenger": msg_model.get_best().equation,
-            "actor": act_model.get_best().equation,
-        })
-    except Exception as e:
-        pass
+        try:
+            wandb.log({
+                "messenger": msg_model.get_best().equation,
+                "actor": act_model.get_best().equation,
+            })
+        except Exception as e:
+            pass
 
 
     ns_agent = symbolic_agent_constructor(copy.deepcopy(policy), msg_torch, act_torch)
@@ -109,6 +119,9 @@ if __name__ == "__main__":
     args.logdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033"
 
     args.iterations = 1
+
+    args.load_pysr = True
+    args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-08-27__10-39-50"
 
     args.binary_operators = ["+", "-", "*", "greater", "/"]
     args.unary_operators = ["sin", "relu", "log", "exp", "sign", "sqrt", "square"]

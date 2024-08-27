@@ -377,7 +377,7 @@ def load_learning_objects(logdir, ftdir, device):
         os.mkdir(newdir)
 
     logger = Logger(args.n_envs, newdir, use_wandb=args.use_wandb, transition_model=args.algo == "ppo-model",
-                    double_graph=args.algo == "double-graph-agent")
+                    double_graph=args.algo == "double-graph-agent", ppo_pure=args.algo=="ppo-pure")
     logger.max_steps = hyperparameters.get("max_steps", 10 ** 3)
 
     observation_shape = env.observation_space.shape
