@@ -521,7 +521,7 @@ class PureGraphAgent:
     def forward(self, observation):
         with torch.no_grad():
             obs = torch.FloatTensor(observation).to(self.policy.device)
-            dist, value = self.policy(obs)
+            dist, value, _ = self.policy(obs)
             act = dist.sample()
             return act.cpu().numpy()
 

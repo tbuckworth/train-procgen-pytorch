@@ -3,6 +3,7 @@ import copy
 import os
 
 import numpy as np
+import pandas as pd
 import torch
 
 import wandb
@@ -80,6 +81,14 @@ def run_graph_ppo_sr(args):
 
     msg_torch = NBatchPySRTorch(msg_model.pytorch())
     act_torch = NBatchPySRTorch(act_model.pytorch())
+
+    try:
+        wandb.log({
+            "messenger": msg_model.get_best().equation,
+            "actor": act_model.get_best().equation,
+        })
+    except Exception as e:
+        pass
 
 
     ns_agent = symbolic_agent_constructor(copy.deepcopy(policy), msg_torch, act_torch)

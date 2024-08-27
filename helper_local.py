@@ -23,7 +23,7 @@ from common.policy import CategoricalPolicy, TransitionPolicy, PixelTransPolicy,
     DoubleTransitionPolicy, GraphPolicy
 from moviepy.editor import ImageSequenceClip
 
-from common.storage import Storage
+from common.storage import Storage, BasicStorage
 
 GLOBAL_DIR = "/vol/bitbucket/tfb115/train-procgen-pytorch/"
 OS_IS = "Linux"
@@ -1037,3 +1037,14 @@ def add_pets_args(parser):
     )
 
     return parser
+
+
+def initialize_storage(args, device, double_graph, hidden_state_dim, model_based, n_envs, n_steps, observation_shape):
+    storage = Storage(observation_shape, hidden_state_dim, n_steps, n_envs, device)
+    storage_valid = Storage(observation_shape, hidden_state_dim, n_steps, n_envs,
+                            device) if args.use_valid_env else None
+    if model_based or double_graph:
+        storage = BasicStorage(observation_shape, n_steps, n_envs, device)
+        storage_valid = BasicStorage(observation_shape, n_steps, n_envs,
+                                     device) if args.use_valid_env else None
+    return storage, storage_valid

@@ -1,5 +1,6 @@
+from click.termui import hidden_prompt_func
+
 from common.logger import Logger
-from common.storage import Storage, BasicStorage
 from common import set_global_seeds, set_global_log_levels
 
 import os, time, argparse
@@ -7,7 +8,7 @@ import torch
 import numpy as np
 
 from helper_local import get_hyperparams, initialize_model, add_training_args, wandb_login, get_project, \
-    get_agent_constructor
+    get_agent_constructor, initialize_storage
 from common.env.env_constructor import get_env_constructor
 
 try:
@@ -170,13 +171,8 @@ def train_ppo(args):
     #############
     print('INITIALIZING STORAGE...')
     hidden_state_dim = model.output_dim
-    storage = Storage(observation_shape, hidden_state_dim, n_steps, n_envs, device)
-    storage_valid = Storage(observation_shape, hidden_state_dim, n_steps, n_envs,
-                            device) if args.use_valid_env else None
-    if model_based or double_graph:
-        storage = BasicStorage(observation_shape, n_steps, n_envs, device)
-        storage_valid = BasicStorage(observation_shape, n_steps, n_envs,
-                                     device) if args.use_valid_env else None
+    storage, storage_valid = initialize_storage(args, device, double_graph, hidden_state_dim, model_based, n_envs, n_steps,
+                                                observation_shape)
 
     ###########
     ## AGENT ##

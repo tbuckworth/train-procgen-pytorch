@@ -36,7 +36,7 @@ from helper_local import get_config, get_path, balanced_reward, load_storage_and
     load_hparams_for_model, floats_to_dp, dict_to_html_table, wandb_login, add_symbreg_args, DictToArgs, \
     inverse_sigmoid, sigmoid, sample_from_sigmoid, map_actions_to_values, get_actions_from_all, \
     entropy_from_binary_prob, get_saved_hyperparams, softmax, sample_numpy_probs, n_params, get_logdir_from_symbdir, \
-    get_latest_file_matching, get_agent_constructor, get_model_with_largest_checkpoint
+    get_latest_file_matching, get_agent_constructor, get_model_with_largest_checkpoint, initialize_storage
 from common.env.env_constructor import get_env_constructor
 # from cartpole.create_cartpole import create_cartpole
 # from boxworld.create_box_world import create_bw_env
@@ -382,9 +382,14 @@ def load_learning_objects(logdir, ftdir, device):
 
     observation_shape = env.observation_space.shape
 
-    storage = BasicStorage(observation_shape, args.n_steps, args.n_envs, device)
-    storage_valid = BasicStorage(observation_shape, args.n_steps, args.n_envs,
-                                 device) if args.use_valid_env else None
+    algo = hyperparameters.get('algo', 'ppo')
+    model_based = algo in ['ppo-model', 'graph-agent']
+    double_graph = algo in ['double-graph-agent']
+    ppo_pure = algo in ['ppo-pure']
+    hidden_state_dim = 1
+
+    storage, storage_valid = initialize_storage(args, device, double_graph, hidden_state_dim, model_based,
+                                                args.n_envs, args.n_steps, observation_shape)
 
     agent_cons = get_agent_constructor(args.algo)
 
