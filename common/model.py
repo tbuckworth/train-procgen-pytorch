@@ -1054,7 +1054,7 @@ class GraphActorCritic(GraphModel):
         am, am_messages = self.collect_actor_in_out(m, n)
         a_out = am_messages.squeeze()
         logits = a_out.sum(-2).squeeze()
-        log_probs = F.log_softmax(logits, dim=1)
+        log_probs = F.log_softmax(logits, dim=-2)
         l = Categorical(logits=log_probs).logits
         return l, a_out, m_out.squeeze()
 

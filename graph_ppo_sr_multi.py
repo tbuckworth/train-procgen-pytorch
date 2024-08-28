@@ -63,19 +63,13 @@ def generate_data_supervised(agent, env, n):
 
 
 def fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, a_coef=1., m_coef=1000.):
-    ns_agent.policy.graph.messenger.set_elite(-1)
-    ns_agent.policy.graph.actor.set_elite(-1)
-    mean_rewards = trial_agent_mean_reward(ns_agent, env, "", n=args.n_tests, seed=args.seed, print_results=False, reset=False)
-    val_mean_rewards = trial_agent_mean_reward(ns_agent, test_env, "", n=args.n_tests,
-                                               seed=args.seed, print_results=False, reset=False)
     nc = args.num_checkpoints
     save_every = args.num_timesteps//nc
     checkpoints = [(i+1)*save_every for i in range(nc)] + [args.num_timesteps - 2]
     checkpoints.sort()
     t = 0
     i = 0
-    ns_agent.policy.graph.messenger.set_elite(None)
-    ns_agent.policy.graph.actor.set_elite(None)
+
     with torch.no_grad():
         x, y, a_out, m_out = generate_data_supervised(nn_agent, env, args.batch_size)
         y_hat, a_out_hat, m_out_hat = ns_agent.policy.graph.forward_fine_tune(x)
@@ -83,10 +77,18 @@ def fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, a_coef=
         a_loss = nn.MSELoss()(a_out, a_out_hat)
         m_loss = nn.MSELoss()(m_out, m_out_hat)
 
-        ((m_out-m_out_hat)**2).mean(dim=0)
-        ((a_out-a_out_hat)**2).mean(dim=0)
+        m_elite = elite_index(m_out, m_out_hat)
+        a_elite = elite_index(a_out, a_out_hat[:, m_elite])
 
         loss = l_loss + a_loss * a_coef + m_loss * m_coef
+    ns_agent.policy.graph.messenger.set_elite(m_elite)
+    ns_agent.policy.graph.actor.set_elite(a_elite)
+
+    mean_rewards = trial_agent_mean_reward(ns_agent, env, "", n=args.n_tests, seed=args.seed, print_results=False, reset=False)
+    val_mean_rewards = trial_agent_mean_reward(ns_agent, test_env, "", n=args.n_tests,
+                                               seed=args.seed, print_results=False, reset=False)
+    ns_agent.policy.graph.messenger.set_elite(None)
+    ns_agent.policy.graph.actor.set_elite(None)
 
     wandb.log({
         'timesteps': t,
@@ -116,13 +118,19 @@ def fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, a_coef=
             # a_losses += [a_loss.item()]
             # m_losses += [m_loss.item()]
 
+        m_elite = elite_index(m_out, m_out_hat)
+        a_elite = elite_index(a_out, a_out_hat[:, m_elite])
+        ns_agent.policy.graph.messenger.set_elite(m_elite)
+        ns_agent.policy.graph.actor.set_elite(a_elite)
 
-        t += len(x)
         mean_rewards = trial_agent_mean_reward(ns_agent, env, "", n=args.n_tests,
                                                seed=args.seed, print_results=False, reset=False)
         val_mean_rewards = trial_agent_mean_reward(ns_agent, test_env, "", n=args.n_tests,
                                                    seed=args.seed, print_results=False, reset=False)
+        ns_agent.policy.graph.messenger.set_elite(None)
+        ns_agent.policy.graph.actor.set_elite(None)
 
+        t += len(x)
         log = {
             'timesteps': t,
             'loss': loss.item(),
@@ -145,6 +153,10 @@ def fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, a_coef=
             plt.scatter(p[:, 0], p_hat[:, 0])
             plt.show()
 
+
+def elite_index(m_out, m_out_hat):
+    m_elite = ((m_out - m_out_hat) ** 2).mean(dim=(1, 2, 3)).argmin()
+    return m_elite
 
 
 def run_graph_ppo_sr(args):
@@ -237,7 +249,7 @@ if __name__ == "__main__":
 
     args.iterations = 1
 
-    args.load_pysr = False
+    args.load_pysr = True
     # args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-08-27__10-39-50"
     args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-08-27__19-55-01"
 
@@ -249,7 +261,7 @@ if __name__ == "__main__":
     args.learning_rate = 1e-3
     args.ncycles_per_iteration = 4000
     args.n_tests = 100
-    args.batch_size = 1000
+    args.batch_size = 100
     args.num_checkpoints = 10
     args.num_timesteps = int(1e7)
     args.epoch = 100
