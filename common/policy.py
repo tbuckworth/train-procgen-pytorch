@@ -69,9 +69,22 @@ class GraphPolicy(nn.Module):
             x = self.embedder(x)
         logits, value = self.graph(x)
         log_probs = F.log_softmax(logits, dim=1)
-        p = Categorical(logits=log_probs)
+        try:
+            p = Categorical(logits=log_probs)
+        except ValueError as e:
+            raise e
         return p, value, hx
 
+    def forward_fine_tune(self, x):
+        if self.embedder is not None:
+            x = self.embedder(x)
+        logits, a_out, m_out = self.graph.forward_fine_tune(x)
+        log_probs = F.log_softmax(logits, dim=1)
+        try:
+            p = Categorical(logits=log_probs)
+        except ValueError as e:
+            raise e
+        return p, a_out, m_out
 
 class TransitionPolicy(nn.Module):
     def __init__(self,

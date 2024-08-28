@@ -5,7 +5,10 @@ import os
 import numpy as np
 import pandas as pd
 import torch
+from matplotlib import pyplot as plt
+from sklearn.naive_bayes import CategoricalNB
 from torch import nn
+from torch.distributions import Categorical
 
 import wandb
 from common.model import NBatchPySRTorch
@@ -39,25 +42,27 @@ def generate_data_supervised(agent, env, n):
     def predict(Obs):
         with torch.no_grad():
             Obs = torch.FloatTensor(Obs).to(agent.policy.device)
-            Logits, value, _ = agent.policy(Obs)
+            Logits, a_out, m_out = agent.policy.forward_fine_tune(Obs)
             act = Logits.sample().detach().cpu().numpy()
-        return Logits.logits, act, Obs
+        return Logits.logits, act, Obs, a_out, m_out
 
     Obs = env.reset()
-    Logits, act, Obs = predict(Obs)
+    Logits, act, Obs, A_out, M_out = predict(Obs)
     act[::2] = np.random.randint(0, env.action_space.n, len(act))[::2]
     while len(Logits) < n:
         obs, rew, done, info = env.step(act)
-        logits, act, obs = predict(obs)
+        logits, act, obs, a_out, m_out = predict(obs)
         act[::2] = np.random.randint(0, env.action_space.n, len(act))[::2]
 
         Logits = torch.cat([Logits, logits], axis=0)
         Obs = torch.cat([Obs, obs], axis=0)
+        A_out = torch.cat([A_out, a_out], axis=0)
+        M_out = torch.cat([M_out, m_out], axis=0)
 
-    return Obs, Logits
+    return Obs, Logits, A_out, M_out
 
 
-def fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir):
+def fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, a_coef=1., m_coef=1000.):
     mean_rewards = trial_agent_mean_reward(ns_agent, env, "", n=args.n_tests, seed=args.seed, print_results=False, reset=False)
     val_mean_rewards = trial_agent_mean_reward(ns_agent, test_env, "", n=args.n_tests,
                                                seed=args.seed, print_results=False, reset=False)
@@ -67,23 +72,44 @@ def fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir):
     checkpoints.sort()
     t = 0
     i = 0
+
+    with torch.no_grad():
+        x, y, a_out, m_out = generate_data_supervised(nn_agent, env, args.batch_size)
+        y_hat, a_out_hat, m_out_hat = ns_agent.policy.graph.forward_fine_tune(x)
+        l_loss = nn.MSELoss()(y, y_hat)
+        a_loss = nn.MSELoss()(a_out, a_out_hat)
+        m_loss = nn.MSELoss()(m_out, m_out_hat)
+        loss = l_loss + a_loss * a_coef + m_loss * m_coef
+
     wandb.log({
         'timesteps': t,
-        'loss': np.nan,
+        'loss': loss.item(),
+        'l_loss': l_loss.item(),
+        'a_loss': a_loss.item(),
+        'm_loss': m_loss.item(),
         'mean_reward': mean_rewards,
         'val_mean_reward': val_mean_rewards
     })
     optimizer = torch.optim.Adam(ns_agent.policy.parameters(), lr=args.learning_rate)
     for _ in range(args.num_timesteps // args.batch_size):
-        x, y = generate_data_supervised(nn_agent, env, args.batch_size)
-        losses = []
+        x, y, a_out, m_out = generate_data_supervised(nn_agent, env, args.batch_size)
+        # losses, a_losses, m_losses = [], [], []
         for _ in range(args.epoch):
-            y_hat, _, _ = ns_agent.policy(x)
-            loss = nn.MSELoss()(y, y_hat.logits)
+            y_hat, a_out_hat, m_out_hat = ns_agent.policy.graph.forward_fine_tune(x)
+            l_loss = nn.MSELoss()(y, y_hat)
+            a_loss = nn.MSELoss()(a_out, a_out_hat)
+            m_loss = nn.MSELoss()(m_out, m_out_hat)
+
+            loss = l_loss + a_loss * a_coef + m_loss * m_coef
+            
             loss.backward()
             optimizer.step()
             optimizer.zero_grad()
-            losses += [loss.item()]
+            # losses += [loss.item()]
+            # a_losses += [a_loss.item()]
+            # m_losses += [m_loss.item()]
+
+
         t += len(x)
         mean_rewards = trial_agent_mean_reward(ns_agent, env, "", n=args.n_tests,
                                                seed=args.seed, print_results=False, reset=False)
@@ -92,7 +118,10 @@ def fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir):
 
         log = {
             'timesteps': t,
-            'loss': np.mean(losses),
+            'loss': loss.item(),
+            'l_loss': l_loss.item(),
+            'a_loss': a_loss.item(),
+            'm_loss': m_loss.item(),
             'mean_reward': mean_rewards,
             'val_mean_reward': val_mean_rewards
         }
@@ -104,6 +133,11 @@ def fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir):
                         'optimizer_state_dict': optimizer.state_dict()},
                        ftdir + '/model_' + str(t) + '.pth')
             i += 1
+            p = Categorical(logits=y).probs.detach().cpu().numpy()
+            p_hat = Categorical(logits=y_hat).probs.detach().cpu().numpy()
+            plt.scatter(p[:, 0], p_hat[:, 0])
+            plt.show()
+
 
 
 def run_graph_ppo_sr(args):
@@ -196,15 +230,16 @@ if __name__ == "__main__":
 
     args.iterations = 100
 
-    args.load_pysr = False
+    args.load_pysr = True
     # args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-08-27__10-39-50"
+    args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-08-27__19-55-01"
 
     args.model_selection = "accuracy"
     args.maxsize = 50
     args.binary_operators = ["+", "-", "*", "greater", "/"]
     args.unary_operators = ["sin", "relu", "log", "exp", "sign", "sqrt", "square"]
     args.device = "gpu" if torch.cuda.is_available() else "cpu"
-    args.learning_rate = 1e-2
+    args.learning_rate = 1e-3
     args.ncycles_per_iteration = 4000
     args.n_tests = 100
     args.batch_size = 1000

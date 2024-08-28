@@ -3,11 +3,13 @@ from abc import ABC
 
 import numpy as np
 from torch import jit
+from torch.distributions import Categorical
 
 from .intention import MultiHeadIntention
 from .misc_util import orthogonal_init, xavier_uniform_init
 import torch.nn as nn
 import torch
+import torch.nn.functional as F
 from vector_quantize_pytorch import VectorQuantize, FSQ
 from einops.layers.torch import Reduce
 
@@ -1040,6 +1042,19 @@ class GraphActorCritic(GraphModel):
 
         return m_in, m_out, a_in, a_out
 
+    def forward_fine_tune(self, obs):
+        n, x = self.prep_input(obs)
+        m_in = self.vectorize_for_message_pass(n, x)
+        m_out = self.messenger(m_in)
+        msg = torch.sum(m_out, dim=-2).squeeze()
+        m = self.append_index(msg)
+        am, am_messages = self.collect_actor_in_out(m, n)
+        a_out = am_messages.squeeze()
+        logits = a_out.sum(-2).squeeze()
+        log_probs = F.log_softmax(logits, dim=1)
+        l = Categorical(logits=log_probs).logits
+        return l, a_out, m_out.squeeze()
+
     def run_critic(self, m, obs):
         c_in = torch.cat([m, obs.unsqueeze(-1)], dim=-1)
         c_out = self.critic(c_in)
@@ -1047,7 +1062,8 @@ class GraphActorCritic(GraphModel):
 
     def run_actor(self, m, n):
         am, am_messages = self.collect_actor_in_out(m, n)
-        logits = torch.sum(am_messages.squeeze(), dim=-2).squeeze()
+        # logits = torch.sum(am_messages.squeeze(), dim=-2).squeeze()
+        logits = am_messages.squeeze().sum(-2).squeeze()
         return logits
 
     def collect_actor_in_out(self, m, n):
