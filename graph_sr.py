@@ -16,7 +16,7 @@ import pickle as pkl
 import wandb
 # from agents.ppo_model import PPOModel
 from common.logger import Logger
-from common.model import NBatchPySRTorch
+from common.model import NBatchPySRTorch, NBatchPySRTorchMult
 from common.storage import BasicStorage
 # from discrete_env.mountain_car_pre_vec import create_mountain_car
 
@@ -729,6 +729,18 @@ def load_pysr_to_torch(msgdir):
         return msg_torch
     except Exception:
         return None
+
+def load_all_pysr(msgdir, device):
+    pickle_filename = os.path.join(msgdir, "symb_reg.pkl")
+    msg_model = pysr_from_file(pickle_filename, extra_torch_mappings=get_extra_torch_mappings())
+    msg_torch = all_pysr_pytorch(msg_model, device)
+    return msg_torch
+
+
+def all_pysr_pytorch(msg_model, device):
+    idx = [i for i in range(len(msg_model.equations_))]
+    msg_torch = NBatchPySRTorchMult(msg_model.pytorch(idx).tolist(), cat_dim=0, device=device)
+    return msg_torch
 
 
 def pysr_from_file(

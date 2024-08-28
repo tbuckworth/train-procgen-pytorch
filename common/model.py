@@ -1027,7 +1027,10 @@ class GraphActorCritic(GraphModel):
         m = self.append_index(msg)
 
         logits = self.run_actor(m, n)
-        value = self.run_critic(m, obs)
+        try:
+            value = self.run_critic(m, obs)
+        except RuntimeError as e:
+            value = None
 
         return logits, value
 
@@ -1247,16 +1250,21 @@ class GraphValueModel(nn.Module):
 
 
 class NBatchPySRTorchMult(nn.Module):
-    def __init__(self, models, cat_dim=-1, device="gpu"):
+    def __init__(self, models, cat_dim=-1, device="cuda"):
         super(NBatchPySRTorchMult, self).__init__()
         assert isinstance(models, list)
-        self.models = [NBatchPySRTorch(model) for model in models]
+        self.models = [NBatchPySRTorch(model, device) for model in models]
         self.flt = torch.BoolTensor([False for _ in self.models]).to(device=device)
         self.cat_dim = cat_dim
+        self.device = device
+        self.elite = None
 
     def forward(self, X):
         h = [m.forward(X).unsqueeze(self.cat_dim) for m in self.models]
-        return torch.cat(h, dim=self.cat_dim)
+        # h2 = [x.to(self.device) if x.device.type != self.device else x for x in h]
+        if self.elite is None:
+            return torch.cat(h, dim=self.cat_dim)
+        return h[self.elite]
 
     def forward_no_nan(self, X):
         y = self.forward(X)
@@ -1264,13 +1272,16 @@ class NBatchPySRTorchMult(nn.Module):
         self.flt = torch.bitwise_or(self.flt, flt)
         return y[~self.flt]
 
+    def set_elite(self, idx):
+        self.elite = idx
 
 
 class NBatchPySRTorch(nn.Module):
-    def __init__(self, model):
+    def __init__(self, model, device="cuda"):
         super(NBatchPySRTorch, self).__init__()
         self.model = model
         self.repeat = False
+        self.device = device
         try:
             with torch.no_grad():
                 out = self.model._node(None)
@@ -1289,4 +1300,4 @@ class NBatchPySRTorch(nn.Module):
         if not self.repeat:
             return self.fwd(X)
         h = self.fwd(X)
-        return h.repeat(X.shape[:-1])
+        return h.repeat(X.shape[:-1]).to(device=self.device)
