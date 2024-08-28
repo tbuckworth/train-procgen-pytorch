@@ -62,7 +62,7 @@ def generate_data_supervised(agent, env, n):
     return Obs, Logits, A_out, M_out
 
 
-def fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, a_coef=1., m_coef=1000.):
+def fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensemble="messenger", a_coef=1., m_coef=1000.):
     nc = args.num_checkpoints
     save_every = args.num_timesteps//nc
     checkpoints = [(i+1)*save_every for i in range(nc)] + [args.num_timesteps - 2]
@@ -72,23 +72,9 @@ def fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, a_coef=
 
     with torch.no_grad():
         x, y, a_out, m_out = generate_data_supervised(nn_agent, env, args.batch_size)
-        y_hat, a_out_hat, m_out_hat = ns_agent.policy.graph.forward_fine_tune(x)
-        l_loss = nn.MSELoss()(y, y_hat)
-        a_loss = nn.MSELoss()(a_out, a_out_hat)
-        m_loss = nn.MSELoss()(m_out, m_out_hat)
-
-        m_elite = elite_index(m_out, m_out_hat)
-        a_elite = elite_index(a_out, a_out_hat[:, m_elite])
-
-        loss = l_loss + a_loss * a_coef + m_loss * m_coef
-    ns_agent.policy.graph.messenger.set_elite(m_elite)
-    ns_agent.policy.graph.actor.set_elite(a_elite)
-
-    mean_rewards = trial_agent_mean_reward(ns_agent, env, "", n=args.n_tests, seed=args.seed, print_results=False, reset=False)
-    val_mean_rewards = trial_agent_mean_reward(ns_agent, test_env, "", n=args.n_tests,
-                                               seed=args.seed, print_results=False, reset=False)
-    ns_agent.policy.graph.messenger.set_elite(None)
-    ns_agent.policy.graph.actor.set_elite(None)
+        loss, l_loss, m_loss, a_loss, a_out_hat, m_out_hat = calc_losses(x, y, a_out, m_out, ns_agent, a_coef, m_coef)
+    mean_rewards, val_mean_rewards = set_elites_trial_agent(a_out, a_out_hat, args, ensemble, env, m_out, m_out_hat,
+                                                            ns_agent, test_env)
 
     wandb.log({
         'timesteps': t,
@@ -102,33 +88,16 @@ def fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, a_coef=
     optimizer = torch.optim.Adam(ns_agent.policy.parameters(), lr=args.learning_rate)
     for _ in range(args.num_timesteps // args.batch_size):
         x, y, a_out, m_out = generate_data_supervised(nn_agent, env, args.batch_size)
-        # losses, a_losses, m_losses = [], [], []
         for _ in range(args.epoch):
-            y_hat, a_out_hat, m_out_hat = ns_agent.policy.graph.forward_fine_tune(x)
-            l_loss = nn.MSELoss()(y, y_hat)
-            a_loss = nn.MSELoss()(a_out, a_out_hat)
-            m_loss = nn.MSELoss()(m_out, m_out_hat)
+            loss, l_loss, m_loss, a_loss, a_out_hat, m_out_hat = calc_losses(x, y, a_out, m_out, ns_agent, a_coef,
+                                                                             m_coef)
 
-            loss = l_loss + a_loss * a_coef + m_loss * m_coef
-            
             loss.backward()
             optimizer.step()
             optimizer.zero_grad()
-            # losses += [loss.item()]
-            # a_losses += [a_loss.item()]
-            # m_losses += [m_loss.item()]
 
-        m_elite = elite_index(m_out, m_out_hat)
-        a_elite = elite_index(a_out, a_out_hat[:, m_elite])
-        ns_agent.policy.graph.messenger.set_elite(m_elite)
-        ns_agent.policy.graph.actor.set_elite(a_elite)
-
-        mean_rewards = trial_agent_mean_reward(ns_agent, env, "", n=args.n_tests,
-                                               seed=args.seed, print_results=False, reset=False)
-        val_mean_rewards = trial_agent_mean_reward(ns_agent, test_env, "", n=args.n_tests,
-                                                   seed=args.seed, print_results=False, reset=False)
-        ns_agent.policy.graph.messenger.set_elite(None)
-        ns_agent.policy.graph.actor.set_elite(None)
+        mean_rewards, val_mean_rewards = set_elites_trial_agent(a_out, a_out_hat, args, ensemble, env, m_out, m_out_hat,
+                                                                ns_agent, test_env)
 
         t += len(x)
         log = {
@@ -148,15 +117,65 @@ def fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, a_coef=
                         'optimizer_state_dict': optimizer.state_dict()},
                        ftdir + '/model_' + str(t) + '.pth')
             i += 1
-            p = Categorical(logits=y).probs.detach().cpu().numpy()
-            p_hat = Categorical(logits=y_hat).probs.detach().cpu().numpy()
-            plt.scatter(p[:, 0], p_hat[:, 0])
-            plt.show()
+            # p = Categorical(logits=y).probs.detach().cpu().numpy()
+            # p_hat = Categorical(logits=y_hat).probs.detach().cpu().numpy()
+            # plt.scatter(p[:, 0], p_hat[:, 0])
+            # plt.show()
+    set_elites(a_out, a_out_hat, ensemble, m_out, m_out_hat, ns_agent)
+
+
+def calc_losses(x, y, a_out, m_out, ns_agent, a_coef, m_coef):
+    y_hat, a_out_hat, m_out_hat = ns_agent.policy.graph.forward_fine_tune(x)
+    if not args.min_mse:
+        l_loss = nn.MSELoss()(y, y_hat)
+        a_loss = nn.MSELoss()(a_out, a_out_hat)
+        m_loss = nn.MSELoss()(m_out, m_out_hat)
+    else:
+        m2 = ((m_out - m_out_hat)**2).mean(dim=(-1, -2, -3))
+        m_loss = m2.min()
+        a2 = ((a_out - a_out_hat[...,m2.argmin(),:,:,:])**2).mean(dim=(-1, -2, -3))
+        a_loss = a2.min()
+
+        y_hat_min = y_hat
+        if y_hat.ndim == 3:
+            y_hat_min = y_hat[m2.argmin()]
+        if y_hat.ndim == 4:
+            y_hat_min = y_hat[a2.argmin(), m2.argmin()]
+
+        l_loss = ((y-y_hat_min)**2).mean()
+
+    loss = l_loss + a_loss * a_coef + m_loss * m_coef
+    return loss, l_loss, m_loss, a_loss, a_out_hat, m_out_hat
+
+
+
+def set_elites_trial_agent(a_out, a_out_hat, args, ensemble, env, m_out, m_out_hat, ns_agent, test_env):
+    set_elites(a_out, a_out_hat, ensemble, m_out, m_out_hat, ns_agent)
+    mean_rewards = trial_agent_mean_reward(ns_agent, env, "", n=args.n_tests, seed=args.seed, print_results=False,
+                                           reset=False)
+    val_mean_rewards = trial_agent_mean_reward(ns_agent, test_env, "", n=args.n_tests,
+                                               seed=args.seed, print_results=False, reset=False)
+    if ensemble in ["messenger", "both"]:
+        ns_agent.policy.graph.messenger.set_elite(None)
+    if ensemble in ["actor", "both"]:
+        ns_agent.policy.graph.actor.set_elite(None)
+    return mean_rewards, val_mean_rewards
+
+
+def set_elites(a_out, a_out_hat, ensemble, m_out, m_out_hat, ns_agent):
+    if ensemble in ["messenger", "both"]:
+        m_elite = elite_index(m_out, m_out_hat)
+        ns_agent.policy.graph.messenger.set_elite(m_elite)
+    if ensemble in ["actor", "both"]:
+        x = a_out_hat
+        if m_elite is not None:
+            x = a_out_hat[:, m_elite]
+        a_elite = elite_index(a_out, x)
+        ns_agent.policy.graph.actor.set_elite(a_elite)
 
 
 def elite_index(m_out, m_out_hat):
-    m_elite = ((m_out - m_out_hat) ** 2).mean(dim=(1, 2, 3)).argmin()
-    return m_elite
+    return ((m_out - m_out_hat) ** 2).mean(dim=(1, 2, 3)).argmin()
 
 
 def run_graph_ppo_sr(args):
@@ -199,11 +218,13 @@ def run_graph_ppo_sr(args):
     m_in, m_out, a_in, a_out = generate_data(nn_agent, env, int(data_size))
 
     print("data generated")
+    act_torch = None
     if args.load_pysr:
         msgdir = get_pysr_dir(symbdir, "msg")
         actdir = get_pysr_dir(symbdir, "act")
         msg_torch = load_all_pysr(msgdir,device=policy.device)
-        act_torch = load_all_pysr(actdir,device=policy.device)
+        if not args.sequential:
+            act_torch = load_all_pysr(actdir,device=policy.device)
     else:
         weights = None
         msgdir, _ = create_symb_dir_if_exists(symbdir, "msg")
@@ -211,33 +232,40 @@ def run_graph_ppo_sr(args):
 
         print("\nMessenger:")
         msg_model, _ = find_model(m_in, m_out, msgdir, save_file, weights, args)
-        print("\nActor:")
-        act_model, _ = find_model(a_in, a_out, actdir, save_file, weights, args)
-
         msg_torch = all_pysr_pytorch(msg_model, policy.device)
-        act_torch = all_pysr_pytorch(act_model, policy.device)
+        eq_log = {"messenger": msg_model.get_best().equation}
+        if not args.sequential:
+            print("\nActor:")
+            act_model, _ = find_model(a_in, a_out, actdir, save_file, weights, args)
+            act_torch = all_pysr_pytorch(act_model, policy.device)
+            eq_log["actor"] = act_model.get_best().equation
 
-        try:
-            wandb.log({
-                "messenger": msg_model.get_best().equation,
-                "actor": act_model.get_best().equation,
-            })
-        except Exception as e:
-            pass
+
+        wandb.log(eq_log)
+
 
     ns_agent = symbolic_agent_constructor(copy.deepcopy(policy), msg_torch, act_torch)
 
     print(f"Neural Parameters: {n_params(nn_agent.policy)}")
-    print(f"Symbol Parameters: {n_params(ns_agent.policy)}")
+    print(f"Symbol Parameters: {n_params(ns_agent.policy.graph.messenger)+n_params(ns_agent.policy.graph.actor)}")
 
     # supervised learning:
     _, env, _, test_env = load_nn_policy(logdir, n_envs=100)
     ftdir = os.path.join(symbdir, "fine_tune")
     if not os.path.exists(ftdir):
         os.mkdir(ftdir)
-
-    fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir)
+    if args.sequential:
+        fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir)
+    else:
+        fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensemble="messenger")
+        print("\nActor:")
+        act_model, _ = find_model(a_in, a_out, actdir, save_file, weights, args)
+        act_torch = all_pysr_pytorch(act_model, policy.device)
+        eq_log["actor"] = act_model.get_best().equation
+        ns_agent.policy.graph.actor = act_torch
+        fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensemble="actor")
     wandb.finish()
+
 
 
 if __name__ == "__main__":
@@ -251,8 +279,11 @@ if __name__ == "__main__":
 
     args.load_pysr = True
     # args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-08-27__10-39-50"
-    args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-08-27__19-55-01"
+    # args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-08-27__19-55-01"
+    args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-08-28__17-46-04"
 
+    args.sequential = True
+    args.min_mse = True
     args.model_selection = "accuracy"
     args.maxsize = 50
     args.binary_operators = ["+", "-", "*", "greater", "/"]
@@ -261,7 +292,7 @@ if __name__ == "__main__":
     args.learning_rate = 1e-3
     args.ncycles_per_iteration = 4000
     args.n_tests = 100
-    args.batch_size = 100
+    args.batch_size = 1000
     args.num_checkpoints = 10
     args.num_timesteps = int(1e7)
     args.epoch = 100

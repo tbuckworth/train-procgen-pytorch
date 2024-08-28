@@ -1260,11 +1260,10 @@ class NBatchPySRTorchMult(nn.Module):
         self.elite = None
 
     def forward(self, X):
+        if self.elite is not None:
+            return self.models[self.elite].forward(X).unsqueeze(self.cat_dim)
         h = [m.forward(X).unsqueeze(self.cat_dim) for m in self.models]
-        # h2 = [x.to(self.device) if x.device.type != self.device else x for x in h]
-        if self.elite is None:
-            return torch.cat(h, dim=self.cat_dim)
-        return h[self.elite]
+        return torch.cat(h, dim=self.cat_dim)
 
     def forward_no_nan(self, X):
         y = self.forward(X)
