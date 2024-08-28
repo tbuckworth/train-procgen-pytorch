@@ -1247,14 +1247,23 @@ class GraphValueModel(nn.Module):
 
 
 class NBatchPySRTorchMult(nn.Module):
-    def __init__(self, models):
+    def __init__(self, models, cat_dim=-1, device="gpu"):
         super(NBatchPySRTorchMult, self).__init__()
         assert isinstance(models, list)
         self.models = [NBatchPySRTorch(model) for model in models]
+        self.flt = torch.BoolTensor([False for _ in self.models]).to(device=device)
+        self.cat_dim = cat_dim
 
     def forward(self, X):
-        h = [m.forward(X).unsqueeze(-1) for m in self.models]
-        return torch.cat(h, dim=-1)
+        h = [m.forward(X).unsqueeze(self.cat_dim) for m in self.models]
+        return torch.cat(h, dim=self.cat_dim)
+
+    def forward_no_nan(self, X):
+        y = self.forward(X)
+        flt = y.isnan().any(dim=self.cat_dim+1)
+        self.flt = torch.bitwise_or(self.flt, flt)
+        return y[~self.flt]
+
 
 
 class NBatchPySRTorch(nn.Module):
