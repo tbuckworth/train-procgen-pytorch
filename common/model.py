@@ -1258,22 +1258,32 @@ class NBatchPySRTorchMult(nn.Module):
         self.cat_dim = cat_dim
         self.device = device
         self.elite = None
+        self.no_nan = True
 
-    def forward(self, X):
+    def forward(self, x):
+        if self.no_nan:
+            return self.forward_no_nan(x)
+        return self.fwd(x)
+
+    def fwd(self, X):
         if self.elite is not None:
             return self.models[self.elite].forward(X).unsqueeze(self.cat_dim)
         h = [m.forward(X).unsqueeze(self.cat_dim) for m in self.models]
         return torch.cat(h, dim=self.cat_dim)
 
     def forward_no_nan(self, X):
-        y = self.forward(X)
-        flt = y.isnan().any(dim=self.cat_dim+1)
+        y = self.fwd(X)
+        if len(y) != len(self.flt):
+            return y
+        flt = y.isnan().reshape((len(y), -1)).any(dim=-1)
         self.flt = torch.bitwise_or(self.flt, flt)
         return y[~self.flt]
 
     def set_elite(self, idx):
         self.elite = idx
 
+    def toggle_nan(self):
+        self.no_nan = ~self.no_nan
 
 class NBatchPySRTorch(nn.Module):
     def __init__(self, model, device="cuda"):

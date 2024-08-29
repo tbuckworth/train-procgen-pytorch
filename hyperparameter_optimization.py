@@ -10,6 +10,7 @@ import wandb
 from create_sh_files import add_training_args_dict, add_symbreg_args_dict
 from double_graph_sr import run_double_graph_neurosymbolic_search
 from gp import bayesian_optimisation
+from graph_ppo_sr_multi import run_graph_ppo_multi_sr
 from graph_sr import fine_tune, load_sr_graph_agent, run_graph_neurosymbolic_search
 from helper_local import wandb_login, DictToArgs, get_project, add_symbreg_args, add_pets_args
 from pets.pets import run_pets
@@ -134,6 +135,14 @@ def run_double_graph_hyperparameters(hparams):
     parser_dict.update(hparams)
     args = DictToArgs(parser_dict)
     run_double_graph_neurosymbolic_search(args)
+
+def graph_ppo_multi_sr(hparams):
+    parser = argparse.ArgumentParser()
+    parser = add_symbreg_args(parser)
+    args = parser.parse_args()
+    args_dict = vars(args)
+    args_dict.update(hparams)
+    run_graph_ppo_multi_sr(DictToArgs(args_dict))
 
 
 def inspect_hparams(X, y, bounds, fixed):
@@ -561,8 +570,49 @@ def cartpole_graph_ppo():
         id_tag = fixed["wandb_tags"][0]
         optimize_hyperparams(bounds, fixed, project, id_tag, run_next_hyperparameters)
 
+def graph_ppo_sr_ft():
+    fixed = {
+        "env_name": 'cartpole',
+        "exp_name": 'symbreg',  # IMPORTANT!
+        "param_name": 'graph',
+        "device": "gpu",
+        "seed": 6033,
+        "wandb_tags": ["gpp0"],
+        # "logdir": "logs/train/cartpole/2024-07-11__04-48-25__seed_6033",
+        "logdir": "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033",
+        "timeout_in_seconds": 3600 * 10,
+        "n_envs": 2,
+        "denoise": False,
+        "binary_operators": ["+", "-", "greater", "*", "/"],
+        "unary_operators": ["sin", "relu", "log", "exp", "sign", "sqrt", "square"],
+        "use_wandb": True,
+        "bumper": False,
+        "model_selection": "accuracy",
+        "loss_function": 'mse',
+        "weight_metric": None,
+        'load_pysr': False,
+        'sequential': True,
+        'min_mse': True,
+        'num_checkpoints': 10,
+    }
+    bounds = {
+        "data_size": [1000, 20000],
+        "iterations": [1, 100],
+        "populations": [15, 40],
+        "procs": [4, 16],
+        "ncycles_per_iteration": [4000, 6000],
+        "num_timesteps": [int(1e5), int(2e6)],
+        "epoch": [10, 1000],
+        "learning_rate": [1e-4, 1e-1],
+        "maxsize": [20, 60],
+    }
+    project = get_project(fixed["env_name"], fixed["exp_name"])
+    id_tag = fixed["wandb_tags"][0]
+    while True:
+        optimize_hyperparams(bounds, fixed, project, id_tag, graph_ppo_multi_sr)
+
 
 if __name__ == "__main__":
-    cartpole_graph_ppo()
+    graph_ppo_sr_ft()
     # double_graph_symbreg_ft_hparams()
     # pets_graph_transition_cartpole()

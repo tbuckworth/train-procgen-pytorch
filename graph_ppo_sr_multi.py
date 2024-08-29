@@ -128,13 +128,13 @@ def calc_losses(x, y, a_out, m_out, ns_agent, a_coef, m_coef):
     y_hat, a_out_hat, m_out_hat = ns_agent.policy.graph.forward_fine_tune(x)
     if not args.min_mse:
         l_loss = nn.MSELoss()(y, y_hat)
-        a_loss = nn.MSELoss()(a_out, a_out_hat)
         m_loss = nn.MSELoss()(m_out, m_out_hat)
+        a_loss = nn.MSELoss()(a_out, a_out_hat)
     else:
         m2 = ((m_out - m_out_hat)**2).mean(dim=(-1, -2, -3))
-        m_loss = m2.min()
+        m_loss = m2.mean()
         a2 = ((a_out - a_out_hat[...,m2.argmin(),:,:,:])**2).mean(dim=(-1, -2, -3))
-        a_loss = a2.min()
+        a_loss = a2.mean()
 
         y_hat_min = y_hat
         if y_hat.ndim == 3:
@@ -178,16 +178,16 @@ def elite_index(m_out, m_out_hat):
     return ((m_out - m_out_hat) ** 2).mean(dim=(1, 2, 3)).argmin()
 
 
-def run_graph_ppo_sr(args):
+def run_graph_ppo_multi_sr(args):
     logdir = args.logdir
     n_envs = args.n_envs
     data_size = args.data_size
-    hp_override = {
-        "device": args.device,
-        "seed": args.seed,
-        # "epoch": args.epoch,
-        "learning_rate": args.learning_rate,
-    }
+    # hp_override = {
+    #     "device": args.device,
+    #     "seed": args.seed,
+    #     # "epoch": args.epoch,
+    #     "learning_rate": args.learning_rate,
+    # }
     if args.load_pysr:
         symbdir = args.symbdir
         save_file = "symb_reg.csv"
@@ -279,8 +279,8 @@ if __name__ == "__main__":
 
     args.load_pysr = True
     # args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-08-27__10-39-50"
-    # args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-08-27__19-55-01"
-    args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-08-28__17-46-04"
+    args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-08-27__19-55-01"
+    # args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-08-28__17-46-04"
 
     args.sequential = True
     args.min_mse = True
@@ -296,4 +296,4 @@ if __name__ == "__main__":
     args.num_checkpoints = 10
     args.num_timesteps = int(1e7)
     args.epoch = 100
-    run_graph_ppo_sr(args)
+    run_graph_ppo_multi_sr(args)
