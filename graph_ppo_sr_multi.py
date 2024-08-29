@@ -72,7 +72,7 @@ def fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensembl
 
     with torch.no_grad():
         x, y, a_out, m_out = generate_data_supervised(nn_agent, env, args.batch_size)
-        loss, l_loss, m_loss, a_loss, a_out_hat, m_out_hat = calc_losses(x, y, a_out, m_out, ns_agent, a_coef, m_coef)
+        loss, l_loss, m_loss, a_loss, a_out_hat, m_out_hat = calc_losses(x, y, a_out, m_out, ns_agent, a_coef, m_coef, args)
     mean_rewards, val_mean_rewards = set_elites_trial_agent(a_out, a_out_hat, args, ensemble, env, m_out, m_out_hat,
                                                             ns_agent, test_env)
 
@@ -90,7 +90,7 @@ def fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensembl
         x, y, a_out, m_out = generate_data_supervised(nn_agent, env, args.batch_size)
         for _ in range(args.epoch):
             loss, l_loss, m_loss, a_loss, a_out_hat, m_out_hat = calc_losses(x, y, a_out, m_out, ns_agent, a_coef,
-                                                                             m_coef)
+                                                                             m_coef, args)
 
             loss.backward()
             optimizer.step()
@@ -124,9 +124,9 @@ def fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensembl
     set_elites(a_out, a_out_hat, ensemble, m_out, m_out_hat, ns_agent)
 
 
-def calc_losses(x, y, a_out, m_out, ns_agent, a_coef, m_coef):
+def calc_losses(x, y, a_out, m_out, ns_agent, a_coef, m_coef, a):
     y_hat, a_out_hat, m_out_hat = ns_agent.policy.graph.forward_fine_tune(x)
-    if not args.min_mse:
+    if not a.min_mse:
         l_loss = nn.MSELoss()(y, y_hat)
         m_loss = nn.MSELoss()(m_out, m_out_hat)
         a_loss = nn.MSELoss()(a_out, a_out_hat)
