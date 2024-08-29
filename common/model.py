@@ -1259,6 +1259,7 @@ class NBatchPySRTorchMult(nn.Module):
         self.device = device
         self.elite = None
         self.no_nan = True
+        #TODO: make elite work with no_nan flt
 
     def forward(self, x):
         if self.no_nan:
@@ -1270,6 +1271,13 @@ class NBatchPySRTorchMult(nn.Module):
             return self.models[self.elite].forward(X).unsqueeze(self.cat_dim)
         h = [m.forward(X).unsqueeze(self.cat_dim) for m in self.models]
         return torch.cat(h, dim=self.cat_dim)
+
+
+    def rem_type_error(self, m, x):
+        try:
+            return m.forward(x).unsqueeze(self.cat_dim)
+        except TypeError:
+            return torch.nan
 
     def forward_no_nan(self, X):
         y = self.fwd(X)
