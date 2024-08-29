@@ -594,6 +594,7 @@ def graph_ppo_sr_ft():
         'sequential': True,
         'min_mse': True,
         'num_checkpoints': 10,
+        'n_tests': 40,
     }
     bounds = {
         "data_size": [1000, 20000],
@@ -604,6 +605,7 @@ def graph_ppo_sr_ft():
         "num_timesteps": [int(1e5), int(2e6)],
         "epoch": [10, 1000],
         "learning_rate": [1e-4, 1e-1],
+        'batch_size': [100, 1100],
         "maxsize": [20, 60],
     }
     project = get_project(fixed["env_name"], fixed["exp_name"])
