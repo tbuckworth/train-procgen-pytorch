@@ -6,13 +6,14 @@ from agents.double_graph_agent import DoubleGraphAgent
 from agents.graph_agent import GraphAgent
 from agents.ppo import PPO
 from agents.ppo_model import PPOModel
+from agents.ppo_pure import PPOPure
 from agents.ppp_model import PPPModel
 from common.env.env_constructor import get_env_constructor
 from common.env.procgen_wrappers import create_env
 from common.logger import Logger
 from common.storage import Storage, BasicStorage
 from discrete_env.mountain_car_pre_vec import MountainCarVecEnv
-from helper_local import initialize_model, get_hyperparams
+from helper_local import initialize_model, get_hyperparams, initialize_storage
 
 
 class TestPPO(unittest.TestCase):
@@ -223,6 +224,44 @@ class TestDoubleGraphAgent(unittest.TestCase):
         self.agent.train(int(1e5))
 
 
+
+
+class TestPPOPure(unittest.TestCase):
+    device = None
+    obs_shape = None
+    env = None
+
+    @classmethod
+    def setUpClass(cls):
+        n_envs = 2
+        cls.device = torch.device('cpu')
+        env_con = get_env_constructor("cartpole_continuous")
+        hyperparameters = {"n_envs": n_envs}
+        cls.env = env_con(None, hyperparameters)
+        cls.in_channels = cls.env.observation_space.shape[0]
+        cls.obs = torch.FloatTensor(cls.env.reset())
+        cls.obs_shape = cls.env.observation_space.shape
+
+        logdir = "logs/test/test"
+        if not os.path.isdir(logdir):
+            os.mkdir(logdir)
+        cls.logdir = logdir
+        hyperparameters = get_hyperparams("graph-cont")
+        cls.n_steps = hyperparameters.get("n_steps", 256)
+        hyperparameters["n_envs"] = n_envs
+        # hyperparameters["anneal_temp"] = False
+        model, obs_shape, policy = initialize_model(cls.device, cls.env, hyperparameters)
+        logger = Logger(n_envs, logdir, use_wandb=False, has_vq=False, ppo_pure=True)
+        logger.max_steps = 1000
+
+        hidden_state_dim = model.output_dim
+        storage = Storage(cls.obs_shape, hidden_state_dim, cls.n_steps, n_envs, cls.device)
+
+        cls.agent = PPOPure(cls.env, policy, logger, storage, cls.device,
+                    1, **hyperparameters)
+
+    def test_double_graph_agent(self):
+        self.agent.train(int(1e5))
 
 if __name__ == '__main__':
     unittest.main()
