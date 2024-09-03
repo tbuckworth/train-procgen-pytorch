@@ -54,8 +54,9 @@ class CategoricalPolicy(nn.Module):
         return p, v
 
 class GraphPolicy(nn.Module):
-    def __init__(self, graph, embedder=None):
+    def __init__(self, graph, embedder=None, continuous_actions=False):
         super(GraphPolicy, self).__init__()
+        self.continuous_actions = continuous_actions
         self.embedder = embedder
         self.graph = graph
         self.has_vq = False
@@ -68,23 +69,28 @@ class GraphPolicy(nn.Module):
         if self.embedder is not None:
             x = self.embedder(x)
         logits, value = self.graph(x)
-        log_probs = F.log_softmax(logits, dim=1)
-        try:
-            p = Categorical(logits=log_probs)
-        except ValueError as e:
-            raise e
+        p = self.distribution(logits)
         return p, value, hx
+
+    def distribution(self, logits):
+        if self.continuous_actions:
+            return diag_gaussian_dist(logits)
+        log_probs = F.log_softmax(logits, dim=1)
+        return Categorical(logits=log_probs)
 
     def forward_fine_tune(self, x):
         if self.embedder is not None:
             x = self.embedder(x)
         logits, a_out, m_out = self.graph.forward_fine_tune(x)
-        log_probs = F.log_softmax(logits, dim=1)
-        try:
-            p = Categorical(logits=log_probs)
-        except ValueError as e:
-            raise e
+        p = self.distribution(logits)
         return p, a_out, m_out
+
+def diag_gaussian_dist(logits):
+    mean_actions = logits[..., 0]
+    logvar = logits[..., -1]
+    action_std = torch.ones_like(mean_actions) * logvar.exp()
+    p = Normal(mean_actions, action_std)
+    return p
 
 class TransitionPolicy(nn.Module):
     def __init__(self,
