@@ -24,10 +24,11 @@ class PreVecEnv(Env):
     Absract base class for pre-vectorized discrete environments.
     Pre-vectorized means applying vectorization at the environment level as opposed to stacking concurrent environments.
     """
-    screen_width=None
-    screen_height=None
-    input_adjust=0
-    drop_same=False
+    screen_width = None
+    screen_height = None
+    input_adjust = 0
+    drop_same = False
+
     def __init__(self, n_envs, n_actions,
                  env_name,
                  max_steps=500,
@@ -45,7 +46,8 @@ class PreVecEnv(Env):
         self.np_random_seed = None
         self._np_random = None
         self.action_space = spaces.Discrete(self.n_actions)
-        self.observation_space = spaces.Box(self.low[self.non_drop_index], self.high[self.non_drop_index], dtype=np.float32)
+        self.observation_space = spaces.Box(self.low[self.non_drop_index], self.high[self.non_drop_index],
+                                            dtype=np.float32)
         self.render_mode = render_mode
         self.screen_width = 600 if self.screen_width is None else self.screen_width
         self.screen_height = 400 if self.screen_height is None else self.screen_width
@@ -63,11 +65,20 @@ class PreVecEnv(Env):
         "render_fps": 50,
     }
 
+    def check_actions(self, action):
+        if type(self.action_space) is spaces.Box:
+            h = self.action_space.high
+            l = self.action_space.low
+            action[action < l] = l[action < l]
+            action[action > h] = h[action > h]
+            return action
+        assert np.all(action < self.n_actions), f"action must be less than n_actions ({self.n_actions})"
+        return action
+
     def step(self, action):
         action = np.array(action)
         assert action.size == self.n_envs, f"number of actions ({action.size}) must match n_envs ({self.n_envs})"
-        assert np.all(action < self.n_actions), f"action must be less than n_actions ({self.n_actions})"
-
+        action = self.check_actions(action)
         self.transition_model(action)
 
         self.n_steps += 1
@@ -174,7 +185,7 @@ class PreVecEnv(Env):
     def _get_ob(self):
         assert self.state is not None, "Call reset before using PreVecEnv object."
         if self.drop_same:
-            return self.state[...,self.non_drop_index]
+            return self.state[..., self.non_drop_index]
         return self.state
 
     def get_info(self):
@@ -201,6 +212,7 @@ def create_pre_vec(args, hyperparameters, param_range, env_cons, is_valid):
     env_args["render_mode"] = "human" if args.render else None
     env_args["seed"] = args.seed
     return env_cons(**env_args)
+
 
 def filter_out_non_relevant_params(env_args, env_cons):
     params = inspect.signature(env_cons.__init__).parameters.keys()
