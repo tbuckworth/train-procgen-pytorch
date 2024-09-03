@@ -537,15 +537,15 @@ def pets_graph_transition_cartpole():
 
 def cartpole_graph_ppo():
     fixed = {
-        "env_name": 'cartpole',
+        "env_name": 'cartpole_continuous',
         "exp_name": 'pure-graph',
-        "param_name": 'graph-cartpole',
+        "param_name": 'graph-cartpole-cont',
         "device": "gpu",
         "num_timesteps": int(2e8),
         "seed": 6033,
         "use_gae": True,
         "clip_value": True,
-        "wandb_tags": ["gc1"],
+        "wandb_tags": ["gc2"],
         "use_wandb": True,
         "mirror_env": False,
         "use_valid_env": True,
@@ -615,6 +615,7 @@ def graph_ppo_sr_ft():
 
 
 if __name__ == "__main__":
-    graph_ppo_sr_ft()
+    cartpole_graph_ppo()
+    # graph_ppo_sr_ft()
     # double_graph_symbreg_ft_hparams()
     # pets_graph_transition_cartpole()

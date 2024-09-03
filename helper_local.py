@@ -366,9 +366,10 @@ def initialize_model(device, env, hyperparameters, in_channels=None):
         depth = hyperparameters.get("depth", 4)
         mid_weight = hyperparameters.get("mid_weight", 64)
         latent_size = hyperparameters.get("latent_size", 1)
+        cont_act = hyperparameters.get("continuous", False)
         action_size = action_space.n
         graph = GraphActorCritic(in_channels, depth, mid_weight, latent_size, action_size, device)
-        policy = GraphPolicy(graph)
+        policy = GraphPolicy(graph, continuous_actions=cont_act)
         policy.to(device)
         policy.device = device
         return graph, observation_shape, policy
