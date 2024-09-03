@@ -1259,7 +1259,6 @@ class NBatchPySRTorchMult(nn.Module):
         self.device = device
         self.elite = None
         self.no_nan = True
-        #TODO: make elite work with no_nan flt
 
     def forward(self, x):
         if self.no_nan:
@@ -1288,6 +1287,11 @@ class NBatchPySRTorchMult(nn.Module):
         return y[~self.flt]
 
     def set_elite(self, idx):
+        if self.no_nan:
+            if idx is None:
+                self.elite = idx
+            else:
+                self.elite = torch.arange(0, len(self.models))[~self.flt][idx].item()
         self.elite = idx
 
     def toggle_nan(self):

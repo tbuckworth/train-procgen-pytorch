@@ -3,18 +3,13 @@ import copy
 import os
 
 import numpy as np
-import pandas as pd
 import torch
-from matplotlib import pyplot as plt
-from sklearn.naive_bayes import CategoricalNB
 from torch import nn
-from torch.distributions import Categorical
 
 import wandb
-from common.model import NBatchPySRTorch
 
 from double_graph_sr import create_symb_dir_if_exists, find_model, trial_agent_mean_reward
-from graph_sr import fine_tune, get_pysr_dir, load_pysr_to_torch, load_all_pysr, all_pysr_pytorch
+from graph_sr import get_pysr_dir, load_all_pysr, all_pysr_pytorch
 from helper_local import add_symbreg_args, wandb_login, n_params, get_project
 from symbolic_regression import load_nn_policy
 

@@ -577,7 +577,7 @@ def graph_ppo_sr_ft():
         "param_name": 'graph',
         "device": "gpu",
         "seed": 6033,
-        "wandb_tags": ["gpp0"],
+        "wandb_tags": ["gpp1"],
         # "logdir": "logs/train/cartpole/2024-07-11__04-48-25__seed_6033",
         "logdir": "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033",
         "timeout_in_seconds": 3600 * 10,
