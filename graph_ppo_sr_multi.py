@@ -10,7 +10,7 @@ import wandb
 
 from double_graph_sr import create_symb_dir_if_exists, find_model, trial_agent_mean_reward
 from graph_sr import get_pysr_dir, load_all_pysr, all_pysr_pytorch
-from helper_local import add_symbreg_args, wandb_login, n_params, get_project
+from helper_local import add_symbreg_args, wandb_login, n_params, get_project, print_dict
 from symbolic_regression import load_nn_policy
 
 
@@ -57,17 +57,18 @@ def generate_data_supervised(agent, env, n):
     return Obs, Logits, A_out, M_out
 
 
-def fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensemble="messenger", a_coef=1., m_coef=1000.):
+def fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensemble="messenger", a_coef=1., m_coef=1000., start=0):
     nc = args.num_checkpoints
-    save_every = args.num_timesteps//nc
-    checkpoints = [(i+1)*save_every for i in range(nc)] + [args.num_timesteps - 2]
+    save_every = args.num_timesteps // nc
+    checkpoints = [(i + 1) * save_every for i in range(nc)] + [args.num_timesteps - 2]
     checkpoints.sort()
-    t = 0
+    t = start
     i = 0
 
     with torch.no_grad():
         x, y, a_out, m_out = generate_data_supervised(nn_agent, env, args.batch_size)
-        loss, l_loss, m_loss, a_loss, a_out_hat, m_out_hat = calc_losses(x, y, a_out, m_out, ns_agent, a_coef, m_coef, args)
+        loss, l_loss, m_loss, a_loss, a_out_hat, m_out_hat = calc_losses(x, y, a_out, m_out, ns_agent, a_coef, m_coef,
+                                                                         args)
     mean_rewards, val_mean_rewards = set_elites_trial_agent(a_out, a_out_hat, args, ensemble, env, m_out, m_out_hat,
                                                             ns_agent, test_env)
 
@@ -104,7 +105,7 @@ def fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensembl
             'mean_reward': mean_rewards,
             'val_mean_reward': val_mean_rewards
         }
-        print(log)
+        print_dict(log)
         wandb.log(log)
         if t > checkpoints[i]:
             print("Saving model.")
@@ -117,6 +118,7 @@ def fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensembl
             # plt.scatter(p[:, 0], p_hat[:, 0])
             # plt.show()
     set_elites(a_out, a_out_hat, ensemble, m_out, m_out_hat, ns_agent)
+    return t
 
 
 def calc_losses(x, y, a_out, m_out, ns_agent, a_coef, m_coef, a):
@@ -126,9 +128,9 @@ def calc_losses(x, y, a_out, m_out, ns_agent, a_coef, m_coef, a):
         m_loss = nn.MSELoss()(m_out, m_out_hat)
         a_loss = nn.MSELoss()(a_out, a_out_hat)
     else:
-        m2 = ((m_out - m_out_hat)**2).mean(dim=(-1, -2, -3))
+        m2 = ((m_out - m_out_hat) ** 2).mean(dim=(-1, -2, -3))
         m_loss = m2.mean()
-        a2 = ((a_out - a_out_hat[...,m2.argmin(),:,:,:])**2).mean(dim=(-1, -2, -3))
+        a2 = ((a_out - a_out_hat[..., m2.argmin(), :, :, :]) ** 2).mean(dim=(-1, -2, -3))
         a_loss = a2.mean()
 
         y_hat_min = y_hat
@@ -137,11 +139,10 @@ def calc_losses(x, y, a_out, m_out, ns_agent, a_coef, m_coef, a):
         if y_hat.ndim == 4:
             y_hat_min = y_hat[a2.argmin(), m2.argmin()]
 
-        l_loss = ((y-y_hat_min)**2).mean()
+        l_loss = ((y - y_hat_min) ** 2).mean()
 
     loss = l_loss + a_loss * a_coef + m_loss * m_coef
     return loss, l_loss, m_loss, a_loss, a_out_hat, m_out_hat
-
 
 
 def set_elites_trial_agent(a_out, a_out_hat, args, ensemble, env, m_out, m_out_hat, ns_agent, test_env):
@@ -217,9 +218,9 @@ def run_graph_ppo_multi_sr(args):
     if args.load_pysr:
         msgdir = get_pysr_dir(symbdir, "msg")
         actdir = get_pysr_dir(symbdir, "act")
-        msg_torch = load_all_pysr(msgdir,device=policy.device)
+        msg_torch = load_all_pysr(msgdir, device=policy.device)
         if not args.sequential:
-            act_torch = load_all_pysr(actdir,device=policy.device)
+            act_torch = load_all_pysr(actdir, device=policy.device)
     else:
         weights = None
         msgdir, _ = create_symb_dir_if_exists(symbdir, "msg")
@@ -235,14 +236,12 @@ def run_graph_ppo_multi_sr(args):
             act_torch = all_pysr_pytorch(act_model, policy.device)
             eq_log["actor"] = act_model.get_best().equation
 
-
         wandb.log(eq_log)
-
 
     ns_agent = symbolic_agent_constructor(copy.deepcopy(policy), msg_torch, act_torch)
 
     print(f"Neural Parameters: {n_params(nn_agent.policy)}")
-    print(f"Symbol Parameters: {n_params(ns_agent.policy.graph.messenger)+n_params(ns_agent.policy.graph.actor)}")
+    print(f"Symbol Parameters: {n_params(ns_agent.policy.graph.messenger) + n_params(ns_agent.policy.graph.actor)}")
 
     # supervised learning:
     _, env, _, test_env = load_nn_policy(logdir, n_envs=100)
@@ -252,15 +251,15 @@ def run_graph_ppo_multi_sr(args):
     if args.sequential:
         fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir)
     else:
-        fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensemble="messenger")
+        t = fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensemble="messenger")
+        wandb.log({"switch_timestep": t})
         print("\nActor:")
         act_model, _ = find_model(a_in, a_out, actdir, save_file, weights, args)
         act_torch = all_pysr_pytorch(act_model, policy.device)
         eq_log["actor"] = act_model.get_best().equation
         ns_agent.policy.graph.actor = act_torch
-        fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensemble="actor")
+        fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensemble="actor", start=t)
     wandb.finish()
-
 
 
 if __name__ == "__main__":

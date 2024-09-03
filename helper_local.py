@@ -1048,3 +1048,8 @@ def initialize_storage(args, device, double_graph, hidden_state_dim, model_based
         storage_valid = BasicStorage(observation_shape, n_steps, n_envs,
                                      device) if args.use_valid_env else None
     return storage, storage_valid
+
+
+def print_dict(log):
+    for k, v in log.items():
+        print(f"{k}:\t{v}")
