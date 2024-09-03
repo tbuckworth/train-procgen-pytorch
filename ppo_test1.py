@@ -246,7 +246,7 @@ class TestPPOPure(unittest.TestCase):
         if not os.path.isdir(logdir):
             os.mkdir(logdir)
         cls.logdir = logdir
-        hyperparameters = get_hyperparams("graph-cont")
+        hyperparameters = get_hyperparams("graph-cartpole-cont")
         cls.n_steps = hyperparameters.get("n_steps", 256)
         hyperparameters["n_envs"] = n_envs
         # hyperparameters["anneal_temp"] = False

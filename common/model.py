@@ -1006,7 +1006,7 @@ class GraphModel(nn.Module, ABC):
 
 
 class GraphActorCritic(GraphModel):
-    def __init__(self, in_channels, depth, mid_weight, latent_size, action_size, device):
+    def __init__(self, in_channels, depth, mid_weight, latent_size, action_size, device, continuous_actions=False):
         super(GraphActorCritic, self).__init__()
         self.input_size = in_channels
         self.depth = depth
@@ -1014,9 +1014,13 @@ class GraphActorCritic(GraphModel):
         self.output_dim = latent_size
         self.action_size = action_size
         self.device = device
+        self.continuous = continuous_actions
+        actor_output = latent_size
+        if continuous_actions:
+            actor_output *= 2
 
         self.messenger = MLPModel(4, depth, mid_weight, latent_size)
-        self.actor = MLPModel(3, depth, mid_weight, latent_size)
+        self.actor = MLPModel(3, depth, mid_weight, actor_output)
         self.critic = MLPModel(3, depth, mid_weight, latent_size)
 
         self.apply(xavier_uniform_init)

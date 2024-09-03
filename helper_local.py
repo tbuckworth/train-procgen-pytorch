@@ -367,8 +367,11 @@ def initialize_model(device, env, hyperparameters, in_channels=None):
         mid_weight = hyperparameters.get("mid_weight", 64)
         latent_size = hyperparameters.get("latent_size", 1)
         cont_act = hyperparameters.get("continuous", False)
-        action_size = action_space.n
-        graph = GraphActorCritic(in_channels, depth, mid_weight, latent_size, action_size, device)
+        if cont_act:
+            action_size = action_space.shape[0]
+        else:
+            action_size = action_space.n
+        graph = GraphActorCritic(in_channels, depth, mid_weight, latent_size, action_size, device, continuous_actions=cont_act)
         policy = GraphPolicy(graph, continuous_actions=cont_act)
         policy.to(device)
         policy.device = device
