@@ -71,16 +71,16 @@ def fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensembl
                                                                          args)
     mean_rewards, val_mean_rewards = set_elites_trial_agent(a_out, a_out_hat, args, ensemble, env, m_out, m_out_hat,
                                                             ns_agent, test_env)
-
-    wandb.log({
-        'timesteps': t,
-        'loss': loss.item(),
-        'l_loss': l_loss.item(),
-        'a_loss': a_loss.item(),
-        'm_loss': m_loss.item(),
-        'mean_reward': mean_rewards,
-        'val_mean_reward': val_mean_rewards
-    })
+    if args.use_wandb:
+        wandb.log({
+            'timesteps': t,
+            'loss': loss.item(),
+            'l_loss': l_loss.item(),
+            'a_loss': a_loss.item(),
+            'm_loss': m_loss.item(),
+            'mean_reward': mean_rewards,
+            'val_mean_reward': val_mean_rewards
+        })
     optimizer = torch.optim.Adam(ns_agent.policy.parameters(), lr=args.learning_rate)
     for _ in range(args.num_timesteps // args.batch_size):
         x, y, a_out, m_out = generate_data_supervised(nn_agent, env, args.batch_size)
@@ -106,7 +106,8 @@ def fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensembl
             'val_mean_reward': val_mean_rewards
         }
         print_dict(log)
-        wandb.log(log)
+        if args.use_wandb:
+            wandb.log(log)
         if t > checkpoints[i]:
             print("Saving model.")
             torch.save({'model_state_dict': ns_agent.policy.state_dict(),
@@ -235,8 +236,8 @@ def run_graph_ppo_multi_sr(args):
             act_model, _ = find_model(a_in, a_out, actdir, save_file, weights, args)
             act_torch = all_pysr_pytorch(act_model, policy.device)
             eq_log["actor"] = act_model.get_best().equation
-
-        wandb.log(eq_log)
+        if args.use_wandb:
+            wandb.log(eq_log)
 
     ns_agent = symbolic_agent_constructor(copy.deepcopy(policy), msg_torch, act_torch)
 
@@ -252,14 +253,16 @@ def run_graph_ppo_multi_sr(args):
         fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir)
     else:
         t = fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensemble="messenger")
-        wandb.log({"switch_timestep": t})
+        if args.use_wandb:
+            wandb.log({"switch_timestep": t})
         print("\nActor:")
         act_model, _ = find_model(a_in, a_out, actdir, save_file, weights, args)
         act_torch = all_pysr_pytorch(act_model, policy.device)
         eq_log["actor"] = act_model.get_best().equation
         ns_agent.policy.graph.actor = act_torch
         fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensemble="actor", start=t)
-    wandb.finish()
+    if args.use_wandb:
+        wandb.finish()
 
 
 if __name__ == "__main__":
@@ -271,23 +274,25 @@ if __name__ == "__main__":
 
     args.iterations = 1
 
-    args.load_pysr = True
+    args.load_pysr = False
     # args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-08-27__10-39-50"
-    args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-08-27__19-55-01"
+    # args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-08-27__19-55-01"
     # args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-08-28__17-46-04"
-
+    args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-09-04__10-16-46"
+    args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-09-04__10-36-16"
     args.sequential = True
     args.min_mse = True
     args.model_selection = "accuracy"
-    args.maxsize = 50
+    args.maxsize = 7
+    args.use_wandb = False
     args.binary_operators = ["+", "-", "*", "greater", "/"]
     args.unary_operators = ["sin", "relu", "log", "exp", "sign", "sqrt", "square"]
     args.device = "gpu" if torch.cuda.is_available() else "cpu"
-    args.learning_rate = 1e-3
+    args.learning_rate = 1e-1
     args.ncycles_per_iteration = 4000
-    args.n_tests = 100
-    args.batch_size = 1000
+    args.n_tests = 1
+    args.batch_size = 10
     args.num_checkpoints = 10
-    args.num_timesteps = int(1e7)
-    args.epoch = 100
+    args.num_timesteps = int(1e5)
+    args.epoch = 1
     run_graph_ppo_multi_sr(args)

@@ -1293,9 +1293,9 @@ class NBatchPySRTorchMult(nn.Module):
     def set_elite(self, idx):
         if self.no_nan:
             if idx is None:
-                self.elite = idx
+                self.elite = idx.item()
             else:
-                self.elite = torch.arange(0, len(self.models))[~self.flt][idx].item()
+                self.elite = torch.arange(0, len(self.models))[~self.flt][idx.item()].item()
         self.elite = idx
 
     def toggle_nan(self):
