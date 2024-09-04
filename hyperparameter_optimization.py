@@ -550,6 +550,7 @@ def cartpole_graph_ppo():
         "mirror_env": False,
         "use_valid_env": True,
         "anneal_temp": False,
+        "entropy_coef": 0.,
         # "n_envs": 64,
         # "n_steps": 256,
         # "output_dim": 24,#[24, 64],
