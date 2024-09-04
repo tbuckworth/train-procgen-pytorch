@@ -1,4 +1,5 @@
 from boxworld.create_box_world import create_bw_env
+from common.env.mujoco_wrappers import create_humanoid
 from common.env.procgen_wrappers import create_procgen_env
 from discrete_env.acrobot_pre_vec import create_acrobot
 from discrete_env.cartpole_pre_vec import create_cartpole, create_cartpole_continuous
@@ -21,6 +22,8 @@ def get_env_constructor(env_name):
         create_venv = create_mountain_car
     if env_name == "acrobot":
         create_venv = create_acrobot
+    if env_name == "humanoid":
+        create_venv = create_humanoid
     if env_name == "lunar_lander":
         raise NotImplementedError
     return create_venv
