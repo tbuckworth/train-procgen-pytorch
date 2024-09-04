@@ -616,7 +616,7 @@ def graph_ppo_sr_ft():
 
 
 if __name__ == "__main__":
-    cartpole_graph_ppo()
-    # graph_ppo_sr_ft()
+    # cartpole_graph_ppo()
+    graph_ppo_sr_ft()
     # double_graph_symbreg_ft_hparams()
     # pets_graph_transition_cartpole()
