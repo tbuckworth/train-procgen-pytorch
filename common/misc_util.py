@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 import random
 import gym
@@ -33,20 +35,17 @@ def cross_batch_entropy(p):
     item, we also compute it across the batches. This is to encourage the model to learn a diverse policy and avoid
     it always returning the same logits (effectively ignoring the inputs - model collapse).
     '''
+    if type(p) is torch.distributions.Normal:
+        cond_entropy = p.entropy().mean()
+        marg_entropy = 0.5 + 0.5 * math.log(2 * math.pi) + torch.log(p.scale.mean())
+    else:
+        p_log_p = p.probs * p.logits
+        entropy = - p_log_p.sum(-1)
+        cond_entropy = entropy.mean()
 
-    # ln = torch.log(p.probs)
-
-    p_log_p = p.probs * p.logits
-
-    entropy = - p_log_p.sum(-1)
-
-    cond_entropy = entropy.mean()
-
-    action_p = p.probs.mean(0)
-
-    ap_log_p = action_p * torch.log(action_p)
-
-    marg_entropy = - ap_log_p.sum()
+        action_p = p.probs.mean(0)
+        ap_log_p = action_p * torch.log(action_p)
+        marg_entropy = - ap_log_p.sum()
 
     #subtract this from loss:
     return marg_entropy - cond_entropy, cond_entropy
