@@ -5,7 +5,8 @@ from collections import deque
 
 class Storage():
 
-    def __init__(self, obs_shape, hidden_state_size, num_steps, num_envs, device):
+    def __init__(self, obs_shape, hidden_state_size, num_steps, num_envs, device, continuous_actions=False):
+        self.continuous_actions = continuous_actions
         self.performance_track = {}
         self.obs_shape = obs_shape
         self.hidden_state_size = hidden_state_size
@@ -17,7 +18,11 @@ class Storage():
     def reset(self):
         self.obs_batch = torch.zeros(self.num_steps+1, self.num_envs, *self.obs_shape)
         self.hidden_states_batch = torch.zeros(self.num_steps+1, self.num_envs, self.hidden_state_size)
-        self.act_batch = torch.zeros(self.num_steps, self.num_envs)
+        # TODO: if cont, then act_batch shape takes action_shape into consideration
+        if self.continuous_actions:
+            self.act_batch = torch.zeros(self.num_steps, self.num_envs, *self.act_shape)
+        else:
+            self.act_batch = torch.zeros(self.num_steps, self.num_envs)
         self.rew_batch = torch.zeros(self.num_steps, self.num_envs)
         self.done_batch = torch.zeros(self.num_steps, self.num_envs)
         self.log_prob_act_batch = torch.zeros(self.num_steps, self.num_envs)

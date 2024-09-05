@@ -109,6 +109,7 @@ def train_ppo(args):
     n_steps = hyperparameters.get('n_steps', 256)
     n_envs = hyperparameters.get('n_envs', 256)
     max_steps = hyperparameters.get("max_steps", 10 ** 3)
+    continuous_actions = hyperparameters.get('continuous', False)
 
     create_venv = get_env_constructor(args.env_name)
 
@@ -172,7 +173,7 @@ def train_ppo(args):
     print('INITIALIZING STORAGE...')
     hidden_state_dim = model.output_dim
     storage, storage_valid = initialize_storage(args, device, double_graph, hidden_state_dim, model_based, n_envs, n_steps,
-                                                observation_shape)
+                                                observation_shape, continuous_actions)
 
     ###########
     ## AGENT ##
