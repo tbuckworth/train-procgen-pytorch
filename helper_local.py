@@ -368,7 +368,7 @@ def initialize_model(device, env, hyperparameters, in_channels=None):
         latent_size = hyperparameters.get("latent_size", 1)
         cont_act = hyperparameters.get("continuous", False)
         if cont_act:
-            action_size = action_space.shape[0]
+            action_size = action_space.shape[-1]
         else:
             action_size = action_space.n
         graph = GraphActorCritic(in_channels, depth, mid_weight, latent_size, action_size, device, continuous_actions=cont_act)

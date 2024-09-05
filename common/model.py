@@ -1016,8 +1016,10 @@ class GraphActorCritic(GraphModel):
         self.device = device
         self.continuous = continuous_actions
         actor_output = latent_size
+        self.obs_dim = -2
         if continuous_actions:
             actor_output *= 2
+            self.obs_dim -= 1
 
         self.messenger = MLPModel(4, depth, mid_weight, latent_size)
         self.actor = MLPModel(3, depth, mid_weight, actor_output)
@@ -1070,7 +1072,8 @@ class GraphActorCritic(GraphModel):
     def run_actor(self, m, n):
         am, am_messages = self.collect_actor_in_out(m, n)
         # logits = torch.sum(am_messages.squeeze(), dim=-2).squeeze()
-        logits = am_messages.squeeze().sum(-2).squeeze()
+
+        logits = am_messages.squeeze().sum(self.obs_dim).squeeze()
         return logits
 
     def collect_actor_in_out(self, m, n):

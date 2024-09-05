@@ -1,39 +1,50 @@
 import gymnasium as gym
-import numpy as np
-from gymnasium.vector import AsyncVectorEnv
+
+from helper_local import DictToArgs
 
 
-def create_humanoid():
-    n_envs = 2
-    envs = gym.vector.make('Humanoid-v4', num_envs=n_envs)
-    _ = envs.reset(seed=42)
-    actions = envs.action_space.sample()
-    observations, rewards, termination, truncation, infos = envs.step(actions)
+def create_humanoid(args, hyperparameters, is_valid=False):
+    if args is None:
+        args = DictToArgs({"render": False, "seed": 0})
+    n_envs = hyperparameters.get('n_envs', 8)
+    timeout = hyperparameters.get('env_timeout', 10)
+    env = GymnasiumEnv('Humanoid-v4', n_envs=n_envs, timeout=timeout)
+    if is_valid:
+        env.reset(seed=args.seed + 1000)
+    else:
+        env.reset(seed=args.seed)
+    return env
 
 
 class GymnasiumEnv(gym.Env):
-    def __init__(self, env_name, n_envs):
-        self.env = gym.vector.make(env_name, num_envs=n_envs)
+    def __init__(self, env_name, n_envs, timeout=10):
+        self.env = gym.vector.make(env_name, num_envs=n_envs, asynchronous=False)
         self.action_space = self.env.action_space
         self.observation_space = self.env.observation_space
+        self.timeout = timeout
 
     def step(self, actions):
+        # self.env.step_async(actions)
+        # obs, rew, done, trunc, infos = self.env.step_wait(timeout=None)
         obs, rew, done, trunc, infos = self.env.step(actions)
-        # if np.any(trunc):
-        #     print("?")
-        done |= trunc # TODO: correct?
+        done |= trunc
         return obs, rew, done, infos
 
     def reset(self, seed=None, options=None):
         return self.env.reset(seed=seed, options=options)[0]
 
 
-
 if __name__ == "__main__":
+    env = gym.envs.registration.make(
+        'Humanoid-v4',
+        disable_env_checker=True,
+    )
+
     env = GymnasiumEnv('Humanoid-v4', 2)
     obs = env.reset(seed=42)
     for _ in range(1000):
         actions = env.env.action_space.sample()
         obs, rew, done, info = env.step(actions)
+
 
     print(obs.shape)
