@@ -47,6 +47,7 @@ pysr_loss_functions = {
 
 def find_model(X, Y, symbdir, save_file, weights, args):
     model = PySRRegressor(
+        verbosity=0,
         equation_file=get_path(symbdir, save_file),
         maxsize=args.maxsize,
         niterations=args.iterations,  # < Increase me for better results
