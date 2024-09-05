@@ -21,12 +21,13 @@ class Storage():
         self.hidden_states_batch = torch.zeros(self.num_steps+1, self.num_envs, self.hidden_state_size)
         # TODO: if cont, then act_batch shape takes action_shape into consideration
         if self.continuous_actions:
-            self.act_batch = torch.zeros(self.num_steps, self.num_envs, *self.act_shape)
+            self.act_batch = torch.zeros(self.num_steps, self.num_envs, self.act_shape)
+            self.log_prob_act_batch = torch.zeros(self.num_steps, self.num_envs, self.act_shape)
         else:
             self.act_batch = torch.zeros(self.num_steps, self.num_envs)
+            self.log_prob_act_batch = torch.zeros(self.num_steps, self.num_envs)
         self.rew_batch = torch.zeros(self.num_steps, self.num_envs)
         self.done_batch = torch.zeros(self.num_steps, self.num_envs)
-        self.log_prob_act_batch = torch.zeros(self.num_steps, self.num_envs)
         self.value_batch = torch.zeros(self.num_steps+1, self.num_envs)
         self.return_batch = torch.zeros(self.num_steps, self.num_envs)
         self.adv_batch = torch.zeros(self.num_steps, self.num_envs)
