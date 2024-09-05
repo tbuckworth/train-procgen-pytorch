@@ -1257,12 +1257,13 @@ class NBatchPySRTorchMult(nn.Module):
     def __init__(self, models, cat_dim=-1, device="cuda"):
         super(NBatchPySRTorchMult, self).__init__()
         assert isinstance(models, list)
-        self.models = [NBatchPySRTorch(model, device) for model in models]
-        self.flt = torch.BoolTensor([False for _ in self.models]).to(device=device)
-        self.cat_dim = cat_dim
         self.device = device
+        self.cat_dim = cat_dim
         self.elite = None
         self.no_nan = True
+        self.models = [NBatchPySRTorch(model, device) for model in models]
+        self.flt = torch.BoolTensor([False for _ in self.models]).to(device=device)
+        self.indices = torch.arange(0, len(self.models)).to(device=self.device)
 
     def forward(self, x):
         if self.no_nan:
@@ -1274,7 +1275,6 @@ class NBatchPySRTorchMult(nn.Module):
             return self.models[self.elite].forward(X).unsqueeze(self.cat_dim)
         h = [m.forward(X).unsqueeze(self.cat_dim) for m in self.models]
         return torch.cat(h, dim=self.cat_dim)
-
 
     def rem_type_error(self, m, x):
         try:
@@ -1293,13 +1293,14 @@ class NBatchPySRTorchMult(nn.Module):
     def set_elite(self, idx):
         if self.no_nan:
             if idx is None:
-                self.elite = idx.item()
+                self.elite = idx
             else:
-                self.elite = torch.arange(0, len(self.models))[~self.flt][idx.item()].item()
+                self.elite = self.indices[~self.flt][idx]
         self.elite = idx
 
     def toggle_nan(self):
         self.no_nan = ~self.no_nan
+
 
 class NBatchPySRTorch(nn.Module):
     def __init__(self, model, device="cuda"):
