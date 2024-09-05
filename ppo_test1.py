@@ -254,8 +254,9 @@ class TestPPOPure(unittest.TestCase):
         logger = Logger(n_envs, logdir, use_wandb=False, has_vq=False, ppo_pure=True)
         logger.max_steps = 1000
 
+        act_shape = policy.act_shape
         hidden_state_dim = model.output_dim
-        storage = Storage(cls.obs_shape, hidden_state_dim, cls.n_steps, n_envs, cls.device, continuous_actions=True)
+        storage = Storage(cls.obs_shape, hidden_state_dim, cls.n_steps, n_envs, cls.device, continuous_actions=True, act_shape=act_shape)
 
         cls.agent = PPOPure(cls.env, policy, logger, storage, cls.device,
                     1, **hyperparameters)

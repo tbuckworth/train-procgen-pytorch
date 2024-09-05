@@ -54,9 +54,10 @@ class CategoricalPolicy(nn.Module):
         return p, v
 
 class GraphPolicy(nn.Module):
-    def __init__(self, graph, embedder=None, continuous_actions=False):
+    def __init__(self, graph, embedder=None, continuous_actions=False, act_shape=None):
         super(GraphPolicy, self).__init__()
         self.continuous_actions = continuous_actions
+        self.act_shape = act_shape
         self.embedder = embedder
         self.graph = graph
         self.has_vq = False

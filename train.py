@@ -172,8 +172,13 @@ def train_ppo(args):
     #############
     print('INITIALIZING STORAGE...')
     hidden_state_dim = model.output_dim
+    act_shape = None
+    try:
+        act_shape = policy.act_shape
+    except AttributeError as e:
+        pass
     storage, storage_valid = initialize_storage(args, device, double_graph, hidden_state_dim, model_based, n_envs, n_steps,
-                                                observation_shape, continuous_actions)
+                                                observation_shape, continuous_actions, act_shape)
 
     ###########
     ## AGENT ##

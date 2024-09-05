@@ -5,10 +5,11 @@ from collections import deque
 
 class Storage():
 
-    def __init__(self, obs_shape, hidden_state_size, num_steps, num_envs, device, continuous_actions=False):
+    def __init__(self, obs_shape, hidden_state_size, num_steps, num_envs, device, continuous_actions=False, act_shape=None):
         self.continuous_actions = continuous_actions
         self.performance_track = {}
         self.obs_shape = obs_shape
+        self.act_shape = act_shape
         self.hidden_state_size = hidden_state_size
         self.num_steps = num_steps
         self.num_envs = num_envs
