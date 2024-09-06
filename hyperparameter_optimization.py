@@ -166,7 +166,11 @@ def optimize_hyperparams(bounds,
                          id_tag="sa_rew",
                          run_next=run_next_hyperparameters,
                          opt_metric="summary.mean_episode_rewards"):
-    X, y = get_wandb_performance(bounds.keys(), project, id_tag, opt_metric)
+    try:
+        X, y = get_wandb_performance(bounds.keys(), project, id_tag, opt_metric)
+    except ValueError as e:
+        print(f"Error from wandb:\n{e}\nPicking hparams randomly.")
+        X, y = None, None
 
     hparams = select_next_hyperparameters(X, y, bounds)
 
