@@ -176,7 +176,7 @@ def optimize_hyperparams(bounds,
 
     fh = fixed.copy()
     hparams.update(fh)
-    # run_next(hparams)
+    run_next(hparams)
     try:
         run_next(hparams)
     except Exception as e:
