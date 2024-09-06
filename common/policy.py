@@ -13,7 +13,9 @@ class CategoricalPolicy(nn.Module):
                  embedder,
                  recurrent,
                  action_size,
-                 has_vq=False):
+                 has_vq=False,
+                 continuous_actions=False,
+                 ):
         """
         embedder: (torch.Tensor) model to extract the embedding for observation
         action_size: number of the categorical actions
@@ -21,6 +23,7 @@ class CategoricalPolicy(nn.Module):
         super(CategoricalPolicy, self).__init__()
         self.embedder = embedder
         self.has_vq = has_vq
+        self.continuous_actions=continuous_actions
         self.action_size = action_size
         # small scale weight-initialization in policy enhances the stability        
         self.fc_policy = orthogonal_init(nn.Linear(self.embedder.output_dim, action_size), gain=0.01)
@@ -48,10 +51,15 @@ class CategoricalPolicy(nn.Module):
 
     def hidden_to_output(self, hidden):
         logits = self.fc_policy(hidden)
-        log_probs = F.log_softmax(logits, dim=1)
-        p = Categorical(logits=log_probs)
+        p = self.distribution(logits)
         v = self.fc_value(hidden).reshape(-1)
         return p, v
+
+    def distribution(self, logits):
+        if self.continuous_actions:
+            return diag_gaussian_dist(logits)
+        log_probs = F.log_softmax(logits, dim=1)
+        return Categorical(logits=log_probs)
 
 class GraphPolicy(nn.Module):
     def __init__(self, graph, embedder=None, continuous_actions=False, act_shape=None):
