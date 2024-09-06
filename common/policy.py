@@ -101,7 +101,7 @@ def diag_gaussian_dist(logits):
     action_std = logits[..., -1].exp()  # softplus?
 
     min_real = torch.finfo(action_std.dtype).tiny
-    action_std = torch.clamp(action_std, min=torch.sqrt(min_real))
+    action_std = torch.clamp(action_std, min=min_real**0.5)
 
     p = Normal(mean_actions, action_std)
     return p
