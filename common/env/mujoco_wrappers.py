@@ -20,7 +20,10 @@ class GymnasiumEnv(gym.Env):
     def __init__(self, env_name, n_envs, timeout=10):
         self.env = gym.vector.make(env_name, num_envs=n_envs, asynchronous=False)
         self.action_space = self.env.action_space
+        self.action_space._shape = self.env.action_space.shape[1:]
         self.observation_space = self.env.observation_space
+        self.observation_space._shape = self.env.observation_space.shape[1:]
+
         self.timeout = timeout
 
     def step(self, actions):
@@ -35,10 +38,6 @@ class GymnasiumEnv(gym.Env):
 
 
 if __name__ == "__main__":
-    env = gym.envs.registration.make(
-        'Humanoid-v4',
-        disable_env_checker=True,
-    )
 
     env = GymnasiumEnv('Humanoid-v4', 2)
     obs = env.reset(seed=42)

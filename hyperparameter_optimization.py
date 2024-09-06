@@ -556,7 +556,8 @@ def cartpole_graph_ppo():
         "anneal_temp": False,
         "entropy_coef": 0.,
         # "n_envs": 64,
-        # "n_steps": 256,
+        "n_steps": 4,
+        "n_minibatch": 1,
         # "output_dim": 24,#[24, 64],
         # "depth": 4,#[2, 6],
     }
