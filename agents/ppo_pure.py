@@ -1,3 +1,5 @@
+from torch.distributed import broadcast
+
 from .base_agent import BaseAgent
 from common.misc_util import adjust_lr, get_n_params, cross_batch_entropy, attention_entropy, adjust_lr_grok, \
     sparsity_loss
@@ -126,6 +128,8 @@ class PPOPure(BaseAgent):
                 # Clipped Surrogate Objective
                 log_prob_act_batch = dist_batch.log_prob(act_batch)
                 ratio = torch.exp(log_prob_act_batch - old_log_prob_act_batch)
+                if adv_batch.shape != log_prob_act_batch.shape:
+                    adv_batch = torch.tile(adv_batch.unsqueeze(-1), log_prob_act_batch.shape[1:])
                 surr1 = ratio * adv_batch
                 surr2 = torch.clamp(ratio, 1.0 - self.eps_clip, 1.0 + self.eps_clip) * adv_batch
                 pi_loss = -torch.min(surr1, surr2).mean()
