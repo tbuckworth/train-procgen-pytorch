@@ -89,9 +89,13 @@ class Storage():
             for indices in sampler:
                 obs_batch = torch.FloatTensor(self.obs_batch[:-1]).reshape(-1, *self.obs_shape)[indices].to(self.device)
                 hidden_state_batch = torch.FloatTensor(self.hidden_states_batch[:-1]).reshape(-1, self.hidden_state_size).to(self.device)
-                act_batch = torch.FloatTensor(self.act_batch).reshape(-1)[indices].to(self.device)
+                if self.continuous_actions:
+                    act_batch = torch.FloatTensor(self.act_batch).reshape(-1, self.act_shape)[indices].to(self.device)
+                    log_prob_act_batch = torch.FloatTensor(self.log_prob_act_batch).reshape(-1, self.act_shape)[indices].to(self.device)
+                else:
+                    act_batch = torch.FloatTensor(self.act_batch).reshape(-1, )[indices].to(self.device)
+                    log_prob_act_batch = torch.FloatTensor(self.log_prob_act_batch).reshape(-1)[indices].to(self.device)
                 done_batch = torch.FloatTensor(self.done_batch).reshape(-1)[indices].to(self.device)
-                log_prob_act_batch = torch.FloatTensor(self.log_prob_act_batch).reshape(-1)[indices].to(self.device)
                 value_batch = torch.FloatTensor(self.value_batch[:-1]).reshape(-1)[indices].to(self.device)
                 return_batch = torch.FloatTensor(self.return_batch).reshape(-1)[indices].to(self.device)
                 adv_batch = torch.FloatTensor(self.adv_batch).reshape(-1)[indices].to(self.device)
