@@ -23,7 +23,7 @@ class CategoricalPolicy(nn.Module):
         super(CategoricalPolicy, self).__init__()
         self.embedder = embedder
         self.has_vq = has_vq
-        self.continuous_actions=continuous_actions
+        self.continuous_actions = continuous_actions
         self.action_size = action_size
         # small scale weight-initialization in policy enhances the stability        
         self.fc_policy = orthogonal_init(nn.Linear(self.embedder.output_dim, action_size), gain=0.01)
@@ -61,6 +61,7 @@ class CategoricalPolicy(nn.Module):
         log_probs = F.log_softmax(logits, dim=1)
         return Categorical(logits=log_probs)
 
+
 class GraphPolicy(nn.Module):
     def __init__(self, graph, embedder=None, continuous_actions=False, act_shape=None):
         super(GraphPolicy, self).__init__()
@@ -94,12 +95,17 @@ class GraphPolicy(nn.Module):
         p = self.distribution(logits)
         return p, a_out, m_out
 
+
 def diag_gaussian_dist(logits):
-    mean_actions = logits[..., 0]
-    logvar = logits[..., -1]
-    action_std = torch.ones_like(mean_actions) * logvar.exp()
+    mean_actions = torch.tanh(logits[..., 0])  # tanh?
+    action_std = logits[..., -1].exp()  # softplus?
+
+    min_real = torch.finfo(action_std.dtype).tiny
+    action_std = torch.clamp(action_std, min=min_real)
+
     p = Normal(mean_actions, action_std)
     return p
+
 
 class TransitionPolicy(nn.Module):
     def __init__(self,
@@ -343,8 +349,6 @@ class GraphTransitionPolicy(nn.Module):
         return s1.unsqueeze(1).tile(shp)
 
 
-
-
 class DoubleTransitionPolicy(nn.Module):
     def __init__(self,
                  value_model,
@@ -372,7 +376,6 @@ class DoubleTransitionPolicy(nn.Module):
         self.rew_func = rew_func
         self.value_model = value_model
         self.transition_model = transition_model
-
 
     def dr(self, state):
         s = state.detach().cpu().numpy()
@@ -432,7 +435,6 @@ class DoubleTransitionPolicy(nn.Module):
         dones, rew = self.dr(sa)
         return dones, rew
 
-
     def states_with_all_actions(self, s):
         s1 = s.unsqueeze(-2).tile([self.action_size, 1])
         a = self.all_actions_like(s)
@@ -475,7 +477,6 @@ class PureTransitionPolicy(nn.Module):
         self.done_func = done_func
         self.rew_func = rew_func
         self.transition_model = transition_model
-
 
     def dr(self, state):
         s = state.detach().cpu().numpy()
@@ -525,7 +526,7 @@ class PureTransitionPolicy(nn.Module):
         #     print("check")
         p = Categorical(logits=log_probs)
         if (p.probs != 0.5).any():
-        # if p.probs.isnan().any():
+            # if p.probs.isnan().any():
             print("check")
         return p
 
@@ -533,7 +534,6 @@ class PureTransitionPolicy(nn.Module):
         sa = self.states_with_all_actions(s)
         dones, rew = self.dr(sa)
         return dones, rew
-
 
     def states_with_all_actions(self, s):
         s1 = s.unsqueeze(-2).tile([self.action_size, 1])
