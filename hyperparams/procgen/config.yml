@@ -1054,7 +1054,7 @@ graph-humanoid-cont:
     n_envs: 2
     n_steps: 256
     epoch: 3
-    n_minibatch: 8
+    n_minibatch: 32
     mini_batch_size: 8192
     gamma: 0.999
     lmbda: 0.95
