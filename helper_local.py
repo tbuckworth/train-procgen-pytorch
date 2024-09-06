@@ -387,7 +387,7 @@ def initialize_model(device, env, hyperparameters, in_channels=None):
         action_size = action_space.n
         policy = CategoricalPolicy(model, recurrent, action_size, has_vq)
     elif isinstance(action_space, gymnasium.spaces.Box) or isinstance(action_space, gym.spaces.Box):
-        action_size = action_space.n
+        action_size = action_space.shape[-1]
         policy = CategoricalPolicy(model, recurrent, action_size*2, has_vq, continuous_actions=True)
     else:
         raise NotImplementedError
