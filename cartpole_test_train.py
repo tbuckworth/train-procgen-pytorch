@@ -10,13 +10,13 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     args.exp_name = "test"
-    args.env_name = "cartpole"
+    args.env_name = "cartpole_continuous"
     # args.n_envs = 2
-    args.param_name = "graph-cartpole"
+    args.param_name = "cartpole-cont"
     args.num_timesteps = int(2e8)
     args.num_checkpoints = 1
     args.seed = 6033
-    args.wandb_tags = ["gc1"]
+    args.wandb_tags = ["mlp"]
     args.use_wandb = True
     args.use_valid_env = True
     # args.render = True
