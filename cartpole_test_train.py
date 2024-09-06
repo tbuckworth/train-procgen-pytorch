@@ -13,8 +13,8 @@ if __name__ == '__main__':
     args.env_name = "cartpole_continuous"
     # args.n_envs = 2
     args.param_name = "cartpole-cont"
-    args.num_timesteps = int(2e8)
-    args.num_checkpoints = 1
+    args.num_timesteps = int(1e7)
+    args.num_checkpoints = 4
     args.seed = 6033
     args.wandb_tags = ["mlp"]
     args.use_wandb = True

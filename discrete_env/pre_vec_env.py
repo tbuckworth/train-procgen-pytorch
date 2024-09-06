@@ -66,7 +66,7 @@ class PreVecEnv(Env):
     }
 
     def check_actions(self, action):
-        if type(self.action_space) is spaces.Box:
+        if isinstance(self.action_space, spaces.Box):
             h = self.action_space.high.repeat(self.n_envs)
             l = self.action_space.low.repeat(self.n_envs)
             action[action < l] = l[action < l]
