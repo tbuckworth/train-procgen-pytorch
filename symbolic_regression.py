@@ -86,7 +86,7 @@ def get_best_str(model, split='\n'):
     return model.get_best().equation
 
 
-def load_nn_policy(logdir, n_envs=2):
+def load_nn_policy(logdir, n_envs=2, render=False):
     cfg = get_config(logdir)
     cfg["n_envs"] = n_envs
     env_name = cfg["env_name"]
@@ -109,8 +109,9 @@ def load_nn_policy(logdir, n_envs=2):
     hyperparameters, last_model = load_hparams_for_model(cfg["param_name"], logdir, n_envs)
     hyperparameters["n_envs"] = n_envs
 
+    if render:
+        cfg["render"] = True
     tmp_args = DictToArgs(cfg)
-
     # This seems to be necessary as training from scratch produces a different result than using a trained model:
     hyperparameters["normalize_rew"] = False
     env = create_venv(tmp_args, hyperparameters, is_valid=False)

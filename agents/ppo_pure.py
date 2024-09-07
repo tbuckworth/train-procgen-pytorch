@@ -151,6 +151,8 @@ class PPOPure(BaseAgent):
                         - self.entropy_coef * entropy_loss * self.entropy_multiplier
                         - self.x_entropy_coef * x_batch_ent_loss
                         )
+                if loss.isnan():
+                    print("nan loss")
                 loss.backward()
 
                 # Let model to handle the large batch-size with small gpu-memory

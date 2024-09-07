@@ -79,6 +79,7 @@ class GraphPolicy(nn.Module):
         if self.embedder is not None:
             x = self.embedder(x)
         logits, value = self.graph(x)
+        # print([x for x in self.graph.messenger.model.children()][0].weight)
         p = self.distribution(logits)
         return p, value, hx
 
@@ -97,12 +98,12 @@ class GraphPolicy(nn.Module):
 
 
 def diag_gaussian_dist(logits):
-    mean_actions = torch.tanh(logits[..., 0])  # tanh?
-    action_std = logits[..., -1].exp()  # softplus?
+    # tanh need to scale to action range?
+    mean_actions = torch.tanh(logits[..., 0])
+    action_std = F.softplus(logits[..., -1])
 
     min_real = torch.finfo(action_std.dtype).tiny
     action_std = torch.clamp(action_std, min=min_real**0.5)
-
     p = Normal(mean_actions, action_std)
     return p
 

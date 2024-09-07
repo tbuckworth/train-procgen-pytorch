@@ -1,5 +1,7 @@
 import gymnasium as gym
+import numpy as np
 
+from cartpole.cartpole_pre_vec import CartPoleVecEnv
 from helper_local import DictToArgs
 
 
@@ -31,19 +33,22 @@ class GymnasiumEnv(gym.Env):
         # obs, rew, done, trunc, infos = self.env.step_wait(timeout=None)
         obs, rew, done, trunc, infos = self.env.step(actions)
         done |= trunc
-        return obs, rew, done, infos
+        info = [{k:v[i] for k, v in infos.items()} for i in range(len(obs))]
+        return obs, rew, done, info
 
     def reset(self, seed=None, options=None):
         return self.env.reset(seed=seed, options=options)[0]
 
 
 if __name__ == "__main__":
-
+    cenv = CartPoleVecEnv(2)
     env = GymnasiumEnv('Humanoid-v4', 2)
     obs = env.reset(seed=42)
-    for _ in range(1000):
-        actions = env.env.action_space.sample()
-        obs, rew, done, info = env.step(actions)
+    actions = (np.random.random((2,17)) - 0.5)*0.4
+    obs, rew, done, info = env.step(actions)
+    cenv.reset()
+    actions = np.array([cenv.action_space.sample() for _ in range(2)])
+    obs, rew, done, c_info = cenv.step(actions)
 
 
     print(obs.shape)
