@@ -8,7 +8,7 @@ def render_agent():
     policy, env, symbolic_agent_constructor, test_env = load_nn_policy(logdir, n_envs=2, render=True)
 
     obs = test_env.reset()
-    for i in range(10):
+    for i in range(1000):
         obs = torch.FloatTensor(obs).to(device=policy.device)
         with torch.no_grad():
             dist, value, _ = policy(obs, None, None)

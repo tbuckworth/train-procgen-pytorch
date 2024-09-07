@@ -426,6 +426,7 @@ def create_cartpole_continuous(args, hyperparameters, is_valid=False):
         "min_force_mag": [10.],
         "max_force_mag": [10.],
     }
-    return create_pre_vec(args, hyperparameters, param_range, CartPoleContVecEnv, is_valid)
+    hyperparameters["continuous"] = True
+    return create_pre_vec(args, hyperparameters, param_range, CartPoleVecEnv, is_valid)
 
 
