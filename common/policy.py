@@ -63,10 +63,15 @@ class CategoricalPolicy(nn.Module):
 
 
 class GraphPolicy(nn.Module):
-    def __init__(self, graph, embedder=None, continuous_actions=False, act_shape=None):
+    def __init__(self, graph, embedder=None, continuous_actions=False, act_space=None, device=None):
         super(GraphPolicy, self).__init__()
+        self.device=device
         self.continuous_actions = continuous_actions
-        self.act_shape = act_shape
+        self.act_scale = None
+        self.act_space = act_space
+        if self.act_space is not None:
+            self.act_scale = torch.FloatTensor((act_space.high - act_space.low) / 2).to(device=self.device)
+        self.act_shape = act_space.shape[-1]
         self.embedder = embedder
         self.graph = graph
         self.has_vq = False
@@ -85,7 +90,7 @@ class GraphPolicy(nn.Module):
 
     def distribution(self, logits):
         if self.continuous_actions:
-            return diag_gaussian_dist(logits)
+            return diag_gaussian_dist(logits, self.act_scale)
         log_probs = F.log_softmax(logits, dim=1)
         return Categorical(logits=log_probs)
 
@@ -97,9 +102,11 @@ class GraphPolicy(nn.Module):
         return p, a_out, m_out
 
 
-def diag_gaussian_dist(logits):
-    # tanh need to scale to action range?
+def diag_gaussian_dist(logits, act_scale):
     mean_actions = torch.tanh(logits[..., 0])
+    if act_scale is not None:
+        # scale actions to correct range:
+        mean_actions = mean_actions * act_scale
     action_std = F.softplus(logits[..., -1])
 
     min_real = torch.finfo(action_std.dtype).tiny

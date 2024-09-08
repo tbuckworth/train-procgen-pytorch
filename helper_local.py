@@ -372,9 +372,8 @@ def initialize_model(device, env, hyperparameters, in_channels=None):
         else:
             action_size = action_space.n
         graph = GraphActorCritic(in_channels, depth, mid_weight, latent_size, action_size, device, continuous_actions=cont_act)
-        policy = GraphPolicy(graph, continuous_actions=cont_act, act_shape=action_size)
+        policy = GraphPolicy(graph, continuous_actions=cont_act, act_space=action_space, device=device)
         policy.to(device)
-        policy.device = device
         return graph, observation_shape, policy
     else:
         raise NotImplementedError(f"Architecture:{architecture} not found in helper.py")

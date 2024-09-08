@@ -1,5 +1,6 @@
 import gymnasium as gym
 import numpy as np
+from gymnasium import spaces
 
 from cartpole.cartpole_pre_vec import CartPoleVecEnv
 from helper_local import DictToArgs
@@ -18,14 +19,21 @@ def create_humanoid(args, hyperparameters, is_valid=False):
     return env
 
 
+def remove_batch_from_space(space):
+    if len(space.shape) == 1:
+        return space
+    high = space.high[0]
+    low = space.low[0]
+    shape = space.shape[1:]
+    dtype = space.dtype
+    return spaces.Box(low, high, shape, dtype)
+
+
 class GymnasiumEnv(gym.Env):
     def __init__(self, env_name, n_envs, timeout=10):
         self.env = gym.vector.make(env_name, num_envs=n_envs, asynchronous=False)
-        self.action_space = self.env.action_space
-        self.action_space._shape = self.env.action_space.shape[1:]
-        self.observation_space = self.env.observation_space
-        self.observation_space._shape = self.env.observation_space.shape[1:]
-
+        self.action_space = remove_batch_from_space(self.env.action_space)
+        self.observation_space = remove_batch_from_space(self.env.observation_space)
         self.timeout = timeout
 
     def step(self, actions):
