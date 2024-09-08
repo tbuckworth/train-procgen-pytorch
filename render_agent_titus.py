@@ -2,6 +2,9 @@ import torch
 
 from symbolic_regression import load_nn_policy
 
+# This is cartpole continuous graph optimal - was tested incorrectly:
+# todo: test this and then sr it:
+# "logs/train/cartpole_continuous/pure-graph/2024-09-08__00-59-06__seed_6033"
 
 def render_agent():
     logdir = "logs/train/cartpole_continuous/test/2024-09-06__17-00-29__seed_6033"
