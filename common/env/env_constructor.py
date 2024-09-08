@@ -1,7 +1,7 @@
 import re
 
 from boxworld.create_box_world import create_bw_env
-from common.env.mujoco_wrappers import create_humanoid, create_mujoco
+from common.env.mujoco_wrappers import create_mujoco
 from common.env.procgen_wrappers import create_procgen_env
 from discrete_env.acrobot_pre_vec import create_acrobot
 from discrete_env.cartpole_pre_vec import create_cartpole, create_cartpole_continuous
