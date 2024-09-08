@@ -544,7 +544,7 @@ def cartpole_graph_ppo():
         "detect_nan": True,
         "env_name": 'humanoid',#'cartpole_continuous',
         "exp_name": 'pure-graph',
-        "param_name": 'graph-humanoid-cont',
+        "param_name": 'graph-ant',
         "device": "gpu",
         "num_timesteps": int(2e8),
         "seed": 6033,

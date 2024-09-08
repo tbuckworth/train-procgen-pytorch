@@ -5,18 +5,19 @@ from gymnasium import spaces
 from cartpole.cartpole_pre_vec import CartPoleVecEnv
 from helper_local import DictToArgs
 
-
-def create_humanoid(args, hyperparameters, is_valid=False):
-    if args is None:
-        args = DictToArgs({"render": False, "seed": 0})
-    n_envs = hyperparameters.get('n_envs', 8)
-    timeout = hyperparameters.get('env_timeout', 10)
-    env = GymnasiumEnv('Humanoid-v4', n_envs=n_envs, timeout=timeout)
-    if is_valid:
-        env.reset(seed=args.seed + 1000)
-    else:
-        env.reset(seed=args.seed)
-    return env
+def create_mujoco(env_name):
+    def mujoco_cons(args, hyperparameters, is_valid=False):
+        if args is None:
+            args = DictToArgs({"render": False, "seed": 0})
+        n_envs = hyperparameters.get('n_envs', 8)
+        timeout = hyperparameters.get('env_timeout', 10)
+        env = GymnasiumEnv(env_name, n_envs=n_envs, timeout=timeout)
+        if is_valid:
+            env.reset(seed=args.seed + 1000)
+        else:
+            env.reset(seed=args.seed)
+        return env
+    return mujoco_cons
 
 
 def remove_batch_from_space(space):
@@ -31,7 +32,7 @@ def remove_batch_from_space(space):
 
 class GymnasiumEnv(gym.Env):
     def __init__(self, env_name, n_envs, timeout=10):
-        self.env = gym.vector.make(env_name, num_envs=n_envs, asynchronous=False)
+        self.env = gym.vector.make(env_name, num_envs=n_envs, asynchronous=True)
         self.action_space = remove_batch_from_space(self.env.action_space)
         self.observation_space = remove_batch_from_space(self.env.observation_space)
         self.timeout = timeout

@@ -41,6 +41,8 @@ def train_ppo(args):
         hyperparameters["entropy_coef"] = ent_coef * alpha
         hyperparameters["x_entropy_coef"] = ent_coef * (1 - alpha)
 
+    env_name = hyperparameters.get("env_name", env_name)
+
     for var_name in [
         "n_envs",
         "n_steps",

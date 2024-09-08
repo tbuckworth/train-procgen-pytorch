@@ -943,8 +943,6 @@ def get_project(env_name, exp_name):
             project = "Graph Symb Reg"
     elif exp_name == "mountain_car_cont_rew":
         project = "MountainCar Continuous Reward"
-    elif env_name == "humainoid":
-        project = "Humanoid"
     else:
         project = env_name
     if exp_name == "overfit":
