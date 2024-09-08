@@ -541,6 +541,7 @@ def pets_graph_transition_cartpole():
 
 def cartpole_graph_ppo():
     fixed = {
+        "detect_nan": True,
         "env_name": 'humanoid',#'cartpole_continuous',
         "exp_name": 'pure-graph',
         "param_name": 'graph-humanoid-cont',

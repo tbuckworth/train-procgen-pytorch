@@ -49,6 +49,8 @@ class GymnasiumEnv(gym.Env):
 
 
 if __name__ == "__main__":
+    env_name = "Ant-v4"
+
     cenv = CartPoleVecEnv(2)
     env = GymnasiumEnv('Humanoid-v4', 2)
     obs = env.reset(seed=42)
