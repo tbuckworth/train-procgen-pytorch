@@ -113,7 +113,7 @@ def train_ppo(args):
     max_steps = hyperparameters.get("max_steps", 10 ** 3)
     continuous_actions = hyperparameters.get('continuous', False)
 
-    create_venv = get_env_constructor(args.env_name)
+    create_venv = get_env_constructor(env_name)
 
     env = create_venv(args, hyperparameters)
     env_valid = create_venv(args, hyperparameters, is_valid=True) if args.use_valid_env else None

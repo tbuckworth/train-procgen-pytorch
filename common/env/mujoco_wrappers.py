@@ -53,9 +53,9 @@ if __name__ == "__main__":
     env_name = "Ant-v4"
 
     cenv = CartPoleVecEnv(2)
-    env = GymnasiumEnv('Humanoid-v4', 2)
+    env = GymnasiumEnv(env_name, 2)
     obs = env.reset(seed=42)
-    actions = (np.random.random((2,17)) - 0.5)*0.4
+    actions = (np.random.random((2, env.action_space.shape[0])) - 0.5)*0.4
     obs, rew, done, info = env.step(actions)
     cenv.reset()
     actions = np.array([cenv.action_space.sample() for _ in range(2)])

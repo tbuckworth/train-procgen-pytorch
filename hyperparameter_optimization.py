@@ -176,7 +176,7 @@ def optimize_hyperparams(bounds,
 
     fh = fixed.copy()
     hparams.update(fh)
-    # run_next(hparams)
+    run_next(hparams)
     try:
         run_next(hparams)
     except Exception as e:
@@ -609,7 +609,7 @@ def graph_ppo_sr_ft():
         "populations": [15, 40],
         "procs": [4, 16],
         "ncycles_per_iteration": [4000, 6000],
-        "num_timesteps": [int(1e5), int(2e6)],
+        "num_timesteps": [int(1e4), int(1e5)],
         "epoch": [10, 1000],
         "learning_rate": [1e-4, 1e-1],
         'batch_size': [100, 1100],
