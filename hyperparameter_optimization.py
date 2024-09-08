@@ -604,14 +604,14 @@ def graph_ppo_sr_ft():
         'n_tests': 40,
     }
     bounds = {
-        "data_size": [1000, 20000],
+        "data_size": [1000, 5000],
         "iterations": [1, 100],
         "populations": [15, 40],
         "procs": [4, 16],
         "ncycles_per_iteration": [4000, 6000],
         "num_timesteps": [int(1e4), int(1e5)],
         "epoch": [10, 1000],
-        "learning_rate": [1e-4, 1e-1],
+        "learning_rate": [1e-2, 1e-2],
         'batch_size': [100, 1100],
         "maxsize": [20, 60],
     }
@@ -622,7 +622,7 @@ def graph_ppo_sr_ft():
 
 
 if __name__ == "__main__":
-    cartpole_graph_ppo()
-    # graph_ppo_sr_ft()
+    # cartpole_graph_ppo()
+    graph_ppo_sr_ft()
     # double_graph_symbreg_ft_hparams()
     # pets_graph_transition_cartpole()
