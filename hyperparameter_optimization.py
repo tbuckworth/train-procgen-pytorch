@@ -565,17 +565,84 @@ def cartpole_graph_ppo():
     bounds = {
         "gamma": [0.9999, 0.8],
         "lmbda": [0.0, 0.99999],
-        "epochs": [1, 10],
+        "epoch": [1, 10],
         "learning_rate": [1e-8, 1e-3],
         # "n_envs": [64],
         # "n_steps": [256],
         "depth": [2, 6],
         "mid_weight": [8, 256],
     }
+    # try somehting like these for humanoid:
+    # nsteps: 4096
+    # nminibatches: 64
+    # lam: 0.95
+    # gamma: 0.99
+    # noptepochs: 10
+    # ent_coef: 0.0
+    # lr: lambda f: 1e-4 * f
+    # cliprange: 0.1
+    # value_network: copy
+    # num_hidden: 512
+    # num_layers: 4
     while True:
         project = get_project(fixed["env_name"], fixed["exp_name"])
         id_tag = fixed["wandb_tags"][0]
         optimize_hyperparams(bounds, fixed, project, id_tag, run_next_hyperparameters)
+
+def humanoid_graph_ppo():
+    fixed = {
+        "detect_nan": True,
+        "env_name": 'humanoid',#'cartpole_continuous',
+        "exp_name": 'pure-graph',
+        "param_name": 'graph-humanoid-cont',
+        "device": "gpu",
+        "num_timesteps": int(2e8),
+        "seed": 6033,
+        "use_gae": True,
+        "clip_value": True,
+        "wandb_tags": ["gh0"],
+        "use_wandb": True,
+        "mirror_env": False,
+        "use_valid_env": True,
+        "anneal_temp": False,
+        "entropy_coef": 0.,
+        "n_envs": 6,
+        "learning_rate": 1e-4,
+        "n_steps": 4096,
+        "n_minibatch": 64,
+        # "output_dim": 24,#[24, 64],
+        # "depth": 4,#[2, 6],
+        "gamma": 0.99,
+        "lmbda": 0.95,
+        "epoch": 10,
+    }
+    bounds = {
+        # "gamma": [0.9999, 0.8],
+        # "lmbda": [0.0, 0.99999],
+        # "epoch": [1, 10],
+        # "learning_rate": [1e-4, 1e-3],
+        # "n_envs": [64],
+        # "n_steps": [256],
+        "depth": [2, 6],
+        "mid_weight": [16, 256],
+    }
+    # try somehting like these for humanoid:
+    # nsteps: 4096
+    # nminibatches: 64
+    # lam: 0.95
+    # gamma: 0.99
+    # noptepochs: 10
+    # ent_coef: 0.0
+    # lr: lambda f: 1e-4 * f
+    # cliprange: 0.1
+    # value_network: copy
+    # num_hidden: 512
+    # num_layers: 4
+    while True:
+        project = get_project(fixed["env_name"], fixed["exp_name"])
+        id_tag = fixed["wandb_tags"][0]
+        optimize_hyperparams(bounds, fixed, project, id_tag, run_next_hyperparameters)
+
 
 def graph_ppo_sr_ft():
     fixed = {
@@ -623,6 +690,7 @@ def graph_ppo_sr_ft():
 
 if __name__ == "__main__":
     # cartpole_graph_ppo()
-    graph_ppo_sr_ft()
+    # graph_ppo_sr_ft()
+    humanoid_graph_ppo()
     # double_graph_symbreg_ft_hparams()
     # pets_graph_transition_cartpole()
