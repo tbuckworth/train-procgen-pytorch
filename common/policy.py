@@ -73,7 +73,9 @@ class GraphPolicy(nn.Module):
         self.act_space = act_space
         if isinstance(self.act_space, gymnasium.spaces.Box):
             self.act_scale = torch.FloatTensor((act_space.high - act_space.low) / 2).to(device=self.device)
-        self.act_shape = act_space.shape[-1]
+            self.act_shape = act_space.shape[-1]
+        else:
+            self.act_shape = act_space.n
         self.embedder = embedder
         self.graph = graph
         self.has_vq = False
