@@ -1,5 +1,7 @@
 import time
 
+import gymnasium
+
 from .misc_util import orthogonal_init
 from .model import GRU, GraphTransitionModel, MLPModel
 import torch
@@ -69,7 +71,7 @@ class GraphPolicy(nn.Module):
         self.continuous_actions = continuous_actions
         self.act_scale = None
         self.act_space = act_space
-        if self.act_space is not None:
+        if isinstance(self.act_space, gymnasium.spaces.Box):
             self.act_scale = torch.FloatTensor((act_space.high - act_space.low) / 2).to(device=self.device)
         self.act_shape = act_space.shape[-1]
         self.embedder = embedder
