@@ -72,6 +72,8 @@ def n_sig_fig(x, n):
 
 
 def select_next_hyperparameters(X, y, bounds):
+    if bounds == {}:
+        return {}
     [b.sort() for b in bounds.values()]
     if X is None:
         bound_array = np.array([[x[0], x[-1]] for x in bounds.values()])
