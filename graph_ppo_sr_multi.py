@@ -150,12 +150,15 @@ def calc_losses(x, y, a_out, m_out, ns_agent, a_coef, m_coef, a):
         a_loss = a2.mean()
 
         y_hat_min = y_hat
-        if y_hat.ndim == 3:
+        if y_hat.ndim <= 3:
             y_hat_min = y_hat[m2.argmin()]
         if y_hat.ndim == 4:
             y_hat_min = y_hat[a2.argmin(), m2.argmin()]
 
         l_loss = ((y - y_hat_min) ** 2).mean()
+
+    # plot messenger vs truth
+    # plt.scatter(m_out.reshape(-1).detach().cpu().numpy(), m_out_hat[6].reshape(-1).detach().cpu().numpy())
 
     loss = l_loss + a_loss * a_coef + m_loss * m_coef
     return loss, l_loss, m_loss, a_loss, a_out_hat, m_out_hat
