@@ -230,6 +230,12 @@ def run_graph_ppo_multi_sr(args):
 
     policy, env, symbolic_agent_constructor, test_env = load_nn_policy(logdir, n_envs)
     nn_agent = symbolic_agent_constructor(policy)
+    neural_train = trial_agent_mean_reward(nn_agent, env, "Neural Train")
+    neural_test = trial_agent_mean_reward(nn_agent, test_env, "Neural Test")
+    if args.use_wandb:
+        wandb.log({"neural_train_score": neural_train,
+                   "neural_test_score": neural_test
+                   })
     m_in, m_out, a_in, a_out = generate_data(nn_agent, env, int(data_size))
 
     print("data generated")
