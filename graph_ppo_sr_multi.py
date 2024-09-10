@@ -18,14 +18,12 @@ def generate_data(agent, env, n):
     Obs = env.reset()
     M_in, M_out, A_in, A_out = agent.sample(Obs)
     act = agent.forward(Obs)
-    act[::2] = np.array([env.action_space.sample().squeeze() for _ in Obs])[::2]
-    # act[::2] = np.random.randint(0, env.action_space.n, len(act))[::2]
+    randomize_nth(Obs, act, env)
     while len(M_in) < n:
         observation, rew, done, info = env.step(act)
         m_in, m_out, a_in, a_out = agent.sample(observation)
         act = agent.forward(observation)
-        act[::2] = np.array([env.action_space.sample().squeeze() for _ in Obs])[::2]
-        # act[::2] = np.random.randint(0, env.action_space.n, len(act))[::2]
+        randomize_nth(Obs, act, env)
 
         M_in = np.append(M_in, m_in, axis=0)
         M_out = np.append(M_out, m_out, axis=0)
@@ -35,22 +33,36 @@ def generate_data(agent, env, n):
     return M_in, M_out, A_in, A_out
 
 
+def randomize_nth(Obs, act, env, n=2):
+    act[::n] = np.array([env.action_space.sample().squeeze() for _ in Obs])[::n]
+
+def extract_target_from_dist(dist):
+    if isinstance(dist, torch.distributions.Normal):
+        x = dist.loc
+    elif isinstance(dist, torch.distributions.Categorical):
+        x = dist.logits
+    else:
+        raise NotImplementedError(f"dist must be one of (Normal,Categorical), not {type(dist)}")
+    return x
+
 def generate_data_supervised(agent, env, n):
     def predict(Obs):
         with torch.no_grad():
             Obs = torch.FloatTensor(Obs).to(agent.policy.device)
-            Logits, a_out, m_out = agent.policy.forward_fine_tune(Obs)
-            act = Logits.sample().detach().cpu().numpy()
-        return Logits.logits, act, Obs, a_out, m_out
+            dist, a_out, m_out = agent.policy.forward_fine_tune(Obs)
+            act = dist.sample().detach().cpu().numpy()
+        x = extract_target_from_dist(dist)
+        return x, act, Obs, a_out, m_out
+
+
 
     Obs = env.reset()
     Logits, act, Obs, A_out, M_out = predict(Obs)
-    act[::2] = np.random.randint(0, env.action_space.n, len(act))[::2]
+    randomize_nth(Obs, act, env)
     while len(Logits) < n:
         obs, rew, done, info = env.step(act)
         logits, act, obs, a_out, m_out = predict(obs)
-        act[::2] = np.random.randint(0, env.action_space.n, len(act))[::2]
-
+        randomize_nth(Obs, act, env)
         Logits = torch.cat([Logits, logits], axis=0)
         Obs = torch.cat([Obs, obs], axis=0)
         A_out = torch.cat([A_out, a_out], axis=0)
@@ -125,7 +137,8 @@ def fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensembl
 
 
 def calc_losses(x, y, a_out, m_out, ns_agent, a_coef, m_coef, a):
-    y_hat, a_out_hat, m_out_hat = ns_agent.policy.graph.forward_fine_tune(x)
+    dist_hat, a_out_hat, m_out_hat = ns_agent.policy.forward_fine_tune(x)
+    y_hat = extract_target_from_dist(dist_hat)
     if not a.min_mse:
         l_loss = nn.MSELoss()(y, y_hat)
         m_loss = nn.MSELoss()(m_out, m_out_hat)
@@ -276,12 +289,13 @@ if __name__ == "__main__":
     args.logdir = "logs/train/cartpole_continuous/pure-graph/2024-09-08__00-59-06__seed_6033"
     args.iterations = 1
 
-    args.load_pysr = False
+    args.load_pysr = True
     # args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-08-27__10-39-50"
     # args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-08-27__19-55-01"
     # args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-08-28__17-46-04"
     # args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-09-04__10-16-46"
     # args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-09-04__10-36-16"
+    args.symbdir = "logs/train/cartpole_continuous/pure-graph/2024-09-08__00-59-06__seed_6033/symbreg/2024-09-10__11-52-31"
     args.sequential = True
     args.min_mse = True
     args.model_selection = "accuracy"
