@@ -176,7 +176,7 @@ def optimize_hyperparams(bounds,
 
     fh = fixed.copy()
     hparams.update(fh)
-    # run_next(hparams)
+    run_next(hparams)
     try:
         run_next(hparams)
     except Exception as e:
@@ -609,7 +609,7 @@ def humanoid_graph_ppo():
         "n_envs": 6,
         "learning_rate": 1e-4,
         "n_steps": 4096,
-        "n_minibatch": 64,
+        "n_minibatch": 128,
         # "output_dim": 24,#[24, 64],
         # "depth": 4,#[2, 6],
         "gamma": 0.99,
@@ -690,7 +690,7 @@ def graph_ppo_sr_ft():
 
 if __name__ == "__main__":
     # cartpole_graph_ppo()
-    graph_ppo_sr_ft()
-    # humanoid_graph_ppo()
+    # graph_ppo_sr_ft()
+    humanoid_graph_ppo()
     # double_graph_symbreg_ft_hparams()
     # pets_graph_transition_cartpole()
