@@ -18,12 +18,14 @@ def generate_data(agent, env, n):
     Obs = env.reset()
     M_in, M_out, A_in, A_out = agent.sample(Obs)
     act = agent.forward(Obs)
-    act[::2] = np.random.randint(0, env.action_space.n, len(act))[::2]
+    act[::2] = np.array([env.action_space.sample().squeeze() for _ in Obs])[::2]
+    # act[::2] = np.random.randint(0, env.action_space.n, len(act))[::2]
     while len(M_in) < n:
         observation, rew, done, info = env.step(act)
         m_in, m_out, a_in, a_out = agent.sample(observation)
         act = agent.forward(observation)
-        act[::2] = np.random.randint(0, env.action_space.n, len(act))[::2]
+        act[::2] = np.array([env.action_space.sample().squeeze() for _ in Obs])[::2]
+        # act[::2] = np.random.randint(0, env.action_space.n, len(act))[::2]
 
         M_in = np.append(M_in, m_in, axis=0)
         M_out = np.append(M_out, m_out, axis=0)
@@ -270,16 +272,16 @@ if __name__ == "__main__":
     parser = add_symbreg_args(parser)
 
     args = parser.parse_args()
-    args.logdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033"
-
+    # args.logdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033"
+    args.logdir = "logs/train/cartpole_continuous/pure-graph/2024-09-08__00-59-06__seed_6033"
     args.iterations = 1
 
     args.load_pysr = False
     # args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-08-27__10-39-50"
     # args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-08-27__19-55-01"
     # args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-08-28__17-46-04"
-    args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-09-04__10-16-46"
-    args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-09-04__10-36-16"
+    # args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-09-04__10-16-46"
+    # args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-09-04__10-36-16"
     args.sequential = True
     args.min_mse = True
     args.model_selection = "accuracy"

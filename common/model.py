@@ -975,6 +975,8 @@ class MLPModel(nn.Module):
 
 
 class GraphModel(nn.Module, ABC):
+    batching_threshold = 50000
+    split_size = 25000
     def __init__(self):
         super(GraphModel, self).__init__()
 
@@ -985,8 +987,19 @@ class GraphModel(nn.Module, ABC):
 
     def sum_all_messages(self, n, x):
         msg_in = self.vectorize_for_message_pass(n, x)
-        messages = self.messenger(msg_in)
+        # batch_size * n_features * n_features can get large, so we minibatch them if necessary:
+        messages = self.pass_maybe_batch(self.messenger, msg_in)
         return torch.sum(messages, dim=-2).squeeze()
+
+    def pass_maybe_batch(self, messenger, msg_in):
+        if np.prod(msg_in.shape[:-1]) > self.batching_threshold:
+            temp = msg_in.reshape((-1, msg_in.shape[-1]))
+            batches = temp.split(self.split_size)
+            stacked_messages = torch.concat([messenger(b) for b in batches], dim=0)
+            messages = stacked_messages.reshape((*msg_in.shape[:-1], stacked_messages.shape[-1]))
+        else:
+            messages = messenger(msg_in)
+        return messages
 
     def vectorize_for_message_pass(self, n, x):
         xi = x.unsqueeze(-2).tile([n, 1])
@@ -1016,10 +1029,10 @@ class GraphActorCritic(GraphModel):
         self.device = device
         self.continuous = continuous_actions
         actor_output = latent_size
-        self.obs_dim = -2
+        self.obs_dim = -3
         if continuous_actions:
             actor_output *= 2
-            self.obs_dim -= 1
+            # self.obs_dim -= 1
 
         self.messenger = MLPModel(4, depth, mid_weight, latent_size)
         self.actor = MLPModel(3, depth, mid_weight, actor_output)
@@ -1072,14 +1085,15 @@ class GraphActorCritic(GraphModel):
     def run_actor(self, m, n):
         am, am_messages = self.collect_actor_in_out(m, n)
         # logits = torch.sum(am_messages.squeeze(), dim=-2).squeeze()
-
-        logits = am_messages.squeeze().sum(self.obs_dim).squeeze()
+        # first squeeze is wrong for cartpole graph
+        logits = am_messages.sum(self.obs_dim).squeeze()
         return logits
 
     def collect_actor_in_out(self, m, n):
         acts = self.generate_actions(m, n)
         am = self.vectorize_for_action_message_pass(n, m, acts)
-        am_messages = self.actor(am)
+        am_messages = self.pass_maybe_batch(self.actor, am)
+        # am_messages = self.actor(am)
         return am, am_messages
 
     def generate_actions(self, m, n):

@@ -688,9 +688,52 @@ def graph_ppo_sr_ft():
         optimize_hyperparams(bounds, fixed, project, id_tag, graph_ppo_multi_sr)
 
 
+def graph_ppo_sr_ft_continuous():
+    fixed = {
+        "env_name": 'cartpole_continuous',
+        "exp_name": 'symbreg',  # IMPORTANT!
+        "param_name": 'graph',
+        "device": "gpu",
+        "seed": 6033,
+        "wandb_tags": ["gpp-cont1"],
+        "logdir": "logs/train/cartpole_continuous/pure-graph/2024-09-08__00-59-06__seed_6033",
+        "timeout_in_seconds": 3600 * 10,
+        "n_envs": 2,
+        "denoise": False,
+        "binary_operators": ["+", "-", "greater", "*", "/"],
+        "unary_operators": ["sin", "relu", "log", "exp", "sign", "sqrt", "square"],
+        "use_wandb": True,
+        "bumper": False,
+        "model_selection": "accuracy",
+        "loss_function": 'mse',
+        "weight_metric": None,
+        'load_pysr': False,
+        'sequential': True,
+        'min_mse': True,
+        'num_checkpoints': 10,
+        'n_tests': 40,
+    }
+    bounds = {
+        "data_size": [1000, 5000],
+        "iterations": [1, 100],
+        "populations": [15, 40],
+        "procs": [4, 16],
+        "ncycles_per_iteration": [4000, 6000],
+        "num_timesteps": [int(1e4), int(1e5)],
+        "epoch": [10, 1000],
+        "learning_rate": [1e-2, 1e-2],
+        'batch_size': [100, 1100],
+        "maxsize": [20, 60],
+    }
+    project = get_project(fixed["env_name"], fixed["exp_name"])
+    id_tag = fixed["wandb_tags"][0]
+    while True:
+        optimize_hyperparams(bounds, fixed, project, id_tag, graph_ppo_multi_sr)
+
+
 if __name__ == "__main__":
     # cartpole_graph_ppo()
-    # graph_ppo_sr_ft()
-    humanoid_graph_ppo()
+    graph_ppo_sr_ft()
+    # humanoid_graph_ppo()
     # double_graph_symbreg_ft_hparams()
     # pets_graph_transition_cartpole()
