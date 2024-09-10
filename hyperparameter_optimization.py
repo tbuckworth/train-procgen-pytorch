@@ -546,7 +546,7 @@ def cartpole_graph_ppo():
         "detect_nan": True,
         "env_name": 'cartpole_continuous',
         "exp_name": 'pure-graph',
-        "param_name": '"graph-cartpole-cont"',
+        "param_name": 'graph-cartpole-cont',
         "device": "gpu",
         "num_timesteps": int(2e8),
         "seed": 6033,
