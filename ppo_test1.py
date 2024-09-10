@@ -235,7 +235,7 @@ class TestPPOPure(unittest.TestCase):
     def setUpClass(cls):
         n_envs = 2
         cls.device = torch.device('cpu')
-        env_con = get_env_constructor("humanoid")
+        env_con = get_env_constructor("cartpole_continuous")
         hyperparameters = {"n_envs": n_envs}
         cls.env = env_con(None, hyperparameters)
         cls.in_channels = cls.env.observation_space.shape[0]
@@ -246,7 +246,7 @@ class TestPPOPure(unittest.TestCase):
         if not os.path.isdir(logdir):
             os.mkdir(logdir)
         cls.logdir = logdir
-        hyperparameters = get_hyperparams("graph-humanoid-cont")
+        hyperparameters = get_hyperparams("graph-cartpole-cont")
         cls.n_steps = hyperparameters.get("n_steps", 256)
         hyperparameters["n_envs"] = n_envs
         # hyperparameters["anneal_temp"] = False
