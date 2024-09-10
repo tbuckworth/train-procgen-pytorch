@@ -542,48 +542,42 @@ def pets_graph_transition_cartpole():
 def cartpole_graph_ppo():
     fixed = {
         "detect_nan": True,
-        "env_name": 'humanoid',#'cartpole_continuous',
+        "env_name": 'cartpole_continuous',
         "exp_name": 'pure-graph',
-        "param_name": 'graph-ant',
+        "param_name": '"graph-cartpole-cont"',
         "device": "gpu",
         "num_timesteps": int(2e8),
         "seed": 6033,
         "use_gae": True,
         "clip_value": True,
-        "wandb_tags": ["gh0"],
+        "wandb_tags": ["gc2"],
         "use_wandb": True,
         "mirror_env": False,
         "use_valid_env": True,
         "anneal_temp": False,
-        "entropy_coef": 0.,
+        "entropy_coef": 0.01,
         # "n_envs": 64,
         # "n_steps": 4,
         # "n_minibatch": 1,
         # "output_dim": 24,#[24, 64],
         # "depth": 4,#[2, 6],
+        "gamma": 0.985,
+        "lmbda": 0.873,
+        # "epoch": [1, 10],
+        "learning_rate": 0.000527,
+        "depth": 5,
+        "mid_weight": 173,
     }
     bounds = {
-        "gamma": [0.9999, 0.8],
-        "lmbda": [0.0, 0.99999],
-        "epoch": [1, 10],
-        "learning_rate": [1e-8, 1e-3],
-        # "n_envs": [64],
-        # "n_steps": [256],
-        "depth": [2, 6],
-        "mid_weight": [8, 256],
+        # "gamma": [0.9999, 0.8],
+        # "lmbda": [0.0, 0.99999],
+        # "epoch": [1, 10],
+        # "learning_rate": [1e-8, 1e-3],
+        # # "n_envs": [64],
+        # # "n_steps": [256],
+        # "depth": [2, 6],
+        # "mid_weight": [8, 256],
     }
-    # try somehting like these for humanoid:
-    # nsteps: 4096
-    # nminibatches: 64
-    # lam: 0.95
-    # gamma: 0.99
-    # noptepochs: 10
-    # ent_coef: 0.0
-    # lr: lambda f: 1e-4 * f
-    # cliprange: 0.1
-    # value_network: copy
-    # num_hidden: 512
-    # num_layers: 4
     while True:
         project = get_project(fixed["env_name"], fixed["exp_name"])
         id_tag = fixed["wandb_tags"][0]
@@ -732,8 +726,8 @@ def graph_ppo_sr_ft_continuous():
 
 
 if __name__ == "__main__":
-    # cartpole_graph_ppo()
+    cartpole_graph_ppo()
     # graph_ppo_sr_ft()
-    humanoid_graph_ppo()
+    # humanoid_graph_ppo()
     # double_graph_symbreg_ft_hparams()
     # pets_graph_transition_cartpole()
