@@ -11,7 +11,7 @@ def create_mujoco(env_name):
             args = DictToArgs({"render": False, "seed": 0})
         n_envs = hyperparameters.get('n_envs', 8)
         timeout = hyperparameters.get('env_timeout', 10)
-        env = GymnasiumEnv(env_name, n_envs=n_envs, timeout=timeout)
+        env = GymnasiumEnv(env_name, n_envs=n_envs, timeout=timeout, render=args.render)
         if is_valid:
             env.reset(seed=args.seed + 1000)
         else:
@@ -31,8 +31,11 @@ def remove_batch_from_space(space):
 
 
 class GymnasiumEnv(gym.Env):
-    def __init__(self, env_name, n_envs, timeout=10):
-        self.env = gym.vector.make(env_name, num_envs=n_envs, asynchronous=True)
+    def __init__(self, env_name, n_envs, render=False, timeout=10):
+        render_mode = None
+        if render:
+            render_mode = "human"
+        self.env = gym.vector.make(env_name, num_envs=n_envs, asynchronous=True, render_mode=render_mode)
         self.action_space = remove_batch_from_space(self.env.action_space)
         self.observation_space = remove_batch_from_space(self.env.observation_space)
         self.timeout = timeout
@@ -51,6 +54,9 @@ class GymnasiumEnv(gym.Env):
 
 if __name__ == "__main__":
     env_name = "Ant-v4"
+    env = gym.vector.make(env_name, num_envs=2, asynchronous=True, render_mode=None)
+    env.reset()
+    env.step(env.action_space.sample())
 
     cenv = CartPoleVecEnv(2)
     env = GymnasiumEnv(env_name, 2)

@@ -2,7 +2,6 @@ import numpy as np
 from gym3 import vectorize_gym, ViewerWrapper, ToBaselinesVecEnv
 from gym3.interop import _space2vt
 
-# from stable_baselines3.common.vec_env import VecExtractDictObs
 
 from boxworld.box_world_env import BoxWorld
 from boxworld.box_world_env_vec import BoxWorldVec
