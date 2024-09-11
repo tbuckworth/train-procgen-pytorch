@@ -642,7 +642,7 @@ def humanoid_graph_ppo():
 
 def graph_ppo_sr_ft():
     fixed = {
-        "env_name": 'cartpole',
+        "env_name": 'cartpole_continuous',
         "exp_name": 'symbreg',  # IMPORTANT!
         "param_name": 'graph',
         "device": "gpu",
