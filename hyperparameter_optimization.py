@@ -590,9 +590,9 @@ def humanoid_graph_ppo():
         "detect_nan": True,
         "env_name": 'humanoid',#'cartpole_continuous',
         "exp_name": 'pure-graph',
-        "param_name": 'graph-humanoid-cont',
+        "param_name": 'graph-ant',
         "device": "gpu",
-        "num_timesteps": int(2e8),
+        "num_timesteps": int(1e7),
         "seed": 6033,
         "use_gae": True,
         "clip_value": True,
@@ -601,11 +601,11 @@ def humanoid_graph_ppo():
         "mirror_env": False,
         "use_valid_env": True,
         "anneal_temp": False,
-        "entropy_coef": 0.,
-        "n_envs": 6,
-        "learning_rate": 1e-4,
-        "n_steps": 4096,
-        "n_minibatch": 128,
+        # "entropy_coef": 0.,
+        # "n_envs": 6,
+        # "learning_rate": 1e-4,
+        # "n_steps": 4096,
+        # "n_minibatch": 128,
         # "output_dim": 24,#[24, 64],
         # "depth": 4,#[2, 6],
         "gamma": 0.99,
@@ -613,10 +613,11 @@ def humanoid_graph_ppo():
         "epoch": 10,
     }
     bounds = {
-        # "gamma": [0.9999, 0.8],
-        # "lmbda": [0.0, 0.99999],
-        # "epoch": [1, 10],
-        # "learning_rate": [1e-4, 1e-3],
+        "entropy_coef": [0.001, 0.1],
+        "gamma": [0.9999, 0.8],
+        "lmbda": [0.0, 0.99999],
+        "epoch": [1, 10],
+        "learning_rate": [1e-4, 1e-3],
         # "n_envs": [64],
         # "n_steps": [256],
         "depth": [2, 6],
@@ -732,7 +733,7 @@ def graph_ppo_sr_ft_continuous():
 
 if __name__ == "__main__":
     # cartpole_graph_ppo()
-    graph_ppo_sr_ft_continuous()
-    # humanoid_graph_ppo()
+    # graph_ppo_sr_ft_continuous()
+    humanoid_graph_ppo()
     # double_graph_symbreg_ft_hparams()
     # pets_graph_transition_cartpole()
