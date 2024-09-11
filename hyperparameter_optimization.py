@@ -68,6 +68,8 @@ def get_wandb_performance(hparams, project="Cartpole", id_tag="sa_rew", opt_metr
 
 
 def n_sig_fig(x, n):
+    if x == 0 or isinstance(x, bool):
+        return x
     return round(x, -int(floor(log10(abs(x)))) + (n - 1))
 
 
@@ -102,7 +104,9 @@ def select_next_hyperparameters(X, y, bounds):
         next_params = np.array(params)[np.argsort(idx)]
 
     int_params = [np.all([isinstance(x, int) for x in bounds[k]]) for k in col_order]
+    bool_params = [np.all([isinstance(x, bool) for x in bounds[k]]) for k in col_order]
     next_params = [int(round(v, 0)) if i else v for i, v in zip(int_params, next_params)]
+    next_params = [bool(v) if b else v for b, v in zip(bool_params, next_params)]
 
     hparams = {k: n_sig_fig(next_params[i], 3) for i, k in enumerate(col_order)}
 
@@ -613,6 +617,7 @@ def humanoid_graph_ppo():
         "epoch": 10,
     }
     bounds = {
+        "simple_scaling": [False, True],
         "entropy_coef": [0.001, 0.1],
         "gamma": [0.9999, 0.8],
         "lmbda": [0.0, 0.99999],
