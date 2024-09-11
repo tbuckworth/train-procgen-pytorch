@@ -647,7 +647,7 @@ def graph_ppo_sr_ft():
         "param_name": 'graph',
         "device": "gpu",
         "seed": 6033,
-        "wandb_tags": ["gpp1"],
+        "wandb_tags": ["gpp2"],
         # "logdir": "logs/train/cartpole/2024-07-11__04-48-25__seed_6033",
         "logdir": "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033",
         "timeout_in_seconds": 3600 * 10,
@@ -662,6 +662,7 @@ def graph_ppo_sr_ft():
         "weight_metric": None,
         'load_pysr': False,
         'sequential': True,
+        'stochastic': False,
         'min_mse': True,
         'num_checkpoints': 10,
         'n_tests': 40,
@@ -728,8 +729,8 @@ def graph_ppo_sr_ft_continuous():
 
 
 if __name__ == "__main__":
-    cartpole_graph_ppo()
-    # graph_ppo_sr_ft()
+    # cartpole_graph_ppo()
+    graph_ppo_sr_ft()
     # humanoid_graph_ppo()
     # double_graph_symbreg_ft_hparams()
     # pets_graph_transition_cartpole()
