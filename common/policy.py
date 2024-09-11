@@ -59,15 +59,15 @@ class CategoricalPolicy(nn.Module):
 
     def distribution(self, logits):
         if self.continuous_actions:
-            return diag_gaussian_dist(logits)
+            return diag_gaussian_dist(logits, act_scale=None, simple=True)
         log_probs = F.log_softmax(logits, dim=1)
         return Categorical(logits=log_probs)
 
 
 class GraphPolicy(nn.Module):
-    def __init__(self, graph, embedder=None, continuous_actions=False, act_space=None, device=None):
+    def __init__(self, graph, embedder=None, continuous_actions=False, act_space=None, device=None, simple_scaling=True):
         super(GraphPolicy, self).__init__()
-        self.device=device
+        self.device = device
         self.continuous_actions = continuous_actions
         self.act_scale = None
         self.act_space = act_space
@@ -80,6 +80,7 @@ class GraphPolicy(nn.Module):
         self.graph = graph
         self.has_vq = False
         self.recurrent = False
+        self.simple_scaling = simple_scaling
 
     def is_recurrent(self):
         return self.recurrent
@@ -94,7 +95,7 @@ class GraphPolicy(nn.Module):
 
     def distribution(self, logits):
         if self.continuous_actions:
-            return diag_gaussian_dist(logits, self.act_scale)
+            return diag_gaussian_dist(logits, self.act_scale, self.simple_scaling)
         log_probs = F.log_softmax(logits, dim=1)
         return Categorical(logits=log_probs)
 
@@ -106,7 +107,13 @@ class GraphPolicy(nn.Module):
         return p, a_out, m_out
 
 
-def diag_gaussian_dist(logits, act_scale):
+def diag_gaussian_dist(logits, act_scale, simple=True):
+    if simple:
+        mean_actions = logits[..., 0]
+        logvar = logits[..., -1]
+        action_std = torch.ones_like(mean_actions) * logvar.exp()
+        p = Normal(mean_actions, action_std)
+        return p
     mean_actions = torch.tanh(logits[..., 0])
     if act_scale is not None:
         # scale actions to correct range:
@@ -114,7 +121,7 @@ def diag_gaussian_dist(logits, act_scale):
     action_std = F.softplus(logits[..., -1])
 
     min_real = torch.finfo(action_std.dtype).tiny
-    action_std = torch.clamp(action_std, min=min_real**0.5)
+    action_std = torch.clamp(action_std, min=min_real ** 0.5)
     p = Normal(mean_actions, action_std)
     return p
 

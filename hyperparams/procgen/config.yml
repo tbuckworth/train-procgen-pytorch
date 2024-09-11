@@ -1048,6 +1048,7 @@ graph-cartpole-cont:
     recurrent: False
     latent_size: 1
     continuous: True
+    simple_scaling: True
 
 graph-humanoid-cont:
     algo: ppo-pure
@@ -1072,6 +1073,7 @@ graph-humanoid-cont:
     continuous: True
     env_timeout: 10
     env_name: Humanoid-v4
+    simple_scaling: False
 
 graph-ant:
     algo: ppo-pure
@@ -1096,6 +1098,7 @@ graph-ant:
     continuous: True
     env_timeout: 10
     env_name: Ant-v4
+    simple_scaling: False
 
 cartpole-cont:
     algo: ppo
