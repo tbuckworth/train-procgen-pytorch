@@ -511,7 +511,9 @@ class PetsSymbolicAgent:
 class PureGraphAgent:
     def __init__(self, policy,
                  msg_model=None,
-                 act_model=None):
+                 act_model=None,
+                 deterministic=False):
+        self.deterministic = deterministic
         self.policy = policy
         if msg_model is not None:
             self.policy.graph.messenger = msg_model.to(device=policy.device)
@@ -522,7 +524,10 @@ class PureGraphAgent:
         with torch.no_grad():
             obs = torch.FloatTensor(observation).to(self.policy.device)
             dist, value, _ = self.policy(obs)
-            act = dist.sample()
+            if self.deterministic:
+                act = dist.loc
+            else:
+                act = dist.sample()
             return act.cpu().numpy()
 
     def sample(self, observation):

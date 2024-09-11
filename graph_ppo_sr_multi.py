@@ -36,11 +36,16 @@ def generate_data(agent, env, n):
 def randomize_nth(Obs, act, env, n=2):
     act[::n] = np.array([env.action_space.sample().squeeze() for _ in Obs])[::n]
 
-def extract_target_from_dist(dist):
+def extract_target_from_dist(dist, deterministic):
     if isinstance(dist, torch.distributions.Normal):
         x = dist.loc
+        if not deterministic:
+            x = torch.concat([dist.loc.unsqueeze(-1), dist.scale.unsqueeze(-1)], dim=-1)
     elif isinstance(dist, torch.distributions.Categorical):
         x = dist.logits
+        # # TODO: check this
+        # if deterministic:
+        #     x = x.argmax(dim=-1)
     else:
         raise NotImplementedError(f"dist must be one of (Normal,Categorical), not {type(dist)}")
     return x
@@ -51,24 +56,24 @@ def generate_data_supervised(agent, env, n):
             Obs = torch.FloatTensor(Obs).to(agent.policy.device)
             dist, a_out, m_out = agent.policy.forward_fine_tune(Obs)
             act = dist.sample().detach().cpu().numpy()
-        x = extract_target_from_dist(dist)
-        return x, act, Obs, a_out, m_out
+        y = extract_target_from_dist(dist, agent.deterministic)
+        return y, act, Obs, a_out, m_out
 
 
 
     Obs = env.reset()
-    Logits, act, Obs, A_out, M_out = predict(Obs)
+    Y, act, Obs, A_out, M_out = predict(Obs)
     randomize_nth(Obs, act, env)
-    while len(Logits) < n:
+    while len(Y) < n:
         obs, rew, done, info = env.step(act)
-        logits, act, obs, a_out, m_out = predict(obs)
+        y, act, obs, a_out, m_out = predict(obs)
         randomize_nth(Obs, act, env)
-        Logits = torch.cat([Logits, logits], axis=0)
+        Y = torch.cat([Y, y], axis=0)
         Obs = torch.cat([Obs, obs], axis=0)
         A_out = torch.cat([A_out, a_out], axis=0)
         M_out = torch.cat([M_out, m_out], axis=0)
 
-    return Obs, Logits, A_out, M_out
+    return Obs, Y, A_out, M_out
 
 
 def fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensemble="messenger", a_coef=1., m_coef=1000., start=0):
@@ -138,7 +143,7 @@ def fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensembl
 
 def calc_losses(x, y, a_out, m_out, ns_agent, a_coef, m_coef, a):
     dist_hat, a_out_hat, m_out_hat = ns_agent.policy.forward_fine_tune(x)
-    y_hat = extract_target_from_dist(dist_hat)
+    y_hat = extract_target_from_dist(dist_hat, ns_agent.deterministic)
     if not a.min_mse:
         l_loss = nn.MSELoss()(y, y_hat)
         m_loss = nn.MSELoss()(m_out, m_out_hat)
@@ -230,12 +235,9 @@ def run_graph_ppo_multi_sr(args):
 
     policy, env, symbolic_agent_constructor, test_env = load_nn_policy(logdir, n_envs)
     nn_agent = symbolic_agent_constructor(policy)
-    neural_train = trial_agent_mean_reward(nn_agent, env, "Neural Train")
-    neural_test = trial_agent_mean_reward(nn_agent, test_env, "Neural Test")
-    if args.use_wandb:
-        wandb.log({"neural_train_score": neural_train,
-                   "neural_test_score": neural_test
-                   })
+    if not args.stochastic:
+        nn_agent.deterministic = True
+
     m_in, m_out, a_in, a_out = generate_data(nn_agent, env, int(data_size))
 
     print("data generated")
@@ -264,12 +266,20 @@ def run_graph_ppo_multi_sr(args):
             wandb.log(eq_log)
 
     ns_agent = symbolic_agent_constructor(copy.deepcopy(policy), msg_torch, act_torch)
-
+    if not args.stochastic:
+        ns_agent.deterministic = True
     print(f"Neural Parameters: {n_params(nn_agent.policy)}")
     print(f"Symbol Parameters: {n_params(ns_agent.policy.graph.messenger) + n_params(ns_agent.policy.graph.actor)}")
 
     # supervised learning:
     _, env, _, test_env = load_nn_policy(logdir, n_envs=100)
+    neural_train = trial_agent_mean_reward(nn_agent, env, "Neural Train")
+    neural_test = trial_agent_mean_reward(nn_agent, test_env, "Neural Test")
+    if args.use_wandb:
+        wandb.log({"neural_train_score": neural_train,
+                   "neural_test_score": neural_test
+                   })
+
     ftdir = os.path.join(symbdir, "fine_tune")
     if not os.path.exists(ftdir):
         os.mkdir(ftdir)
@@ -298,8 +308,9 @@ if __name__ == "__main__":
     args.logdir = "logs/train/cartpole_continuous/pure-graph/2024-09-08__00-59-06__seed_6033"
     args.logdir = "logs/train/cartpole_continuous/pure-graph/2024-09-08__00-59-06__seed_6033"
     args.iterations = 1
+    args.stochastic = False
 
-    args.load_pysr = False
+    args.load_pysr = True
     # args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-08-27__10-39-50"
     # args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-08-27__19-55-01"
     # args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-08-28__17-46-04"
