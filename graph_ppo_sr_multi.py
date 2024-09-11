@@ -56,6 +56,8 @@ def generate_data_supervised(agent, env, n):
             Obs = torch.FloatTensor(Obs).to(agent.policy.device)
             dist, a_out, m_out = agent.policy.forward_fine_tune(Obs)
             act = dist.sample().detach().cpu().numpy()
+            if agent.deterministic:
+                act = dist.loc
         y = extract_target_from_dist(dist, agent.deterministic)
         return y, act, Obs, a_out, m_out
 
