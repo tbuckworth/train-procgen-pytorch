@@ -642,7 +642,7 @@ def humanoid_graph_ppo():
 
 def graph_ppo_sr_ft():
     fixed = {
-        "env_name": 'cartpole_continuous',
+        "env_name": 'cartpole',
         "exp_name": 'symbreg',  # IMPORTANT!
         "param_name": 'graph',
         "device": "gpu",
@@ -687,7 +687,7 @@ def graph_ppo_sr_ft():
 
 def graph_ppo_sr_ft_continuous():
     fixed = {
-        "env_name": 'cartpole_continuous',
+        "env_name": 'cartpole',
         "exp_name": 'symbreg',  # IMPORTANT!
         "param_name": 'graph',
         "device": "gpu",
@@ -707,18 +707,20 @@ def graph_ppo_sr_ft_continuous():
         'load_pysr': False,
         'sequential': True,
         'min_mse': True,
-        'num_checkpoints': 10,
+        'num_checkpoints': 2,
         'n_tests': 40,
+        'stochastic': False,
+        'ncycles_per_iteration': 4000,
     }
     bounds = {
         "data_size": [1000, 5000],
         "iterations": [1, 100],
         "populations": [15, 40],
         "procs": [4, 16],
-        "ncycles_per_iteration": [4000, 6000],
+        # "ncycles_per_iteration": [4000, 6000],
         "num_timesteps": [int(1e4), int(1e5)],
         "epoch": [10, 1000],
-        "learning_rate": [1e-2, 1e-2],
+        "learning_rate": [5e-3, 15e-3],
         'batch_size': [100, 1100],
         "maxsize": [20, 60],
     }
@@ -730,7 +732,7 @@ def graph_ppo_sr_ft_continuous():
 
 if __name__ == "__main__":
     # cartpole_graph_ppo()
-    graph_ppo_sr_ft()
+    graph_ppo_sr_ft_continuous()
     # humanoid_graph_ppo()
     # double_graph_symbreg_ft_hparams()
     # pets_graph_transition_cartpole()
