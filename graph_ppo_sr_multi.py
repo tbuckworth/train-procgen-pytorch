@@ -284,7 +284,7 @@ def run_graph_ppo_multi_sr(args):
     ftdir = os.path.join(symbdir, "fine_tune")
     if not os.path.exists(ftdir):
         os.mkdir(ftdir)
-    if args.sequential:
+    if not args.sequential:
         fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir)
     else:
         t = fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensemble="messenger")
