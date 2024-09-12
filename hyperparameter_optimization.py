@@ -1,5 +1,6 @@
 import argparse
 import re
+import time
 import traceback
 from math import floor, log10
 
@@ -732,10 +733,15 @@ def graph_ppo_sr_ft_continuous():
         'batch_size': [100, 1100],
         "maxsize": [20, 60],
     }
+    run_forever(bounds, fixed, graph_ppo_multi_sr)
+
+
+def run_forever(bounds, fixed, run_func):
     project = get_project(fixed["env_name"], fixed["exp_name"])
     id_tag = fixed["wandb_tags"][0]
+    fixed["original_start"] = time.asctime()
     while True:
-        optimize_hyperparams(bounds, fixed, project, id_tag, graph_ppo_multi_sr)
+        optimize_hyperparams(bounds, fixed, project, id_tag, run_func)
 
 
 if __name__ == "__main__":
