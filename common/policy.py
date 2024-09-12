@@ -112,13 +112,14 @@ def diag_gaussian_dist(logits, act_scale, simple=True):
         mean_actions = logits[..., 0]
         logvar = logits[..., -1]
         action_std = torch.ones_like(mean_actions) * logvar.exp()
-        p = Normal(mean_actions, action_std)
-        return p
-    mean_actions = torch.tanh(logits[..., 0])
-    if act_scale is not None:
-        # scale actions to correct range:
-        mean_actions = mean_actions * act_scale
-    action_std = F.softplus(logits[..., -1])
+        # p = Normal(mean_actions, action_std)
+        # return p
+    else:
+        mean_actions = torch.tanh(logits[..., 0])
+        if act_scale is not None:
+            # scale actions to correct range:
+            mean_actions = mean_actions * act_scale
+        action_std = F.softplus(logits[..., -1])
 
     min_real = torch.finfo(action_std.dtype).tiny
     action_std = torch.clamp(action_std, min=min_real ** 0.5)
