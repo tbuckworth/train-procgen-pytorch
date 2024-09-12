@@ -1,5 +1,6 @@
 import argparse
 import re
+import traceback
 from math import floor, log10
 
 import numpy as np
@@ -182,11 +183,12 @@ def optimize_hyperparams(bounds,
 
     fh = fixed.copy()
     hparams.update(fh)
-    run_next(hparams)
+    # run_next(hparams)
     try:
         run_next(hparams)
     except Exception as e:
         print(e)
+        print(traceback.format_exc())
         wandb.finish(exit_code=-1)
 
 

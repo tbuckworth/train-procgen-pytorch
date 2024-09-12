@@ -57,19 +57,18 @@ def generate_data_supervised(agent, env, n):
             dist, a_out, m_out = agent.policy.forward_fine_tune(Obs)
             act = dist.sample().detach().cpu().numpy()
             if agent.deterministic:
-                act = dist.loc
+                act = dist.loc.detach().cpu().numpy()
         y = extract_target_from_dist(dist, agent.deterministic)
+        randomize_nth(Obs, act, env)
         return y, act, Obs, a_out, m_out
 
 
 
     Obs = env.reset()
     Y, act, Obs, A_out, M_out = predict(Obs)
-    randomize_nth(Obs, act, env)
     while len(Y) < n:
         obs, rew, done, info = env.step(act)
         y, act, obs, a_out, m_out = predict(obs)
-        randomize_nth(Obs, act, env)
         Y = torch.cat([Y, y], axis=0)
         Obs = torch.cat([Obs, obs], axis=0)
         A_out = torch.cat([A_out, a_out], axis=0)
