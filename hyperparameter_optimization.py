@@ -621,7 +621,7 @@ def humanoid_graph_ppo():
     }
     bounds = {
         "simple_scaling": [False, True],
-        "entropy_coef": [0.001, 0.1],
+        "entropy_coef": [0.001, 0.02],
         "gamma": [0.9999, 0.8],
         "lmbda": [0.0, 0.99999],
         "epoch": [1, 10],
@@ -643,10 +643,7 @@ def humanoid_graph_ppo():
     # value_network: copy
     # num_hidden: 512
     # num_layers: 4
-    while True:
-        project = get_project(fixed["env_name"], fixed["exp_name"])
-        id_tag = fixed["wandb_tags"][0]
-        optimize_hyperparams(bounds, fixed, project, id_tag, run_next_hyperparameters)
+    run_forever(bounds, fixed, run_next_hyperparameters)
 
 
 def graph_ppo_sr_ft():
@@ -746,7 +743,7 @@ def run_forever(bounds, fixed, run_func):
 
 if __name__ == "__main__":
     # cartpole_graph_ppo()
-    graph_ppo_sr_ft_continuous()
-    # humanoid_graph_ppo()
+    # graph_ppo_sr_ft_continuous()
+    humanoid_graph_ppo()
     # double_graph_symbreg_ft_hparams()
     # pets_graph_transition_cartpole()
