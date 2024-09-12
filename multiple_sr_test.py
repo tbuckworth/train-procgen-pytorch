@@ -34,7 +34,9 @@ class MyTestCase(unittest.TestCase):
         #
         # print("done")
 
-
+    def test_dual_actor_output(self):
+        logdir = "logs/train/cartpole_continuous/pure-graph/2024-09-08__00-59-06__seed_6033"
+        symbdir = "logs/train/cartpole_continuous/pure-graph/2024-09-08__00-59-06__seed_6033/symbreg/2024-09-12__14-37-23"
 
 
 if __name__ == '__main__':
