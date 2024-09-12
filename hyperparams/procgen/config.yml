@@ -1052,10 +1052,10 @@ graph-cartpole-cont:
 
 graph-humanoid-cont:
     algo: ppo-pure
-    n_envs: 2
+    n_envs: 6
     n_steps: 256
     epoch: 3
-    n_minibatch: 32
+    n_minibatch: 64
     mini_batch_size: 8192
     gamma: 0.999
     lmbda: 0.95
