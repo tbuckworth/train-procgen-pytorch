@@ -520,6 +520,10 @@ class PureGraphAgent:
         if act_model is not None:
             self.policy.graph.actor = act_model.to(device=policy.device)
 
+    def set_deteriministic(self, deterministic=True):
+        self.policy.set_deterministic(deterministic)
+        self.deterministic = deterministic
+
     def forward(self, observation):
         with torch.no_grad():
             obs = torch.FloatTensor(observation).to(self.policy.device)
@@ -539,5 +543,6 @@ class PureGraphAgent:
             m_out = flatten_batches_to_numpy(m_out)
             a_in = flatten_batches_to_numpy(a_in)
             a_out = flatten_batches_to_numpy(a_out)
-
+            if self.deterministic:
+                a_out = a_out[..., 0]
             return m_in, m_out, a_in, a_out

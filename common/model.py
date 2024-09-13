@@ -991,15 +991,13 @@ class GraphModel(nn.Module, ABC):
         messages = self.pass_maybe_batch(self.messenger, msg_in)
         return torch.sum(messages, dim=-2).squeeze()
 
-    def pass_maybe_batch(self, messenger, msg_in):
-        if np.prod(msg_in.shape[:-1]) > self.batching_threshold:
-            temp = msg_in.reshape((-1, msg_in.shape[-1]))
+    def pass_maybe_batch(self, model, x):
+        if np.prod(x.shape[:-1]) > self.batching_threshold:
+            temp = x.reshape((-1, x.shape[-1]))
             batches = temp.split(self.split_size)
-            stacked_messages = torch.concat([messenger(b) for b in batches], dim=0)
-            messages = stacked_messages.reshape((*msg_in.shape[:-1], stacked_messages.shape[-1]))
-        else:
-            messages = messenger(msg_in)
-        return messages
+            stacked_messages = torch.concat([model(b) for b in batches], dim=0)
+            return stacked_messages.reshape((*x.shape[:-1], stacked_messages.shape[-1]))
+        return model(x)
 
     def vectorize_for_message_pass(self, n, x):
         xi = x.unsqueeze(-2).tile([n, 1])
@@ -1289,16 +1287,20 @@ class NBatchPySRTorchMult(nn.Module):
         return self.fwd(x)
 
     def fwd(self, X):
+        shp = X.shape[:-1]
         if self.elite is not None:
             return self.models[self.elite].forward(X).unsqueeze(self.cat_dim)
-        h = [m.forward(X).unsqueeze(self.cat_dim) for m in self.models]
-        return torch.cat(h, dim=self.cat_dim)
+        h = [m.forward(X) for m in self.models]
+        hr = [a.tile(shp).unsqueeze(self.cat_dim) if a.shape != shp else a.unsqueeze(self.cat_dim) for a in h]
+        return torch.concat(hr, dim=self.cat_dim)
 
     def rem_type_error(self, m, x):
         try:
             return m.forward(x).unsqueeze(self.cat_dim)
         except TypeError:
             return torch.nan
+        except RuntimeError as e:
+            raise e
 
     def forward_no_nan(self, X):
         y = self.fwd(X)

@@ -742,8 +742,9 @@ def all_pysr_pytorch(msg_model, device):
     in_model = msg_model.pytorch(idx)
     # TODO: sort this out:
     if isinstance(in_model, list):
-        models = [NBatchPySRTorchMult(m.tolist(), cat_dim=0, device=device) for m in in_model]
-        return NBatchPySRTorchMult(models, cat_dim=-1, device=device)
+        in_model = msg_model.equations[0].torch_format
+        # models = [NBatchPySRTorchMult(m.torch_format.tolist(), cat_dim=0, device=device) for m in msg_model.equations]
+        # return NBatchPySRTorchMult(models, cat_dim=-1, device=device)
     return NBatchPySRTorchMult(in_model.tolist(), cat_dim=0, device=device)
 
 

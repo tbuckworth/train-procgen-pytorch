@@ -81,6 +81,10 @@ class GraphPolicy(nn.Module):
         self.has_vq = False
         self.recurrent = False
         self.simple_scaling = simple_scaling
+        self.deterministic = False
+
+    def set_deterministic(self, deterministic=True):
+        self.deterministic = deterministic
 
     def is_recurrent(self):
         return self.recurrent
@@ -95,7 +99,7 @@ class GraphPolicy(nn.Module):
 
     def distribution(self, logits):
         if self.continuous_actions:
-            return diag_gaussian_dist(logits, self.act_scale, self.simple_scaling)
+            return diag_gaussian_dist(logits, self.act_scale, self.simple_scaling, self.deterministic)
         log_probs = F.log_softmax(logits, dim=1)
         return Categorical(logits=log_probs)
 
@@ -107,13 +111,28 @@ class GraphPolicy(nn.Module):
         return p, a_out, m_out
 
 
-def diag_gaussian_dist(logits, act_scale, simple=True):
+def min_var_gaussian(logits, act_scale, simple=True):
+    if simple:
+        mean_actions = logits
+    else:
+        mean_actions = torch.tanh(logits)
+        if act_scale is not None:
+            # scale actions to correct range:
+            mean_actions = mean_actions * act_scale
+
+    min_real = torch.finfo(mean_actions.dtype).tiny
+    action_std = torch.full_like(mean_actions, min_real**0.5)
+
+    p = Normal(mean_actions, action_std)
+    return p
+
+def diag_gaussian_dist(logits, act_scale, simple=True, deterministic=False):
+    if deterministic:
+        return min_var_gaussian(logits, act_scale, simple)
     if simple:
         mean_actions = logits[..., 0]
         logvar = logits[..., -1]
         action_std = torch.ones_like(mean_actions) * logvar.exp()
-        # p = Normal(mean_actions, action_std)
-        # return p
     else:
         mean_actions = torch.tanh(logits[..., 0])
         if act_scale is not None:
@@ -123,6 +142,7 @@ def diag_gaussian_dist(logits, act_scale, simple=True):
 
     min_real = torch.finfo(action_std.dtype).tiny
     action_std = torch.clamp(action_std, min=min_real ** 0.5)
+
     p = Normal(mean_actions, action_std)
     return p
 

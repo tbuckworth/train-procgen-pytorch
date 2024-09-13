@@ -1,6 +1,7 @@
 import os
 import unittest
 
+import numpy as np
 import torch
 
 from graph_sr import get_pysr_dir, load_all_pysr
@@ -35,9 +36,12 @@ class MyTestCase(unittest.TestCase):
         # print("done")
 
     def test_dual_actor_output(self):
-        logdir = "logs/train/cartpole_continuous/pure-graph/2024-09-08__00-59-06__seed_6033"
         symbdir = "logs/train/cartpole_continuous/pure-graph/2024-09-08__00-59-06__seed_6033/symbreg/2024-09-12__14-37-23"
-
+        actdir = get_pysr_dir(symbdir, "act")
+        act_torch = load_all_pysr(actdir, device="cpu")
+        x = torch.rand((5, 3))
+        act_torch(x)
+        print("done")
 
 if __name__ == '__main__':
     unittest.main()

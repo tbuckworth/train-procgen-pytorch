@@ -241,7 +241,7 @@ def run_graph_ppo_multi_sr(args):
     policy, env, symbolic_agent_constructor, test_env = load_nn_policy(logdir, n_envs)
     nn_agent = symbolic_agent_constructor(policy)
     if not args.stochastic:
-        nn_agent.deterministic = True
+        nn_agent.set_deterministic(True)
 
     m_in, m_out, a_in, a_out = generate_data(nn_agent, env, int(data_size))
 
@@ -272,7 +272,7 @@ def run_graph_ppo_multi_sr(args):
 
     ns_agent = symbolic_agent_constructor(copy.deepcopy(policy), msg_torch, act_torch)
     if not args.stochastic:
-        ns_agent.deterministic = True
+        ns_agent.set_deterministic(True)
     print(f"Neural Parameters: {n_params(nn_agent.policy)}")
     print(f"Symbol Parameters: {n_params(ns_agent.policy.graph.messenger) + n_params(ns_agent.policy.graph.actor)}")
 
