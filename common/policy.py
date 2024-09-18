@@ -81,10 +81,10 @@ class GraphPolicy(nn.Module):
         self.has_vq = False
         self.recurrent = False
         self.simple_scaling = simple_scaling
-        self.deterministic = False
+        self.no_var = False
 
-    def set_deterministic(self, deterministic=True):
-        self.deterministic = deterministic
+    def set_no_var(self, no_var=True):
+        self.no_var = no_var
 
     def is_recurrent(self):
         return self.recurrent
@@ -99,7 +99,7 @@ class GraphPolicy(nn.Module):
 
     def distribution(self, logits):
         if self.continuous_actions:
-            return diag_gaussian_dist(logits, self.act_scale, self.simple_scaling, self.deterministic)
+            return diag_gaussian_dist(logits, self.act_scale, self.simple_scaling, self.no_var)
         log_probs = F.log_softmax(logits, dim=1)
         return Categorical(logits=log_probs)
 
@@ -126,8 +126,8 @@ def min_var_gaussian(logits, act_scale, simple=True):
     p = Normal(mean_actions, action_std)
     return p
 
-def diag_gaussian_dist(logits, act_scale, simple=True, deterministic=False):
-    if deterministic:
+def diag_gaussian_dist(logits, act_scale, simple=True, no_var=False):
+    if no_var:
         return min_var_gaussian(logits, act_scale, simple)
     if simple:
         mean_actions = logits[..., 0]

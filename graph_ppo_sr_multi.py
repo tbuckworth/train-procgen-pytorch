@@ -149,6 +149,11 @@ def fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensembl
 def calc_losses(x, y, a_out, m_out, ns_agent, a_coef, m_coef, a):
     dist_hat, a_out_hat, m_out_hat = ns_agent.policy.forward_fine_tune(x)
     y_hat = extract_target_from_dist(dist_hat, ns_agent.deterministic)
+    if a_out.shape[-1] != a_out_hat.shape[-1]:
+        # This is where a_out_hat is symbolic deterministic (just mean, no var)
+        # and a_out is stochastic, (still has the var)
+        a_out = a_out[..., :-1]
+        a_out_hat = a_out_hat.unsqueeze(-1)
     if not a.min_mse:
         l_loss = nn.MSELoss()(y, y_hat)
         m_loss = nn.MSELoss()(m_out, m_out_hat)
@@ -273,6 +278,8 @@ def run_graph_ppo_multi_sr(args):
     ns_agent = symbolic_agent_constructor(copy.deepcopy(policy), msg_torch, act_torch)
     if not args.stochastic:
         ns_agent.set_deterministic(True)
+        if not args.sequential:
+            ns_agent.policy.set_no_var(True)
     print(f"Neural Parameters: {n_params(nn_agent.policy)}")
     print(f"Symbol Parameters: {n_params(ns_agent.policy.graph.messenger) + n_params(ns_agent.policy.graph.actor)}")
 
@@ -299,6 +306,8 @@ def run_graph_ppo_multi_sr(args):
         act_torch = all_pysr_pytorch(act_model, policy.device)
         eq_log["actor"] = act_model.get_best().equation
         ns_agent.policy.graph.actor = act_torch
+        if not args.stochastic:
+            ns_agent.policy.set_no_var(True)
         fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensemble="actor", start=t, target_reward=neural_train)
     if args.use_wandb:
         wandb.finish()
@@ -315,7 +324,7 @@ if __name__ == "__main__":
     args.iterations = 1
     args.stochastic = False
 
-    args.load_pysr = False
+    args.load_pysr = True
     # args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-08-27__10-39-50"
     # args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-08-27__19-55-01"
     # args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-08-28__17-46-04"
@@ -323,7 +332,8 @@ if __name__ == "__main__":
     # args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-09-04__10-36-16"
     args.symbdir = "logs/train/cartpole_continuous/pure-graph/2024-09-08__00-59-06__seed_6033/symbreg/2024-09-10__11-52-31"
     args.symbdir = "logs/train/cartpole_continuous/pure-graph/2024-09-08__00-59-06__seed_6033/symbreg/2024-09-11__11-15-26"
-    args.sequential = True
+    args.symbdir = "logs/train/cartpole_continuous/pure-graph/2024-09-08__00-59-06__seed_6033/symbreg/2024-09-18__14-41-39"
+    args.sequential = False
     args.min_mse = True
     args.model_selection = "accuracy"
     args.maxsize = 7
@@ -336,6 +346,6 @@ if __name__ == "__main__":
     args.n_tests = 1
     args.batch_size = 10
     args.num_checkpoints = 10
-    args.num_timesteps = int(1e5)
+    args.num_timesteps = int(1e2)
     args.epoch = 1
     run_graph_ppo_multi_sr(args)
