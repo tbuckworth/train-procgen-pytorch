@@ -323,7 +323,7 @@ if __name__ == "__main__":
     # args.logdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033"
     args.logdir = "logs/train/cartpole_continuous/pure-graph/2024-09-08__00-59-06__seed_6033"
     args.logdir = "logs/train/cartpole_continuous/pure-graph/2024-09-08__00-59-06__seed_6033"
-    args.iterations = 1
+    args.iterations = 32
     args.stochastic = False
 
     args.load_pysr = True
@@ -332,10 +332,11 @@ if __name__ == "__main__":
     # args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-08-28__17-46-04"
     # args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-09-04__10-16-46"
     # args.symbdir = "logs/train/cartpole/pure-graph/2024-08-23__15-44-40__seed_6033/symbreg/2024-09-04__10-36-16"
-    args.symbdir = "logs/train/cartpole_continuous/pure-graph/2024-09-08__00-59-06__seed_6033/symbreg/2024-09-10__11-52-31"
-    args.symbdir = "logs/train/cartpole_continuous/pure-graph/2024-09-08__00-59-06__seed_6033/symbreg/2024-09-11__11-15-26"
-    args.symbdir = "logs/train/cartpole_continuous/pure-graph/2024-09-08__00-59-06__seed_6033/symbreg/2024-09-18__14-41-39"
-    args.sequential = False
+    # args.symbdir = "logs/train/cartpole_continuous/pure-graph/2024-09-08__00-59-06__seed_6033/symbreg/2024-09-10__11-52-31"
+    # args.symbdir = "logs/train/cartpole_continuous/pure-graph/2024-09-08__00-59-06__seed_6033/symbreg/2024-09-11__11-15-26"
+    # args.symbdir = "logs/train/cartpole_continuous/pure-graph/2024-09-08__00-59-06__seed_6033/symbreg/2024-09-18__14-41-39"
+    args.symbdir = "logs/train/cartpole_continuous/pure-graph/2024-09-08__00-59-06__seed_6033/symbreg/2024-09-14__22-06-42"
+    args.sequential = True
     args.min_mse = True
     args.model_selection = "accuracy"
     args.maxsize = 7
@@ -350,4 +351,47 @@ if __name__ == "__main__":
     args.num_checkpoints = 10
     args.num_timesteps = int(1e2)
     args.epoch = 1
+
+
+
+    # replicating perfect gen:
+    args.use_wandb = True
+    args.batch_size = 413
+    args.bumper = False
+    args.data_size = 4610
+    args.denoise = False
+    args.device = "gpu"
+    args.env_name = "cartpole"
+    args.epoch = 696
+    args.exp_name = "symbreg"
+    args.iterations = 32
+    args.learning_rate = 0.00835
+    args.load_pysr = True
+    args.logdir = "logs/train/cartpole_continuous/pure-graph/2024-09-08__00-59-06__seed_6033"
+    args.loss_function = "mse"
+    args.maxsize = 57
+    args.min_mse = True
+    args.model_selection = "accuracy"
+    args.n_envs = 2
+    args.n_tests = 40
+    args.ncycles_per_iteration = 4000
+    args.num_checkpoints = 2
+    args.num_timesteps = 10900
+    args.original_start = "Thu Sep 12 args.13:56 =58 2024"
+    args.param_name = "graph"
+    args.populations = 15
+    args.procs = 15
+    args.rounds = 10
+    args.seed = 6033
+    args.sequential = True
+    args.stochastic = False
+    args.symbdir = "logs/train/cartpole_continuous/pure-graph/2024-09-08__00-59-06__seed_6033/symbreg/2024-09-14__22-06-42"
+    args.timeout_in_seconds = 36000
+    args.use_wandb = True
+    args.wandb_tags = ["gpp-cont1", "p-gen"]
+
+
+
+
+
     run_graph_ppo_multi_sr(args)
