@@ -1027,6 +1027,7 @@ class GraphActorCritic(GraphModel):
         self.device = device
         self.continuous = continuous_actions
         actor_output = latent_size
+        self.no_var = False
         self.obs_dim = -3
         if continuous_actions:
             actor_output *= 2
@@ -1037,6 +1038,11 @@ class GraphActorCritic(GraphModel):
         self.critic = MLPModel(3, depth, mid_weight, latent_size)
 
         self.apply(xavier_uniform_init)
+
+    def set_no_var(self, no_var):
+        if no_var and not self.no_var:
+            self.obs_dim += 1
+        self.no_var = no_var
 
     def forward(self, obs):
         n, x = self.prep_input(obs)
@@ -1066,11 +1072,15 @@ class GraphActorCritic(GraphModel):
         n, x = self.prep_input(obs)
         m_in = self.vectorize_for_message_pass(n, x)
         m_out = self.messenger(m_in)
-        msg = torch.sum(m_out, dim=-2).squeeze()
+        # TODO: these dims will only be correct for cartpole:
+        sum_dim = -2
+        if self.no_var:
+            sum_dim = -1
+        msg = torch.sum(m_out, dim=sum_dim).squeeze()
         m = self.append_index(msg)
         am, am_messages = self.collect_actor_in_out(m, n)
         a_out = am_messages.squeeze()
-        logits = a_out.sum(-2).squeeze()
+        logits = a_out.sum(sum_dim).squeeze()
         return logits, a_out, m_out.squeeze()
         # log_probs = F.log_softmax(logits, dim=-2)
         # l = Categorical(logits=log_probs).logits

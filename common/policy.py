@@ -85,6 +85,7 @@ class GraphPolicy(nn.Module):
 
     def set_no_var(self, no_var=True):
         self.no_var = no_var
+        self.graph.set_no_var(no_var)
 
     def is_recurrent(self):
         return self.recurrent

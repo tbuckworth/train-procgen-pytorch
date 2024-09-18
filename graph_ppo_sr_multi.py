@@ -149,11 +149,13 @@ def fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensembl
 def calc_losses(x, y, a_out, m_out, ns_agent, a_coef, m_coef, a):
     dist_hat, a_out_hat, m_out_hat = ns_agent.policy.forward_fine_tune(x)
     y_hat = extract_target_from_dist(dist_hat, ns_agent.deterministic)
+    offset = 0
     if a_out.shape[-1] != a_out_hat.shape[-1]:
         # This is where a_out_hat is symbolic deterministic (just mean, no var)
         # and a_out is stochastic, (still has the var)
         a_out = a_out[..., :-1]
         a_out_hat = a_out_hat.unsqueeze(-1)
+        offset = -1
     if not a.min_mse:
         l_loss = nn.MSELoss()(y, y_hat)
         m_loss = nn.MSELoss()(m_out, m_out_hat)
@@ -165,9 +167,9 @@ def calc_losses(x, y, a_out, m_out, ns_agent, a_coef, m_coef, a):
         a_loss = a2.mean()
 
         y_hat_min = y_hat
-        if y_hat.ndim <= 3:
+        if y_hat.ndim <= 3 + offset:
             y_hat_min = y_hat[m2.argmin()]
-        if y_hat.ndim == 4:
+        if y_hat.ndim == 4 + offset:
             y_hat_min = y_hat[a2.argmin(), m2.argmin()]
 
         l_loss = ((y - y_hat_min) ** 2).mean()
@@ -296,7 +298,7 @@ def run_graph_ppo_multi_sr(args):
     if not os.path.exists(ftdir):
         os.mkdir(ftdir)
     if not args.sequential:
-        fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir)
+        fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensemble="both")
     else:
         t = fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensemble="messenger", target_reward=neural_train)
         if args.use_wandb:
