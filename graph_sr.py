@@ -732,7 +732,10 @@ def load_pysr_to_torch(msgdir):
 
 def load_all_pysr(msgdir, device):
     pickle_filename = os.path.join(msgdir, "symb_reg.pkl")
-    msg_model = pysr_from_file(pickle_filename, extra_torch_mappings=get_extra_torch_mappings())
+    msg_model = pysr_from_file(pickle_filename, extra_torch_mappings=get_extra_torch_mappings(),
+                               extra_sympy_mappings={"greater": lambda x, y: sympy.Piecewise((1.0, x > y), (0.0, True)),
+                                                     }
+                               )
     msg_torch = all_pysr_pytorch(msg_model, device)
     return msg_torch
 
