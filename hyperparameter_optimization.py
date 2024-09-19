@@ -618,9 +618,10 @@ def humanoid_graph_ppo():
         "gamma": 0.99,
         "lmbda": 0.95,
         "epoch": 10,
+        "simple_scaling": True,
     }
     bounds = {
-        "simple_scaling": [False, True],
+        # "simple_scaling": [False, True],
         "entropy_coef": [0.001, 0.02],
         # "gamma": [0.9999, 0.8],
         # "lmbda": [0.0, 0.99999],
@@ -743,7 +744,7 @@ def run_forever(bounds, fixed, run_func):
 
 if __name__ == "__main__":
     # cartpole_graph_ppo()
-    graph_ppo_sr_ft_continuous()
-    # humanoid_graph_ppo()
+    # graph_ppo_sr_ft_continuous()
+    humanoid_graph_ppo()
     # double_graph_symbreg_ft_hparams()
     # pets_graph_transition_cartpole()
