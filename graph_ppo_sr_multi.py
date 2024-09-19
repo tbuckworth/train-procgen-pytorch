@@ -62,8 +62,6 @@ def generate_data_supervised(agent, env, n):
         randomize_nth(Obs, act, env)
         return y, act, Obs, a_out, m_out
 
-
-
     Obs = env.reset()
     Y, act, Obs, A_out, M_out = predict(Obs)
     while len(Y) < n:
@@ -256,6 +254,8 @@ def run_graph_ppo_multi_sr(args):
 
     print("data generated")
     act_torch = None
+    weights = None
+    eq_log = {}
     if args.load_pysr:
         msgdir = get_pysr_dir(symbdir, "msg")
         actdir = get_pysr_dir(symbdir, "act")
@@ -263,14 +263,13 @@ def run_graph_ppo_multi_sr(args):
         if not args.sequential:
             act_torch = load_all_pysr(actdir, device=policy.device)
     else:
-        weights = None
         msgdir, _ = create_symb_dir_if_exists(symbdir, "msg")
         actdir, _ = create_symb_dir_if_exists(symbdir, "act")
 
         print("\nMessenger:")
         msg_model, _ = find_model(m_in, m_out, msgdir, save_file, weights, args)
         msg_torch = all_pysr_pytorch(msg_model, policy.device)
-        eq_log = {"messenger": msg_model.get_best().equation}
+        eq_log["messenger"] = msg_model.get_best().equation
         if not args.sequential:
             print("\nActor:")
             act_model, _ = find_model(a_in, a_out, actdir, save_file, weights, args)
