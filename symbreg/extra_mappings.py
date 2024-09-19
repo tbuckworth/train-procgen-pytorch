@@ -51,6 +51,8 @@ def piecewise(*expr_conds):
         else:
             if output is None:
                 already_used = cond
+                # TODO: found at least two devices:
+                # "logs/train/cartpole_continuous/pure-graph/2024-09-08__00-59-06__seed_6033/symbreg/2024-09-19__14-52-58"
                 output = torch.where(cond, expr, torch.zeros_like(expr))
             else:
                 output += torch.where(

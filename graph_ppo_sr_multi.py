@@ -81,7 +81,7 @@ def fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensembl
     stop_early = False
     nc = args.num_checkpoints
     save_every = args.num_timesteps // nc
-    checkpoints = [(i + 1) * save_every for i in range(nc)] + [args.num_timesteps - 2]
+    checkpoints = [((i + 1) * save_every) + start for i in range(nc)] + [args.num_timesteps - 2 + start]
     checkpoints.sort()
     t = start
     i = 0
@@ -195,6 +195,7 @@ def set_elites_trial_agent(a_out, a_out_hat, args, ensemble, env, m_out, m_out_h
 
 
 def set_elites(a_out, a_out_hat, ensemble, m_out, m_out_hat, ns_agent):
+    m_elite = None
     if ensemble in ["messenger", "both"]:
         m_elite = elite_index(m_out, m_out_hat)
         ns_agent.policy.graph.messenger.set_elite(m_elite)
@@ -207,6 +208,7 @@ def set_elites(a_out, a_out_hat, ensemble, m_out, m_out_hat, ns_agent):
 
 
 def elite_index(m_out, m_out_hat):
+    # TODO: is the dim correct for all?
     return ((m_out - m_out_hat) ** 2).mean(dim=(1, 2, 3)).argmin()
 
 
