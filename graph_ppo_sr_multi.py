@@ -135,6 +135,8 @@ def fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensembl
                         'optimizer_state_dict': optimizer.state_dict()},
                        ftdir + '/model_' + str(t) + '.pth')
             i += 1
+            if i == len(checkpoints):
+                break
             # p = Categorical(logits=y).probs.detach().cpu().numpy()
             # p_hat = Categorical(logits=y_hat).probs.detach().cpu().numpy()
             # plt.scatter(p[:, 0], p_hat[:, 0])
