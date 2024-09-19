@@ -405,4 +405,4 @@ if __name__ == "__main__":
         except Exception as e:
             print(traceback.format_exc())
             if args.use_wandb:
-                wandb.finish()
+                wandb.finish(exit_code=-1)
