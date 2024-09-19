@@ -390,9 +390,5 @@ if __name__ == "__main__":
     args.timeout_in_seconds = 36000
     args.use_wandb = True
     args.wandb_tags = ["gpp-cont1", "p-gen"]
-
-
-
-
-
-    run_graph_ppo_multi_sr(args)
+    while True:
+        run_graph_ppo_multi_sr(args)
