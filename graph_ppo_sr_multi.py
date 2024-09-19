@@ -305,14 +305,22 @@ def run_graph_ppo_multi_sr(args):
         t = fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensemble="messenger", target_reward=neural_train)
         if args.use_wandb:
             wandb.log({"switch_timestep": t})
-        print("\nActor:")
-        act_model, _ = find_model(a_in, a_out, actdir, save_file, weights, args)
-        act_torch = all_pysr_pytorch(act_model, policy.device)
-        eq_log["actor"] = act_model.get_best().equation
-        ns_agent.policy.graph.actor = act_torch
-        if not args.stochastic:
-            ns_agent.policy.set_no_var(True)
-        fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensemble="actor", start=t, target_reward=neural_train)
+        find_actor = True
+        while find_actor:
+            find_actor = False
+            try:
+                print("\nActor:")
+                act_model, _ = find_model(a_in, a_out, actdir, save_file, weights, args)
+                act_torch = all_pysr_pytorch(act_model, policy.device)
+                eq_log["actor"] = act_model.get_best().equation
+                ns_agent.policy.graph.actor = act_torch
+                if not args.stochastic:
+                    ns_agent.policy.set_no_var(True)
+                fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensemble="actor", start=t, target_reward=neural_train)
+            except Exception as e:
+                print(traceback.format_exc())
+                if t < args.num_timesteps: # implies early stopping, which implies good performance, so worth repeating.
+                    find_actor = True
     if args.use_wandb:
         wandb.finish()
 
