@@ -1,6 +1,7 @@
 import argparse
 import copy
 import os
+import traceback
 
 import numpy as np
 import torch
@@ -391,4 +392,9 @@ if __name__ == "__main__":
     args.use_wandb = True
     args.wandb_tags = ["gpp-cont1", "p-gen"]
     while True:
-        run_graph_ppo_multi_sr(args)
+        try:
+            run_graph_ppo_multi_sr(args)
+        except Exception as e:
+            print(traceback.format_exc())
+            if args.use_wandb:
+                wandb.finish()
