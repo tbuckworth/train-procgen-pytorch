@@ -137,10 +137,6 @@ def fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensembl
             i += 1
             if i == len(checkpoints):
                 break
-            # p = Categorical(logits=y).probs.detach().cpu().numpy()
-            # p_hat = Categorical(logits=y_hat).probs.detach().cpu().numpy()
-            # plt.scatter(p[:, 0], p_hat[:, 0])
-            # plt.show()
         if stop_early:
             break
     set_elites(a_out, a_out_hat, ensemble, m_out, m_out_hat, ns_agent)
@@ -217,12 +213,6 @@ def run_graph_ppo_multi_sr(args):
     logdir = args.logdir
     n_envs = args.n_envs
     data_size = args.data_size
-    # hp_override = {
-    #     "device": args.device,
-    #     "seed": args.seed,
-    #     # "epoch": args.epoch,
-    #     "learning_rate": args.learning_rate,
-    # }
     if args.load_pysr:
         symbdir = args.symbdir
         save_file = "symb_reg.csv"
@@ -321,7 +311,8 @@ def run_graph_ppo_multi_sr(args):
                 fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensemble="actor", start=t, target_reward=neural_train)
             except Exception as e:
                 print(traceback.format_exc())
-                if t < args.num_timesteps: # implies early stopping, which implies good performance, so worth repeating.
+                if t < args.num_timesteps:
+                    # implies early stopping, which implies good performance, so worth repeating.
                     find_actor = True
     if args.use_wandb:
         wandb.finish()
