@@ -301,6 +301,7 @@ def run_graph_ppo_multi_sr(args):
         while find_actor:
             find_actor = False
             try:
+                _, _, a_in, a_out = generate_data(ns_agent, env, int(data_size))
                 print("\nActor:")
                 act_model, _ = find_model(a_in, a_out, actdir, save_file, weights, args)
                 act_torch = all_pysr_pytorch(act_model, policy.device)
