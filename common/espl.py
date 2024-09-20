@@ -2,6 +2,7 @@ import math
 
 import torch
 from torch import nn
+from torchinfo import summary
 
 op_list = []
 
@@ -370,6 +371,7 @@ class EQL(nn.Module):
 
 
 if __name__ == "__main__":
+    init_op_list(0)
     obs_dim = 4
     action_dim = 2
 
@@ -378,9 +380,9 @@ if __name__ == "__main__":
     num_inputs = obs_dim
     num_outputs = action_dim
     model = EQL(num_inputs, num_outputs, sample_num, hard_gum)
-
+    model.sample_sparse_constw(mode=0)
     obs = torch.rand((2, 4))
 
     x = model.forward(obs)
-
+    summary(model, input_size=obs.shape)
     print("done")
