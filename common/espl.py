@@ -3,17 +3,16 @@ import math
 import torch
 from torch import nn
 
-op_list=[]
+op_list = []
 
-op_index_list=[]
-op_index_list.append([0,0,0])
-op_index_list.append([1,1,1])
-op_index_list.append([2,2,3,3,4,4,5,5])
-op_index_list.append([2,2,3,3,4,4,5,5])
-op_index_list.append([0,1,2,3])
-op_index_list.append([0,1,2,3])
+op_index_list = []
+op_index_list.append([0, 0, 0])
+op_index_list.append([1, 1, 1])
+op_index_list.append([2, 2, 3, 3, 4, 4, 5, 5])
+op_index_list.append([2, 2, 3, 3, 4, 4, 5, 5])
+op_index_list.append([0, 1, 2, 3])
+op_index_list.append([0, 1, 2, 3])
 op_list.append(op_index_list)
-
 
 
 def get_sym_arch(index):
@@ -22,7 +21,6 @@ def get_sym_arch(index):
 
 LOG_SIG_MAX = 2
 LOG_SIG_MIN = -20
-
 
 
 def identity_regu(input):
@@ -35,17 +33,17 @@ def lim_log_regu(input):
 
 def lim_exp_regu(input):
     return torch.exp(torch.clamp(input, -10, 4)), (
-                torch.clamp(-10 - input, min=0) + torch.clamp(input - 4, min=0)).mean()
+            torch.clamp(-10 - input, min=0) + torch.clamp(input - 4, min=0)).mean()
 
 
 def lim_second_regu(input):
     return torch.clamp(input, min=-20, max=20) ** 2, (
-                torch.clamp(-20 - input, min=0) + torch.clamp(input - 20, min=0)).mean()
+            torch.clamp(-20 - input, min=0) + torch.clamp(input - 20, min=0)).mean()
 
 
 def lim_third_regu(input):
     return torch.clamp(input, min=-10, max=10) ** 3, (
-                torch.clamp(-10 - input, min=0) + torch.clamp(input - 10, min=0)).mean()
+            torch.clamp(-10 - input, min=0) + torch.clamp(input - 10, min=0)).mean()
 
 
 def lim_sqrt_regu(input):
@@ -60,8 +58,8 @@ def lim_div_regu(input1, input2):
 
 def mul_regu(input1, input2):
     return torch.clamp(input1, min=-100, max=100) * torch.clamp(input2, min=-100, max=100), (
-                torch.clamp(-100 - input1, min=0) + torch.clamp(input1 - 100, min=0)).mean() + (
-                       torch.clamp(-100 - input2, min=0) + torch.clamp(input2 - 100, min=0)).mean()
+            torch.clamp(-100 - input1, min=0) + torch.clamp(input1 - 100, min=0)).mean() + (
+                   torch.clamp(-100 - input2, min=0) + torch.clamp(input2 - 100, min=0)).mean()
 
 
 def cos_regu(input):
@@ -151,6 +149,7 @@ def init_op_list(index):
     print(op_inall_list)
     print(op_index_list)
 
+
 def opfunc(input, index, mode):  # input: batch,op_inall
     op_out = []
     regu_loss = 0
@@ -195,6 +194,7 @@ class EQL(nn.Module):
     '''
     Code from ESPL paper (Efficient Symbolic Policy Learning).
     '''
+
     def __init__(self, num_inputs, num_outputs, sample_num, hard_gum):
         super(EQL, self).__init__()
 
@@ -367,3 +367,20 @@ class EQL(nn.Module):
         out = torch.bmm(w, x.unsqueeze(2)).squeeze(-1) + b
         self.regu_loss = reguloss
         return out.reshape(batch, self.num_outputs)
+
+
+if __name__ == "__main__":
+    obs_dim = 4
+    action_dim = 2
+
+    sample_num = 2
+    hard_gum = True
+    num_inputs = obs_dim
+    num_outputs = action_dim
+    model = EQL(num_inputs, num_outputs, sample_num, hard_gum)
+
+    obs = torch.rand((2, 4))
+
+    x = model.forward(obs)
+
+    print("done")
