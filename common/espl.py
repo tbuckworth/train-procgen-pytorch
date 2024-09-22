@@ -198,7 +198,7 @@ class EQL(nn.Module):
 
     def __init__(self, num_inputs, num_outputs, sample_num, hard_gum):
         super(EQL, self).__init__()
-
+        self.target_ratio = 0.1
         self.num_inputs = num_inputs
 
         self.num_outputs = num_outputs
@@ -372,7 +372,7 @@ class EQL(nn.Module):
 
 if __name__ == "__main__":
     init_op_list(0)
-    obs_dim = 4
+    obs_dim = 1
     action_dim = 2
     epochs = 100
 
@@ -385,7 +385,7 @@ if __name__ == "__main__":
     optimizer = optim.Adam(model.parameters(), lr=lr)
     model.sample_sparse_constw(mode=0)
 
-    obs = torch.rand((1000, 2))*100
+    obs = torch.rand((1000, 1))*100
     y = obs**2
 
     for epoch in range(epochs):
