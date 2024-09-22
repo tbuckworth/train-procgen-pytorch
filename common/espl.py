@@ -1,5 +1,6 @@
 import math
 
+import numpy as np
 import torch
 from torch import nn, optim
 from torchinfo import summary
@@ -199,6 +200,11 @@ class EQL(nn.Module):
     def __init__(self, num_inputs, num_outputs, sample_num, hard_gum):
         super(EQL, self).__init__()
         self.target_ratio = 0.1
+        self.spls = 0.1
+        self.constrain_scale = 1
+        self.l0_scale = 0.01
+        self.bl0_scale = 0
+
         self.num_inputs = num_inputs
 
         self.num_outputs = num_outputs
@@ -241,7 +247,8 @@ class EQL(nn.Module):
             -1).sum(-1).mean()
 
     def proj(self):
-        pass
+        # added?
+        self.scores.data.clamp_(0, 1)
 
     def sparse_loss(self):
         clamped_scores = torch.sigmoid(self.scores)
@@ -373,31 +380,36 @@ class EQL(nn.Module):
 if __name__ == "__main__":
     init_op_list(0)
     obs_dim = 1
-    action_dim = 2
-    epochs = 100
+    action_dim = 1
+    epochs = 10000
 
     lr = 1e-3
-    sample_num = 2
+    sample_num = 1
     hard_gum = True
     num_inputs = obs_dim
     num_outputs = action_dim
     model = EQL(num_inputs, num_outputs, sample_num, hard_gum)
     optimizer = optim.Adam(model.parameters(), lr=lr)
     model.sample_sparse_constw(mode=0)
-
-    obs = torch.rand((1000, 1))*100
-    y = obs**2
-
+    obs = np.random.random((1000, 1))*100
+    x = torch.FloatTensor(obs)
+    y = x ** 2
     for epoch in range(epochs):
-        y_hat = model.forward(obs)
+
+        y_hat = model.forward(x, mode=1)
 
         other_loss, sparse_loss, constrain_loss, regu_loss, _, _ = model.get_loss()
-        total_loss = nn.MSELoss(y, y_hat) + other_loss
+        total_loss = nn.MSELoss()(y, y_hat) + other_loss
 
+        optimizer.zero_grad()
         total_loss.backward()
         nn.utils.clip_grad_norm_(model.parameters(), max_norm=0.5)
         optimizer.step()
-        optimizer.zero_grad()
+        model.proj()
+
+    import matplotlib.pyplot as plt
+    plt.scatter(y.detach().numpy(), y_hat.detach().numpy())
+    plt.show()
 
     print("done")
 
