@@ -1,7 +1,7 @@
 import math
 
 import torch
-from torch import nn
+from torch import nn, optim
 from torchinfo import summary
 
 op_list = []
@@ -374,15 +374,44 @@ if __name__ == "__main__":
     init_op_list(0)
     obs_dim = 4
     action_dim = 2
+    epochs = 100
 
+    lr = 1e-3
     sample_num = 2
     hard_gum = True
     num_inputs = obs_dim
     num_outputs = action_dim
     model = EQL(num_inputs, num_outputs, sample_num, hard_gum)
+    optimizer = optim.Adam(model.parameters(), lr=lr)
     model.sample_sparse_constw(mode=0)
-    obs = torch.rand((2, 4))
 
-    x = model.forward(obs)
+    obs = torch.rand((1000, 2))*100
+    y = obs**2
+
+    for epoch in range(epochs):
+        y_hat = model.forward(obs)
+
+        other_loss, sparse_loss, constrain_loss, regu_loss, _, _ = model.get_loss()
+        total_loss = nn.MSELoss(y, y_hat) + other_loss
+
+        total_loss.backward()
+        nn.utils.clip_grad_norm_(model.parameters(), max_norm=0.5)
+        optimizer.step()
+        optimizer.zero_grad()
+
+    print("done")
+
+    # self.target_entropy = -np.prod(
+    #     self.env.action_space.shape).item()
+    # alpha_loss = -(self.log_alpha * (log_pi + self.target_entropy).detach()).mean()
+    # alpha = self.log_alphs.exp()
+    # self.log_alpha = torch.zeros(1, requires_grad=True, device=device)
+    # self.alpha_optimizer = optimizer_class(
+    #     [self.log_alpha],
+    #     lr=policy_lr,
+    # )
+    # policy_loss = (alpha * log_pi - q_new_actions).mean() + other_loss
+
+
     summary(model, input_size=obs.shape)
     print("done")
