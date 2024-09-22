@@ -721,7 +721,7 @@ def graph_ppo_sr_ft_continuous():
     }
     bounds = {
         "data_size": [1000, 5000],
-        "iterations": [1, 100],
+        "iterations": [1, 60],
         "populations": [15, 40],
         "procs": [4, 16],
         # "ncycles_per_iteration": [4000, 6000],
