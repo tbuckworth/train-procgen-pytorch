@@ -599,7 +599,7 @@ def humanoid_graph_ppo():
         "exp_name": 'pure-graph',
         "param_name": 'graph-ant',
         "device": "gpu",
-        "num_timesteps": int(1e7),
+        "num_timesteps": int(1e8),
         "seed": 6033,
         "use_gae": True,
         "clip_value": True,
@@ -744,7 +744,7 @@ def run_forever(bounds, fixed, run_func):
 
 if __name__ == "__main__":
     # cartpole_graph_ppo()
-    graph_ppo_sr_ft_continuous()
-    # humanoid_graph_ppo()
+    # graph_ppo_sr_ft_continuous()
+    humanoid_graph_ppo()
     # double_graph_symbreg_ft_hparams()
     # pets_graph_transition_cartpole()
