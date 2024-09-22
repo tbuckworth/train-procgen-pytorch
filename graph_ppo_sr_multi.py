@@ -295,6 +295,9 @@ def run_graph_ppo_multi_sr(args):
         fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensemble="both")
     else:
         t = fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensemble="messenger", target_reward=neural_train)
+        # freeze messenger
+        for param in ns_agent.policy.messenger.parameters():
+            param.requires_grad = False
         if args.use_wandb:
             wandb.log({"switch_timestep": t})
         find_actor = True
