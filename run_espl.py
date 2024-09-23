@@ -13,7 +13,7 @@ if __name__ == "__main__":
     action_dim = 1
     cfg = dict(
         op_list_selection=op_list_selection,
-        epochs=3000,
+        epochs=10000,
         data_size=1000,
         lr=1e-3,
         sample_num=1,
