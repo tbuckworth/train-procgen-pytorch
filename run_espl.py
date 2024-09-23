@@ -69,6 +69,8 @@ if __name__ == "__main__":
 
         other_loss, sparse_loss, constrain_loss, regu_loss, l0_loss, bl0_loss = model.get_loss()
         total_loss = nn.MSELoss()(y, y_hat) + other_loss
+        model.update_const()
+
         print(total_loss.item())
         optimizer.zero_grad()
         total_loss.backward()
@@ -86,6 +88,7 @@ if __name__ == "__main__":
             "bl0_loss": bl0_loss.item(),
             "epoch": epoch,
             "temp": model.temp,
+            "target_ratio": model.target_ratio,
         })
         model.set_temp_target_ratio(epoch)
     # plt.scatter(y.detach().numpy(), y_hat.detach().numpy())
