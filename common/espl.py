@@ -8,7 +8,6 @@ from torchinfo import summary
 import matplotlib.pyplot as plt
 
 from helper_local import wandb_login
-from hyperparameter_optimization import init_wandb
 
 op_list = []
 
