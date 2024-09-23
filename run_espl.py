@@ -19,6 +19,7 @@ if __name__ == "__main__":
         sample_num=1,
         hard_gum=True,
         data_scale=100,
+        wandb_tags=["x_squared"],
     )
     eql_args = dict(
         target_ratio=0.001,
@@ -40,16 +41,16 @@ if __name__ == "__main__":
 
     num_inputs = obs_dim
     num_outputs = action_dim
-    model = EQL(num_inputs, num_outputs, sample_num, hard_gum,**eql_args)
-                # target_ratio=cfg["target_ratio"],
-                # spls=cfg["spls"],
-                # constrain_scale=cfg["constrain_scale"],
-                # l0_scale=cfg["l0_scale"],
-                # bl0_scale=cfg["bl0_scale"],
-                # target_temp=cfg["target_temp"],
-                # warmup_epoch=cfg["warmup_epoch"],
-                # hard_epoch=cfg["hard_epoch"],
-                # )
+    model = EQL(num_inputs, num_outputs, sample_num, hard_gum, **eql_args)
+    # target_ratio=cfg["target_ratio"],
+    # spls=cfg["spls"],
+    # constrain_scale=cfg["constrain_scale"],
+    # l0_scale=cfg["l0_scale"],
+    # bl0_scale=cfg["bl0_scale"],
+    # target_temp=cfg["target_temp"],
+    # warmup_epoch=cfg["warmup_epoch"],
+    # hard_epoch=cfg["hard_epoch"],
+    # )
     optimizer = optim.Adam(model.parameters(), lr=lr)
     model.sample_sparse_constw(mode=0)
     obs = (np.random.random((data_size, 1)) - .5) * data_scale
