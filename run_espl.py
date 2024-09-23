@@ -98,11 +98,20 @@ if __name__ == "__main__":
     y_hat_mode_0 = model.forward(x, mode=0)
     zero_weight_pct_mode_0 = (model.constw == 0).sum() / np.prod(model.constw.shape)
 
+    data = [[x, y] for (x, y) in zip(obs.squeeze().tolist(), y_hat.squeeze().detach().cpu().numpy().tolist())]
+    table = wandb.Table(data=data, columns=["x", "y_hat"])
+    wandb.log({"predicted y_hat": wandb.plot.scatter(table, "x", "y_hat",
+                                                       title="Y_hat prediction vs x")})
+    data = [[x, y] for (x, y) in zip(obs.squeeze().tolist(), y_hat_mode_0.squeeze().detach().cpu().numpy().tolist())]
+    table = wandb.Table(data=data, columns=["x", "y_hat_mode_0"])
+    wandb.log({"predicted y_hat_mode_0": wandb.plot.scatter(table, "x", "y_hat_mode_0",
+                                                       title="Y_hat_mode_0 prediction vs x")})
+
     wandb.log({
-        "y": y.detach().cpu().numpy(),
-        "y_hat": y_hat.detach().cpu().numpy(),
-        "y_hat_mode_0": y_hat_mode_0.detach().cpu().numpy(),
-        "x": obs,
+        # "y": y.detach().cpu().numpy(),
+        # "y_hat": y_hat.detach().cpu().numpy(),
+        # "y_hat_mode_0": y_hat_mode_0.detach().cpu().numpy(),
+        # "x": obs,
         "pct_0_weight": zero_weight_pct.item(),
         "pct_0_weight_mode_0": zero_weight_pct_mode_0.item(),
     })
