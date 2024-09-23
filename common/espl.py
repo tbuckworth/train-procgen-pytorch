@@ -4,6 +4,7 @@ import numpy as np
 import torch
 from torch import nn, optim
 from torchinfo import summary
+import matplotlib.pyplot as plt
 
 op_list = []
 
@@ -147,6 +148,7 @@ def init_op_list(index):
         op_in_list.append(op_in_num)
         op_inall_list.append(op_inall)
 
+    print("N inputs for each operator:")
     print(op_in_list)
     print(op_inall_list)
     print(op_index_list)
@@ -317,9 +319,9 @@ class EQL(nn.Module):
             self.sample_sparse_constw(1)
             # constw sample,num_outputs,wshape
             constw = self.constw.unsqueeze(1).expand(-1, batch, -1, -1).reshape(-1, self.num_outputs, self.wshape)
-            constb = self.constb.unsqueeze(0).unsqueeze(1).expand(self.sample_num, batch, -1, -1).reshape(-1,
-                                                                                                          self.num_outputs,
-                                                                                                          self.bshape)
+            constb = self.constb.unsqueeze(0).unsqueeze(1). \
+                expand(self.sample_num, batch, -1, -1). \
+                reshape(-1, self.num_outputs, self.bshape)
         else:
             constw = self.constw.unsqueeze(0).expand(batch, -1, -1)
             constb = self.constb.unsqueeze(0).expand(batch, -1, -1)
@@ -327,6 +329,8 @@ class EQL(nn.Module):
         w_list = []
         inshape_ = self.num_inputs
         low = 0
+        # shapes:
+        # np.cumsum([self.num_inputs] + [len(a) for a in op_in_list])[:-1]*np.array(op_inall_list)
         for i in range(self.depth):
             high = low + inshape_ * op_inall_list[i]
             w_list.append(constw[:, :, int(low):int(high)])
@@ -391,11 +395,10 @@ if __name__ == "__main__":
     model = EQL(num_inputs, num_outputs, sample_num, hard_gum)
     optimizer = optim.Adam(model.parameters(), lr=lr)
     model.sample_sparse_constw(mode=0)
-    obs = np.random.random((1000, 1))*100
+    obs = (np.random.random((1000, 1)) - .5) * 100
     x = torch.FloatTensor(obs)
     y = x ** 2
     for epoch in range(epochs):
-
         y_hat = model.forward(x, mode=1)
 
         other_loss, sparse_loss, constrain_loss, regu_loss, _, _ = model.get_loss()
@@ -406,8 +409,13 @@ if __name__ == "__main__":
         nn.utils.clip_grad_norm_(model.parameters(), max_norm=0.5)
         optimizer.step()
         model.proj()
+        model.temp /= 1.135
+    plt.scatter(y.detach().numpy(), y_hat.detach().numpy())
 
-    import matplotlib.pyplot as plt
+    model.sample_sparse_constw(mode=0)
+    y_hat = model.forward(x, mode=0)
+    (model.constw == 0).sum()
+
     plt.scatter(y.detach().numpy(), y_hat.detach().numpy())
     plt.show()
 
@@ -423,7 +431,6 @@ if __name__ == "__main__":
     #     lr=policy_lr,
     # )
     # policy_loss = (alpha * log_pi - q_new_actions).mean() + other_loss
-
 
     summary(model, input_size=obs.shape)
     print("done")
