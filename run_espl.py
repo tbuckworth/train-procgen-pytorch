@@ -122,7 +122,7 @@ if __name__ == "__main__":
         # "x": obs,
         "pct_0_weight": zero_weight_pct.item(),
         "pct_0_weight_mode_0": zero_weight_pct_mode_0.item(),
-        "symbolic_expression": sym_exp,
+        "symbolic_expression": str(sym_exp),
     })
     wandb.finish()
     exit(0)
