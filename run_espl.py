@@ -72,7 +72,7 @@ if __name__ == "__main__":
         total_loss = nn.MSELoss()(y, y_hat) + other_loss
         model.update_const()
 
-        print(total_loss.item())
+        # print(total_loss.item())
         optimizer.zero_grad()
         total_loss.backward()
         nn.utils.clip_grad_norm_(model.parameters(), max_norm=0.5)
