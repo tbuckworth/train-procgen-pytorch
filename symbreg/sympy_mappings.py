@@ -1,9 +1,13 @@
 import os
 
 import sympy
+
+from windows_dll_setup import windows_dll_setup_for_pysr
+
+windows_dll_setup_for_pysr()
 from pysr import sympy2torch, PySRRegressor
 import torch
-from sympy import symbols, Piecewise, GreaterThan, exp, sign, log
+from sympy import symbols, Piecewise, GreaterThan, exp, sign, log, sin
 import numpy as np
 import re
 
@@ -14,13 +18,14 @@ from symbolic_regression import load_nn_policy
 from symbreg.extra_mappings import get_extra_torch_mappings
 
 
-def test_cust():
+def trial_cust():
     x, y = symbols("x y")
     expression = Piecewise((1.0, x > y), (0.0, True))
     expression = GreaterThan(x, y)
     expression = exp(sign(0.44796443))*exp(sign(0.44796443))
-    expression = exp(-1)
-    module = sympy2torch(expression, [x, y], extra_torch_mappings=get_extra_torch_mappings())
+    expression = exp(2)
+    expression = sin(1)
+    module = sympy2torch(expression, [x, y])#, extra_torch_mappings=get_extra_torch_mappings())
     X = torch.rand(100, 2).float() * 10
 
     torch_out = module(X)
@@ -91,4 +96,4 @@ def load_and_test():
     print("halt")
 
 if __name__ == "__main__":
-    test_cust()
+    trial_cust()

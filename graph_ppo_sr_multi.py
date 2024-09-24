@@ -302,7 +302,7 @@ def run_graph_ppo_multi_sr(args):
             wandb.log({"switch_timestep": t})
         find_actor = True
         error_count = 0
-        while find_actor and error_count < 10:
+        while find_actor:
             find_actor = False
             try:
                 _, _, a_in, a_out = generate_data(ns_agent, env, int(data_size))
@@ -320,6 +320,9 @@ def run_graph_ppo_multi_sr(args):
                     # implies early stopping, which implies good performance, so worth repeating.
                     find_actor = True
                     error_count += 1
+                    if error_count >= 10:
+                        wandb.finish(exit_code=-1)
+                        return
     if args.use_wandb:
         wandb.finish()
 
