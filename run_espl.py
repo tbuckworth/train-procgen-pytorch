@@ -5,14 +5,15 @@ from torch import optim, nn
 
 from common.espl import init_op_list, EQL
 from helper_local import wandb_login
+from sym import printsymbolic
 
 if __name__ == "__main__":
-    op_list_selection = 0
-    init_op_list(op_list_selection)
+    arch_index = 0
+    init_op_list(arch_index)
     obs_dim = 1
     action_dim = 1
     cfg = dict(
-        op_list_selection=op_list_selection,
+        arch_index=arch_index,
         epochs=10000,
         data_size=1000,
         lr=1e-3,
@@ -107,6 +108,13 @@ if __name__ == "__main__":
     wandb.log({"predicted y_hat_mode_0": wandb.plot.scatter(table, "x", "y_hat_mode_0",
                                                        title="Y_hat_mode_0 prediction vs x")})
 
+    scores = model.scores.data
+    constw_base = model.constw_base.data
+    constb = model.constb.data
+    constw = constw_base * ((scores > 0.5).float())
+    sym_exp = printsymbolic(constw, constb, num_inputs, arch_index)
+
+
     wandb.log({
         # "y": y.detach().cpu().numpy(),
         # "y_hat": y_hat.detach().cpu().numpy(),
@@ -114,6 +122,7 @@ if __name__ == "__main__":
         # "x": obs,
         "pct_0_weight": zero_weight_pct.item(),
         "pct_0_weight_mode_0": zero_weight_pct_mode_0.item(),
+        "symbolic_expression": sym_exp,
     })
     wandb.finish()
     exit(0)
