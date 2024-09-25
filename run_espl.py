@@ -14,7 +14,7 @@ if __name__ == "__main__":
     action_dim = 1
     cfg = dict(
         arch_index=arch_index,
-        epochs=100000,
+        epochs=10000,
         data_size=1000,
         lr=1e-3,
         sample_num=1,
@@ -30,7 +30,7 @@ if __name__ == "__main__":
         bl0_scale=0,
         target_temp=0.2,
         warmup_epoch=0,
-        hard_epoch=900,
+        hard_epoch=9000,
     )
     cfg.update(eql_args)
     epochs = cfg["epochs"]
