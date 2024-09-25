@@ -14,7 +14,7 @@ if __name__ == "__main__":
     action_dim = 1
     cfg = dict(
         arch_index=arch_index,
-        epochs=100,
+        epochs=10000,
         data_size=1000,
         lr=1e-3,
         sample_num=2,
