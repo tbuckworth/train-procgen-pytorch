@@ -21,6 +21,7 @@ if __name__ == "__main__":
         hard_gum=True,
         data_scale=20,
         wandb_tags=["x_squared"],
+        other_loss_scale=100.,
     )
     eql_args = dict(
         target_ratio=0.001,
@@ -39,19 +40,12 @@ if __name__ == "__main__":
     sample_num = cfg["sample_num"]
     hard_gum = cfg["hard_gum"]
     data_scale = cfg["data_scale"]
+    other_loss_scale = cfg["other_loss_scale"]
 
     num_inputs = obs_dim
     num_outputs = action_dim
     model = EQL(num_inputs, num_outputs, sample_num, hard_gum, **eql_args)
-    # target_ratio=cfg["target_ratio"],
-    # spls=cfg["spls"],
-    # constrain_scale=cfg["constrain_scale"],
-    # l0_scale=cfg["l0_scale"],
-    # bl0_scale=cfg["bl0_scale"],
-    # target_temp=cfg["target_temp"],
-    # warmup_epoch=cfg["warmup_epoch"],
-    # hard_epoch=cfg["hard_epoch"],
-    # )
+
     optimizer = optim.Adam(model.parameters(), lr=lr)
     model.sample_sparse_constw(mode=0)
     obs = (np.random.random((data_size, 1)) - .5) * data_scale
@@ -71,7 +65,7 @@ if __name__ == "__main__":
             y = y.unsqueeze(0).expand(sample_num, -1, -1).reshape(sample_num * data_size, -1)
 
         other_loss, sparse_loss, constrain_loss, regu_loss, l0_loss, bl0_loss = model.get_loss()
-        total_loss = nn.MSELoss()(y, y_hat) + other_loss
+        total_loss = nn.MSELoss()(y, y_hat) + other_loss * other_loss_scale
         model.update_const()
 
         # print(total_loss.item())
@@ -94,7 +88,6 @@ if __name__ == "__main__":
             "target_ratio": model.target_ratio,
         })
         model.set_temp_target_ratio(epoch)
-    # plt.scatter(y.detach().numpy(), y_hat.detach().numpy())
     zero_weight_pct = (model.constw == 0).sum() / np.prod(model.constw.shape)
 
     model.sample_sparse_constw(mode=0)
