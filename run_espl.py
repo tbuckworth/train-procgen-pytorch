@@ -113,7 +113,7 @@ if __name__ == "__main__":
     y = x ** 2
     y_hat_mode_0_large = model.forward(x, mode=0)
     data = [[x, y] for (x, y) in zip(obs.squeeze().tolist(), y_hat_mode_0_large.squeeze().detach().cpu().numpy().tolist())]
-    table = wandb.Table(data=data, columns=["x", "y_hat_mode_0"])
+    table = wandb.Table(data=data, columns=["x", "ood_mode_0"])
     wandb.log({"predicted out of distribution mode 0": wandb.plot.scatter(table, "x", "ood_mode_0",
                                                             title="ood_mode_0 prediction vs x")})
 
