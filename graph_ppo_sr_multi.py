@@ -298,6 +298,7 @@ def run_graph_ppo_multi_sr(args):
         # freeze messenger
         for param in ns_agent.policy.graph.messenger.parameters():
             param.requires_grad = False
+        nn_agent.policy.graph.messenger = copy.deepcopy(ns_agent.policy.graph.messenger).to(device=nn_agent.policy.device)
         if args.use_wandb:
             wandb.log({"switch_timestep": t})
         find_actor = True
