@@ -17,7 +17,7 @@ if __name__ == "__main__":
         epochs=10000,
         data_size=1000,
         lr=1e-3,
-        sample_num=1,
+        sample_num=2,
         hard_gum=True,
         data_scale=20,
         wandb_tags=["x_squared"],
@@ -67,6 +67,8 @@ if __name__ == "__main__":
 
     for epoch in range(epochs):
         y_hat = model.forward(x, mode=1)
+        if sample_num > 1:
+            y = y.unsqueeze(0).expand(sample_num, -1, -1).reshape(sample_num * data_size, -1)
 
         other_loss, sparse_loss, constrain_loss, regu_loss, l0_loss, bl0_loss = model.get_loss()
         total_loss = nn.MSELoss()(y, y_hat) + other_loss
@@ -102,20 +104,21 @@ if __name__ == "__main__":
     data = [[x, y] for (x, y) in zip(obs.squeeze().tolist(), y_hat.squeeze().detach().cpu().numpy().tolist())]
     table = wandb.Table(data=data, columns=["x", "y_hat"])
     wandb.log({"predicted y_hat": wandb.plot.scatter(table, "x", "y_hat",
-                                                       title="Y_hat prediction vs x")})
+                                                     title="Y_hat prediction vs x")})
     data = [[x, y] for (x, y) in zip(obs.squeeze().tolist(), y_hat_mode_0.squeeze().detach().cpu().numpy().tolist())]
     table = wandb.Table(data=data, columns=["x", "y_hat_mode_0"])
     wandb.log({"predicted y_hat_mode_0": wandb.plot.scatter(table, "x", "y_hat_mode_0",
-                                                       title="Y_hat_mode_0 prediction vs x")})
+                                                            title="Y_hat_mode_0 prediction vs x")})
 
     obs = (np.random.random((data_size, 1)) - .5) * data_scale * 5
     x = torch.FloatTensor(obs)
     y = x ** 2
     y_hat_mode_0_large = model.forward(x, mode=0)
-    data = [[x, y] for (x, y) in zip(obs.squeeze().tolist(), y_hat_mode_0_large.squeeze().detach().cpu().numpy().tolist())]
+    data = [[x, y] for (x, y) in
+            zip(obs.squeeze().tolist(), y_hat_mode_0_large.squeeze().detach().cpu().numpy().tolist())]
     table = wandb.Table(data=data, columns=["x", "ood_mode_0"])
     wandb.log({"predicted out of distribution mode 0": wandb.plot.scatter(table, "x", "ood_mode_0",
-                                                            title="ood_mode_0 prediction vs x")})
+                                                                          title="ood_mode_0 prediction vs x")})
 
     scores = model.scores.data
     constw_base = model.constw_base.data
@@ -123,7 +126,7 @@ if __name__ == "__main__":
     constw = constw_base * ((scores > 0.5).float())
     sym_exp = str(printsymbolic(constw, constb, num_inputs, arch_index))
     if len(sym_exp) > 1000:
-        sym_exp = f"expression length = {sym_exp}"
+        sym_exp = f"expression length = {len(sym_exp)}"
 
     wandb.log({
         # "y": y.detach().cpu().numpy(),
