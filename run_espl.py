@@ -14,7 +14,7 @@ if __name__ == "__main__":
     action_dim = 1
     cfg = dict(
         arch_index=arch_index,
-        epochs=10000,
+        epochs=100,
         data_size=1000,
         lr=1e-3,
         sample_num=2,
@@ -51,6 +51,8 @@ if __name__ == "__main__":
     obs = (np.random.random((data_size, 1)) - .5) * data_scale
     x = torch.FloatTensor(obs)
     y = x ** 2
+    if sample_num > 1:
+        y = y.unsqueeze(0).expand(sample_num, -1, -1).reshape(sample_num * data_size, -1)
 
     name = np.random.randint(1e5)
     wandb_login()
@@ -61,8 +63,6 @@ if __name__ == "__main__":
 
     for epoch in range(epochs):
         y_hat = model.forward(x, mode=1)
-        if sample_num > 1:
-            y = y.unsqueeze(0).expand(sample_num, -1, -1).reshape(sample_num * data_size, -1)
 
         other_loss, sparse_loss, constrain_loss, regu_loss, l0_loss, bl0_loss = model.get_loss()
         total_loss = nn.MSELoss()(y, y_hat) + other_loss * other_loss_scale
