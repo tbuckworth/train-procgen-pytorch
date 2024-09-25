@@ -1350,7 +1350,7 @@ class NBatchPySRTorch(nn.Module):
         if self.model._selection is not None:
             X = X[..., self.model._selection]
         symbols = {symbol: X[..., i] for i, symbol in enumerate(self.model.symbols_in)}
-        return self.model._node(symbols)
+        return self.model._node(symbols).to(device=self.device)
 
     def forward(self, X):
         if not self.repeat:

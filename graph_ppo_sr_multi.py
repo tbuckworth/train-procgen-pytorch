@@ -310,7 +310,7 @@ def run_graph_ppo_multi_sr(args):
                 act_model, _ = find_model(a_in, a_out, actdir, save_file, weights, args)
                 act_torch = all_pysr_pytorch(act_model, policy.device)
                 eq_log["actor"] = act_model.get_best().equation
-                ns_agent.policy.graph.actor = act_torch
+                ns_agent.policy.graph.actor = act_torch.to(device=ns_agent.policy.device)
                 if not args.stochastic:
                     ns_agent.policy.set_no_var(True)
                 fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensemble="actor", start=t, target_reward=neural_train)
