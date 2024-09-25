@@ -74,6 +74,8 @@ if __name__ == "__main__":
         nn.utils.clip_grad_norm_(model.parameters(), max_norm=0.5)
         optimizer.step()
         model.proj()
+        if epoch % epochs//100:
+            print(f"Epoch:{epoch}\tLoss:{total_loss.item():.2f}")
         wandb.log({
             "total_loss": total_loss.item(),
             "mse_loss": (total_loss - other_loss).item(),
