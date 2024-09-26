@@ -31,7 +31,7 @@ if __name__ == "__main__":
         bl0_scale=0,
         target_temp=0.2,
         warmup_epoch=0,
-        hard_epoch=int(cfg["epochs"]*.7),
+        hard_epoch=9000,#int(cfg["epochs"]*.7),
     )
     cfg.update(eql_args)
     epochs = cfg["epochs"]

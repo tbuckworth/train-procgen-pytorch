@@ -25,6 +25,7 @@ def trial_cust():
     expression = exp(sign(0.44796443))*exp(sign(0.44796443))
     expression = exp(2)
     expression = sin(1)
+    expression = sin(sign(-0.041662704))
     module = sympy2torch(expression, [x, y])#, extra_torch_mappings=get_extra_torch_mappings())
     X = torch.rand(100, 2).float() * 10
 
