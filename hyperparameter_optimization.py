@@ -76,7 +76,7 @@ def n_sig_fig(x, n):
     return round(x, -int(floor(log10(abs(x)))) + (n - 1))
 
 
-def select_next_hyperparameters(X, y, bounds):
+def select_next_hyperparameters(X, y, bounds, greater_is_better=True):
     if bounds == {}:
         return {}
     [b.sort() for b in bounds.values()]
@@ -101,7 +101,7 @@ def select_next_hyperparameters(X, y, bounds):
         bs = np.array_split(bound_array[idx], n_splits, axis=0)
 
         for x, b in zip(xs, bs):
-            param = bayesian_optimisation(x, yp, b, random_search=True)
+            param = bayesian_optimisation(x, yp, b, random_search=True, greater_is_better=greater_is_better)
             params += list(param)
 
         next_params = np.array(params)[np.argsort(idx)]
@@ -182,14 +182,15 @@ def optimize_hyperparams(bounds,
                          project="Cartpole",
                          id_tag="sa_rew",
                          run_next=run_next_hyperparameters,
-                         opt_metric="summary.mean_episode_rewards"):
+                         opt_metric="summary.mean_episode_rewards",
+                         greater_is_better=True):
     try:
         X, y = get_wandb_performance(bounds.keys(), project, id_tag, opt_metric)
     except ValueError as e:
         print(f"Error from wandb:\n{e}\nPicking hparams randomly.")
         X, y = None, None
 
-    hparams = select_next_hyperparameters(X, y, bounds)
+    hparams = select_next_hyperparameters(X, y, bounds, greater_is_better)
 
     fh = fixed.copy()
     hparams.update(fh)
@@ -748,7 +749,7 @@ def run_forever(bounds, fixed, run_func):
     id_tag = fixed["wandb_tags"][0]
     fixed["original_start"] = time.asctime()
     while True:
-        optimize_hyperparams(bounds, fixed, project, id_tag, run_func)
+        optimize_hyperparams(bounds, fixed, project, id_tag, run_func, greater_is_better=False)
 
 
 def espl_x_squared():

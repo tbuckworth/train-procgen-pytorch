@@ -93,7 +93,7 @@ def sample_next_hyperparameter(acquisition_func, gaussian_process, evaluated_los
     return best_x
 
 
-def bayesian_optimisation(xp, yp, bounds, gp_params=None, random_search=False, alpha=1e-5, epsilon=1e-7, n=1e5):
+def bayesian_optimisation(xp, yp, bounds, gp_params=None, random_search=False, alpha=1e-5, epsilon=1e-7, n=1e5, greater_is_better=True):
     """ bayesian_optimisation
 
     Uses Gaussian Processes to optimise the loss function `sample_loss`.
@@ -159,7 +159,7 @@ def bayesian_optimisation(xp, yp, bounds, gp_params=None, random_search=False, a
     # Sample next hyperparameter
     if random_search:
         x_random = np.random.uniform(bounds[:, 0], bounds[:, 1], size=(int(n), n_params))
-        ei = -1 * expected_improvement(x_random, model, yp, greater_is_better=True, n_params=n_params)
+        ei = -1 * expected_improvement(x_random, model, yp, greater_is_better=greater_is_better, n_params=n_params)
         next_sample = x_random[np.argmax(ei), :]
     else:
         next_sample = sample_next_hyperparameter(expected_improvement, model, yp, greater_is_better=True, bounds=bounds, n_restarts=1000)
