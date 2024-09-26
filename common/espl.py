@@ -207,6 +207,7 @@ class EQL(nn.Module):
                  ):
         super(EQL, self).__init__()
         self.target_ratio = target_ratio
+        self.target_ratio_current = 1-target_ratio
         self.spls = spls
         self.constrain_scale = constrain_scale
         self.l0_scale = l0_scale
@@ -262,7 +263,7 @@ class EQL(nn.Module):
 
     def sparse_loss(self):
         clamped_scores = torch.sigmoid(self.scores)
-        return torch.clamp(clamped_scores.sum(-1).sum(-1) - self.target_ratio * self.wshape * self.num_outputs,
+        return torch.clamp(clamped_scores.sum(-1).sum(-1) - self.target_ratio_current * self.wshape * self.num_outputs,
                            min=0).mean() / self.num_outputs
 
     # def sim_loss(self):
@@ -392,7 +393,7 @@ class EQL(nn.Module):
         self.temp = 1 / ((1 - self.target_temp) * (
                 1 - min(epoch, self.hard_epoch) / self.hard_epoch) + self.target_temp)
         clip_it = max(min(epoch, self.hard_epoch), self.warmup_epoch)
-        self.target_ratio = self.target_ratio + (1 - self.target_ratio) * (
+        self.target_ratio_current = self.target_ratio + (1 - self.target_ratio) * (
                 1 - ((clip_it - self.warmup_epoch) / (self.hard_epoch - self.warmup_epoch)) ** 2)
 
 

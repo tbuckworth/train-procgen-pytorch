@@ -4,14 +4,15 @@ import re
 import numpy as np
 import pandas as pd
 import sympy
+import wandb
 from matplotlib import pyplot as plt
 from numpy import cos, sin, pi
-from pysr import PySRRegressor
+# from pysr import PySRRegressor
 import torch
 
 from common.env.env_constructor import get_env_constructor
 from create_sh_files import train_hparams, symbreg_hparams
-from helper_local import free_gpu, get_config, sigmoid
+from helper_local import free_gpu, get_config, sigmoid, wandb_login
 from cartpole.cartpole_pre_vec import CartPoleVecEnv
 import gymnasium
 from discrete_env.acrobot_pre_vec import rk4 as rk4_pre_vec
@@ -335,7 +336,7 @@ def greater(x, y):
     return sympy.Piecewise((1.0, x > y), (0.0, True))
 
 
-def test_pysr_to_pytorch():
+def trial_pysr_to_pytorch():
     symbdir = "logs/train/cartpole_swing/test/2024-05-01__14-19-53__seed_6033/symbreg/2024-05-13__10-27-13"
     pickle_filename = os.path.join(symbdir, "symb_reg.pkl")
     logdir = re.search(r"(logs.*)symbreg", symbdir).group(1)
@@ -373,7 +374,7 @@ def bce_test():
     print("done")
 
 
-def test_pipe_checker():
+def trial_pipe_checker():
     out = pipe_checker("pipe.txt")
     print(out)
 
@@ -469,5 +470,24 @@ def fix_sr_from_file(model, inspect, pysr_kwargs):
     model.set_params(**pysr_kwargs)
 
 
+def custom_wandb_x_squared_set():
+    data_size = 1000
+    data_scale = 20
+    wandb_login()
+    wb_resume = "allow"  # if args.model_file is None else "must"
+    prefix = "espl"
+    wandb.init(project="espl", config={}, sync_tensorboard=True,
+               tags=["x_squared"], resume=wb_resume, name=f"x^2")
+
+    obs = (np.random.random((data_size, 1)) - .5) * data_scale * 5
+    x = torch.FloatTensor(obs)
+    y = x ** 2
+    data = [[x, y] for (x, y) in
+            zip(obs.squeeze().tolist(), y.squeeze().detach().cpu().numpy().tolist())]
+    table = wandb.Table(data=data, columns=["x", "ood_mode_0"])
+    wandb.log({"predicted out of distribution mode 0": wandb.plot.scatter(table, "x", "ood_mode_0",
+                                                                          title="ood_mode_0 prediction vs x")})
+    wandb.finish()
+
 if __name__ == "__main__":
-    test_pipe_checker()
+    custom_wandb_x_squared_set()

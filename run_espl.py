@@ -87,7 +87,7 @@ if __name__ == "__main__":
             "bl0_loss": bl0_loss.item(),
             "epoch": epoch,
             "temp": model.temp,
-            "target_ratio": model.target_ratio,
+            "target_ratio": model.target_ratio_current,
         })
         model.set_temp_target_ratio(epoch)
     zero_weight_pct = (model.constw == 0).sum() / np.prod(model.constw.shape)
