@@ -296,7 +296,8 @@ def run_graph_ppo_multi_sr(args):
     else:
         t = fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensemble="messenger", target_reward=neural_train)
         # freeze messenger
-        s_agent = copy.deepcopy(ns_agent).to(device=ns_agent.policy.device)
+        s_agent = copy.deepcopy(ns_agent)
+        s_agent.policy.to(device=ns_agent.policy.device)
         for param in s_agent.policy.graph.messenger.parameters():
             param.requires_grad = False
         if args.use_wandb:
