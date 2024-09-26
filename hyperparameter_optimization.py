@@ -14,8 +14,9 @@ from double_graph_sr import run_double_graph_neurosymbolic_search
 from gp import bayesian_optimisation
 from graph_ppo_sr_multi import run_graph_ppo_multi_sr
 from graph_sr import fine_tune, load_sr_graph_agent, run_graph_neurosymbolic_search
-from helper_local import wandb_login, DictToArgs, get_project, add_symbreg_args, add_pets_args
+from helper_local import wandb_login, DictToArgs, get_project, add_symbreg_args, add_pets_args, add_espl_args
 from pets.pets import run_pets
+from run_espl import run_espl_x_squared
 from train import train_ppo
 
 
@@ -129,6 +130,14 @@ def run_next_hyperparameters(hparams):
     parser_dict.update(hparams)
     args = DictToArgs(parser_dict)
     train_ppo(args)
+
+def run_hp_for_espl(hparams):
+    parser = argparse.ArgumentParser()
+    parser = add_espl_args(parser)
+    args = parser.parse_args()
+    args_dict = vars(args)
+    args_dict.update(hparams)
+    run_espl_x_squared(DictToArgs(args_dict))
 
 
 def run_graph_hyperparameters(hparams):
@@ -742,9 +751,33 @@ def run_forever(bounds, fixed, run_func):
         optimize_hyperparams(bounds, fixed, project, id_tag, run_func)
 
 
+def espl_x_squared():
+    fixed = {
+        "wandb_tags": ["espl_hp0"],
+    }
+    bounds = {
+        "epochs": [10000, 100000],
+        "sample_num": [1, 5],
+        "lr": [5e-3, 15e-3],
+        'hard_gum': [True, False],
+        "hard_ratio": [0.5, .9],
+        'other_loss_scale': [1, 10000],
+        'target_ratio': [0.00001, 0.01],
+        'spls': [0.1, 1.0],
+        'target_temp': [0.01, 0.25],
+    }
+    project = 'espl'
+    id_tag = fixed["wandb_tags"][0]
+    fixed["original_start"] = time.asctime()
+    while True:
+        optimize_hyperparams(bounds, fixed, project, id_tag, run_hp_for_espl)
+
+
+
 if __name__ == "__main__":
+    espl_x_squared()
     # cartpole_graph_ppo()
-    graph_ppo_sr_ft_continuous()
+    # graph_ppo_sr_ft_continuous()
     # humanoid_graph_ppo()
     # double_graph_symbreg_ft_hparams()
     # pets_graph_transition_cartpole()
