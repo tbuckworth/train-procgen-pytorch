@@ -1061,3 +1061,26 @@ def initialize_storage(args, device, double_graph, hidden_state_dim, model_based
 def print_dict(log):
     for k, v in log.items():
         print(f"{k}:\t{v}")
+
+
+def add_espl_args(parser):
+    parser.add_argument('--arch_index', default=0, type=int)
+    parser.add_argument('--epochs', default=50000, type=int)
+    parser.add_argument('--data_size', default=1000, type=int)
+    parser.add_argument('--lr', default=1e-3, type=float)
+    parser.add_argument('--sample_num', default=2, type=int)
+    parser.add_argument('--hard_gum', default=True, type=bool)
+    parser.add_argument('--data_scale', default=20, type=int)
+    parser.add_argument('--wandb_tags', nargs='+', type=str)
+    parser.add_argument('--other_loss_scale', default=100., type=float)
+    parser.add_argument('--hard_ratio', default=.7, type=float)
+
+    parser.add_argument('--target_ratio', default=0.001, type=float)
+    parser.add_argument('--spls', default=0.1, type=float)
+    parser.add_argument('--constrain_scale', default=1, type=int)
+    parser.add_argument('--l0_scale', default=0.01, type=float)
+    parser.add_argument('--bl0_scale', default=0, type=int)
+    parser.add_argument('--target_temp', default=0.2, type=float)
+    parser.add_argument('--warmup_epoch', default=0, type=int)
+
+    return parser

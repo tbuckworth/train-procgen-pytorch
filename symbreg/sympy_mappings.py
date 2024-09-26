@@ -18,6 +18,16 @@ from symbolic_regression import load_nn_policy
 from symbreg.extra_mappings import get_extra_torch_mappings
 
 
+def trial_sympy2torch_number_symbol(self):
+    x, y, z = sympy.symbols("x y z")
+    expr = sin(sign(-0.041662704))
+
+    X = self.torch.tensor(np.random.randn(1000, 3))
+    true = self.torch.sin(self.torch.tensor(-1))
+    torch_module = sympy2torch(expr, [x, y, z])
+    torch_out = torch_module(X)
+    assert(np.isclose(torch_out.detach().numpy(), true.detach().numpy()))
+
 def trial_cust():
     x, y = symbols("x y")
     expression = Piecewise((1.0, x > y), (0.0, True))
@@ -26,7 +36,7 @@ def trial_cust():
     expression = exp(2)
     expression = sin(1)
     expression = sin(sign(-0.041662704))
-    module = sympy2torch(expression, [x, y])#, extra_torch_mappings=get_extra_torch_mappings())
+    module = sympy2torch(expression, [x, y], extra_torch_mappings=get_extra_torch_mappings())
     X = torch.rand(100, 2).float() * 10
 
     torch_out = module(X)
@@ -97,4 +107,4 @@ def load_and_test():
     print("halt")
 
 if __name__ == "__main__":
-    trial_cust()
+    trial_sympy2torch_number_symbol()

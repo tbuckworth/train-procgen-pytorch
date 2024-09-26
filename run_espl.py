@@ -1,37 +1,42 @@
+import argparse
+
 import numpy as np
 import torch
 import wandb
 from torch import optim, nn
 
 from common.espl import init_op_list, EQL
-from helper_local import wandb_login
+from helper_local import wandb_login, add_espl_args
 from sym import printsymbolic
 
-if __name__ == "__main__":
+
+
+def run_espl_x_squared(args):
     arch_index = 0
     init_op_list(arch_index)
     obs_dim = 1
     action_dim = 1
     cfg = dict(
-        arch_index=arch_index,
-        epochs=50000,
-        data_size=1000,
-        lr=1e-3,
-        sample_num=2,
-        hard_gum=True,
-        data_scale=20,
-        wandb_tags=["x_squared"],
-        other_loss_scale=100.,
+        arch_index=args.arch_index,
+        epochs=args.epochs,
+        data_size=args.data_size,
+        lr=args.lr,
+        sample_num=args.sample_num,
+        hard_gum=args.hard_gum,
+        data_scale=args.data_scale,
+        wandb_tags=args.wandb_tags,
+        other_loss_scale=args.other_loss_scale,
+        hard_ratio=args.hard_ratio,
     )
     eql_args = dict(
-        target_ratio=0.001,
-        spls=0.1,
-        constrain_scale=1,
-        l0_scale=0.01,
-        bl0_scale=0,
-        target_temp=0.2,
-        warmup_epoch=0,
-        hard_epoch=9000,#int(cfg["epochs"]*.7),
+        target_ratio=args.target_ratio,
+        spls=args.spls,
+        constrain_scale=args.constrain_scale,
+        l0_scale=args.l0_scale,
+        bl0_scale=args.bl0_scale,
+        target_temp=args.target_temp,
+        warmup_epoch=args.warmup_epoch,
+        hard_epoch=int(cfg["epochs"]*cfg["hard_ratio"]),
     )
     cfg.update(eql_args)
     epochs = cfg["epochs"]
@@ -68,7 +73,6 @@ if __name__ == "__main__":
         total_loss = nn.MSELoss()(y, y_hat) + other_loss * other_loss_scale
         model.update_const()
 
-        # print(total_loss.item())
         optimizer.zero_grad()
         total_loss.backward()
         nn.utils.clip_grad_norm_(model.parameters(), max_norm=0.5)
@@ -115,45 +119,29 @@ if __name__ == "__main__":
     wandb.log({"predicted out of distribution mode 0": wandb.plot.scatter(table, "x", "ood_mode_0",
                                                                           title="ood_mode_0 prediction vs x")})
 
+    ood_loss = nn.MSELoss()(y, y_hat_mode_0_large)
     scores = model.scores.data
     constw_base = model.constw_base.data
     constb = model.constb.data
     constw = constw_base * ((scores > 0.5).float())
     sym_exp = str(printsymbolic(constw, constb, num_inputs, arch_index))
-    if len(sym_exp) > 1000:
-        sym_exp = f"expression length = {len(sym_exp)}"
+
+    exp_length = len(sym_exp)
+    if exp_length > 1000:
+        sym_exp = f"expression length = {exp_length}"
 
     wandb.log({
-        # "y": y.detach().cpu().numpy(),
-        # "y_hat": y_hat.detach().cpu().numpy(),
-        # "y_hat_mode_0": y_hat_mode_0.detach().cpu().numpy(),
-        # "x": obs,
         "pct_0_weight": zero_weight_pct.item(),
         "pct_0_weight_mode_0": zero_weight_pct_mode_0.item(),
         "symbolic_expression": str(sym_exp),
+        'ood_loss': ood_loss.item(),
+        'expression_length': exp_length,
     })
     wandb.finish()
-    exit(0)
 
-    plt.scatter(y.detach().numpy(), y_hat.detach().numpy())
-    plt.show()
 
-    plt.scatter(obs, y_hat.detach().numpy())
-    plt.scatter(obs, y.detach().numpy())
-    plt.show()
-
-    print("done")
-
-    # self.target_entropy = -np.prod(
-    #     self.env.action_space.shape).item()
-    # alpha_loss = -(self.log_alpha * (log_pi + self.target_entropy).detach()).mean()
-    # alpha = self.log_alphs.exp()
-    # self.log_alpha = torch.zeros(1, requires_grad=True, device=device)
-    # self.alpha_optimizer = optimizer_class(
-    #     [self.log_alpha],
-    #     lr=policy_lr,
-    # )
-    # policy_loss = (alpha * log_pi - q_new_actions).mean() + other_loss
-
-    summary(model, input_size=obs.shape)
-    print("done")
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser = add_espl_args(parser)
+    args = parser.parse_args()
+    run_espl_x_squared(args)
