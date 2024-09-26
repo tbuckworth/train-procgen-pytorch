@@ -322,9 +322,10 @@ def run_graph_ppo_multi_sr(args):
                     # implies early stopping, which implies good performance, so worth repeating.
                     find_actor = True
                     error_count += 1
-                    if error_count >= 10:
-                        wandb.finish(exit_code=-1)
-                        return
+                if error_count >= 10 or t >= args.num_timesteps:
+                    wandb.finish(exit_code=-1)
+                    return
+
     if args.use_wandb:
         wandb.finish()
 
