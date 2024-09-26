@@ -770,7 +770,7 @@ def espl_x_squared():
     id_tag = fixed["wandb_tags"][0]
     fixed["original_start"] = time.asctime()
     while True:
-        optimize_hyperparams(bounds, fixed, project, id_tag, run_hp_for_espl)
+        optimize_hyperparams(bounds, fixed, project, id_tag, run_hp_for_espl, opt_metric='summary.ood_loss')
 
 
 
