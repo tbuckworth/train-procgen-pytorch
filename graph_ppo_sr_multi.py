@@ -76,7 +76,7 @@ def generate_data_supervised(agent, env, n):
     return Obs, Y, A_out, M_out
 
 
-def fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensemble="messenger", a_coef=1., m_coef=1000., start=0, target_reward=np.inf):
+def fine_tune_supervised(student, teacher, env, test_env, args, ftdir, ensemble="messenger", a_coef=1., m_coef=1000., start=0, target_reward=np.inf):
     stop_early = False
     nc = args.num_checkpoints
     save_every = args.num_timesteps // nc
@@ -86,11 +86,11 @@ def fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensembl
     i = 0
 
     with torch.no_grad():
-        x, y, a_out, m_out = generate_data_supervised(nn_agent, env, args.batch_size)
-        loss, l_loss, m_loss, a_loss, a_out_hat, m_out_hat = calc_losses(x, y, a_out, m_out, ns_agent, a_coef, m_coef,
+        x, y, a_out, m_out = generate_data_supervised(teacher, env, args.batch_size)
+        loss, l_loss, m_loss, a_loss, a_out_hat, m_out_hat = calc_losses(x, y, a_out, m_out, student, a_coef, m_coef,
                                                                          args)
     mean_rewards, val_mean_rewards = set_elites_trial_agent(a_out, a_out_hat, args, ensemble, env, m_out, m_out_hat,
-                                                            ns_agent, test_env)
+                                                            student, test_env)
     if args.use_wandb:
         wandb.log({
             'timesteps': t,
@@ -101,11 +101,11 @@ def fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensembl
             'mean_reward': mean_rewards,
             'val_mean_reward': val_mean_rewards
         })
-    optimizer = torch.optim.Adam(ns_agent.policy.parameters(), lr=args.learning_rate)
+    optimizer = torch.optim.Adam(student.policy.parameters(), lr=args.learning_rate)
     for _ in range(args.num_timesteps // args.batch_size):
-        x, y, a_out, m_out = generate_data_supervised(nn_agent, env, args.batch_size)
+        x, y, a_out, m_out = generate_data_supervised(teacher, env, args.batch_size)
         for _ in range(args.epoch):
-            loss, l_loss, m_loss, a_loss, a_out_hat, m_out_hat = calc_losses(x, y, a_out, m_out, ns_agent, a_coef,
+            loss, l_loss, m_loss, a_loss, a_out_hat, m_out_hat = calc_losses(x, y, a_out, m_out, student, a_coef,
                                                                              m_coef, args)
 
             loss.backward()
@@ -113,7 +113,7 @@ def fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensembl
             optimizer.zero_grad()
 
         mean_rewards, val_mean_rewards = set_elites_trial_agent(a_out, a_out_hat, args, ensemble, env, m_out, m_out_hat,
-                                                                ns_agent, test_env)
+                                                                student, test_env)
         if mean_rewards > 0.95 * target_reward:
             stop_early = True
         t += len(x)
@@ -131,7 +131,7 @@ def fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensembl
             wandb.log(log)
         if t > checkpoints[i] or stop_early:
             print("Saving model.")
-            torch.save({'model_state_dict': ns_agent.policy.state_dict(),
+            torch.save({'model_state_dict': student.policy.state_dict(),
                         'optimizer_state_dict': optimizer.state_dict()},
                        ftdir + '/model_' + str(t) + '.pth')
             i += 1
@@ -139,7 +139,7 @@ def fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensembl
                 break
         if stop_early:
             break
-    set_elites(a_out, a_out_hat, ensemble, m_out, m_out_hat, ns_agent)
+    set_elites(a_out, a_out_hat, ensemble, m_out, m_out_hat, student)
     return t
 
 
@@ -296,9 +296,9 @@ def run_graph_ppo_multi_sr(args):
     else:
         t = fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensemble="messenger", target_reward=neural_train)
         # freeze messenger
-        for param in ns_agent.policy.graph.messenger.parameters():
+        s_agent = copy.deepcopy(ns_agent).to(device=ns_agent.policy.device)
+        for param in s_agent.policy.graph.messenger.parameters():
             param.requires_grad = False
-        nn_agent.policy.graph.messenger = copy.deepcopy(ns_agent.policy.graph.messenger).to(device=nn_agent.policy.device)
         if args.use_wandb:
             wandb.log({"switch_timestep": t})
         find_actor = True
@@ -311,10 +311,10 @@ def run_graph_ppo_multi_sr(args):
                 act_model, _ = find_model(a_in, a_out, actdir, save_file, weights, args)
                 act_torch = all_pysr_pytorch(act_model, policy.device)
                 eq_log["actor"] = act_model.get_best().equation
-                ns_agent.policy.graph.actor = act_torch.to(device=ns_agent.policy.device)
+                s_agent.policy.graph.actor = act_torch.to(device=ns_agent.policy.device)
                 if not args.stochastic:
-                    ns_agent.policy.set_no_var(True)
-                fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensemble="actor", start=t, target_reward=neural_train)
+                    s_agent.policy.set_no_var(True)
+                fine_tune_supervised(s_agent, ns_agent, env, test_env, args, ftdir, ensemble="actor", start=t, target_reward=neural_train)
             except Exception as e:
                 print(traceback.format_exc())
                 if t < args.num_timesteps:
