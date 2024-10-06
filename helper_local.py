@@ -1074,6 +1074,7 @@ def add_espl_args(parser):
     parser.add_argument('--wandb_tags', nargs='+', type=str)
     parser.add_argument('--other_loss_scale', default=100., type=float)
     parser.add_argument('--hard_ratio', default=.7, type=float)
+    parser.add_argument('--dist_func', default="mse", type=str)
 
     parser.add_argument('--target_ratio', default=0.001, type=float)
     parser.add_argument('--spls', default=0.1, type=float)

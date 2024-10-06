@@ -683,6 +683,7 @@ def graph_ppo_sr_ft():
         'min_mse': True,
         'num_checkpoints': 10,
         'n_tests': 40,
+        'load_ft': False,
     }
     bounds = {
         "data_size": [1000, 5000],

@@ -11,7 +11,8 @@ import wandb
 
 from double_graph_sr import create_symb_dir_if_exists, find_model, trial_agent_mean_reward
 from graph_sr import get_pysr_dir, load_all_pysr, all_pysr_pytorch
-from helper_local import add_symbreg_args, wandb_login, n_params, get_project, print_dict
+from helper_local import add_symbreg_args, wandb_login, n_params, get_project, print_dict, \
+    get_model_with_largest_checkpoint
 from symbolic_regression import load_nn_policy
 
 
@@ -91,6 +92,8 @@ def fine_tune_supervised(student, teacher, env, test_env, args, ftdir, ensemble=
                                                                          args)
     mean_rewards, val_mean_rewards = set_elites_trial_agent(a_out, a_out_hat, args, ensemble, env, m_out, m_out_hat,
                                                             student, test_env)
+    param_count = n_params(student.policy.graph.messenger) + n_params(student.policy.graph.actor)
+
     if args.use_wandb:
         wandb.log({
             'timesteps': t,
@@ -99,7 +102,8 @@ def fine_tune_supervised(student, teacher, env, test_env, args, ftdir, ensemble=
             'a_loss': a_loss.item(),
             'm_loss': m_loss.item(),
             'mean_reward': mean_rewards,
-            'val_mean_reward': val_mean_rewards
+            'val_mean_reward': val_mean_rewards,
+            'n_params': param_count,
         })
     optimizer = torch.optim.Adam(student.policy.parameters(), lr=args.learning_rate)
     for _ in range(args.num_timesteps // args.batch_size):
@@ -124,7 +128,8 @@ def fine_tune_supervised(student, teacher, env, test_env, args, ftdir, ensemble=
             'a_loss': a_loss.item(),
             'm_loss': m_loss.item(),
             'mean_reward': mean_rewards,
-            'val_mean_reward': val_mean_rewards
+            'val_mean_reward': val_mean_rewards,
+            'n_params': param_count,
         }
         print_dict(log)
         if args.use_wandb:
@@ -271,13 +276,16 @@ def run_graph_ppo_multi_sr(args):
         if args.use_wandb:
             wandb.log(eq_log)
 
+    # upload msgdir to wandb
+
     ns_agent = symbolic_agent_constructor(copy.deepcopy(policy), msg_torch, act_torch)
     if not args.stochastic:
         ns_agent.set_deterministic(True)
         if not args.sequential:
             ns_agent.policy.set_no_var(True)
     print(f"Neural Parameters: {n_params(nn_agent.policy)}")
-    print(f"Symbol Parameters: {n_params(ns_agent.policy.graph.messenger) + n_params(ns_agent.policy.graph.actor)}")
+    param_count = n_params(ns_agent.policy.graph.messenger) + n_params(ns_agent.policy.graph.actor)
+    print(f"Symbol Parameters: {param_count}")
 
     # supervised learning:
     _, env, _, test_env = load_nn_policy(logdir, n_envs=100)
@@ -294,7 +302,12 @@ def run_graph_ppo_multi_sr(args):
     if not args.sequential:
         fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensemble="both")
     else:
-        t = fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensemble="messenger", target_reward=neural_train)
+        if args.load_ft:
+            model_file = get_model_with_largest_checkpoint(ftdir)
+            checkpoint = torch.load(model_file, map_location=ns_agent.policy.device)
+            ns_agent.policy.load_state_dict(checkpoint["model_state_dict"])
+        else:
+            t = fine_tune_supervised(ns_agent, nn_agent, env, test_env, args, ftdir, ensemble="messenger", target_reward=neural_train)
         # freeze messenger
         s_agent = copy.deepcopy(ns_agent)
         s_agent.policy.to(device=ns_agent.policy.device)
@@ -315,6 +328,9 @@ def run_graph_ppo_multi_sr(args):
                 s_agent.policy.graph.actor = act_torch.to(device=ns_agent.policy.device)
                 if not args.stochastic:
                     s_agent.policy.set_no_var(True)
+
+                # upload act_dir to wandb
+
                 fine_tune_supervised(s_agent, ns_agent, env, test_env, args, ftdir, ensemble="actor", start=t, target_reward=neural_train)
             except Exception as e:
                 print(traceback.format_exc())
@@ -366,7 +382,7 @@ if __name__ == "__main__":
     args.num_checkpoints = 10
     args.num_timesteps = int(1e2)
     args.epoch = 1
-
+    args.load_ft = False
 
 
     # replicating perfect gen:

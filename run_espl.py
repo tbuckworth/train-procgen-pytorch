@@ -10,7 +10,6 @@ from helper_local import wandb_login, add_espl_args
 from sym import printsymbolic
 
 
-
 def run_espl_x_squared(args):
     arch_index = 0
     init_op_list(arch_index)
@@ -27,6 +26,7 @@ def run_espl_x_squared(args):
         wandb_tags=args.wandb_tags,
         other_loss_scale=args.other_loss_scale,
         hard_ratio=args.hard_ratio,
+        dist_func=args.dist_func,
     )
     eql_args = dict(
         target_ratio=args.target_ratio,
@@ -36,7 +36,7 @@ def run_espl_x_squared(args):
         bl0_scale=args.bl0_scale,
         target_temp=args.target_temp,
         warmup_epoch=args.warmup_epoch,
-        hard_epoch=int(cfg["epochs"]*cfg["hard_ratio"]),
+        hard_epoch=int(cfg["epochs"] * cfg["hard_ratio"]),
     )
     cfg.update(eql_args)
     epochs = cfg["epochs"]
@@ -46,6 +46,17 @@ def run_espl_x_squared(args):
     hard_gum = cfg["hard_gum"]
     data_scale = cfg["data_scale"]
     other_loss_scale = cfg["other_loss_scale"]
+
+    if args.dist_func == "mse":
+        dist_func = nn.MSELoss()
+    elif args.dist_func == "maxse":
+        dist_func = lambda y, y_hat: ((y - y_hat) ** 2).max()
+    elif args.dist_func == "meanmax":
+        def dist_func(y, y_hat):
+            sq_diff = (y - y_hat) ** 2
+            return sq_diff.mean() + sq_diff.max()*0.1
+    else:
+        raise NotImplementedError(f"dist_func {args.dist_func} not implemented. Must be one of 'mse', 'maxse'")
 
     num_inputs = obs_dim
     num_outputs = action_dim
@@ -70,7 +81,9 @@ def run_espl_x_squared(args):
         y_hat = model.forward(x, mode=1)
 
         other_loss, sparse_loss, constrain_loss, regu_loss, l0_loss, bl0_loss = model.get_loss()
-        total_loss = nn.MSELoss()(y, y_hat) + other_loss * other_loss_scale
+        dist_loss = dist_func(y, y_hat)
+
+        total_loss = dist_loss + other_loss * other_loss_scale
         model.update_const()
 
         optimizer.zero_grad()
@@ -78,11 +91,18 @@ def run_espl_x_squared(args):
         nn.utils.clip_grad_norm_(model.parameters(), max_norm=0.5)
         optimizer.step()
         model.proj()
-        if epoch % epochs//100 == 0:
+        if epoch % epochs // 100 == 0:
             print(f"Epoch:{epoch}\tLoss:{total_loss.item():.2f}")
+
+        if args.dist_func != "mse":
+            with torch.no_grad():
+                mse_loss = ((y-y_hat)**2).mean()
+        else:
+            mse_loss = dist_loss
         wandb.log({
             "total_loss": total_loss.item(),
-            "mse_loss": (total_loss - other_loss).item(),
+            "mse_loss": mse_loss.item(),
+            'dist_loss': dist_loss.item(),
             "sparse_loss": sparse_loss.item(),
             "other_loss": other_loss.item(),
             "constrain_loss": constrain_loss.item(),
@@ -144,4 +164,5 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser = add_espl_args(parser)
     args = parser.parse_args()
+    args.dist_func = "meanmax"
     run_espl_x_squared(args)
