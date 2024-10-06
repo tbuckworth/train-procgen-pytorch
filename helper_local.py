@@ -1065,7 +1065,7 @@ def print_dict(log):
 
 def add_espl_args(parser):
     parser.add_argument('--arch_index', default=0, type=int)
-    parser.add_argument('--epochs', default=100, type=int)
+    parser.add_argument('--epochs', default=00, type=int)
     parser.add_argument('--data_size', default=1000, type=int)
     parser.add_argument('--lr', default=1e-3, type=float)
     parser.add_argument('--sample_num', default=2, type=int)
