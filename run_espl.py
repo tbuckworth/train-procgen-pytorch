@@ -232,5 +232,5 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser = add_espl_args(parser)
     args = parser.parse_args()
-    args.dist_func = "meanmax"
+    # args.dist_func = "meanmax"
     run_espl_x_squared(args)
