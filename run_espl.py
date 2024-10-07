@@ -106,6 +106,7 @@ def run_espl_x_squared(args):
             model.sample_sparse_constw(mode=0)
             y_ood_hat = model.forward(x_ood, mode=0)
             ood_mse_loss = nn.MSELoss()(y_ood_hat, y_ood)
+            sparsity = model.constw_mask.mean()
 
         if args.dist_func != "mse":
             with torch.no_grad():
@@ -126,6 +127,7 @@ def run_espl_x_squared(args):
             "epoch": epoch,
             "temp": model.temp,
             "target_ratio": model.target_ratio_current,
+            "sparsity": sparsity.item(),
         })
         model.set_temp_target_ratio(epoch)
     zero_weight_pct = (model.constw == 0).sum() / np.prod(model.constw.shape)
@@ -188,11 +190,15 @@ def run_espl_x_squared(args):
             y_best = y_hat
             mse_best = mse
             best_sparsity = sparsity
+            best_constw_mask = model.constw_mask
         print(f"{i}: sparsity: {sparsity :.2f}\tmse: {mse :,.2f}")
         # plt.scatter(obs.squeeze(), y_hat.squeeze().detach().cpu().numpy(), label=str(i))
     plt.scatter(obs.squeeze(), y.squeeze().detach().cpu().numpy(), label="x**2")
     plt.scatter(obs.squeeze(), y_best.squeeze().detach().cpu().numpy(), label="best")
     plt.show()
+    constw = constw_base * best_constw_mask
+    sym_exp = str(printsymbolic(constw, constb, num_inputs, arch_index))
+    print(sym_exp)
 
     def sample_sparse_constw(model, eps):
         clamped_scores = torch.sigmoid(model.scores)
