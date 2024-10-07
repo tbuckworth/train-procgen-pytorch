@@ -105,7 +105,7 @@ def run_espl_x_squared(args):
         with torch.no_grad():
             model.sample_sparse_constw(mode=0)
             y_ood_hat = model.forward(x_ood, mode=0)
-            ood_mse_loss = nn.MSELoss()(y_ood_hat, y_hat)
+            ood_mse_loss = nn.MSELoss()(y_ood_hat, y_ood)
 
         if args.dist_func != "mse":
             with torch.no_grad():
