@@ -2,6 +2,8 @@ import argparse
 
 import numpy as np
 import torch
+from matplotlib import pyplot as plt
+
 import wandb
 from torch import optim, nn
 
@@ -64,9 +66,15 @@ def run_espl_x_squared(args):
 
     optimizer = optim.Adam(model.parameters(), lr=lr)
     model.sample_sparse_constw(mode=0)
+
     obs = (np.random.random((data_size, 1)) - .5) * data_scale
     x = torch.FloatTensor(obs)
     y = x ** 2
+
+    obs_ood = (np.random.random((data_size, 1)) - .5) * data_scale * 5
+    x_ood = torch.FloatTensor(obs_ood)
+    y_ood = x_ood ** 2
+
     if sample_num > 1:
         y = y.unsqueeze(0).expand(sample_num, -1, -1).reshape(sample_num * data_size, -1)
 
@@ -91,8 +99,13 @@ def run_espl_x_squared(args):
         nn.utils.clip_grad_norm_(model.parameters(), max_norm=0.5)
         optimizer.step()
         model.proj()
-        if epoch % epochs // 100 == 0:
+        if epoch % (epochs // 100) == 0:
             print(f"Epoch:{epoch}\tLoss:{total_loss.item():.2f}")
+
+        with torch.no_grad():
+            model.sample_sparse_constw(mode=0)
+            y_ood_hat = model.forward(x_ood, mode=0)
+            ood_mse_loss = nn.MSELoss()(y_ood_hat, y_hat)
 
         if args.dist_func != "mse":
             with torch.no_grad():
@@ -103,6 +116,7 @@ def run_espl_x_squared(args):
             "total_loss": total_loss.item(),
             "mse_loss": mse_loss.item(),
             'dist_loss': dist_loss.item(),
+            'ood_mse_loss': ood_mse_loss.item(),
             "sparse_loss": sparse_loss.item(),
             "other_loss": other_loss.item(),
             "constrain_loss": constrain_loss.item(),
@@ -158,6 +172,54 @@ def run_espl_x_squared(args):
         'expression_length': exp_length,
     })
     wandb.finish()
+    return
+
+
+    obs = (np.random.random((data_size, 1)) - .5) * data_scale * 5
+    x = torch.FloatTensor(obs)
+    y = x ** 2
+    mse_best = torch.inf
+    for i in range(1000):
+        model.sample_sparse_constw(mode=0)
+        y_hat = model.forward(x, mode=0)
+        mse = ((y - y_hat) ** 2).mean()
+        sparsity = model.constw_mask.mean()
+        if mse < mse_best:
+            y_best = y_hat
+            mse_best = mse
+            best_sparsity = sparsity
+        print(f"{i}: sparsity: {sparsity :.2f}\tmse: {mse :,.2f}")
+        # plt.scatter(obs.squeeze(), y_hat.squeeze().detach().cpu().numpy(), label=str(i))
+    plt.scatter(obs.squeeze(), y.squeeze().detach().cpu().numpy(), label="x**2")
+    plt.scatter(obs.squeeze(), y_best.squeeze().detach().cpu().numpy(), label="best")
+    plt.show()
+
+    def sample_sparse_constw(model, eps):
+        clamped_scores = torch.sigmoid(model.scores)
+        model.constw_mask = (torch.rand_like(model.scores) + eps < clamped_scores).float()
+        model.constw = model.constw_base * model.constw_mask
+
+    obs = (np.random.random((data_size, 1)) - .5) * data_scale * 5
+    x = torch.FloatTensor(obs)
+    y = x ** 2
+    mse_best = torch.inf
+    for i in range(50):
+        eps = i/100
+        sample_sparse_constw(model, eps)
+        y_hat = model.forward(x, mode=0)
+        mse = ((y - y_hat) ** 2).mean()
+        sparsity = model.constw_mask.mean()
+        if mse < mse_best:
+            y_best = y_hat
+            mse_best = mse
+            sparsity_best = sparsity
+            eps_best = eps
+        print(f"{i}: sparsity: {sparsity :.2f}\tmse: {mse :,.2f}")
+        # plt.scatter(obs.squeeze(), y_hat.squeeze().detach().cpu().numpy(), label=str(i))
+    plt.scatter(obs.squeeze(), y.squeeze().detach().cpu().numpy(), label="x**2")
+    plt.scatter(obs.squeeze(), y_best.squeeze().detach().cpu().numpy(), label="best")
+    plt.show()
+
 
 
 if __name__ == "__main__":
