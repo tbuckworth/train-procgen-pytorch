@@ -1,4 +1,6 @@
 import math
+
+import einops
 import torch
 from torch import nn
 
@@ -150,9 +152,6 @@ op_in = [2, 2, 1, 1, 1, 1, 1, 3]
 #     print(op_index_list)
 
 
-
-
-
 class EQL(nn.Module):
     '''
     Code from ESPL paper (Efficient Symbolic Policy Learning).
@@ -172,7 +171,7 @@ class EQL(nn.Module):
         super(EQL, self).__init__()
         self.init_op_list(arch_index)
         self.target_ratio = target_ratio
-        self.target_ratio_current = 1-target_ratio
+        self.target_ratio_current = 1 - target_ratio
         self.spls = spls
         self.constrain_scale = constrain_scale
         self.l0_scale = l0_scale
@@ -259,17 +258,18 @@ class EQL(nn.Module):
             offset = 0
             for i in range(len(self.op_in_list[index])):
                 if self.op_in_list[index][i] == 1:
-                    out, regu = self.op_regu_list[index][i](input[:, offset])
+                    out, regu = self.op_regu_list[index][i](input[..., offset])
                     op_out.append(out)
                     regu_loss += regu
                     offset += 1
                 elif self.op_in_list[index][i] == 2:
-                    out, regu = self.op_regu_list[index][i](input[:, offset], input[:, offset + 1])
+                    out, regu = self.op_regu_list[index][i](input[..., offset], input[..., offset + 1])
                     op_out.append(out)
                     regu_loss += regu
                     offset += 2
                 elif self.op_in_list[index][i] == 3:
-                    out, regu = self.op_regu_list[index][i](input[:, offset], input[:, offset + 1], input[:, offset + 2])
+                    out, regu = self.op_regu_list[index][i](input[..., offset], input[..., offset + 1],
+                                                            input[..., offset + 2])
                     op_out.append(out)
                     regu_loss += regu
                     offset += 3
@@ -277,19 +277,19 @@ class EQL(nn.Module):
             offset = 0
             for i in range(len(self.op_in_list[index])):
                 if self.op_in_list[index][i] == 1:
-                    out = self.op_list[index][i](input[:, offset])
+                    out = self.op_list[index][i](input[..., offset])
                     op_out.append(out)
                     offset += 1
                 elif self.op_in_list[index][i] == 2:
-                    out = self.op_list[index][i](input[:, offset], input[:, offset + 1])
+                    out = self.op_list[index][i](input[..., offset], input[..., offset + 1])
                     op_out.append(out)
                     offset += 2
                 elif self.op_in_list[index][i] == 3:
-                    out = self.op_list[index][i](input[:, offset], input[:, offset + 1], input[:, offset + 2])
+                    out = self.op_list[index][i](input[..., offset], input[..., offset + 1], input[..., offset + 2])
                     op_out.append(out)
                     offset += 3
             # print(offset)
-        return torch.stack(op_out, dim=1), regu_loss
+        return torch.stack(op_out, dim=-1), regu_loss
 
     def constrain_loss(self):
 
@@ -366,13 +366,14 @@ class EQL(nn.Module):
         if mode:
             self.sample_sparse_constw(1)
             # constw sample,num_outputs,wshape
-            constw = self.constw.unsqueeze(1).expand(-1, batch, -1, -1).reshape(-1, self.num_outputs, self.wshape)
-            constb = self.constb.unsqueeze(0).unsqueeze(1). \
-                expand(self.sample_num, batch, -1, -1). \
-                reshape(-1, self.num_outputs, self.bshape)
+            constw = self.constw  # .unsqueeze(1).expand(-1, batch, -1, -1).reshape(-1, self.num_outputs, self.wshape)
+            # constb = self.constb#.unsqueeze(0).unsqueeze(1). \
+            # expand(self.sample_num, batch, -1, -1). \
+            # reshape(-1, self.num_outputs, self.bshape)
+            constb = self.constb.unsqueeze(0).expand(self.sample_num, -1, -1)
         else:
-            constw = self.constw.unsqueeze(0).expand(batch, -1, -1)
-            constb = self.constb.unsqueeze(0).expand(batch, -1, -1)
+            constw = self.constw  # .unsqueeze(0).expand(batch, -1, -1)
+            constb = self.constb  # .unsqueeze(0).expand(batch, -1, -1)
 
         w_list = []
         inshape_ = self.num_inputs
@@ -396,39 +397,45 @@ class EQL(nn.Module):
         b_last = constb[:, :, low:]
         # x meta_batch*batch_size,num_inputs
         if mode:
-            x = x.unsqueeze(0).unsqueeze(-2).expand(self.sample_num, -1, self.num_outputs,
-                                                   -1)  # sample_num,batch,num_outputs,num_inputs
-            x = x.reshape(self.sample_num * batch * self.num_outputs, self.num_inputs)
+            # TODO: maybe outputs are a necessary dim
+            x = x.unsqueeze(0).expand(self.sample_num, -1, -1)
+            # x = x.unsqueeze(0).unsqueeze(-2).expand(self.sample_num, -1, self.num_outputs,
+            #                                         -1)  # sample_num,batch,num_outputs,num_inputs
+            # x = x.reshape(self.sample_num * batch * self.num_outputs, self.num_inputs)
         else:
-            x = x.unsqueeze(1).expand(-1, self.num_outputs, -1)  # batch,num_outputs,num_inputs
-            x = x.reshape(batch * self.num_outputs, self.num_inputs)
+            pass
+            # x = x.unsqueeze(1).expand(-1, self.num_outputs, -1)  # batch,num_outputs,num_inputs
+            # x = x.reshape(batch * self.num_outputs, self.num_inputs)
         reguloss = 0
         inshape_ = self.num_inputs
         if mode:
             batch = self.sample_num * batch
         for i in range(self.depth):
-            w = w_list[i].reshape(batch * self.num_outputs, self.op_inall_list[i], inshape_)
+            w = w_list[i]  # .reshape(batch * self.num_outputs, self.op_inall_list[i], inshape_)
             inshape_ += len(self.op_in_list[i])
-            # if mode:
-            #     print(b_list[i].shape,batch,self.num_outputs,op_inall_list[i])
-            b = b_list[i].reshape(batch * self.num_outputs, self.op_inall_list[i])
-            # print(w.shape,x.shape)
-            hidden = torch.bmm(w, x.unsqueeze(2)).squeeze(-1) + b
-            # h_fast = w[0].T*x + b
-            # assert torch.allclose(hidden, h_fast, )
+            b = b_list[i]
+            # expand b to size of w (only relevant after index 0):
+            b = b.tile((1, 1, w.shape[-1] // b.shape[-1]))  # .reshape(batch * self.num_outputs, self.op_inall_list[i])
+            # hidden = torch.bmm(w, x.unsqueeze(2)).squeeze(-1) + b
+            hidden = einops.einsum(x, w, "n b f, n f o -> n b o") + b
+
             # print(hidden.shape,i,len(op_in_list[i]),op_inall_list[i])
             op_hidden, regu = self.opfunc(hidden, i, mode)
             x = torch.cat([x, op_hidden], dim=-1)
             # print(x.shape)
             reguloss += regu
         # print(self.num_inputs+(self.depth-1)*op_num*self.repeat)
-        w = w_last.reshape(batch * self.num_outputs, 1, inshape_)
+        w = w_last#.reshape(batch * self.num_outputs, 1, inshape_)
         # print(constb.shape,b_last.shape)
-        b = b_last.reshape(batch * self.num_outputs, 1)
+        b = b_last.squeeze()#.reshape(batch * self.num_outputs, 1)
         # print(w.shape,x.shape,b.shape)
-        out = torch.bmm(w, x.unsqueeze(2)).squeeze(-1) + b
+        # out = torch.bmm(w, x.unsqueeze(2)).squeeze(-1) + b
+        #TODO: output dim?
+        out = einops.einsum(x, w, "n b f, n f o -> n b") + b.unsqueeze(-1)
+
         self.regu_loss = reguloss
-        return out.reshape(batch, self.num_outputs)
+        return out
+        # return out.reshape(batch, self.num_outputs)
 
     def set_temp_target_ratio(self, epoch):
         self.temp = 1 / ((1 - self.target_temp) * (
@@ -436,5 +443,3 @@ class EQL(nn.Module):
         clip_it = max(min(epoch, self.hard_epoch), self.warmup_epoch)
         self.target_ratio_current = self.target_ratio + (1 - self.target_ratio) * (
                 1 - ((clip_it - self.warmup_epoch) / (self.hard_epoch - self.warmup_epoch)) ** 2)
-
-

@@ -82,7 +82,9 @@ def run_espl_x_squared(args):
         y_ood = y_ood.sum(-1)
 
     if sample_num > 1:
-        y = y.unsqueeze(0).expand(sample_num, -1, -1).reshape(sample_num * data_size, -1)
+        # TODO: no longer necessary?
+        pass
+        # y = y.unsqueeze(0).expand(sample_num, -1, -1).reshape(sample_num * data_size, -1)
 
     name = np.random.randint(1e5)
     wandb_login()
