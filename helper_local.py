@@ -18,7 +18,7 @@ from matplotlib import pyplot as plt
 
 from common.model import NatureModel, ImpalaModel, MHAModel, ImpalaVQModel, ImpalaVQMHAModel, ImpalaFSQModel, ribMHA, \
     ImpalaFSQMHAModel, RibFSQMHAModel, MLPModel, TransformoBot, GraphTransitionModel, ImpalaCNN, \
-    GraphValueModel, GraphActorCritic
+    GraphValueModel, GraphActorCritic, GraphActorCriticEQL
 from common.policy import CategoricalPolicy, TransitionPolicy, PixelTransPolicy, GraphTransitionPolicy, \
     DoubleTransitionPolicy, GraphPolicy
 from moviepy.editor import ImageSequenceClip
@@ -374,6 +374,32 @@ def initialize_model(device, env, hyperparameters, in_channels=None):
             action_size = action_space.n
         graph = GraphActorCritic(in_channels, depth, mid_weight, latent_size,
                                  action_size, device, continuous_actions=cont_act)
+        policy = GraphPolicy(graph, continuous_actions=cont_act, act_space=action_space, device=device, simple_scaling=simple_scaling)
+        policy.to(device)
+        return graph, observation_shape, policy
+    elif architecture == 'eql-graph':
+        depth = hyperparameters.get("depth", 4)
+        mid_weight = hyperparameters.get("mid_weight", 256)
+        latent_size = hyperparameters.get("latent_size", 1)
+        cont_act = hyperparameters.get("continuous", False)
+        simple_scaling = hyperparameters.get("simple_scaling", True)
+        eql_args = dict(
+            target_ratio=hyperparameters["target_ratio"],
+            spls=hyperparameters["spls"],
+            constrain_scale=hyperparameters["constrain_scale"],
+            l0_scale=hyperparameters["l0_scale"],
+            bl0_scale=hyperparameters["bl0_scale"],
+            target_temp=hyperparameters["target_temp"],
+            warmup_epoch=hyperparameters["warmup_epoch"],
+            hard_epoch=0,#TODO: sort this out
+            sample_num=hyperparameters["sample_num"],
+            hard_gum=hyperparameters["hard_gum"],
+        )
+        if cont_act:
+            action_size = action_space.shape[-1]
+        else:
+            action_size = action_space.n
+        graph = GraphActorCriticEQL(in_channels, eql_args, depth, mid_weight, latent_size, action_size, device, continuous_actions=cont_act)
         policy = GraphPolicy(graph, continuous_actions=cont_act, act_space=action_space, device=device, simple_scaling=simple_scaling)
         policy.to(device)
         return graph, observation_shape, policy

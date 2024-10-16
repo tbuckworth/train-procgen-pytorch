@@ -5,6 +5,7 @@ import numpy as np
 from torch import jit
 from torch.distributions import Categorical
 
+from .espl import EQL
 from .intention import MultiHeadIntention
 from .misc_util import orthogonal_init, xavier_uniform_init
 import torch.nn as nn
@@ -977,6 +978,7 @@ class MLPModel(nn.Module):
 class GraphModel(nn.Module, ABC):
     batching_threshold = 50000
     split_size = 25000
+
     def __init__(self):
         super(GraphModel, self).__init__()
 
@@ -1122,6 +1124,68 @@ class GraphActorCritic(GraphModel):
 
         xj = acts.unsqueeze(-3).tile([n, 1, 1])
 
+        msg_in = torch.concat([xi, xj], dim=-1)
+        return msg_in
+
+
+class GraphActorCriticEQL(GraphModel):
+    def __init__(self, in_channels, eql_args, depth, mid_weight, latent_size, action_size, device, continuous_actions=False):
+        super(GraphActorCriticEQL, self).__init__()
+        self.input_size = in_channels
+        self.output_dim = latent_size
+        self.action_size = action_size
+        self.device = device
+        self.continuous = continuous_actions
+        actor_output = latent_size
+        self.no_var = False
+        self.obs_dim = -3
+        if continuous_actions:
+            actor_output *= 2
+            # self.obs_dim -= 1
+
+        self.messenger = EQL(4, latent_size, **eql_args)
+        self.actor = EQL(3, actor_output, **eql_args)
+        self.critic = MLPModel(in_channels, depth, mid_weight, latent_size)
+        self.apply(xavier_uniform_init)
+
+    def set_no_var(self, no_var):
+        if no_var and not self.no_var:
+            self.obs_dim += 1
+        self.no_var = no_var
+
+    def forward(self, obs):
+        n, x = self.prep_input(obs)
+        msg = self.sum_all_messages(n, x)
+        m = self.append_index(msg)
+        logits = self.run_actor(m, n)
+        return logits, self.critic(obs)
+
+    def run_actor(self, m, n):
+        am, am_messages = self.collect_actor_in_out(m, n)
+        logits = am_messages.sum(self.obs_dim).squeeze()
+        return logits
+
+    def collect_actor_in_out(self, m, n):
+        acts = self.generate_actions(m, n)
+        am = self.vectorize_for_action_message_pass(n, m, acts)
+        am_messages = self.pass_maybe_batch(self.actor, am)
+        return am, am_messages
+
+    def generate_actions(self, m, n):
+        shp = np.array(m.shape)
+        flt = shp == n
+        shp[flt] = self.action_size
+        shp[~flt] = 1
+        acts = torch.arange(self.action_size).reshape(shp.tolist()).to(m.device)
+        shp = np.array(m.shape)
+        shp[flt] = 1
+        shp[-1] = 1
+        acts = acts.tile(shp.tolist())
+        return acts
+
+    def vectorize_for_action_message_pass(self, n, m, acts):
+        xi = m.unsqueeze(-2).tile([self.action_size, 1])
+        xj = acts.unsqueeze(-3).tile([n, 1, 1])
         msg_in = torch.concat([xi, xj], dim=-1)
         return msg_in
 

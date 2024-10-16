@@ -203,7 +203,7 @@ class CartPoleTestModel(unittest.TestCase):
         cls.device = torch.device('cpu')
         env_args = {"n_envs": 10}
         cls.n_envs = env_args["n_envs"]
-        env_cons = get_env_constructor("cartpole")
+        env_cons = get_env_constructor("cartpole_continuous")
         cls.env = env_cons(None, env_args, False)
         # cls.env = create_cartpole_env_pre_vec(env_args, render=False, normalize_rew=True)
         cls.in_channels = cls.env.observation_space.shape[0]
@@ -294,6 +294,12 @@ class CartPoleTestModel(unittest.TestCase):
         hyperparameters = get_hyperparams("graph-cartpole")
         model, obs_shape, policy = initialize_model(self.device, self.env, hyperparameters)
         policy.forward(self.obs)
+
+    def test_eql_actor_policy(self):
+        hyperparameters = get_hyperparams("eql-graph")
+        model, obs_shape, policy = initialize_model(self.device, self.env, hyperparameters)
+        policy.forward(self.obs)
+        summary(model, self.obs.shape)
 
 
 if __name__ == '__main__':
