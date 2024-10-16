@@ -2,20 +2,20 @@ import math
 import torch
 from torch import nn
 
-op_list = []
-
-op_index_list = []
-op_index_list.append([0, 0, 0])
-op_index_list.append([1, 1, 1])
-op_index_list.append([2, 2, 3, 3, 4, 4, 5, 5])
-op_index_list.append([2, 2, 3, 3, 4, 4, 5, 5])
-op_index_list.append([0, 1, 2, 3])
-op_index_list.append([0, 1, 2, 3])
-op_list.append(op_index_list)
-
-
-def get_sym_arch(index):
-    return op_list[index]
+# op_list = []
+#
+# op_index_list = []
+# op_index_list.append([0, 0, 0])
+# op_index_list.append([1, 1, 1])
+# op_index_list.append([2, 2, 3, 3, 4, 4, 5, 5])
+# op_index_list.append([2, 2, 3, 3, 4, 4, 5, 5])
+# op_index_list.append([0, 1, 2, 3])
+# op_index_list.append([0, 1, 2, 3])
+# op_list.append(op_index_list)
+#
+#
+# def get_sym_arch(index):
+#     return op_list[index]
 
 
 LOG_SIG_MAX = 2
@@ -118,76 +118,39 @@ regu_op = [mul_regu, lim_div_regu, lim_log_regu, lim_exp_regu, sin_regu, cos_reg
 op_in = [2, 2, 1, 1, 1, 1, 1, 3]
 
 
-def init_op_list(index):
-    global op_list
-    global op_regu_list
-    global op_in_list
-    global op_inall_list
-    global op_index_list
-    op_index_list = get_sym_arch(index)
-    op_list = []
-    op_regu_list = []
-    op_in_list = []
-    op_inall_list = []
-    for layer in op_index_list:
-        op = []
-        op_regu = []
-        op_in_num = []
-        op_inall = 0
-        for index in layer:
-            op.append(base_op[index])
-            op_regu.append(regu_op[index])
-            op_in_num.append(op_in[index])
-            op_inall += op_in[index]
-        op_list.append(op)
-        op_regu_list.append(op_regu)
-        op_in_list.append(op_in_num)
-        op_inall_list.append(op_inall)
+# def init_op_list(index):
+#     global op_list
+#     global op_regu_list
+#     global op_in_list
+#     global op_inall_list
+#     global op_index_list
+#     op_index_list = get_sym_arch(index)
+#     op_list = []
+#     op_regu_list = []
+#     op_in_list = []
+#     op_inall_list = []
+#     for layer in op_index_list:
+#         op = []
+#         op_regu = []
+#         op_in_num = []
+#         op_inall = 0
+#         for index in layer:
+#             op.append(base_op[index])
+#             op_regu.append(regu_op[index])
+#             op_in_num.append(op_in[index])
+#             op_inall += op_in[index]
+#         op_list.append(op)
+#         op_regu_list.append(op_regu)
+#         op_in_list.append(op_in_num)
+#         op_inall_list.append(op_inall)
+#
+#     print("N inputs for each operator:")
+#     print(op_in_list)
+#     print(op_inall_list)
+#     print(op_index_list)
 
-    print("N inputs for each operator:")
-    print(op_in_list)
-    print(op_inall_list)
-    print(op_index_list)
 
 
-def opfunc(input, index, mode):  # input: batch,op_inall
-    op_out = []
-    regu_loss = 0
-    if mode == 1:
-        offset = 0
-        for i in range(len(op_in_list[index])):
-            if op_in_list[index][i] == 1:
-                out, regu = op_regu_list[index][i](input[:, offset])
-                op_out.append(out)
-                regu_loss += regu
-                offset += 1
-            elif op_in_list[index][i] == 2:
-                out, regu = op_regu_list[index][i](input[:, offset], input[:, offset + 1])
-                op_out.append(out)
-                regu_loss += regu
-                offset += 2
-            elif op_in_list[index][i] == 3:
-                out, regu = op_regu_list[index][i](input[:, offset], input[:, offset + 1], input[:, offset + 2])
-                op_out.append(out)
-                regu_loss += regu
-                offset += 3
-    else:
-        offset = 0
-        for i in range(len(op_in_list[index])):
-            if op_in_list[index][i] == 1:
-                out = op_list[index][i](input[:, offset])
-                op_out.append(out)
-                offset += 1
-            elif op_in_list[index][i] == 2:
-                out = op_list[index][i](input[:, offset], input[:, offset + 1])
-                op_out.append(out)
-                offset += 2
-            elif op_in_list[index][i] == 3:
-                out = op_list[index][i](input[:, offset], input[:, offset + 1], input[:, offset + 2])
-                op_out.append(out)
-                offset += 3
-        # print(offset)
-    return torch.stack(op_out, dim=1), regu_loss
 
 
 class EQL(nn.Module):
@@ -204,8 +167,10 @@ class EQL(nn.Module):
                  target_temp=0.2,
                  warmup_epoch=0,
                  hard_epoch=900,
+                 arch_index=0,
                  ):
         super(EQL, self).__init__()
+        self.init_op_list(arch_index)
         self.target_ratio = target_ratio
         self.target_ratio_current = 1-target_ratio
         self.spls = spls
@@ -224,15 +189,15 @@ class EQL(nn.Module):
         self.temp = 0.03
 
         self.repeat = 1
-        self.depth = len(op_list)
+        self.depth = len(self.op_list)
 
         wshape = 0
         inshape_ = self.num_inputs
         bshape = 0
         for i in range(self.depth):
-            bshape += op_inall_list[i]
-            wshape += inshape_ * op_inall_list[i]
-            inshape_ += len(op_in_list[i])
+            bshape += self.op_inall_list[i]
+            wshape += inshape_ * self.op_inall_list[i]
+            inshape_ += len(self.op_in_list[i])
         wshape += inshape_
         bshape += 1
         self.wshape = wshape
@@ -251,6 +216,80 @@ class EQL(nn.Module):
 
         self.batch = 1
         self.sample_num = sample_num
+
+    def get_sym_arch(self, index):
+        op_list = []
+
+        op_index_list = []
+        op_index_list.append([0, 0, 0])
+        op_index_list.append([1, 1, 1])
+        op_index_list.append([2, 2, 3, 3, 4, 4, 5, 5])
+        op_index_list.append([2, 2, 3, 3, 4, 4, 5, 5])
+        op_index_list.append([0, 1, 2, 3])
+        op_index_list.append([0, 1, 2, 3])
+        op_list.append(op_index_list)
+
+        return op_list[index]
+
+    def init_op_list(self, index=0):
+        op_index_list = self.get_sym_arch(index)
+        self.op_list = []
+        self.op_regu_list = []
+        self.op_in_list = []
+        self.op_inall_list = []
+        for layer in op_index_list:
+            op = []
+            op_regu = []
+            op_in_num = []
+            op_inall = 0
+            for index in layer:
+                op.append(base_op[index])
+                op_regu.append(regu_op[index])
+                op_in_num.append(op_in[index])
+                op_inall += op_in[index]
+            self.op_list.append(op)
+            self.op_regu_list.append(op_regu)
+            self.op_in_list.append(op_in_num)
+            self.op_inall_list.append(op_inall)
+
+    def opfunc(self, input, index, mode):  # input: batch,op_inall
+        op_out = []
+        regu_loss = 0
+        if mode == 1:
+            offset = 0
+            for i in range(len(self.op_in_list[index])):
+                if self.op_in_list[index][i] == 1:
+                    out, regu = self.op_regu_list[index][i](input[:, offset])
+                    op_out.append(out)
+                    regu_loss += regu
+                    offset += 1
+                elif self.op_in_list[index][i] == 2:
+                    out, regu = self.op_regu_list[index][i](input[:, offset], input[:, offset + 1])
+                    op_out.append(out)
+                    regu_loss += regu
+                    offset += 2
+                elif self.op_in_list[index][i] == 3:
+                    out, regu = self.op_regu_list[index][i](input[:, offset], input[:, offset + 1], input[:, offset + 2])
+                    op_out.append(out)
+                    regu_loss += regu
+                    offset += 3
+        else:
+            offset = 0
+            for i in range(len(self.op_in_list[index])):
+                if self.op_in_list[index][i] == 1:
+                    out = self.op_list[index][i](input[:, offset])
+                    op_out.append(out)
+                    offset += 1
+                elif self.op_in_list[index][i] == 2:
+                    out = self.op_list[index][i](input[:, offset], input[:, offset + 1])
+                    op_out.append(out)
+                    offset += 2
+                elif self.op_in_list[index][i] == 3:
+                    out = self.op_list[index][i](input[:, offset], input[:, offset + 1], input[:, offset + 2])
+                    op_out.append(out)
+                    offset += 3
+            # print(offset)
+        return torch.stack(op_out, dim=1), regu_loss
 
     def constrain_loss(self):
 
@@ -341,9 +380,9 @@ class EQL(nn.Module):
         # shapes:
         # np.cumsum([self.num_inputs] + [len(a) for a in op_in_list])[:-1]*np.array(op_inall_list)
         for i in range(self.depth):
-            high = low + inshape_ * op_inall_list[i]
+            high = low + inshape_ * self.op_inall_list[i]
             w_list.append(constw[:, :, int(low):int(high)])
-            inshape_ += len(op_in_list[i])
+            inshape_ += len(self.op_in_list[i])
             low = high
 
         w_last = constw[:, :, int(low):]
@@ -351,7 +390,7 @@ class EQL(nn.Module):
         b_list = []
         low = 0
         for i in range(self.depth):
-            high = low + op_inall_list[i]
+            high = low + self.op_inall_list[i]
             b_list.append(constb[:, :, low:high])
             low = high
         b_last = constb[:, :, low:]
@@ -368,15 +407,15 @@ class EQL(nn.Module):
         if mode:
             batch = self.sample_num * batch
         for i in range(self.depth):
-            w = w_list[i].reshape(batch * self.num_outputs, op_inall_list[i], inshape_)
-            inshape_ += len(op_in_list[i])
+            w = w_list[i].reshape(batch * self.num_outputs, self.op_inall_list[i], inshape_)
+            inshape_ += len(self.op_in_list[i])
             # if mode:
             #     print(b_list[i].shape,batch,self.num_outputs,op_inall_list[i])
-            b = b_list[i].reshape(batch * self.num_outputs, op_inall_list[i])
+            b = b_list[i].reshape(batch * self.num_outputs, self.op_inall_list[i])
             # print(w.shape,x.shape)
             hidden = torch.bmm(w, x.unsqueeze(2)).squeeze(-1) + b
             # print(hidden.shape,i,len(op_in_list[i]),op_inall_list[i])
-            op_hidden, regu = opfunc(hidden, i, mode)
+            op_hidden, regu = self.opfunc(hidden, i, mode)
             x = torch.cat([x, op_hidden], dim=-1)
             # print(x.shape)
             reguloss += regu

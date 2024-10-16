@@ -7,14 +7,14 @@ from matplotlib import pyplot as plt
 import wandb
 from torch import optim, nn
 
-from common.espl import init_op_list, EQL
+from common.espl import EQL
 from helper_local import wandb_login, add_espl_args
 from sym import printsymbolic
 
 
 def run_espl_x_squared(args):
     arch_index = 0
-    init_op_list(arch_index)
+    # init_op_list(arch_index)
     obs_dim = 1
     action_dim = 1
     cfg = dict(
@@ -234,6 +234,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
     # args.dist_func = "meanmax"
     args.target_temp = 0.01
-    for e in range(1,10):
-        args.target_temp = 0.1/e
+    # for e in range(1,10):
+    #     args.target_temp = 0.1/e
     run_espl_x_squared(args)
