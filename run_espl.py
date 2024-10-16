@@ -67,18 +67,18 @@ def run_espl_x_squared(args):
     optimizer = optim.Adam(model.parameters(), lr=lr)
     model.sample_sparse_constw(mode=0)
 
-    n_dims = 1
+    n_dims = 2
 
     obs = (np.random.random((data_size, n_dims)) - .5) * data_scale
     x = torch.FloatTensor(obs)
     y = x ** 2
-    if n_dims > 1:
+    if n_dims > 1 and num_outputs == 1:
         y = y.sum(-1)
 
     obs_ood = (np.random.random((data_size, n_dims)) - .5) * data_scale * 5
     x_ood = torch.FloatTensor(obs_ood)
     y_ood = (x_ood ** 2).sum(-1)
-    if n_dims > 1:
+    if n_dims > 1 and num_outputs == 1:
         y_ood = y_ood.sum(-1)
 
     if sample_num > 1:
@@ -87,11 +87,12 @@ def run_espl_x_squared(args):
         # y = y.unsqueeze(0).expand(sample_num, -1, -1).reshape(sample_num * data_size, -1)
 
     name = np.random.randint(1e5)
-    wandb_login()
-    wb_resume = "allow"  # if args.model_file is None else "must"
-    prefix = "espl"
-    wandb.init(project="espl", config=cfg, sync_tensorboard=True,
-               tags=cfg["wandb_tags"], resume=wb_resume, name=f"{prefix}-{name}")
+    if args.use_wandb:
+        wandb_login()
+        wb_resume = "allow"  # if args.model_file is None else "must"
+        prefix = "espl"
+        wandb.init(project="espl", config=cfg, sync_tensorboard=True,
+                   tags=cfg["wandb_tags"], resume=wb_resume, name=f"{prefix}-{name}")
 
     for epoch in range(epochs):
         y_hat = model.forward(x, mode=1)
@@ -121,22 +122,23 @@ def run_espl_x_squared(args):
                 mse_loss = ((y-y_hat)**2).mean()
         else:
             mse_loss = dist_loss
-        wandb.log({
-            "total_loss": total_loss.item(),
-            "mse_loss": mse_loss.item(),
-            'dist_loss': dist_loss.item(),
-            'ood_mse_loss': ood_mse_loss.item(),
-            "sparse_loss": sparse_loss.item(),
-            "other_loss": other_loss.item(),
-            "constrain_loss": constrain_loss.item(),
-            "regu_loss": regu_loss.item(),
-            "l0_loss": l0_loss.item(),
-            "bl0_loss": bl0_loss.item(),
-            "epoch": epoch,
-            "temp": model.temp,
-            "target_ratio": model.target_ratio_current,
-            "sparsity": sparsity.item(),
-        })
+        if args.use_wandb:
+            wandb.log({
+                "total_loss": total_loss.item(),
+                "mse_loss": mse_loss.item(),
+                'dist_loss': dist_loss.item(),
+                'ood_mse_loss': ood_mse_loss.item(),
+                "sparse_loss": sparse_loss.item(),
+                "other_loss": other_loss.item(),
+                "constrain_loss": constrain_loss.item(),
+                "regu_loss": regu_loss.item(),
+                "l0_loss": l0_loss.item(),
+                "bl0_loss": bl0_loss.item(),
+                "epoch": epoch,
+                "temp": model.temp,
+                "target_ratio": model.target_ratio_current,
+                "sparsity": sparsity.item(),
+            })
         model.set_temp_target_ratio(epoch)
     zero_weight_pct = (model.constw == 0).sum() / np.prod(model.constw.shape)
 
@@ -144,6 +146,8 @@ def run_espl_x_squared(args):
     y_hat_mode_0 = model.forward(x, mode=0)
     zero_weight_pct_mode_0 = (model.constw == 0).sum() / np.prod(model.constw.shape)
 
+    if not args.use_wandb:
+        return
     data = [[x, y] for (x, y) in zip(obs.squeeze().tolist(), y_hat.squeeze().detach().cpu().numpy().tolist())]
     table = wandb.Table(data=data, columns=["x", "y_hat"])
     wandb.log({"predicted y_hat": wandb.plot.scatter(table, "x", "y_hat",
@@ -183,7 +187,6 @@ def run_espl_x_squared(args):
     })
     wandb.finish()
     return
-
 
     obs = (np.random.random((data_size, 1)) - .5) * data_scale * 5
     x = torch.FloatTensor(obs)

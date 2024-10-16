@@ -372,7 +372,7 @@ class EQL(nn.Module):
             # reshape(-1, self.num_outputs, self.bshape)
             constb = self.constb.unsqueeze(0).expand(self.sample_num, -1, -1)
         else:
-            constw = self.constw  # .unsqueeze(0).expand(batch, -1, -1)
+            constw = self.constw.unsqueeze(0)  # .unsqueeze(0).expand(batch, -1, -1)
             constb = self.constb  # .unsqueeze(0).expand(batch, -1, -1)
 
         w_list = []
@@ -382,19 +382,19 @@ class EQL(nn.Module):
         # np.cumsum([self.num_inputs] + [len(a) for a in op_in_list])[:-1]*np.array(op_inall_list)
         for i in range(self.depth):
             high = low + inshape_ * self.op_inall_list[i]
-            w_list.append(constw[:, :, int(low):int(high)])
+            w_list.append(constw[..., int(low):int(high)])
             inshape_ += len(self.op_in_list[i])
             low = high
 
-        w_last = constw[:, :, int(low):]
+        w_last = constw[..., int(low):]
 
         b_list = []
         low = 0
         for i in range(self.depth):
             high = low + self.op_inall_list[i]
-            b_list.append(constb[:, :, low:high])
+            b_list.append(constb[..., low:high])
             low = high
-        b_last = constb[:, :, low:]
+        b_last = constb[..., low:]
         # x meta_batch*batch_size,num_inputs
         if mode:
             # TODO: maybe outputs are a necessary dim
@@ -403,7 +403,7 @@ class EQL(nn.Module):
             #                                         -1)  # sample_num,batch,num_outputs,num_inputs
             # x = x.reshape(self.sample_num * batch * self.num_outputs, self.num_inputs)
         else:
-            pass
+            x = x.unsqueeze(0)
             # x = x.unsqueeze(1).expand(-1, self.num_outputs, -1)  # batch,num_outputs,num_inputs
             # x = x.reshape(batch * self.num_outputs, self.num_inputs)
         reguloss = 0
@@ -417,6 +417,7 @@ class EQL(nn.Module):
             # expand b to size of w (only relevant after index 0):
             b = b.tile((1, 1, w.shape[-1] // b.shape[-1]))  # .reshape(batch * self.num_outputs, self.op_inall_list[i])
             # hidden = torch.bmm(w, x.unsqueeze(2)).squeeze(-1) + b
+
             hidden = einops.einsum(x, w, "n b f, n f o -> n b o") + b
 
             # print(hidden.shape,i,len(op_in_list[i]),op_inall_list[i])
