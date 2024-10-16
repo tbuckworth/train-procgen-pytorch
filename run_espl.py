@@ -233,4 +233,7 @@ if __name__ == "__main__":
     parser = add_espl_args(parser)
     args = parser.parse_args()
     # args.dist_func = "meanmax"
+    args.target_temp = 0.01
+    for e in range(1,10):
+        args.target_temp = 0.1/e
     run_espl_x_squared(args)
