@@ -396,7 +396,7 @@ class EQL(nn.Module):
         b_last = constb[:, :, low:]
         # x meta_batch*batch_size,num_inputs
         if mode:
-            x = x.unsqueeze(0).unsqueeze(2).expand(self.sample_num, -1, self.num_outputs,
+            x = x.unsqueeze(0).unsqueeze(-2).expand(self.sample_num, -1, self.num_outputs,
                                                    -1)  # sample_num,batch,num_outputs,num_inputs
             x = x.reshape(self.sample_num * batch * self.num_outputs, self.num_inputs)
         else:
@@ -414,6 +414,8 @@ class EQL(nn.Module):
             b = b_list[i].reshape(batch * self.num_outputs, self.op_inall_list[i])
             # print(w.shape,x.shape)
             hidden = torch.bmm(w, x.unsqueeze(2)).squeeze(-1) + b
+            # h_fast = w[0].T*x + b
+            # assert torch.allclose(hidden, h_fast, )
             # print(hidden.shape,i,len(op_in_list[i]),op_inall_list[i])
             op_hidden, regu = self.opfunc(hidden, i, mode)
             x = torch.cat([x, op_hidden], dim=-1)

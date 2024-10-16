@@ -67,13 +67,19 @@ def run_espl_x_squared(args):
     optimizer = optim.Adam(model.parameters(), lr=lr)
     model.sample_sparse_constw(mode=0)
 
-    obs = (np.random.random((data_size, 1)) - .5) * data_scale
+    n_dims = 1
+
+    obs = (np.random.random((data_size, n_dims)) - .5) * data_scale
     x = torch.FloatTensor(obs)
     y = x ** 2
+    if n_dims > 1:
+        y = y.sum(-1)
 
-    obs_ood = (np.random.random((data_size, 1)) - .5) * data_scale * 5
+    obs_ood = (np.random.random((data_size, n_dims)) - .5) * data_scale * 5
     x_ood = torch.FloatTensor(obs_ood)
-    y_ood = x_ood ** 2
+    y_ood = (x_ood ** 2).sum(-1)
+    if n_dims > 1:
+        y_ood = y_ood.sum(-1)
 
     if sample_num > 1:
         y = y.unsqueeze(0).expand(sample_num, -1, -1).reshape(sample_num * data_size, -1)
@@ -234,6 +240,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     # args.dist_func = "meanmax"
     args.target_temp = 0.01
+    args.use_wandb = False
     # for e in range(1,10):
     #     args.target_temp = 0.1/e
     run_espl_x_squared(args)

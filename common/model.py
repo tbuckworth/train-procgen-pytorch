@@ -1145,6 +1145,8 @@ class GraphActorCriticEQL(GraphModel):
 
         self.messenger = EQL(4, latent_size, **eql_args)
         self.actor = EQL(3, actor_output, **eql_args)
+        self.messenger.sample_sparse_constw(mode=0)
+        self.actor.sample_sparse_constw(mode=0)
         self.critic = MLPModel(in_channels, depth, mid_weight, latent_size)
         self.apply(xavier_uniform_init)
 
