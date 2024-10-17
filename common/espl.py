@@ -366,7 +366,7 @@ class EQL(nn.Module):
         if mode:
             self.sample_sparse_constw(1)
             # constw sample,num_outputs,wshape
-            constw = self.constw  # .unsqueeze(1).expand(-1, batch, -1, -1).reshape(-1, self.num_outputs, self.wshape)
+            constw = self.constw.unsqueeze(1).expand(-1, batch, -1, -1).reshape(-1, self.num_outputs, self.wshape)
             # constb = self.constb#.unsqueeze(0).unsqueeze(1). \
             # expand(self.sample_num, batch, -1, -1). \
             # reshape(-1, self.num_outputs, self.bshape)
@@ -398,10 +398,10 @@ class EQL(nn.Module):
         # x meta_batch*batch_size,num_inputs
         if mode:
             # TODO: maybe outputs are a necessary dim
-            x = x.unsqueeze(0).expand(self.sample_num, -1, -1)
-            # x = x.unsqueeze(0).unsqueeze(-2).expand(self.sample_num, -1, self.num_outputs,
-            #                                         -1)  # sample_num,batch,num_outputs,num_inputs
-            # x = x.reshape(self.sample_num * batch * self.num_outputs, self.num_inputs)
+            # x = x.unsqueeze(0).expand(self.sample_num, -1, -1)
+            x = x.unsqueeze(0).unsqueeze(-2).expand(self.sample_num, -1, self.num_outputs,
+                                                    -1)  # sample_num,batch,num_outputs,num_inputs
+            x = x.reshape(self.sample_num * batch * self.num_outputs, self.num_inputs)
         else:
             x = x.unsqueeze(0)
             # x = x.unsqueeze(1).expand(-1, self.num_outputs, -1)  # batch,num_outputs,num_inputs
@@ -416,9 +416,9 @@ class EQL(nn.Module):
             b = b_list[i]
             # expand b to size of w (only relevant after index 0):
             b = b.tile((1, 1, w.shape[-1] // b.shape[-1]))  # .reshape(batch * self.num_outputs, self.op_inall_list[i])
-            # hidden = torch.bmm(w, x.unsqueeze(2)).squeeze(-1) + b
+            hidden = torch.bmm(w, x.unsqueeze(2)).squeeze(-1) + b
 
-            hidden = einops.einsum(x, w, "n b f, n f o -> n b o") + b
+            # hidden = einops.einsum(x, w, "n b f, n f o -> n b o") + b
 
             # print(hidden.shape,i,len(op_in_list[i]),op_inall_list[i])
             op_hidden, regu = self.opfunc(hidden, i, mode)

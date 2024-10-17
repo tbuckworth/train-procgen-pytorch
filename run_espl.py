@@ -64,6 +64,7 @@ def run_espl_x_squared(args):
     num_outputs = action_dim
     #TODO: turn this back!
     # num_outputs = 2
+    num_inputs = 2
     model = EQL(num_inputs, num_outputs, sample_num, hard_gum, **eql_args)
 
     optimizer = optim.Adam(model.parameters(), lr=lr)

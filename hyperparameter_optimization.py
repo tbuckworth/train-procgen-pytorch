@@ -759,14 +759,14 @@ def espl_x_squared():
     }
     bounds = {
         "epochs": [10000, 100000],
-        "sample_num": [1, 5],
+        "sample_num": [1, 20],
         "lr": [5e-3, 15e-3],
         'hard_gum': [True, False],
         "hard_ratio": [0.5, .9],
         'other_loss_scale': [1, 10000],
         'target_ratio': [0.00001, 0.01],
         'spls': [0.1, 1.0],
-        'target_temp': [0.01, 0.25],
+        'target_temp': [0.01, 0.00001],
     }
     project = 'espl'
     id_tag = fixed["wandb_tags"][0]
