@@ -1,6 +1,7 @@
 import math
 from abc import ABC
 
+import einops
 import numpy as np
 from torch import jit
 from torch.distributions import Categorical
@@ -1141,7 +1142,7 @@ class GraphActorCriticEQL(GraphModel):
         self.no_var = False
         self.obs_dim = -1
         if continuous_actions:
-            self.logvar_net = MLPModel(in_channels, depth, mid_weight, latent_size)
+            self.logvar_net = MLPModel(in_channels, depth, mid_weight, actor_output)
             # actor_output *= 2
             # self.obs_dim -= 1
 
@@ -1163,13 +1164,16 @@ class GraphActorCriticEQL(GraphModel):
         m = self.append_index(msg)
         logits = self.run_actor(m, n)
         if self.continuous:
+            #TODO: why not make the logvar a function of the logit as well as observation?
             logvar = self.logvar_net(obs).squeeze()
-            logits = torch.stack((logits, logvar), dim=-1)
+            shp = np.array(list(logits.shape))
+            shp[-len(logvar.shape):] = 1
+            logits = torch.stack((logits, logvar.tile(shp.tolist())), dim=-1)
         return logits, self.critic(obs).squeeze()
 
     def set_mode(self, mode):
-        self.messenger.mode = mode
-        self.actor.mode = mode
+        self.messenger.set_mode(mode)
+        self.actor.set_mode(mode)
 
     def run_actor(self, m, n):
         am, am_messages = self.collect_actor_in_out(m, n)

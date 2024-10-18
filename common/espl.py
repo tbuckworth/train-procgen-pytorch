@@ -336,6 +336,13 @@ class EQL(nn.Module):
         bl0_loss = self.bl0_loss()
         return self.spls * sparse_loss + constrain_loss * self.constrain_scale + self.regu_loss + self.l0_scale * l0_loss + self.bl0_scale * bl0_loss, sparse_loss, constrain_loss, self.regu_loss, l0_loss, bl0_loss
 
+    def set_mode(self, mode):
+        if self.mode and not mode:
+            # going from sample mode to use mode requires re-sampling weights, but not the other way around
+            self.sample_sparse_constw(mode)
+        else:
+            self.mode = mode
+
     def sample_sparse_constw(self, mode):
         self.mode = mode
         if mode:
@@ -417,8 +424,10 @@ class EQL(nn.Module):
         w = w_last
         # b_last: num out 1 -> num 1 out (cast to num batch out after einops)
         b = b_last.squeeze(-1).unsqueeze(-2)
-        out = einops.einsum(x, w, "num batch out in, num out in -> num batch out") + b
-
+        try:
+            out = einops.einsum(x, w, "num batch out in, num out in -> num batch out") + b
+        except RuntimeError as e:
+            raise e
         self.regu_loss = reguloss
 
         out_shape = [self.sample_num] + list(in_shape[:-1]) + [self.num_outputs]
