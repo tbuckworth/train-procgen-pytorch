@@ -1000,8 +1000,16 @@ class GraphModel(nn.Module, ABC):
         if np.prod(x.shape[:-1]) > self.batching_threshold:
             temp = x.reshape((-1, x.shape[-1]))
             batches = temp.split(self.split_size)
-            stacked_messages = torch.concat([model(b) for b in batches], dim=0)
-            return stacked_messages.reshape((*x.shape[:-1], stacked_messages.shape[-1]))
+
+            run_batches = [model(b) for b in batches]
+            # output_shapes = np.array([list(b.shape) for b in run_batches])
+            # input_sizes = np.array([b.shape[0] for b in batches])
+            # cat_dim = np.argwhere((output_shapes.T==input_sizes).all(axis=1)).item()
+            cat_dim = 0
+            stacked_messages = torch.concat(run_batches, dim=cat_dim)
+            restore_shape = (*x.shape[:-1], stacked_messages.shape[-1])
+            # tuple(stacked_messages.shape[:cat_dim]) + (*x.shape[:-1], stacked_messages.shape[-1])
+            return stacked_messages.reshape(restore_shape)
         return model(x)
 
     def vectorize_for_message_pass(self, n, x):
@@ -1150,10 +1158,12 @@ class GraphActorCriticEQL(GraphModel):
 
         self.messenger = EQL(4, latent_size, **eql_args)
         self.actor = EQL(3, actor_output, **eql_args)
+        self.to(device)
         self.messenger.sample_sparse_constw(mode=0)
         self.actor.sample_sparse_constw(mode=0)
         self.critic = MLPModel(in_channels, depth, mid_weight, latent_size)
         self.apply(xavier_uniform_init)
+        self.to(device)
 
     def set_no_var(self, no_var):
         if no_var and not self.no_var:

@@ -12,7 +12,7 @@ from helper_local import wandb_login, add_espl_args
 from sym import printsymbolic
 
 
-def run_espl_x_squared(args, obs_dim, action_dim):
+def run_espl_x_squared(args, obs_dim=1, action_dim=1):
     arch_index = 0
     # init_op_list(arch_index)
     # obs_dim = 1

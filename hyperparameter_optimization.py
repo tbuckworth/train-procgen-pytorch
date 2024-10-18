@@ -194,7 +194,7 @@ def optimize_hyperparams(bounds,
 
     fh = fixed.copy()
     hparams.update(fh)
-    # run_next(hparams)
+
     try:
         run_next(hparams)
     except Exception as e:
@@ -819,7 +819,8 @@ def espo_cartpole():
 
 
 if __name__ == "__main__":
-    espl_x_squared()
+    espo_cartpole()
+    # espl_x_squared()
     # cartpole_graph_ppo()
     # graph_ppo_sr_ft_continuous()
     # humanoid_graph_ppo()
