@@ -71,7 +71,7 @@ def run_espl_x_squared(args, obs_dim, action_dim):
     n_dims = num_inputs
 
     def create_data(scale):
-        obs = (np.random.random((data_size, n_dims)) - .5) * scale
+        obs = (np.random.random((50, data_size, n_dims)) - .5) * scale
         x = torch.FloatTensor(obs)
         y = x ** 2
         if num_outputs == 1:
