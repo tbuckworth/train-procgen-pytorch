@@ -76,6 +76,8 @@ def run_espl_x_squared(args, obs_dim, action_dim):
         y = x ** 2
         if num_outputs == 1:
             y = y.sum(-1)
+        if num_outputs > num_inputs:
+            y = torch.cat((y, y[..., (num_outputs-num_inputs):]), dim=-1)
         return x, y
 
     x, y = create_data(data_scale)
@@ -243,7 +245,7 @@ if __name__ == "__main__":
     args.use_wandb = False
     args.sample_num = 3
     args.epochs = 200
-    for obs_dim in range(1, 4):
-        for action_dim in range(1, 4):
+    for obs_dim in range(2, 4):
+        for action_dim in range(3, 4):
             print(f"Inputs:{obs_dim}, Outputs:{action_dim}")
             run_espl_x_squared(args, obs_dim, action_dim)
