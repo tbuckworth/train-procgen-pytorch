@@ -6,6 +6,7 @@ from common.misc_util import adjust_lr, get_n_params, cross_batch_entropy, atten
 import torch
 import torch.optim as optim
 import numpy as np
+import wandb
 
 
 class ESPO(BaseAgent):
@@ -179,6 +180,8 @@ class ESPO(BaseAgent):
                    'Loss/total': np.mean(total_loss_list),
                    #TODO: add loss_dict metrics and espl_loss
                    }
+        if self.logger.use_wandb:
+            wandb.log(espl_loss_dict)
         return summary
 
     def train(self, num_timesteps):

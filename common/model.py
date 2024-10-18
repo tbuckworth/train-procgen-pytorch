@@ -950,7 +950,7 @@ class MLPTransitionModel(nn.Module):
 
 
 class MLPModel(nn.Module):
-    def __init__(self, in_channels, depth, mid_weight, latent_size):
+    def __init__(self, in_channels, depth, mid_weight, latent_size, normalize=False):
         super(MLPModel, self).__init__()
         self.input_size = in_channels
         self.depth = depth
@@ -959,6 +959,8 @@ class MLPModel(nn.Module):
         mid_layers = []
         for _ in range(depth - 2):
             mid_layers.append(nn.Linear(self.mid_weight, self.mid_weight))
+            if normalize:
+                mid_layers.append(nn.LayerNorm(self.mid_weight))
             mid_layers.append(nn.ReLU())
 
         self.model = nn.Sequential(
@@ -1142,7 +1144,7 @@ class GraphActorCriticEQL(GraphModel):
         self.no_var = False
         self.obs_dim = -1
         if continuous_actions:
-            self.logvar_net = MLPModel(in_channels, depth, mid_weight, actor_output)
+            self.logvar_net = MLPModel(in_channels, depth, mid_weight, actor_output, normalize=True)
             # actor_output *= 2
             # self.obs_dim -= 1
 
@@ -1216,11 +1218,14 @@ class GraphActorCriticEQL(GraphModel):
         )
 
     def get_loss(self):
-        loss_dict = {
-            "messenger": self.loss_dict(self.messenger),
-            "actor": self.loss_dict(self.actor),
-        }
-        total_loss = loss_dict["messenger"]["other_loss"] + loss_dict["actor"]["other_loss"]
+        loss_dict = {f"messenger/{k}":v for k,v in self.loss_dict(self.messenger).items()}
+        loss_dict.update({f"actor/{k}": v for k, v in self.loss_dict(self.actor).items()})
+
+        # loss_dict = {
+        #     "messenger": self.loss_dict(self.messenger),
+        #     "actor": self.loss_dict(self.actor),
+        # }
+        total_loss = loss_dict["messenger/other_loss"] + loss_dict["actor/other_loss"]
         return total_loss, loss_dict
 
 
