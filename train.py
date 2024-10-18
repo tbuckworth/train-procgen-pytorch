@@ -162,7 +162,7 @@ def train_ppo(args):
     algo = hyperparameters.get('algo', 'ppo')
     model_based = algo in ['ppo-model', 'graph-agent']
     double_graph = algo in ['double-graph-agent']
-    ppo_pure = algo in ['ppo-pure']
+    ppo_pure = algo in ['ppo-pure', 'espo']
 
     print('INTIALIZING MODEL...')
     model, observation_shape, policy = initialize_model(device, env, hyperparameters)

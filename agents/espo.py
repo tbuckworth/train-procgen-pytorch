@@ -10,6 +10,10 @@ import wandb
 
 
 class ESPO(BaseAgent):
+    '''
+    Extracting Symbolic Policies Learned via Augmented Neural Graphs
+    ExSPLANG
+    '''
     def __init__(self,
                  env,
                  policy,

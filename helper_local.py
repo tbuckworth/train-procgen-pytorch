@@ -971,6 +971,8 @@ def get_project(env_name, exp_name):
             project = "Graph Symb Reg"
     elif exp_name == "mountain_car_cont_rew":
         project = "MountainCar Continuous Reward"
+    elif exp_name == "espo-graph":
+        project = "ESPO Graph RL"
     else:
         project = env_name
     if exp_name == "overfit":
@@ -999,6 +1001,8 @@ def get_agent_constructor(algo):
         from agents.double_graph_agent import DoubleGraphAgent as AGENT
     elif algo == 'ppo-pure':
         from agents.ppo_pure import PPOPure as AGENT
+    elif algo == 'espo':
+        from agents.espo import ESPO as AGENT
     else:
         raise NotImplementedError
     return AGENT
