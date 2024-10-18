@@ -244,7 +244,7 @@ if __name__ == "__main__":
     args.use_wandb = False
     args.sample_num = 3
     args.epochs = 2
-    for obs_dim in range(1, 4):
-        for action_dim in range(1, 4):
+    for obs_dim in range(3, 4):
+        for action_dim in range(2, 4):
             print(f"Inputs:{obs_dim}, Outputs:{action_dim}")
             run_espl_x_squared(args, obs_dim, action_dim)
