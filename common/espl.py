@@ -361,7 +361,8 @@ class EQL(nn.Module):
             self.constw = self.constw_base * self.constw_mask
 
     def forward(self, obs, mode=0):
-        x = obs
+        in_shape = obs.shape
+        x = obs.reshape(-1, *in_shape[-1:])
 
         if mode:
             self.sample_sparse_constw(1)
@@ -418,7 +419,9 @@ class EQL(nn.Module):
         out = einops.einsum(x, w, "num batch out in, num out in -> num batch out") + b
 
         self.regu_loss = reguloss
-        return out.squeeze()
+
+        out_shape = [self.sample_num] + list(in_shape[:-1]) + [self.num_outputs]
+        return out.reshape(out_shape).squeeze()
 
     def set_temp_target_ratio(self, epoch):
         self.temp = 1 / ((1 - self.target_temp) * (

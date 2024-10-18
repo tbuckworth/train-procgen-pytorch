@@ -78,10 +78,12 @@ def run_espl_x_squared(args, obs_dim, action_dim):
             y = y.sum(-1)
         if num_outputs > num_inputs:
             y = torch.cat((y, y[..., (num_outputs-num_inputs):]), dim=-1)
-        return x, y
+        if num_outputs  < num_inputs:
+            y = y[...,:num_outputs]
+        return x, y, obs
 
-    x, y = create_data(data_scale)
-    x_ood, y_ood = create_data(data_scale * 5)
+    x, y, obs = create_data(data_scale)
+    x_ood, y_ood, obs_ood = create_data(data_scale * 5)
 
     name = np.random.randint(1e5)
     if args.use_wandb:
@@ -105,7 +107,7 @@ def run_espl_x_squared(args, obs_dim, action_dim):
         nn.utils.clip_grad_norm_(model.parameters(), max_norm=0.5)
         optimizer.step()
         model.proj()
-        if epoch % (epochs // 100) == 0:
+        if epochs > 100 and epoch % (epochs // 100) == 0:
             print(f"Epoch:{epoch}\tLoss:{total_loss.item():.2f}")
 
         with torch.no_grad():
@@ -154,17 +156,14 @@ def run_espl_x_squared(args, obs_dim, action_dim):
     wandb.log({"predicted y_hat_mode_0": wandb.plot.scatter(table, "x", "y_hat_mode_0",
                                                             title="Y_hat_mode_0 prediction vs x")})
 
-    obs = (np.random.random((data_size, 1)) - .5) * data_scale * 5
-    x = torch.FloatTensor(obs)
-    y = x ** 2
-    y_hat_mode_0_large = model.forward(x, mode=0)
-    data = [[x, y] for (x, y) in
-            zip(obs.squeeze().tolist(), y_hat_mode_0_large.squeeze().detach().cpu().numpy().tolist())]
+    y_hat_mode_0_large = model.forward(x_ood, mode=0)
+    data = [[x_ood, y_ood] for (x_ood, y_ood) in
+            zip(obs_ood.squeeze().tolist(), y_hat_mode_0_large.squeeze().detach().cpu().numpy().tolist())]
     table = wandb.Table(data=data, columns=["x", "ood_mode_0"])
     wandb.log({"predicted out of distribution mode 0": wandb.plot.scatter(table, "x", "ood_mode_0",
                                                                           title="ood_mode_0 prediction vs x")})
 
-    ood_loss = nn.MSELoss()(y, y_hat_mode_0_large)
+    ood_loss = nn.MSELoss()(y_ood, y_hat_mode_0_large)
     scores = model.scores.data
     constw_base = model.constw_base.data
     constb = model.constb.data
@@ -244,8 +243,8 @@ if __name__ == "__main__":
     args.target_temp = 0.01
     args.use_wandb = False
     args.sample_num = 3
-    args.epochs = 200
-    for obs_dim in range(2, 4):
-        for action_dim in range(3, 4):
+    args.epochs = 2
+    for obs_dim in range(1, 4):
+        for action_dim in range(1, 4):
             print(f"Inputs:{obs_dim}, Outputs:{action_dim}")
             run_espl_x_squared(args, obs_dim, action_dim)
