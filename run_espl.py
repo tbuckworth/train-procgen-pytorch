@@ -12,11 +12,11 @@ from helper_local import wandb_login, add_espl_args
 from sym import printsymbolic
 
 
-def run_espl_x_squared(args):
+def run_espl_x_squared(args, obs_dim, action_dim):
     arch_index = 0
     # init_op_list(arch_index)
-    obs_dim = 1
-    action_dim = 1
+    # obs_dim = 1
+    # action_dim = 1
     cfg = dict(
         arch_index=args.arch_index,
         epochs=args.epochs,
@@ -62,32 +62,24 @@ def run_espl_x_squared(args):
 
     num_inputs = obs_dim
     num_outputs = action_dim
-    #TODO: turn this back!
-    # num_outputs = 2
-    num_inputs = 2
+
     model = EQL(num_inputs, num_outputs, sample_num, hard_gum, **eql_args)
 
     optimizer = optim.Adam(model.parameters(), lr=lr)
     model.sample_sparse_constw(mode=0)
 
-    n_dims = 2
+    n_dims = num_inputs
 
-    obs = (np.random.random((data_size, n_dims)) - .5) * data_scale
-    x = torch.FloatTensor(obs)
-    y = x ** 2
-    if n_dims > 1 and num_outputs == 1:
-        y = y.sum(-1)
+    def create_data(scale):
+        obs = (np.random.random((data_size, n_dims)) - .5) * scale
+        x = torch.FloatTensor(obs)
+        y = x ** 2
+        if num_outputs == 1:
+            y = y.sum(-1)
+        return x, y
 
-    obs_ood = (np.random.random((data_size, n_dims)) - .5) * data_scale * 5
-    x_ood = torch.FloatTensor(obs_ood)
-    y_ood = (x_ood ** 2).sum(-1)
-    if n_dims > 1 and num_outputs == 1:
-        y_ood = y_ood.sum(-1)
-
-    if sample_num > 1:
-        # TODO: no longer necessary?
-        pass
-        # y = y.unsqueeze(0).expand(sample_num, -1, -1).reshape(sample_num * data_size, -1)
+    x, y = create_data(data_scale)
+    x_ood, y_ood = create_data(data_scale * 5)
 
     name = np.random.randint(1e5)
     if args.use_wandb:
@@ -249,6 +241,9 @@ if __name__ == "__main__":
     # args.dist_func = "meanmax"
     args.target_temp = 0.01
     args.use_wandb = False
-    # for e in range(1,10):
-    #     args.target_temp = 0.1/e
-    run_espl_x_squared(args)
+    args.sample_num = 3
+    args.epochs = 200
+    for obs_dim in range(1, 4):
+        for action_dim in range(1, 4):
+            print(f"Inputs:{obs_dim}, Outputs:{action_dim}")
+            run_espl_x_squared(args, obs_dim, action_dim)

@@ -215,6 +215,7 @@ class EQL(nn.Module):
 
         self.batch = 1
         self.sample_num = sample_num
+        self._sample_num = sample_num
 
     def get_sym_arch(self, index):
         op_list = []
@@ -336,8 +337,8 @@ class EQL(nn.Module):
         return self.spls * sparse_loss + constrain_loss * self.constrain_scale + self.regu_loss + self.l0_scale * l0_loss + self.bl0_scale * bl0_loss, sparse_loss, constrain_loss, self.regu_loss, l0_loss, bl0_loss
 
     def sample_sparse_constw(self, mode):
-
         if mode:
+            self.sample_num = self._sample_num
             eps = 1e-20
             scores = self.scores.unsqueeze(0).expand(self.sample_num, -1, -1)
             uniform0 = torch.rand_like(scores)
@@ -354,32 +355,26 @@ class EQL(nn.Module):
             else:
                 self.constw = self.constw_base * self.constw_mask
         else:
+            self.sample_num = 1
             clamped_scores = torch.sigmoid(self.scores)
             self.constw_mask = (torch.rand_like(self.scores) < clamped_scores).float()
             self.constw = self.constw_base * self.constw_mask
 
     def forward(self, obs, mode=0):
-
-        batch = obs.shape[0]
         x = obs
 
         if mode:
             self.sample_sparse_constw(1)
             # constw sample,num_outputs,wshape
-            constw = self.constw.unsqueeze(1).expand(-1, batch, -1, -1).reshape(-1, self.num_outputs, self.wshape)
-            # constb = self.constb#.unsqueeze(0).unsqueeze(1). \
-            # expand(self.sample_num, batch, -1, -1). \
-            # reshape(-1, self.num_outputs, self.bshape)
-            constb = self.constb.unsqueeze(0).expand(self.sample_num, -1, -1)
+            constw = self.constw
+            constb = self.constb.unsqueeze(0).expand(self.sample_num, self.num_outputs, -1)
         else:
-            constw = self.constw.unsqueeze(0)  # .unsqueeze(0).expand(batch, -1, -1)
-            constb = self.constb  # .unsqueeze(0).expand(batch, -1, -1)
+            constw = self.constw.unsqueeze(0)
+            constb = self.constb
 
         w_list = []
         inshape_ = self.num_inputs
         low = 0
-        # shapes:
-        # np.cumsum([self.num_inputs] + [len(a) for a in op_in_list])[:-1]*np.array(op_inall_list)
         for i in range(self.depth):
             high = low + inshape_ * self.op_inall_list[i]
             w_list.append(constw[..., int(low):int(high)])
@@ -395,48 +390,35 @@ class EQL(nn.Module):
             b_list.append(constb[..., low:high])
             low = high
         b_last = constb[..., low:]
-        # x meta_batch*batch_size,num_inputs
-        if mode:
-            # TODO: maybe outputs are a necessary dim
-            # x = x.unsqueeze(0).expand(self.sample_num, -1, -1)
-            x = x.unsqueeze(0).unsqueeze(-2).expand(self.sample_num, -1, self.num_outputs,
-                                                    -1)  # sample_num,batch,num_outputs,num_inputs
-            x = x.reshape(self.sample_num * batch * self.num_outputs, self.num_inputs)
-        else:
-            x = x.unsqueeze(0)
-            # x = x.unsqueeze(1).expand(-1, self.num_outputs, -1)  # batch,num_outputs,num_inputs
-            # x = x.reshape(batch * self.num_outputs, self.num_inputs)
+
+        shp = (self.sample_num, *(-1 for _ in x.shape), self.num_outputs)
+        x = x.view(1, *x.shape, 1).expand(shp)
+        x = x.transpose(-1, -2)
+        # num_samples, batch, outputs, inputs
+
         reguloss = 0
         inshape_ = self.num_inputs
-        if mode:
-            batch = self.sample_num * batch
         for i in range(self.depth):
-            w = w_list[i]  # .reshape(batch * self.num_outputs, self.op_inall_list[i], inshape_)
+            w = w_list[i].unsqueeze(-1)
+            w = w.reshape(self.sample_num, self.num_outputs, self.op_inall_list[i], inshape_)
+
             inshape_ += len(self.op_in_list[i])
-            b = b_list[i]
+            b = b_list[i].unsqueeze(-3)
             # expand b to size of w (only relevant after index 0):
-            b = b.tile((1, 1, w.shape[-1] // b.shape[-1]))  # .reshape(batch * self.num_outputs, self.op_inall_list[i])
-            hidden = torch.bmm(w, x.unsqueeze(2)).squeeze(-1) + b
+            # b = b.tile((1, 1, w.shape[-1] // b.shape[-1]))  # .reshape(batch * self.num_outputs, self.op_inall_list[i])
 
-            # hidden = einops.einsum(x, w, "n b f, n f o -> n b o") + b
+            hidden = einops.einsum(x, w, "num batch out in, num out op_in in -> num batch out op_in") + b
 
-            # print(hidden.shape,i,len(op_in_list[i]),op_inall_list[i])
             op_hidden, regu = self.opfunc(hidden, i, mode)
             x = torch.cat([x, op_hidden], dim=-1)
-            # print(x.shape)
             reguloss += regu
-        # print(self.num_inputs+(self.depth-1)*op_num*self.repeat)
-        w = w_last#.reshape(batch * self.num_outputs, 1, inshape_)
-        # print(constb.shape,b_last.shape)
-        b = b_last.squeeze()#.reshape(batch * self.num_outputs, 1)
-        # print(w.shape,x.shape,b.shape)
-        # out = torch.bmm(w, x.unsqueeze(2)).squeeze(-1) + b
-        #TODO: output dim?
-        out = einops.einsum(x, w, "n b f, n f o -> n b") + b.unsqueeze(-1)
+        w = w_last
+        # num out 1 -> num 1 out (cast to num batch out after einops)
+        b = b_last.squeeze(-1).unsqueeze(-2)
+        out = einops.einsum(x, w, "num batch out in, num out in -> num batch out") + b
 
         self.regu_loss = reguloss
-        return out
-        # return out.reshape(batch, self.num_outputs)
+        return out.squeeze()
 
     def set_temp_target_ratio(self, epoch):
         self.temp = 1 / ((1 - self.target_temp) * (
