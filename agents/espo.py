@@ -178,7 +178,6 @@ class ESPO(BaseAgent):
                    'Loss/entropy': np.mean(entropy_loss_list),
                    'Loss/x_entropy': np.mean(x_ent_loss_list),
                    'Loss/total': np.mean(total_loss_list),
-                   #TODO: add loss_dict metrics and espl_loss
                    }
         if self.logger.use_wandb:
             wandb.log(espl_loss_dict)

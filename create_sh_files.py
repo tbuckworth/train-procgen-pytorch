@@ -405,7 +405,7 @@ def cartpole_graph_transition_hparams():
         "num_timesteps": [int(2e6), int(10e6)],
         "seed": [6033],  # 0, 1, 101, 40],
         "gamma": [0.998],
-        "lmbda": [0.735], #TODO:
+        "lmbda": [0.735],
         "val_epochs": [7],
         "dyn_epochs": [9],
         "dr_epochs": [2],
