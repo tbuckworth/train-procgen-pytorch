@@ -366,7 +366,6 @@ class EQL(nn.Module):
 
         if mode:
             self.sample_sparse_constw(1)
-            # constw sample,num_outputs,wshape
             constw = self.constw
             constb = self.constb.unsqueeze(0).expand(self.sample_num, self.num_outputs, -1)
         else:
@@ -405,8 +404,6 @@ class EQL(nn.Module):
 
             inshape_ += len(self.op_in_list[i])
             b = b_list[i].unsqueeze(-3)
-            # expand b to size of w (only relevant after index 0):
-            # b = b.tile((1, 1, w.shape[-1] // b.shape[-1]))  # .reshape(batch * self.num_outputs, self.op_inall_list[i])
 
             hidden = einops.einsum(x, w, "num batch out in, num out op_in in -> num batch out op_in") + b
 
@@ -414,7 +411,7 @@ class EQL(nn.Module):
             x = torch.cat([x, op_hidden], dim=-1)
             reguloss += regu
         w = w_last
-        # num out 1 -> num 1 out (cast to num batch out after einops)
+        # b_last: num out 1 -> num 1 out (cast to num batch out after einops)
         b = b_last.squeeze(-1).unsqueeze(-2)
         out = einops.einsum(x, w, "num batch out in, num out in -> num batch out") + b
 
