@@ -127,12 +127,11 @@ class ESPO(BaseAgent):
                 mask_batch = (1 - done_batch)
 
                 dist_batch, value_batch, _ = self.policy(obs_batch, hidden_state_batch, mask_batch)
-                # TODO: check that extra batch dims don't cause an issue:
                 # Clipped Surrogate Objective
-                log_prob_act_batch = dist_batch.log_prob(act_batch)
-                ratio = torch.exp(log_prob_act_batch - old_log_prob_act_batch)
-                if adv_batch.shape != log_prob_act_batch.shape:
-                    adv_batch = torch.tile(adv_batch.unsqueeze(-1), log_prob_act_batch.shape[1:])
+                log_prob_act_batch = dist_batch.log_prob(act_batch.squeeze())
+                ratio = torch.exp(log_prob_act_batch - old_log_prob_act_batch.squeeze())
+                # if adv_batch.shape != log_prob_act_batch.shape:
+                #     adv_batch = torch.tile(adv_batch.unsqueeze(-1), log_prob_act_batch.shape[1:])
                 surr1 = ratio * adv_batch
                 surr2 = torch.clamp(ratio, 1.0 - self.eps_clip, 1.0 + self.eps_clip) * adv_batch
                 pi_loss = -torch.min(surr1, surr2).mean()
@@ -148,7 +147,7 @@ class ESPO(BaseAgent):
                 # entropy_loss = dist_batch.entropy().mean()
                 x_batch_ent_loss, entropy_loss, = cross_batch_entropy(dist_batch)
 
-                espl_loss, espl_loss_dict = self.policy.model.get_loss()
+                espl_loss, espl_loss_dict = self.policy.graph.get_loss()
 
                 loss = (pi_loss
                         + self.value_coef * value_loss

@@ -1139,9 +1139,10 @@ class GraphActorCriticEQL(GraphModel):
         self.continuous = continuous_actions
         actor_output = latent_size
         self.no_var = False
-        self.obs_dim = -3
+        self.obs_dim = -1
         if continuous_actions:
-            actor_output *= 2
+            self.logvar_net = MLPModel(in_channels, depth, mid_weight, latent_size)
+            # actor_output *= 2
             # self.obs_dim -= 1
 
         self.messenger = EQL(4, latent_size, **eql_args)
@@ -1156,14 +1157,15 @@ class GraphActorCriticEQL(GraphModel):
             self.obs_dim += 1
         self.no_var = no_var
 
-    def forward(self, obs, mode=0):
-        self.set_mode(mode)
-
+    def forward(self, obs):
         n, x = self.prep_input(obs)
         msg = self.sum_all_messages(n, x)
         m = self.append_index(msg)
         logits = self.run_actor(m, n)
-        return logits, self.critic(obs)
+        if self.continuous:
+            logvar = self.logvar_net(obs).squeeze()
+            logits = torch.stack((logits, logvar), dim=-1)
+        return logits, self.critic(obs).squeeze()
 
     def set_mode(self, mode):
         self.messenger.mode = mode
@@ -1201,12 +1203,12 @@ class GraphActorCriticEQL(GraphModel):
     def loss_dict(self, model):
         other_loss, sparse_loss, constrain_loss, regu_loss, l0_loss, bl0_loss = model.get_loss()
         return dict(
-            other_loss=other_loss,
-            sparse_loss=sparse_loss,
-            constrain_loss=constrain_loss,
-            regu_loss=regu_loss,
-            l0_loss=l0_loss,
-            bl0_loss=bl0_loss,
+            other_loss=other_loss.item(),
+            sparse_loss=sparse_loss.item(),
+            constrain_loss=constrain_loss.item(),
+            regu_loss=regu_loss.item(),
+            l0_loss=l0_loss.item(),
+            bl0_loss=bl0_loss.item(),
         )
 
     def get_loss(self):

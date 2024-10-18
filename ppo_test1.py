@@ -286,7 +286,7 @@ class TestESPO(unittest.TestCase):
         if not os.path.isdir(logdir):
             os.mkdir(logdir)
         cls.logdir = logdir
-        hyperparameters = get_hyperparams("graph-cartpole-cont")
+        hyperparameters = get_hyperparams("eql-graph")
         cls.n_steps = hyperparameters.get("n_steps", 256)
         hyperparameters["n_envs"] = n_envs
         # hyperparameters["anneal_temp"] = False
@@ -301,7 +301,7 @@ class TestESPO(unittest.TestCase):
         cls.agent = ESPO(cls.env, policy, logger, storage, cls.device,
                     1, **hyperparameters)
 
-    def test_ppo_pure(self):
+    def test_espo(self):
         self.agent.train(int(1e5))
 
 

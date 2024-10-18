@@ -95,7 +95,7 @@ class GraphPolicy(nn.Module):
         try:
             self.graph.set_mode(mode)
         except Exception as e:
-            print(f"Trying to set_mode on non-espl model type:{type(self.graph)}")
+            print(f"\nTrying to set_mode on non-espl model type:{type(self.graph)}\n")
             raise e
 
     def forward(self, x, hx=None, masks=None):
