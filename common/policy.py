@@ -65,7 +65,8 @@ class CategoricalPolicy(nn.Module):
 
 
 class GraphPolicy(nn.Module):
-    def __init__(self, graph, embedder=None, continuous_actions=False, act_space=None, device=None, simple_scaling=True):
+    def __init__(self, graph, embedder=None, continuous_actions=False, act_space=None, device=None,
+                 simple_scaling=True):
         super(GraphPolicy, self).__init__()
         self.device = device
         self.continuous_actions = continuous_actions
@@ -89,6 +90,13 @@ class GraphPolicy(nn.Module):
 
     def is_recurrent(self):
         return self.recurrent
+
+    def set_mode(self, mode):
+        try:
+            self.graph.set_mode(mode)
+        except Exception as e:
+            print(f"Trying to set_mode on non-espl model type:{type(self.graph)}")
+            raise e
 
     def forward(self, x, hx=None, masks=None):
         if self.embedder is not None:
@@ -122,10 +130,11 @@ def min_var_gaussian(logits, act_scale, simple=True):
             mean_actions = mean_actions * act_scale
 
     min_real = torch.finfo(mean_actions.dtype).tiny
-    action_std = torch.full_like(mean_actions, min_real**0.5)
+    action_std = torch.full_like(mean_actions, min_real ** 0.5)
 
     p = Normal(mean_actions, action_std)
     return p
+
 
 def diag_gaussian_dist(logits, act_scale, simple=True, no_var=False):
     if no_var:

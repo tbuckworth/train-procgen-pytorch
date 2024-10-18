@@ -298,8 +298,9 @@ class CartPoleTestModel(unittest.TestCase):
     def test_eql_actor_policy(self):
         hyperparameters = get_hyperparams("eql-graph")
         model, obs_shape, policy = initialize_model(self.device, self.env, hyperparameters)
-        policy.forward(self.obs)
-        summary(model, self.obs.shape)
+        p, v, _ = policy.forward(self.obs)
+        print("done")
+        # summary(model, self.obs.shape)
 
 
 if __name__ == '__main__':

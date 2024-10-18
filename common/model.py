@@ -1129,7 +1129,8 @@ class GraphActorCritic(GraphModel):
 
 
 class GraphActorCriticEQL(GraphModel):
-    def __init__(self, in_channels, eql_args, depth, mid_weight, latent_size, action_size, device, continuous_actions=False):
+    def __init__(self, in_channels, eql_args, depth, mid_weight, latent_size, action_size, device,
+                 continuous_actions=False):
         super(GraphActorCriticEQL, self).__init__()
         self.input_size = in_channels
         self.output_dim = latent_size
@@ -1155,12 +1156,18 @@ class GraphActorCriticEQL(GraphModel):
             self.obs_dim += 1
         self.no_var = no_var
 
-    def forward(self, obs):
+    def forward(self, obs, mode=0):
+        self.set_mode(mode)
+
         n, x = self.prep_input(obs)
         msg = self.sum_all_messages(n, x)
         m = self.append_index(msg)
         logits = self.run_actor(m, n)
         return logits, self.critic(obs)
+
+    def set_mode(self, mode):
+        self.messenger.mode = mode
+        self.actor.mode = mode
 
     def run_actor(self, m, n):
         am, am_messages = self.collect_actor_in_out(m, n)
@@ -1190,6 +1197,25 @@ class GraphActorCriticEQL(GraphModel):
         xj = acts.unsqueeze(-3).tile([n, 1, 1])
         msg_in = torch.concat([xi, xj], dim=-1)
         return msg_in
+
+    def loss_dict(self, model):
+        other_loss, sparse_loss, constrain_loss, regu_loss, l0_loss, bl0_loss = model.get_loss()
+        return dict(
+            other_loss=other_loss,
+            sparse_loss=sparse_loss,
+            constrain_loss=constrain_loss,
+            regu_loss=regu_loss,
+            l0_loss=l0_loss,
+            bl0_loss=bl0_loss,
+        )
+
+    def get_loss(self):
+        loss_dict = {
+            "messenger": self.loss_dict(self.messenger),
+            "actor": self.loss_dict(self.actor),
+        }
+        total_loss = loss_dict["messenger"]["other_loss"] + loss_dict["actor"]["other_loss"]
+        return total_loss, loss_dict
 
 
 class GraphTransitionModel(nn.Module):

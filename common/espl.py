@@ -337,6 +337,7 @@ class EQL(nn.Module):
         return self.spls * sparse_loss + constrain_loss * self.constrain_scale + self.regu_loss + self.l0_scale * l0_loss + self.bl0_scale * bl0_loss, sparse_loss, constrain_loss, self.regu_loss, l0_loss, bl0_loss
 
     def sample_sparse_constw(self, mode):
+        self.mode = mode
         if mode:
             self.sample_num = self._sample_num
             eps = 1e-20
@@ -360,7 +361,10 @@ class EQL(nn.Module):
             self.constw_mask = (torch.rand_like(self.scores) < clamped_scores).float()
             self.constw = self.constw_base * self.constw_mask
 
-    def forward(self, obs, mode=0):
+    def forward(self, obs, mode=-1):
+        if mode == -1:
+            mode = self.mode
+
         in_shape = obs.shape
         x = obs.reshape(-1, *in_shape[-1:])
 
