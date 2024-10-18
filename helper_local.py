@@ -391,7 +391,8 @@ def initialize_model(device, env, hyperparameters, in_channels=None):
             bl0_scale=hyperparameters["bl0_scale"],
             target_temp=hyperparameters["target_temp"],
             warmup_epoch=hyperparameters["warmup_epoch"],
-            hard_epoch=0,#TODO: sort this out
+            # hard_epoch=0,#TODO: sort this out
+            hard_epoch=0,#hyperparameters["epochs"] * hyperparameters["hard_ratio"],
             sample_num=hyperparameters["sample_num"],
             hard_gum=hyperparameters["hard_gum"],
         )

@@ -203,6 +203,8 @@ class ESPO(BaseAgent):
             done_v = np.zeros(self.n_envs)
 
         while self.t < num_timesteps:
+            # TODO: figure out where to put this: model.set_temp_target_ratio(epoch)
+
             # Run Policy
             self.policy.eval()
             self.policy.set_mode(0)# exploration_mode
