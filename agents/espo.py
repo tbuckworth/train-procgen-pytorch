@@ -203,7 +203,9 @@ class ESPO(BaseAgent):
             done_v = np.zeros(self.n_envs)
 
         while self.t < num_timesteps:
-            # TODO: figure out where to put this: model.set_temp_target_ratio(epoch)
+            # TODO: figure out where to put this:
+
+            self.policy.graph.set_temp_target_ratio(epoch)
 
             # Run Policy
             self.policy.eval()

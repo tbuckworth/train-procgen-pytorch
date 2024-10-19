@@ -1165,6 +1165,10 @@ class GraphActorCriticEQL(GraphModel):
         self.apply(xavier_uniform_init)
         self.to(device)
 
+    def set_temp_target_ratio(self, num_timesteps):
+        self.messenger.set_temp_target_ratio(num_timesteps)
+        self.actor.set_temp_target_ratio(num_timesteps)
+
     def set_no_var(self, no_var):
         if no_var and not self.no_var:
             self.obs_dim += 1

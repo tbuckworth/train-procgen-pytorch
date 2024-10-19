@@ -98,6 +98,14 @@ class GraphPolicy(nn.Module):
             print(f"\nTrying to set_mode on non-espl model type:{type(self.graph)}\n")
             raise e
 
+    def set_temp_target_ratio(self, timesteps):
+        try:
+            self.graph.set_temp_target_ratio(timesteps)
+        except Exception as e:
+            print(f"\nTrying to set_temp_target_ratio on non-espl model type:{type(self.graph)}\n")
+            raise e
+
+
     def forward(self, x, hx=None, masks=None):
         if self.embedder is not None:
             x = self.embedder(x)
