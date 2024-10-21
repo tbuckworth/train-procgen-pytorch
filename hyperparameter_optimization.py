@@ -817,9 +817,47 @@ def espo_cartpole():
     }
     run_forever(bounds, fixed, run_next_hyperparameters)
 
+def ipl_cartpole():
+    fixed = {
+        "detect_nan": True,
+        "env_name": 'cartpole',
+        "exp_name": 'Cartpole',
+        "param_name": 'ipl_cartpole',
+        "device": "gpu",
+        "num_timesteps": int(2e8),
+        "seed": 6033,
+        "wandb_tags": ["ipl0"],
+        "use_wandb": True,
+        "mirror_env": False,
+        "use_valid_env": True,
+        "anneal_temp": False,
+        # "n_envs": 6,
+        # "learning_rate": 1e-4,
+        # "n_steps": 4096,
+        # "n_minibatch": 128,
+        # "output_dim": 24,#[24, 64],
+        # "depth": 4,#[2, 6],
+        # "gamma": 0.99,
+        # "lmbda": 0.95,
+        # "epoch": 10,
+    }
+    bounds = {
+        # # "gamma": [0.9999, 0.8],
+        # # "lmbda": [0.0, 0.99999],
+        # # "epoch": [1, 10],
+        # "learning_rate": [1e-4, 1e-3],
+        # # "n_envs": [64],
+        # # "n_steps": [256],
+        # "depth": [2, 6],
+        # "mid_weight": [16, 256],
+    }
+    run_forever(bounds, fixed, run_next_hyperparameters)
+
+
+
 
 if __name__ == "__main__":
-    espo_cartpole()
+    ipl_cartpole()
     # espl_x_squared()
     # cartpole_graph_ppo()
     # graph_ppo_sr_ft_continuous()
