@@ -90,9 +90,9 @@ class IPL(BaseAgent):
 
                 dist_batch, value_batch, _ = self.policy(obs_batch, None, None)
                 _, next_value_batch, _ = self.policy(nobs_batch, None, None)
-                next_value_batch[done_batch] = 0
+                next_value_batch[done_batch.bool()] = 0
 
-                predicted_reward = dist_batch.log_prob[act_batch] + value_batch - self.gamma * next_value_batch
+                predicted_reward = dist_batch.log_prob(act_batch) + value_batch - self.gamma * next_value_batch
                 # DO LOSS ON R_HAT
 
                 loss = torch.nn.functional.mse_loss(predicted_reward, rew_batch)
