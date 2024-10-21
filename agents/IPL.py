@@ -188,6 +188,8 @@ class IPL(BaseAgent):
         self.env.close()
         if self.env_valid is not None:
             self.env_valid.close()
+        if self.env_greedy is not None:
+            self.env_greedy.close()
 
     def collect_data(self, obs, storage, env, greedy=False):
         for _ in range(self.n_steps):

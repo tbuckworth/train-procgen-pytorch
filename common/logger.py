@@ -102,9 +102,8 @@ class Logger(object):
             rew_batch_v = rew_batch_v.T
             done_batch_v = done_batch_v.T
         if greedy:
-            self.greedy = True
-            rew_batch_g = rew_batch_g
-            done_batch_g = done_batch_g
+            rew_batch_g = rew_batch_g.T
+            done_batch_g = done_batch_g.T
 
         # TODO: Vectorize this if possible
         for i in range(self.n_envs):
@@ -132,6 +131,8 @@ class Logger(object):
                     self.episode_rewards_v[i] = []
                 if greedy and done_batch_g[i][j]:
                     ep_length = len(self.episode_rewards_g[i])
+                    if ep_length > 500:
+                        print("check")
                     self.episode_timeout_buffer_g.append(1 if ep_length == self.max_steps else 0)
                     self.episode_len_buffer_g.append(ep_length)
                     self.episode_reward_buffer_g.append(np.sum(self.episode_rewards_g[i]))
