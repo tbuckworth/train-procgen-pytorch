@@ -188,8 +188,7 @@ def optimize_hyperparams(bounds,
                          run_next=run_next_hyperparameters,
                          opt_metric="summary.mean_episode_rewards",
                          greater_is_better=True):
-    strings = {k: v for k, v in bounds.items() if isinstance(k, str)}
-    bounds = {k: v for k, v in bounds.items() if not isinstance(k, str)}
+    strings = {k:v for k, v in fixed.items() if isinstance(v, list) and k != "wandb_tags"}
     string_select = {k: np.random.choice(v) for k, v in strings.items()}
     if "env_name" in string_select.keys():
         project = get_project(string_select["env_name"],fixed["exp_name"])
