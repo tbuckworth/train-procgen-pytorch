@@ -131,8 +131,6 @@ class Logger(object):
                     self.episode_rewards_v[i] = []
                 if greedy and done_batch_g[i][j]:
                     ep_length = len(self.episode_rewards_g[i])
-                    if ep_length > 500:
-                        print("check")
                     self.episode_timeout_buffer_g.append(1 if ep_length == self.max_steps else 0)
                     self.episode_len_buffer_g.append(ep_length)
                     self.episode_reward_buffer_g.append(np.sum(self.episode_rewards_g[i]))

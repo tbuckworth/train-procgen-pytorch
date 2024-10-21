@@ -84,8 +84,6 @@ class PreVecEnv(Env):
         self.n_steps += 1
         truncated = self.n_steps >= self.max_steps
         self.terminated[truncated] = True
-        if (self.n_steps > 500).any():
-            print("check")
 
         if np.any(self.terminated):
             self.set()
