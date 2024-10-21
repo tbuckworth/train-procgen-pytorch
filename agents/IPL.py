@@ -1,8 +1,5 @@
-from torch.distributed import broadcast
-
 from .base_agent import BaseAgent
-from common.misc_util import adjust_lr, get_n_params, cross_batch_entropy, attention_entropy, adjust_lr_grok, \
-    sparsity_loss
+from common.misc_util import adjust_lr, cross_batch_entropy, adjust_lr_grok
 import torch
 import torch.optim as optim
 import numpy as np
@@ -27,17 +24,9 @@ class IPL(BaseAgent):
                  lmbda=0.95,
                  learning_rate=2.5e-4,
                  grad_clip_norm=0.5,
-                 eps_clip=0.2,
-                 value_coef=0.5,
-                 entropy_coef=0.01,
-                 x_entropy_coef=0.,
                  normalize_adv=True,
                  normalize_rew=True,
-                 use_gae=True,
-                 entropy_scaling=None,
                  increasing_lr=False,
-                 sparsity_coef=0.,
-                 fs_coef=0.,
                  **kwargs):
         super(IPL, self).__init__(env, policy, logger, storage, device,
                                   n_checkpoints, env_valid, storage_valid)
@@ -83,7 +72,7 @@ class IPL(BaseAgent):
 
     def optimize(self):
         # Loss and info:
-        mutual_info_list, entropy_list, total_loss_list = [], [], [], []
+        mutual_info_list, entropy_list, total_loss_list, corr_list = [], [], [], []
 
         batch_size = self.n_steps * self.n_envs // self.n_minibatch
         if batch_size < self.mini_batch_size:
@@ -103,10 +92,12 @@ class IPL(BaseAgent):
                 _, next_value_batch, _ = self.policy(nobs_batch, None, None)
                 next_value_batch[done_batch] = 0
 
-                R_hat = dist_batch.log_prob[act_batch] + value_batch - self.gamma * next_value_batch
+                predicted_reward = dist_batch.log_prob[act_batch] + value_batch - self.gamma * next_value_batch
                 # DO LOSS ON R_HAT
 
-                loss = torch.nn.functional.mse_loss(R_hat, rew_batch)
+                loss = torch.nn.functional.mse_loss(predicted_reward, rew_batch)
+
+                corr = torch.corrcoef(torch.stack((predicted_reward, rew_batch)))[0,1]
 
                 mutual_info, entropy, = cross_batch_entropy(dist_batch)
 
@@ -123,11 +114,13 @@ class IPL(BaseAgent):
                 entropy_list.append(entropy.item())
                 mutual_info_list.append(mutual_info.item())
                 total_loss_list.append(loss.item())
+                corr_list.append(corr.item())
 
         # Adjust common/Logger.__init__ if you add/remove from summary:
         summary = {'Loss/entropy': np.mean(entropy_list),
-                   'Loss/x_entropy': np.mean(mutual_info_list),
-                   'Loss/total': np.mean(total_loss_list)}
+                   'Loss/mutual_info': np.mean(mutual_info_list),
+                   'Loss/total': np.mean(total_loss_list),
+                   'Loss/rew_corr': np.mean(corr_list)}
         return summary
 
     def train(self, num_timesteps):
