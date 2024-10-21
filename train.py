@@ -163,11 +163,12 @@ def train_ppo(args):
     model_based = algo in ['ppo-model', 'graph-agent']
     double_graph = algo in ['double-graph-agent']
     ppo_pure = algo in ['ppo-pure', 'espo']
+    IPL = algo in ["IPL"]
 
     print('INTIALIZING MODEL...')
     model, observation_shape, policy = initialize_model(device, env, hyperparameters)
     logger = Logger(n_envs, logdir, use_wandb=args.use_wandb, has_vq=policy.has_vq,
-                    transition_model=model_based, double_graph=double_graph, ppo_pure=ppo_pure)
+                    transition_model=model_based, double_graph=double_graph, ppo_pure=ppo_pure, IPL=IPL)
     logger.max_steps = max_steps
     #############
     ## STORAGE ##
@@ -180,7 +181,7 @@ def train_ppo(args):
     except AttributeError as e:
         pass
     storage, storage_valid = initialize_storage(args, device, double_graph, hidden_state_dim, model_based, n_envs, n_steps,
-                                                observation_shape, continuous_actions, act_shape)
+                                                observation_shape, continuous_actions, act_shape, IPL=IPL)
 
     ###########
     ## AGENT ##

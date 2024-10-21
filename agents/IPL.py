@@ -8,7 +8,7 @@ import torch.optim as optim
 import numpy as np
 
 
-class IPO(BaseAgent):
+class IPL(BaseAgent):
     def __init__(self,
                  env,
                  policy,
@@ -39,16 +39,10 @@ class IPO(BaseAgent):
                  sparsity_coef=0.,
                  fs_coef=0.,
                  **kwargs):
-        super(IPO, self).__init__(env, policy, logger, storage, device,
+        super(IPL, self).__init__(env, policy, logger, storage, device,
                                   n_checkpoints, env_valid, storage_valid)
 
-        self.fs_coef = fs_coef
         self.total_timesteps = 0
-        self.entropy_scaling = entropy_scaling
-        self.entropy_multiplier = 1.
-        self.s_loss_coef = sparsity_coef
-        self.min_rew = -1.
-        self.max_rew = 11.
         self.n_steps = n_steps
         self.n_envs = n_envs
         self.epoch = epoch
@@ -59,28 +53,20 @@ class IPO(BaseAgent):
         self.learning_rate = learning_rate
         self.optimizer = optim.Adam(self.policy.parameters(), lr=learning_rate, eps=1e-5)
         self.grad_clip_norm = grad_clip_norm
-        self.eps_clip = eps_clip
-        self.value_coef = value_coef
-        self.entropy_coef = entropy_coef
-        self.x_entropy_coef = x_entropy_coef
         self.normalize_adv = normalize_adv
         self.normalize_rew = normalize_rew
-        self.use_gae = use_gae
         if increasing_lr:
             self.adjust_lr = adjust_lr_grok
         else:
             self.adjust_lr = adjust_lr
 
-    def predict(self, obs, hidden_state, done):
+    def predict(self, obs):
         with torch.no_grad():
             obs = torch.FloatTensor(obs).to(device=self.device)
-            hidden_state = torch.FloatTensor(hidden_state).to(device=self.device)
-            mask = torch.FloatTensor(1 - done).to(device=self.device)
-            dist, value, hidden_state = self.policy(obs, hidden_state, mask)
+            dist, value, hidden_state = self.policy(obs, None, None)
             act = dist.sample()
-            log_prob_act = dist.log_prob(act)
 
-        return act.cpu().numpy(), log_prob_act.cpu().numpy(), value.cpu().numpy(), hidden_state.cpu().numpy()
+        return act.cpu().numpy(), value.cpu().numpy()
 
     def predict_w_value_saliency(self, obs, hidden_state, done):
         obs = torch.FloatTensor(obs).to(device=self.device)
@@ -96,16 +82,8 @@ class IPO(BaseAgent):
         return act.detach().cpu().numpy(), log_prob_act.detach().cpu().numpy(), value.detach().cpu().numpy(), hidden_state.detach().cpu().numpy(), obs.grad.data.detach().cpu().numpy()
 
     def optimize(self):
-        mean_rew = np.mean(self.logger.episode_reward_buffer)
-        if self.entropy_scaling == "reward_based":
-            self.entropy_multiplier = 1 - ((mean_rew - self.min_rew) / (self.max_rew - self.min_rew))
-        elif self.entropy_scaling == "time_based":
-            self.entropy_multiplier = 1 - (self.t / self.total_timesteps)
-
-        # Original PPO losses:
-        pi_loss_list, value_loss_list, entropy_loss_list, total_loss_list = [], [], [], []
-        # Extra losses/metrics:
-        x_ent_loss_list, atn_entropy_list, atn_entropy_list2, fs_loss_list, s_loss_list = [], [], [], [], []
+        # Loss and info:
+        mutual_info_list, entropy_list, total_loss_list = [], [], [], []
 
         batch_size = self.n_steps * self.n_envs // self.n_minibatch
         if batch_size < self.mini_batch_size:
@@ -119,41 +97,19 @@ class IPO(BaseAgent):
             generator = self.storage.fetch_train_generator(mini_batch_size=self.mini_batch_size,
                                                            recurrent=recurrent)
             for sample in generator:
-                obs_batch, hidden_state_batch, act_batch, done_batch, \
-                    old_log_prob_act_batch, old_value_batch, return_batch, adv_batch = sample
-                mask_batch = (1 - done_batch)
+                obs_batch, nobs_batch, act_batch, done_batch, value_batch, rew_batch = sample
 
-                dist_batch, value_batch, _ = self.policy(obs_batch, hidden_state_batch, mask_batch)
+                dist_batch, value_batch, _ = self.policy(obs_batch, None, None)
+                _, next_value_batch, _ = self.policy(nobs_batch, None, None)
+                next_value_batch[done_batch] = 0
 
-                R_hat = dist_batch.log_prob + value_batch - gamma * next_value_batch
+                R_hat = dist_batch.log_prob[act_batch] + value_batch - self.gamma * next_value_batch
                 # DO LOSS ON R_HAT
 
-                # Clipped Surrogate Objective
-                log_prob_act_batch = dist_batch.log_prob(act_batch)
-                ratio = torch.exp(log_prob_act_batch - old_log_prob_act_batch)
-                if adv_batch.shape != log_prob_act_batch.shape:
-                    adv_batch = torch.tile(adv_batch.unsqueeze(-1), log_prob_act_batch.shape[1:])
-                surr1 = ratio * adv_batch
-                surr2 = torch.clamp(ratio, 1.0 - self.eps_clip, 1.0 + self.eps_clip) * adv_batch
-                pi_loss = -torch.min(surr1, surr2).mean()
+                loss = torch.nn.functional.mse_loss(R_hat, rew_batch)
 
-                # Clipped Bellman-Error
-                clipped_value_batch = old_value_batch + (value_batch - old_value_batch).clamp(-self.eps_clip,
-                                                                                              self.eps_clip)
-                v_surr1 = (value_batch - return_batch).pow(2)
-                v_surr2 = (clipped_value_batch - return_batch).pow(2)
-                value_loss = 0.5 * torch.max(v_surr1, v_surr2).mean()
+                mutual_info, entropy, = cross_batch_entropy(dist_batch)
 
-                # Policy Entropy
-                # entropy_loss = dist_batch.entropy().mean()
-                x_batch_ent_loss, entropy_loss, = cross_batch_entropy(dist_batch)
-
-
-                loss = (pi_loss
-                        + self.value_coef * value_loss
-                        - self.entropy_coef * entropy_loss * self.entropy_multiplier
-                        - self.x_entropy_coef * x_batch_ent_loss
-                        )
                 if loss.isnan():
                     print("nan loss")
                 loss.backward()
@@ -164,17 +120,13 @@ class IPO(BaseAgent):
                     self.optimizer.step()
                     self.optimizer.zero_grad()
                 grad_accumulation_cnt += 1
-                pi_loss_list.append(-pi_loss.item())
-                value_loss_list.append(-value_loss.item())
-                entropy_loss_list.append(entropy_loss.item())
-                x_ent_loss_list.append(x_batch_ent_loss.item())
+                entropy_list.append(entropy.item())
+                mutual_info_list.append(mutual_info.item())
                 total_loss_list.append(loss.item())
 
         # Adjust common/Logger.__init__ if you add/remove from summary:
-        summary = {'Loss/pi': np.mean(pi_loss_list),
-                   'Loss/v': np.mean(value_loss_list),
-                   'Loss/entropy': np.mean(entropy_loss_list),
-                   'Loss/x_entropy': np.mean(x_ent_loss_list),
+        summary = {'Loss/entropy': np.mean(entropy_list),
+                   'Loss/x_entropy': np.mean(mutual_info_list),
                    'Loss/total': np.mean(total_loss_list)}
         return summary
 
@@ -185,42 +137,32 @@ class IPO(BaseAgent):
         checkpoints = [(i + 1) * save_every for i in range(self.num_checkpoints)]
         checkpoints.sort()
         obs = self.env.reset()
-        hidden_state = np.zeros((self.n_envs, self.storage.hidden_state_size))
-        done = np.zeros(self.n_envs)
 
         if self.env_valid is not None:
             obs_v = self.env_valid.reset()
-            hidden_state_v = np.zeros((self.n_envs, self.storage.hidden_state_size))
-            done_v = np.zeros(self.n_envs)
 
         while self.t < num_timesteps:
             # Run Policy
             self.policy.eval()
             for _ in range(self.n_steps):
-                act, log_prob_act, value, next_hidden_state = self.predict(obs, hidden_state, done)
+                act, value = self.predict(obs)
                 next_obs, rew, done, info = self.env.step(act)
-                self.storage.store(obs, hidden_state, act, rew, done, info, log_prob_act, value)
+                self.storage.store(obs, act, rew, done, info, value)
                 obs = next_obs
-                hidden_state = next_hidden_state
-            value_batch = self.storage.value_batch[:self.n_steps]
-            _, _, last_val, hidden_state = self.predict(obs, hidden_state, done)
-            self.storage.store_last(obs, hidden_state, last_val)
-            # Compute advantage estimates
-            self.storage.compute_estimates(self.gamma, self.lmbda, self.use_gae, self.normalize_adv)
+            _, last_val = self.predict(obs)
+            self.storage.store_last(obs, last_val)
 
             # valid
             if self.env_valid is not None:
                 for _ in range(self.n_steps):
-                    act_v, log_prob_act_v, value_v, next_hidden_state_v = self.predict(obs_v, hidden_state_v, done_v)
+                    act_v, value_v = self.predict(obs_v)
                     next_obs_v, rew_v, done_v, info_v = self.env_valid.step(act_v)
-                    self.storage_valid.store(obs_v, hidden_state_v, act_v,
+                    self.storage_valid.store(obs_v, act_v,
                                              rew_v, done_v, info_v,
-                                             log_prob_act_v, value_v)
+                                             value_v)
                     obs_v = next_obs_v
-                    hidden_state_v = next_hidden_state_v
-                _, _, last_val_v, hidden_state_v = self.predict(obs_v, hidden_state_v, done_v)
-                self.storage_valid.store_last(obs_v, hidden_state_v, last_val_v)
-                self.storage_valid.compute_estimates(self.gamma, self.lmbda, self.use_gae, self.normalize_adv)
+                _, last_val_v = self.predict(obs_v)
+                self.storage_valid.store_last(obs_v, last_val_v)
 
             # Optimize policy & valueq
             summary = self.optimize()
