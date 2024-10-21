@@ -601,7 +601,9 @@ def add_training_args(parser):
     parser.add_argument('--clip_value', action="store_true")
     parser.add_argument('--anneal_temp', action="store_true")
     parser.add_argument('--use_greedy_env', action="store_true")
+    parser.add_argument('--learned_gamma', action="store_true")
 
+    parser.add_argument('--no-learned_gamma', dest='detect_nan', action="store_false")
     parser.add_argument('--no-use_greedy_env', dest='detect_nan', action="store_false")
     parser.add_argument('--no-detect_nan', dest='detect_nan', action="store_false")
     parser.add_argument('--no-use_valid_env', dest='use_valid_env', action="store_false")
@@ -629,6 +631,7 @@ def add_training_args(parser):
                         clip_value=True,
                         anneal_temp=False,
                         use_greedy_env=False,
+                        learned_gamma=False,
                         )
 
     return parser

@@ -83,6 +83,10 @@ class GraphPolicy(nn.Module):
         self.recurrent = False
         self.simple_scaling = simple_scaling
         self.no_var = False
+        self.learned_gamma = nn.Parameter(torch.FloatTensor([0.5],requires_grad=True).to(device=self.device))
+
+    def gamma(self):
+        return self.learned_gamma.sigmoid()
 
     def set_no_var(self, no_var=True):
         self.no_var = no_var

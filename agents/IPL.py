@@ -1,3 +1,5 @@
+import wandb
+
 from .base_agent import BaseAgent
 from common.misc_util import adjust_lr, cross_batch_entropy, adjust_lr_grok
 import torch
@@ -29,9 +31,11 @@ class IPL(BaseAgent):
                  increasing_lr=False,
                  env_greedy=None,
                  storage_greedy=None,
+                 learned_gamma=False,
                  **kwargs):
         super(IPL, self).__init__(env, policy, logger, storage, device,
                                   n_checkpoints, env_valid, storage_valid)
+        self.learned_gamma = learned_gamma
         self.env_greedy = env_greedy
         self.storage_greedy = storage_greedy
         self.total_timesteps = 0
@@ -77,7 +81,7 @@ class IPL(BaseAgent):
 
     def optimize(self):
         # Loss and info:
-        mutual_info_list, entropy_list, total_loss_list, corr_list = [], [], [], []
+        mutual_info_list, entropy_list, total_loss_list, corr_list, gamma_list = [], [], [], [], []
 
         batch_size = self.n_steps * self.n_envs // self.n_minibatch
         if batch_size < self.mini_batch_size:
@@ -97,8 +101,11 @@ class IPL(BaseAgent):
                 _, next_value_batch, _ = self.policy(nobs_batch, None, None)
                 next_value_batch[done_batch.bool()] = 0
 
-                predicted_reward = dist_batch.log_prob(act_batch) + value_batch - self.gamma * next_value_batch
-                # DO LOSS ON R_HAT
+                gamma = self.gamma
+                if self.learned_gamma:
+                    gamma = self.policy.gamma()
+
+                predicted_reward = dist_batch.log_prob(act_batch) + value_batch - gamma * next_value_batch
 
                 loss = torch.nn.functional.mse_loss(predicted_reward, rew_batch)
 
@@ -120,12 +127,17 @@ class IPL(BaseAgent):
                 mutual_info_list.append(mutual_info.item())
                 total_loss_list.append(loss.item())
                 corr_list.append(corr.item())
+                gamma_list.append(gamma.item() if self.learned_gamma else gamma)
 
         # Adjust common/Logger.__init__ if you add/remove from summary:
         summary = {'Loss/entropy': np.mean(entropy_list),
                    'Loss/mutual_info': np.mean(mutual_info_list),
                    'Loss/total': np.mean(total_loss_list),
-                   'Loss/rew_corr': np.mean(corr_list)}
+                   'Loss/rew_corr': np.mean(corr_list),
+                   'Loss/gamma': np.mean(gamma_list),
+                   }
+        self.last_predicted_reward = predicted_reward.detach().cpu().numpy()
+        self.last_reward = rew_batch.detach().cpu().numpy()
         return summary
 
     def train(self, num_timesteps):
@@ -185,6 +197,11 @@ class IPL(BaseAgent):
                             'optimizer_state_dict': self.optimizer.state_dict()},
                            self.logger.logdir + '/model_' + str(self.t) + '.pth')
                 checkpoint_cnt += 1
+        if self.logger.use_wandb:
+            data = [[x, y] for (x, y) in zip(self.last_reward, self.last_predicted_reward)]
+            table = wandb.Table(data=data, columns=["Reward", "Predicted Reward"])
+            wandb.log({"predicted reward": wandb.plot.scatter(table, "Reward", "Predicted Reward",
+                                                             title="Predicted Reward vs Reward")})
         self.env.close()
         if self.env_valid is not None:
             self.env_valid.close()
