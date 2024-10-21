@@ -30,10 +30,15 @@ class CategoricalPolicy(nn.Module):
         # small scale weight-initialization in policy enhances the stability        
         self.fc_policy = orthogonal_init(nn.Linear(self.embedder.output_dim, action_size), gain=0.01)
         self.fc_value = orthogonal_init(nn.Linear(self.embedder.output_dim, 1), gain=1.0)
+        # sigmoid(4.6) = 0.99
+        self.learned_gamma = nn.Parameter(torch.tensor(4.6,requires_grad=True))
 
         self.recurrent = recurrent
         if self.recurrent:
             self.gru = GRU(self.embedder.output_dim, self.embedder.output_dim)
+
+    def gamma(self):
+        return self.learned_gamma.sigmoid()
 
     def is_recurrent(self):
         return self.recurrent
@@ -83,10 +88,7 @@ class GraphPolicy(nn.Module):
         self.recurrent = False
         self.simple_scaling = simple_scaling
         self.no_var = False
-        self.learned_gamma = nn.Parameter(torch.FloatTensor([0.5],requires_grad=True).to(device=self.device))
 
-    def gamma(self):
-        return self.learned_gamma.sigmoid()
 
     def set_no_var(self, no_var=True):
         self.no_var = no_var
