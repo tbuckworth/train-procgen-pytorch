@@ -855,13 +855,50 @@ def ipl_cartpole():
     }
     run_forever(bounds, fixed, run_next_hyperparameters)
 
+def ipl_coinrun():
+    fixed = {
+        "detect_nan": True,
+        "env_name": 'coinrun',
+        "exp_name": 'Cartpole',
+        "param_name": 'hard-500-ipl',
+        "device": "gpu",
+        "num_timesteps": int(2e8),
+        "seed": 6033,
+        "wandb_tags": ["ipl0"],
+        "use_wandb": True,
+        "mirror_env": False,
+        "use_valid_env": True,
+        "anneal_temp": False,
+        "use_greedy_env": True,
+        "learned_gamma": True,
+        # "n_envs": 6,
+        # "learning_rate": 1e-4,
+        # "n_steps": 4096,
+        # "n_minibatch": 128,
+        # "output_dim": 24,#[24, 64],
+        # "depth": 4,#[2, 6],
+        # "gamma": 0.99,
+        # "lmbda": 0.95,
+        # "epoch": 10,
+    }
+    bounds = {
+        # # "gamma": [0.9999, 0.8],
+        # # "lmbda": [0.0, 0.99999],
+        "epoch": [1, 5],
+        "learning_rate": [1e-5, 1e-3],
+        # # "n_envs": [64],
+        # # "n_steps": [256],
+        # "depth": [2, 6],
+        # "mid_weight": [16, 256],
+    }
+    run_forever(bounds, fixed, run_next_hyperparameters)
 
 
 
 if __name__ == "__main__":
-    import faulthandler
-    faulthandler.enable()
-    ipl_cartpole()
+    # import faulthandler
+    # faulthandler.enable()
+    ipl_coinrun()
     # espl_x_squared()
     # cartpole_graph_ppo()
     # graph_ppo_sr_ft_continuous()
