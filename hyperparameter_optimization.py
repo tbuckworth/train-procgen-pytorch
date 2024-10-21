@@ -6,11 +6,11 @@ from math import floor, log10
 
 import numpy as np
 import pandas as pd
+from google.protobuf.text_encoding import string
 from scipy.stats import ttest_ind_from_stats
 
 import wandb
 from create_sh_files import add_training_args_dict, add_symbreg_args_dict
-
 
 from gp import bayesian_optimisation
 from helper_local import wandb_login, DictToArgs, get_project, add_symbreg_args, add_pets_args, add_espl_args
@@ -76,6 +76,7 @@ def select_next_hyperparameters(X, y, bounds, greater_is_better=True):
     if bounds == {}:
         return {}
     [b.sort() for b in bounds.values()]
+
     if X is None:
         bound_array = np.array([[x[0], x[-1]] for x in bounds.values()])
         next_params = np.random.uniform(bound_array[:, 0], bound_array[:, 1], (bound_array.shape[0]))
@@ -129,6 +130,7 @@ def run_next_hyperparameters(hparams):
     args = DictToArgs(parser_dict)
     train_ppo(args)
 
+
 def run_hp_for_espl(hparams):
     from run_espl import run_espl_x_squared
     parser = argparse.ArgumentParser()
@@ -153,6 +155,7 @@ def run_double_graph_hyperparameters(hparams):
     parser_dict.update(hparams)
     args = DictToArgs(parser_dict)
     run_double_graph_neurosymbolic_search(args)
+
 
 def graph_ppo_multi_sr(hparams):
     from graph_ppo_sr_multi import run_graph_ppo_multi_sr
@@ -186,6 +189,11 @@ def optimize_hyperparams(bounds,
                          run_next=run_next_hyperparameters,
                          opt_metric="summary.mean_episode_rewards",
                          greater_is_better=True):
+    strings = {k: v for k, v in bounds.items() if isinstance(k, str)}
+    bounds = {k: v for k, v in bounds.items() if not isinstance(k, str)}
+    string_select = {k: np.random.choice(v) for k, v in strings.items()}
+    if "env_name" in string_select.keys():
+        project = get_project(string_select["env_name"],fixed["exp_name"])
     try:
         X, y = get_wandb_performance(bounds.keys(), project, id_tag, opt_metric)
     except ValueError as e:
@@ -196,6 +204,7 @@ def optimize_hyperparams(bounds,
 
     fh = fixed.copy()
     hparams.update(fh)
+    hparams.update(string_select)
 
     try:
         run_next(hparams)
@@ -562,6 +571,7 @@ def pets_graph_transition_cartpole():
         id_tag = fixed["wandb_tags"][0]
         optimize_hyperparams(bounds, fixed, project, id_tag, run_pets_hyperparameters, opt_metric="trial/total_reward")
 
+
 def cartpole_graph_ppo():
     fixed = {
         "detect_nan": True,
@@ -606,10 +616,11 @@ def cartpole_graph_ppo():
         id_tag = fixed["wandb_tags"][0]
         optimize_hyperparams(bounds, fixed, project, id_tag, run_next_hyperparameters)
 
+
 def humanoid_graph_ppo():
     fixed = {
         "detect_nan": True,
-        "env_name": 'humanoid',#'cartpole_continuous',
+        "env_name": 'humanoid',  # 'cartpole_continuous',
         "exp_name": 'pure-graph',
         "param_name": 'graph-ant',
         "device": "gpu",
@@ -821,11 +832,12 @@ def espo_cartpole():
     }
     run_forever(bounds, fixed, run_next_hyperparameters)
 
+
 def ipl_cartpole():
     fixed = {
         "detect_nan": True,
-        "env_name": 'cartpole',
-        "exp_name": 'Cartpole',
+        "env_name": ['cartpole',"cartpole_swing","mountain_car","acrobot", "cartpole_continuous"],
+        "exp_name": 'IPL',
         "param_name": 'ipl_cartpole',
         "device": "gpu",
         "num_timesteps": int(3e6),
@@ -858,6 +870,7 @@ def ipl_cartpole():
         # "mid_weight": [16, 256],
     }
     run_forever(bounds, fixed, run_next_hyperparameters)
+
 
 def ipl_coinrun():
     fixed = {
@@ -898,11 +911,10 @@ def ipl_coinrun():
     run_forever(bounds, fixed, run_next_hyperparameters)
 
 
-
 if __name__ == "__main__":
     # import faulthandler
     # faulthandler.enable()
-    ipl_coinrun()
+    ipl_cartpole()
     # espl_x_squared()
     # cartpole_graph_ppo()
     # graph_ppo_sr_ft_continuous()
