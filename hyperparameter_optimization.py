@@ -10,14 +10,10 @@ from scipy.stats import ttest_ind_from_stats
 
 import wandb
 from create_sh_files import add_training_args_dict, add_symbreg_args_dict
-from double_graph_sr import run_double_graph_neurosymbolic_search
+
+
 from gp import bayesian_optimisation
-from graph_ppo_sr_multi import run_graph_ppo_multi_sr
-from graph_sr import fine_tune, load_sr_graph_agent, run_graph_neurosymbolic_search
 from helper_local import wandb_login, DictToArgs, get_project, add_symbreg_args, add_pets_args, add_espl_args
-from pets.pets import run_pets
-from run_espl import run_espl_x_squared
-from train import train_ppo
 
 
 def get_wandb_performance(hparams, project="Cartpole", id_tag="sa_rew", opt_metric="summary.mean_episode_rewards",
@@ -117,6 +113,7 @@ def select_next_hyperparameters(X, y, bounds, greater_is_better=True):
 
 
 def run_pets_hyperparameters(hparams):
+    from pets.pets import run_pets
     parser = argparse.ArgumentParser()
     parser = add_pets_args(parser)
     args = parser.parse_args()
@@ -126,12 +123,14 @@ def run_pets_hyperparameters(hparams):
 
 
 def run_next_hyperparameters(hparams):
+    from train import train_ppo
     parser_dict = add_training_args_dict()
     parser_dict.update(hparams)
     args = DictToArgs(parser_dict)
     train_ppo(args)
 
 def run_hp_for_espl(hparams):
+    from run_espl import run_espl_x_squared
     parser = argparse.ArgumentParser()
     parser = add_espl_args(parser)
     args = parser.parse_args()
@@ -141,6 +140,7 @@ def run_hp_for_espl(hparams):
 
 
 def run_graph_hyperparameters(hparams):
+    from graph_sr import run_graph_neurosymbolic_search
     parser_dict = add_training_args_dict()
     parser_dict.update(hparams)
     args = DictToArgs(parser_dict)
@@ -148,12 +148,14 @@ def run_graph_hyperparameters(hparams):
 
 
 def run_double_graph_hyperparameters(hparams):
+    from double_graph_sr import run_double_graph_neurosymbolic_search
     parser_dict = add_symbreg_args_dict()
     parser_dict.update(hparams)
     args = DictToArgs(parser_dict)
     run_double_graph_neurosymbolic_search(args)
 
 def graph_ppo_multi_sr(hparams):
+    from graph_ppo_sr_multi import run_graph_ppo_multi_sr
     parser = argparse.ArgumentParser()
     parser = add_symbreg_args(parser)
     args = parser.parse_args()
@@ -316,6 +318,8 @@ def init_wandb(cfg, prefix="symbolic_graph"):
 
 
 def fine_tune_sr(hp_override):
+    from graph_sr import fine_tune, load_sr_graph_agent
+
     symbdir = hp_override["symbdir"]
     logdir, ns_agent = load_sr_graph_agent(symbdir)
 
