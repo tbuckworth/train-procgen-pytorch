@@ -180,8 +180,11 @@ def train_ppo(args):
         act_shape = policy.act_shape
     except AttributeError as e:
         pass
-    storage, storage_valid = initialize_storage(args, device, double_graph, hidden_state_dim, model_based, n_envs, n_steps,
+    storage, storage_valid, storage_greedy = initialize_storage(args, device, double_graph, hidden_state_dim, model_based, n_envs, n_steps,
                                                 observation_shape, continuous_actions, act_shape, IPL=IPL)
+
+    if storage_greedy is not None:
+        hyperparameters.update({"storage_greedy":storage_greedy})
 
     ###########
     ## AGENT ##

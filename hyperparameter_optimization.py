@@ -831,6 +831,7 @@ def ipl_cartpole():
         "mirror_env": False,
         "use_valid_env": True,
         "anneal_temp": False,
+        "use_greedy_env": True,
         # "n_envs": 6,
         # "learning_rate": 1e-4,
         # "n_steps": 4096,

@@ -14,7 +14,9 @@ class BaseAgent(object):
                  device,
                  num_checkpoints,
                  env_valid=None,
-                 storage_valid=None):
+                 storage_valid=None,
+                 storage_greedy=None,
+                 ):
         """
         env: (gym.Env) environment following the openAI Gym API
         """
@@ -26,6 +28,7 @@ class BaseAgent(object):
         self.num_checkpoints = num_checkpoints
         self.env_valid = env_valid
         self.storage_valid = storage_valid
+        self.storage_greedy = storage_greedy
         self.t = 0
 
     def predict(self, obs):

@@ -388,7 +388,7 @@ def load_learning_objects(logdir, ftdir, device):
     ppo_pure = algo in ['ppo-pure']
     hidden_state_dim = 1
 
-    storage, storage_valid = initialize_storage(args, device, double_graph, hidden_state_dim, model_based,
+    storage, storage_valid, _ = initialize_storage(args, device, double_graph, hidden_state_dim, model_based,
                                                 args.n_envs, args.n_steps, observation_shape)
 
     agent_cons = get_agent_constructor(args.algo)

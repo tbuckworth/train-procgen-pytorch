@@ -14,8 +14,10 @@ class Logger(object):
 
     def __init__(self, n_envs, logdir, use_wandb=False, has_vq=False, transition_model=False, double_graph=False,
                  ppo_pure=False, IPL=False):
-        self.true_mean_reward_v = None
         self.true_mean_reward = None
+        self.true_mean_reward_v = None
+        self.true_mean_reward_g = None
+        self.greedy = False
         self.start_time = time.time()
         self.n_envs = n_envs
         self.logdir = logdir
@@ -38,6 +40,16 @@ class Logger(object):
         self.episode_timeout_buffer_v = deque(maxlen=40)
         self.episode_len_buffer_v = deque(maxlen=40)
         self.episode_reward_buffer_v = deque(maxlen=40)
+
+        # greedy
+        self.episode_rewards_g = []
+        for _ in range(n_envs):
+            self.episode_rewards_g.append([])
+
+        self.episode_timeout_buffer_g = deque(maxlen=40)
+        self.episode_len_buffer_g = deque(maxlen=40)
+        self.episode_reward_buffer_g = deque(maxlen=40)
+
 
         time_metrics = ["timesteps", "wall_time", "num_episodes"]  # only collected once
         loss_metrics = ["loss_pi", "loss_v", "loss_entropy", "loss_x_entropy", "atn_entropy", "atn_entropy2",
@@ -67,38 +79,37 @@ class Logger(object):
         self.timesteps = 0
         self.num_episodes = 0
 
-    def feed(self, rew_batch, done_batch, true_mean_reward, rew_batch_v=None, done_batch_v=None,
-             true_mean_reward_v=None):
+    def feed(self, rew_batch, done_batch, true_mean_reward,
+             rew_batch_v=None, done_batch_v=None, true_mean_reward_v=None,
+             rew_batch_g=None, done_batch_g=None, true_mean_reward_g=None
+             ):
         self.true_mean_reward = true_mean_reward
         self.true_mean_reward_v = true_mean_reward_v
+        self.true_mean_reward_g = true_mean_reward_g
         steps = rew_batch.shape[0]
         rew_batch = rew_batch.T
         done_batch = done_batch.T
 
         valid = rew_batch_v is not None and done_batch_v is not None
+        greedy = rew_batch_g is not None and done_batch_g is not None
         if valid:
             rew_batch_v = rew_batch_v.T
             done_batch_v = done_batch_v.T
-
-        # cr = np.cumsum(rew_batch, axis=1)
-        # cr_masked = cr * done_batch
-        # ep_rew = []
-        # for i, row in enumerate(cr_masked):
-        #     prev = np.arange(len(row))
-        #     prev[done_batch[i] == 0] = 0
-        #     prev = np.maximum.accumulate(prev)
-        #     last = np.concatenate(([0], row[prev][:-1]))
-        #     last[done_batch[i] == 0] = 0
-        #     ep_rews = row - last
-        #     print(ep_rews[ep_rews != 0])
-        #     ep_rew += ep_rews[ep_rews != 0].tolist()
+        if greedy:
+            self.greedy = True
+            rew_batch_g = rew_batch_g
+            done_batch_g = done_batch_g
 
         # TODO: Vectorize this if possible
         for i in range(self.n_envs):
             for j in range(steps):
                 self.episode_rewards[i].append(rew_batch[i][j])
+                
                 if valid:
                     self.episode_rewards_v[i].append(rew_batch_v[i][j])
+
+                if greedy:
+                    self.episode_rewards_g[i].append(rew_batch_g[i][j])
 
                 if done_batch[i][j]:
                     ep_length = len(self.episode_rewards[i])
@@ -113,6 +124,12 @@ class Logger(object):
                     self.episode_len_buffer_v.append(ep_length)
                     self.episode_reward_buffer_v.append(np.sum(self.episode_rewards_v[i]))
                     self.episode_rewards_v[i] = []
+                if greedy and done_batch_g[i][j]:
+                    ep_length = len(self.episode_rewards_g[i])
+                    self.episode_timeout_buffer_g.append(1 if ep_length == self.max_steps else 0)
+                    self.episode_len_buffer_g.append(ep_length)
+                    self.episode_reward_buffer_g.append(np.sum(self.episode_rewards_g[i]))
+                    self.episode_rewards_g[i] = []
 
         self.timesteps += (self.n_envs * steps)
 
@@ -166,5 +183,16 @@ class Logger(object):
         episode_statistics['[Valid] Len/mean_episodes_pos_reward'] = np.mean(
             np.array(self.episode_len_buffer_v)[np.array(self.episode_reward_buffer_v) > 0])
         episode_statistics['[Valid] Rewards/balanced_mean'] = self.true_mean_reward_v
+        if self.greedy:
+            episode_statistics['[Greedy] Rewards/max_episodes'] = np.max(self.episode_reward_buffer_g, initial=0)
+            episode_statistics['[Greedy] Rewards/mean_episodes'] = np.mean(self.episode_reward_buffer_g)
+            episode_statistics['[Greedy] Rewards/median_episodes'] = np.median(self.episode_reward_buffer_g)
+            episode_statistics['[Greedy] Rewards/min_episodes'] = np.min(self.episode_reward_buffer_g, initial=0)
+            episode_statistics['[Greedy] Len/max_episodes'] = np.max(self.episode_len_buffer_g, initial=0)
+            episode_statistics['[Greedy] Len/mean_episodes'] = np.mean(self.episode_len_buffer_g)
+            episode_statistics['[Greedy] Len/min_episodes'] = np.min(self.episode_len_buffer_g, initial=0)
+            episode_statistics['[Greedy] Len/mean_timeout'] = np.mean(self.episode_timeout_buffer_g)
+            episode_statistics['[Greedy] Len/mean_episodes_pos_reward'] = np.mean(
+                np.array(self.episode_len_buffer_g)[np.array(self.episode_reward_buffer_g) > 0])
 
         return episode_statistics

@@ -600,7 +600,9 @@ def add_training_args(parser):
     parser.add_argument('--use_gae', action="store_true")
     parser.add_argument('--clip_value', action="store_true")
     parser.add_argument('--anneal_temp', action="store_true")
+    parser.add_argument('--use_greedy_env', action="store_true")
 
+    parser.add_argument('--no-use_greedy_env', dest='detect_nan', action="store_false")
     parser.add_argument('--no-detect_nan', dest='detect_nan', action="store_false")
     parser.add_argument('--no-use_valid_env', dest='use_valid_env', action="store_false")
     parser.add_argument('--no-normalize_rew', dest='normalize_rew', action="store_false")
@@ -626,6 +628,7 @@ def add_training_args(parser):
                         use_gae=True,
                         clip_value=True,
                         anneal_temp=False,
+                        use_greedy_env=False,
                         )
 
     return parser
@@ -1084,6 +1087,7 @@ def initialize_storage(args, device, double_graph, hidden_state_dim, model_based
     storage = Storage(observation_shape, hidden_state_dim, n_steps, n_envs, device, continuous_actions, act_shape)
     storage_valid = Storage(observation_shape, hidden_state_dim, n_steps, n_envs,
                             device, continuous_actions, act_shape) if args.use_valid_env else None
+    storage_greedy = None
     if model_based or double_graph:
         storage = BasicStorage(observation_shape, n_steps, n_envs, device)
         storage_valid = BasicStorage(observation_shape, n_steps, n_envs,
@@ -1092,7 +1096,9 @@ def initialize_storage(args, device, double_graph, hidden_state_dim, model_based
         storage = IPLStorage(observation_shape, n_steps, n_envs, device)
         storage_valid = IPLStorage(observation_shape, n_steps, n_envs,
                                      device) if args.use_valid_env else None
-    return storage, storage_valid
+        storage_greedy = IPLStorage(observation_shape, n_steps, n_envs,
+                                     device) if args.use_greedy_env else None
+    return storage, storage_valid, storage_greedy
 
 
 def print_dict(log):

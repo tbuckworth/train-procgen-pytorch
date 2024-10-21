@@ -49,11 +49,13 @@ class IPL(BaseAgent):
         else:
             self.adjust_lr = adjust_lr
 
-    def predict(self, obs):
+    def predict(self, obs, greedy=False):
         with torch.no_grad():
             obs = torch.FloatTensor(obs).to(device=self.device)
             dist, value, hidden_state = self.policy(obs, None, None)
             act = dist.sample()
+            if greedy:
+                act = dist.logits.argmax(dim=-1)
 
         return act.cpu().numpy(), value.cpu().numpy()
 
@@ -134,28 +136,20 @@ class IPL(BaseAgent):
         if self.env_valid is not None:
             obs_v = self.env_valid.reset()
 
+        if self.env_greedy is not None:
+            obs_g = self.env_greedy.reset()
+
         while self.t < num_timesteps:
             # Run Policy
             self.policy.eval()
-            for _ in range(self.n_steps):
-                act, value = self.predict(obs)
-                next_obs, rew, done, info = self.env.step(act)
-                self.storage.store(obs, act, rew, done, info, value)
-                obs = next_obs
-            _, last_val = self.predict(obs)
-            self.storage.store_last(obs, last_val)
+            obs = self.collect_data(obs, self.storage, self.env)
 
             # valid
             if self.env_valid is not None:
-                for _ in range(self.n_steps):
-                    act_v, value_v = self.predict(obs_v)
-                    next_obs_v, rew_v, done_v, info_v = self.env_valid.step(act_v)
-                    self.storage_valid.store(obs_v, act_v,
-                                             rew_v, done_v, info_v,
-                                             value_v)
-                    obs_v = next_obs_v
-                _, last_val_v = self.predict(obs_v)
-                self.storage_valid.store_last(obs_v, last_val_v)
+                obs_v = self.collect_data(obs_v, self.storage_valid, self.env_valid)
+
+            if self.env_greedy is not None:
+                obs_g = self.collect_data(obs_g, self.storage_greedy, self.env_greedy, greedy=True)
 
             # Optimize policy & valueq
             summary = self.optimize()
@@ -167,8 +161,16 @@ class IPL(BaseAgent):
                 rew_batch_v, done_batch_v, true_average_reward_v = self.storage_valid.fetch_log_data()
             else:
                 rew_batch_v = done_batch_v = true_average_reward_v = None
-            self.logger.feed(rew_batch, done_batch, true_average_reward, rew_batch_v, done_batch_v,
-                             true_average_reward_v)
+
+            if self.storage_greedy is not None:
+                rew_batch_g, done_batch_g, true_average_reward_g = self.storage_greedy.fetch_log_data()
+            else:
+                rew_batch_g = done_batch_g = true_average_reward_g = None
+
+            self.logger.feed(rew_batch, done_batch, true_average_reward,
+                             rew_batch_v, done_batch_v, true_average_reward_v,
+                             rew_batch_g, done_batch_g, true_average_reward_g,
+                             )
 
             self.optimizer, lr = self.adjust_lr(self.optimizer, self.learning_rate, self.t, num_timesteps)
             self.logger.dump(summary, lr)
@@ -183,3 +185,13 @@ class IPL(BaseAgent):
         self.env.close()
         if self.env_valid is not None:
             self.env_valid.close()
+
+    def collect_data(self, obs, storage, env, greedy=False):
+        for _ in range(self.n_steps):
+            act, value = self.predict(obs, greedy)
+            next_obs, rew, done, info = env.step(act)
+            storage.store(obs, act, rew, done, info, value)
+            obs = next_obs
+        _, last_val = self.predict(obs, greedy)
+        storage.store_last(obs, last_val)
+        return obs
