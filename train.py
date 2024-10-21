@@ -77,7 +77,7 @@ def train_ppo(args):
         "value_coef",
         "t_coef",
         "num_timesteps",
-    ]: #TODO: should this just be all the keys, rather than specify them? why not?
+    ]:  # TODO: should this just be all the keys, rather than specify them? why not?
         if var_name in args.__dict__.keys() and args.__dict__[var_name] is not None:
             hyperparameters[var_name] = args.__dict__[var_name]
 
@@ -117,7 +117,7 @@ def train_ppo(args):
 
     env = create_venv(args, hyperparameters)
     env_valid = create_venv(args, hyperparameters, is_valid=True) if args.use_valid_env else None
-
+    env_greedy = create_venv(args, hyperparameters) if args.use_greedy_env else None
     try:
         env_params = env.get_params()
         env_params_v = env_valid.get_params(suffix="_v")
@@ -168,7 +168,8 @@ def train_ppo(args):
     print('INTIALIZING MODEL...')
     model, observation_shape, policy = initialize_model(device, env, hyperparameters)
     logger = Logger(n_envs, logdir, use_wandb=args.use_wandb, has_vq=policy.has_vq,
-                    transition_model=model_based, double_graph=double_graph, ppo_pure=ppo_pure, IPL=IPL)
+                    transition_model=model_based, double_graph=double_graph, ppo_pure=ppo_pure, IPL=IPL,
+                    greedy=args.use_greedy_env)
     logger.max_steps = max_steps
     #############
     ## STORAGE ##
@@ -180,11 +181,18 @@ def train_ppo(args):
         act_shape = policy.act_shape
     except AttributeError as e:
         pass
-    storage, storage_valid, storage_greedy = initialize_storage(args, device, double_graph, hidden_state_dim, model_based, n_envs, n_steps,
-                                                observation_shape, continuous_actions, act_shape, IPL=IPL)
+    storage, storage_valid, storage_greedy = initialize_storage(args, device, double_graph, hidden_state_dim,
+                                                                model_based, n_envs, n_steps,
+                                                                observation_shape, continuous_actions, act_shape,
+                                                                IPL=IPL)
 
-    if storage_greedy is not None:
-        hyperparameters.update({"storage_greedy":storage_greedy})
+    if args.use_greedy_env is not None:
+        hyperparameters.update(
+            {
+                "storage_greedy": storage_greedy,
+                "env_greedy": env_greedy,
+            }
+        )
 
     ###########
     ## AGENT ##

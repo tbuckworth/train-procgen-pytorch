@@ -27,10 +27,13 @@ class IPL(BaseAgent):
                  normalize_adv=True,
                  normalize_rew=True,
                  increasing_lr=False,
+                 env_greedy=None,
+                 storage_greedy=None,
                  **kwargs):
         super(IPL, self).__init__(env, policy, logger, storage, device,
                                   n_checkpoints, env_valid, storage_valid)
-
+        self.env_greedy = env_greedy
+        self.storage_greedy = storage_greedy
         self.total_timesteps = 0
         self.n_steps = n_steps
         self.n_envs = n_envs
@@ -55,7 +58,7 @@ class IPL(BaseAgent):
             dist, value, hidden_state = self.policy(obs, None, None)
             act = dist.sample()
             if greedy:
-                act = dist.logits.argmax(dim=-1)
+                act = dist.probs.argmax(dim=-1)
 
         return act.cpu().numpy(), value.cpu().numpy()
 

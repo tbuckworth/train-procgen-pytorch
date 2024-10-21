@@ -13,11 +13,11 @@ except ImportError:
 class Logger(object):
 
     def __init__(self, n_envs, logdir, use_wandb=False, has_vq=False, transition_model=False, double_graph=False,
-                 ppo_pure=False, IPL=False):
+                 ppo_pure=False, IPL=False, greedy=False):
         self.true_mean_reward = None
         self.true_mean_reward_v = None
         self.true_mean_reward_g = None
-        self.greedy = False
+        self.greedy = greedy
         self.start_time = time.time()
         self.n_envs = n_envs
         self.logdir = logdir
@@ -50,7 +50,6 @@ class Logger(object):
         self.episode_len_buffer_g = deque(maxlen=40)
         self.episode_reward_buffer_g = deque(maxlen=40)
 
-
         time_metrics = ["timesteps", "wall_time", "num_episodes"]  # only collected once
         loss_metrics = ["loss_pi", "loss_v", "loss_entropy", "loss_x_entropy", "atn_entropy", "atn_entropy2",
                         "loss_sparsity", "loss_feature_sparsity", "loss_total"]
@@ -72,9 +71,16 @@ class Logger(object):
                            "max_episode_len", "mean_episode_len", "min_episode_len",
                            "mean_timeouts", "mean_episode_len_pos_reward",
                            "balanced_mean_rewards"]  # collected for both train and val envs
-        self.log = pd.DataFrame(
-            columns=time_metrics + episode_metrics + ["val_" + m for m in episode_metrics] + [
-                "ema_rewards"] + loss_metrics + ["learning_rate"])
+        all_columns = (time_metrics + episode_metrics +
+                       ["val_" + m for m in episode_metrics] +
+                       ["ema_rewards"] + loss_metrics + ["learning_rate"])
+        if greedy:
+            all_columns = (time_metrics + episode_metrics +
+                           ["val_" + m for m in episode_metrics] +
+                           ["greedy_" + m for m in episode_metrics] +
+                           ["ema_rewards"] + loss_metrics + ["learning_rate"])
+
+        self.log = pd.DataFrame(columns=all_columns)
 
         self.timesteps = 0
         self.num_episodes = 0
@@ -104,7 +110,7 @@ class Logger(object):
         for i in range(self.n_envs):
             for j in range(steps):
                 self.episode_rewards[i].append(rew_batch[i][j])
-                
+
                 if valid:
                     self.episode_rewards_v[i].append(rew_batch_v[i][j])
 
@@ -194,5 +200,6 @@ class Logger(object):
             episode_statistics['[Greedy] Len/mean_timeout'] = np.mean(self.episode_timeout_buffer_g)
             episode_statistics['[Greedy] Len/mean_episodes_pos_reward'] = np.mean(
                 np.array(self.episode_len_buffer_g)[np.array(self.episode_reward_buffer_g) > 0])
+        episode_statistics['[Greedy] Rewards/balanced_mean'] = self.true_mean_reward_g
 
         return episode_statistics
