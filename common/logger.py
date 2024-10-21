@@ -199,6 +199,6 @@ class Logger(object):
             episode_statistics['[Greedy] Len/mean_timeout'] = np.mean(self.episode_timeout_buffer_g)
             episode_statistics['[Greedy] Len/mean_episodes_pos_reward'] = np.mean(
                 np.array(self.episode_len_buffer_g)[np.array(self.episode_reward_buffer_g) > 0])
-        episode_statistics['[Greedy] Rewards/balanced_mean'] = self.true_mean_reward_g
+            episode_statistics['[Greedy] Rewards/balanced_mean'] = self.true_mean_reward_g
 
         return episode_statistics
