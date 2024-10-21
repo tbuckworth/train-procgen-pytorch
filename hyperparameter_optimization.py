@@ -750,7 +750,7 @@ def run_forever(bounds, fixed, run_func):
     id_tag = fixed["wandb_tags"][0]
     fixed["original_start"] = time.asctime()
     while True:
-        optimize_hyperparams(bounds, fixed, project, id_tag, run_func, greater_is_better=False)
+        optimize_hyperparams(bounds, fixed, project, id_tag, run_func, greater_is_better=True)
 
 
 def espl_x_squared():
