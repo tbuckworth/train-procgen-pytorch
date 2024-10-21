@@ -874,7 +874,7 @@ def ipl_coinrun():
     fixed = {
         "detect_nan": True,
         "env_name": 'coinrun',
-        "exp_name": 'Cartpole',
+        "exp_name": 'Coinrun',
         "param_name": 'hard-500-ipl',
         "device": "gpu",
         "num_timesteps": int(2e8),
@@ -884,7 +884,7 @@ def ipl_coinrun():
         "mirror_env": False,
         "use_valid_env": True,
         "anneal_temp": False,
-        "use_greedy_env": True,
+        "use_greedy_env": False,
         "learned_gamma": True,
         # "n_envs": 6,
         # "learning_rate": 1e-4,
@@ -912,7 +912,7 @@ def ipl_coinrun():
 if __name__ == "__main__":
     # import faulthandler
     # faulthandler.enable()
-    ipl_cartpole()
+    ipl_coinrun()
     # espl_x_squared()
     # cartpole_graph_ppo()
     # graph_ppo_sr_ft_continuous()
