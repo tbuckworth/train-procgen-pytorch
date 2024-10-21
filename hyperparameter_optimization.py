@@ -857,6 +857,8 @@ def ipl_cartpole():
 
 
 if __name__ == "__main__":
+    import faulthandler
+    faulthandler.enable()
     ipl_cartpole()
     # espl_x_squared()
     # cartpole_graph_ppo()
