@@ -95,7 +95,7 @@ class IPL(BaseAgent):
             generator = self.storage.fetch_train_generator(mini_batch_size=self.mini_batch_size,
                                                            recurrent=recurrent)
             for sample in generator:
-                obs_batch, nobs_batch, act_batch, done_batch, value_batch, rew_batch = sample
+                obs_batch, nobs_batch, act_batch, done_batch, _, rew_batch = sample
 
                 dist_batch, value_batch, _ = self.policy(obs_batch, None, None)
                 _, next_value_batch, _ = self.policy(nobs_batch, None, None)
