@@ -81,6 +81,8 @@ def train_ppo(args):
         "accumulate_all_grads",
         "learned_temp",
         "reward_incentive",
+        "adv_incentive",
+        "alpha_learning_rate",
     ]:  # TODO: should this just be all the keys, rather than specify them? why not?
         if var_name in args.__dict__.keys() and args.__dict__[var_name] is not None:
             hyperparameters[var_name] = args.__dict__[var_name]

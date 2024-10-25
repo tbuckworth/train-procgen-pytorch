@@ -834,11 +834,11 @@ def espo_cartpole():
 def ipl_cartpole():
     fixed = {
         "detect_nan": True,
-        "env_name": ["acrobot"],#['cartpole',"cartpole_swing","mountain_car","acrobot", "cartpole_continuous"],
+        "env_name": ['cartpole',"cartpole_swing","mountain_car","acrobot", "cartpole_continuous"],
         "exp_name": 'IPL',
         "param_name": 'ipl_cartpole',
         "device": "gpu",
-        "num_timesteps": int(3e6),
+        "num_timesteps": int(10e6),
         "seed": 6033,
         "wandb_tags": ["ipl0"],
         "use_wandb": True,
@@ -847,8 +847,10 @@ def ipl_cartpole():
         "anneal_temp": False,
         "use_greedy_env": True,
         "learned_gamma": True,
-        "learned_temp": True,
-        "reward_incentive": True,
+        "learned_temp": [True, False],
+        "reward_incentive": [True, False],
+        "adv_incentive": [True, False],
+        # "alpha_learning_rate": 2e-4,
         # "n_envs": 6,
         # "learning_rate": 1e-4,
         # "n_steps": 4096,
@@ -862,8 +864,9 @@ def ipl_cartpole():
     bounds = {
         # # "gamma": [0.9999, 0.8],
         # # "lmbda": [0.0, 0.99999],
-        "epoch": [2],
-        "learning_rate": [1e-10],
+        "epoch": [2, 4],
+        "learning_rate": [1e-11, 1e-6],
+        "alpha_learning_rate":[1e-5, 1e-3],
         # good cartpole one: (with 4 epochs)
         # "learning_rate": [0.000374],  # 1e-10],#1e-8, 5e-4],
         # # "n_envs": [64],

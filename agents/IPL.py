@@ -35,10 +35,13 @@ class IPL(BaseAgent):
                  learned_gamma=False,
                  learned_temp=False,
                  reward_incentive=False,
+                 adv_incentive=False,
                  accumulate_all_grads=False,
+                 alpha_learning_rate=2.5e-4,
                  **kwargs):
         super(IPL, self).__init__(env, policy, logger, storage, device,
                                   n_checkpoints, env_valid, storage_valid)
+        self.adv_incentive = adv_incentive
         self.reward_incentive = reward_incentive
         self.learned_temp = learned_temp
         self.accumulate_all_grads = accumulate_all_grads
@@ -54,7 +57,11 @@ class IPL(BaseAgent):
         self.gamma = gamma
         self.lmbda = lmbda
         self.learning_rate = learning_rate
-        self.optimizer = optim.Adam(self.policy.parameters(), lr=learning_rate, eps=1e-5)
+
+        params = [param for name, param in self.policy.named_parameters() if name != "log_alpha"]
+
+        self.optimizer = optim.Adam(params, lr=learning_rate, eps=1e-5)
+        self.alpha_optimizer = optim.Adam([self.policy.log_alpha], lr=alpha_learning_rate, eps=1e-5)
         self.grad_clip_norm = grad_clip_norm
         self.normalize_adv = normalize_adv
         self.normalize_rew = normalize_rew
@@ -131,6 +138,9 @@ class IPL(BaseAgent):
 
                 if self.reward_incentive:
                     loss -= predicted_reward.mean()
+
+                if self.adv_incentive:
+                    loss -= dist_batch.logits.max(dim=-1)[0].mean()
 
                 # # (next_value_batch * torch.exp(dist_batch.log_prob(act_batch))).mean()
                 # # (next_value_batch * (1-torch.exp(dist_batch.log_prob(act_batch)))).mean()
