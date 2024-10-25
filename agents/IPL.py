@@ -60,9 +60,13 @@ class IPL(BaseAgent):
         with torch.no_grad():
             obs = torch.FloatTensor(obs).to(device=self.device)
             dist, value, hidden_state = self.policy(obs, None, None)
-            act = dist.sample()
             if greedy:
-                act = dist.probs.argmax(dim=-1)
+                if self.policy.continuous_actions:
+                    act = dist.loc
+                else:
+                    act = dist.probs.argmax(dim=-1)
+            else:
+                act = dist.sample()
 
         return act.cpu().numpy(), value.cpu().numpy()
 
