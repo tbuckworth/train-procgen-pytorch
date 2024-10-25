@@ -32,9 +32,11 @@ class IPL(BaseAgent):
                  env_greedy=None,
                  storage_greedy=None,
                  learned_gamma=False,
+                 accumulate_all_grads=False,
                  **kwargs):
         super(IPL, self).__init__(env, policy, logger, storage, device,
                                   n_checkpoints, env_valid, storage_valid)
+        self.accumulate_all_grads = accumulate_all_grads
         self.learned_gamma = learned_gamma
         self.env_greedy = env_greedy
         self.storage_greedy = storage_greedy
@@ -93,6 +95,7 @@ class IPL(BaseAgent):
         grad_accumulation_steps = batch_size / self.mini_batch_size
         grad_accumulation_cnt = 1
 
+        gamma = self.gamma
         self.policy.train()
         for e in range(self.epoch):
             recurrent = self.policy.is_recurrent()
@@ -105,7 +108,6 @@ class IPL(BaseAgent):
                 _, next_value_batch, _ = self.policy(nobs_batch, None, None)
                 next_value_batch[done_batch.bool()] = 0
 
-                gamma = self.gamma
                 if self.learned_gamma:
                     gamma = self.policy.gamma()
 
@@ -121,8 +123,8 @@ class IPL(BaseAgent):
                     print("nan loss")
                 loss.backward()
 
-                # Let model to handle the large batch-size with small gpu-memory
-                if grad_accumulation_cnt % grad_accumulation_steps == 0:
+                # Let model handle the large batch-size with small gpu-memory
+                if not self.accumulate_all_grads and grad_accumulation_cnt % grad_accumulation_steps == 0:
                     torch.nn.utils.clip_grad_norm_(self.policy.parameters(), self.grad_clip_norm)
                     self.optimizer.step()
                     self.optimizer.zero_grad()
@@ -132,6 +134,10 @@ class IPL(BaseAgent):
                 total_loss_list.append(loss.item())
                 corr_list.append(corr.item())
                 gamma_list.append(gamma.item() if self.learned_gamma else gamma)
+            if self.accumulate_all_grads:
+                torch.nn.utils.clip_grad_norm_(self.policy.parameters(), self.grad_clip_norm)
+                self.optimizer.step()
+                self.optimizer.zero_grad()
 
         # Adjust common/Logger.__init__ if you add/remove from summary:
         summary = {'Loss/entropy': np.mean(entropy_list),
