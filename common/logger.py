@@ -63,7 +63,7 @@ class Logger(object):
         if ppo_pure:
             loss_metrics = ["loss_pi", "loss_v", "loss_entropy", "loss_x_entropy", "loss_total"]
         if IPL:
-            loss_metrics = ["entropy", "mutual_info", "loss_total", "rew_corr", "gamma", "loss_alpha", "alpha"]
+            loss_metrics = ["entropy", "mutual_info", "loss_total", "rew_corr", "gamma", "loss_alpha", "alpha", "pred_reward"]
 
         # Make sure this is consistent with _get_episode_statistics:
         episode_metrics = ["max_episode_rewards", "mean_episode_rewards", "median_episode_rewards",
