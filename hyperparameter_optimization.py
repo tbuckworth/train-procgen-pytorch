@@ -60,7 +60,7 @@ def get_wandb_performance(hparams, project="Cartpole", id_tag="sa_rew", opt_metr
     # hp = [h for h in hp if h not in ["config.wandb_tags"]]
     # hp = [h for h in hp if len(df[h].unique()) > 1]
 
-    hp = [f"config.{h}" for h in hparams]  # if f"config.{h}" in df.columns]
+    hp = [f"config.{h}" for h in hparams if f"config.{h}" in df.columns]
     dfn = df[hp].select_dtypes(include='number')
     return dfn, y
 

@@ -61,7 +61,8 @@ class IPL(BaseAgent):
         params = [param for name, param in self.policy.named_parameters() if name != "log_alpha"]
 
         self.optimizer = optim.Adam(params, lr=learning_rate, eps=1e-5)
-        self.alpha_optimizer = optim.Adam([self.policy.log_alpha], lr=alpha_learning_rate, eps=1e-5)
+        if self.learned_temp:
+            self.alpha_optimizer = optim.Adam([self.policy.log_alpha], lr=alpha_learning_rate, eps=1e-5)
         self.grad_clip_norm = grad_clip_norm
         self.normalize_adv = normalize_adv
         self.normalize_rew = normalize_rew
@@ -128,6 +129,8 @@ class IPL(BaseAgent):
                     # log_prob_act.requires_grad = False
                     alpha_loss = - self.policy.log_alpha * (log_prob_act + self.policy.target_entropy).mean()
                     alpha_loss.backward()
+                    self.alpha_optimizer.step()
+                    self.alpha_optimizer.zero_grad()
                     alpha_loss_list.append(alpha_loss.item())
                 else:
                     alpha = 1
@@ -174,6 +177,7 @@ class IPL(BaseAgent):
                     torch.nn.utils.clip_grad_norm_(self.policy.parameters(), self.grad_clip_norm)
                     self.optimizer.step()
                     self.optimizer.zero_grad()
+
                 grad_accumulation_cnt += 1
                 entropy_list.append(entropy.item())
                 mutual_info_list.append(mutual_info.item())
