@@ -834,7 +834,7 @@ def espo_cartpole():
 def ipl_cartpole():
     fixed = {
         "detect_nan": True,
-        "env_name": ['cartpole',"cartpole_swing","mountain_car","acrobot", "cartpole_continuous"],
+        "env_name": ["cartpole_continuous", "cartpole"],#['cartpole',"cartpole_swing","mountain_car","acrobot", "cartpole_continuous"],
         "exp_name": 'IPL',
         "param_name": 'ipl_cartpole',
         "device": "gpu",
@@ -843,10 +843,11 @@ def ipl_cartpole():
         "wandb_tags": ["ipl0"],
         "use_wandb": True,
         "mirror_env": False,
-        "use_valid_env": True,
+        "use_valid_env": False,
         "anneal_temp": False,
         "use_greedy_env": True,
         "learned_gamma": True,
+        "learned_temp": True,
         # "n_envs": 6,
         # "learning_rate": 1e-4,
         # "n_steps": 4096,
@@ -860,8 +861,8 @@ def ipl_cartpole():
     bounds = {
         # # "gamma": [0.9999, 0.8],
         # # "lmbda": [0.0, 0.99999],
-        "epoch": [1, 5],
-        "learning_rate": [1e-5, 1e-3],
+        # "epoch": [1, 5],
+        # "learning_rate": [1e-5, 1e-3],
         # # "n_envs": [64],
         # # "n_steps": [256],
         # "depth": [2, 6],
@@ -915,7 +916,7 @@ def ipl_coinrun():
 if __name__ == "__main__":
     # import faulthandler
     # faulthandler.enable()
-    ipl_coinrun()
+    ipl_cartpole()
     # espl_x_squared()
     # cartpole_graph_ppo()
     # graph_ppo_sr_ft_continuous()

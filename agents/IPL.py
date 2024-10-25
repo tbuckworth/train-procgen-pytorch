@@ -32,10 +32,12 @@ class IPL(BaseAgent):
                  env_greedy=None,
                  storage_greedy=None,
                  learned_gamma=False,
+                 learned_temp=False,
                  accumulate_all_grads=False,
                  **kwargs):
         super(IPL, self).__init__(env, policy, logger, storage, device,
                                   n_checkpoints, env_valid, storage_valid)
+        self.learned_temp = learned_temp
         self.accumulate_all_grads = accumulate_all_grads
         self.learned_gamma = learned_gamma
         self.env_greedy = env_greedy
@@ -87,7 +89,7 @@ class IPL(BaseAgent):
 
     def optimize(self):
         # Loss and info:
-        mutual_info_list, entropy_list, total_loss_list, corr_list, gamma_list = [], [], [], [], []
+        mutual_info_list, entropy_list, total_loss_list, corr_list, gamma_list, alpha_list, alpha_loss_list = [], [], [], [], [], [], []
 
         batch_size = self.n_steps * self.n_envs // self.n_minibatch
         if batch_size < self.mini_batch_size:
@@ -110,10 +112,22 @@ class IPL(BaseAgent):
 
                 if self.learned_gamma:
                     gamma = self.policy.gamma()
+                if self.learned_temp:
+                    log_prob_act = dist_batch.log_prob(act_batch).detach()
+                    alpha = self.policy.alpha().detach().item()
+                    # log_prob_act.requires_grad = False
+                    alpha_loss = - self.policy.log_alpha * (log_prob_act + self.policy.target_entropy).mean()
+                    alpha_loss.backward()
+                    alpha_loss_list.append(alpha_loss.item())
+                else:
+                    alpha = 1
 
-                predicted_reward = dist_batch.log_prob(act_batch) + value_batch - gamma * next_value_batch
+                predicted_reward = alpha * dist_batch.log_prob(act_batch) + value_batch - gamma * next_value_batch
 
                 loss = torch.nn.functional.mse_loss(predicted_reward, rew_batch)
+
+
+
 
                 corr = torch.corrcoef(torch.stack((predicted_reward, rew_batch)))[0,1]
 
@@ -134,6 +148,7 @@ class IPL(BaseAgent):
                 total_loss_list.append(loss.item())
                 corr_list.append(corr.item())
                 gamma_list.append(gamma.item() if self.learned_gamma else gamma)
+                alpha_list.append(alpha)
             if self.accumulate_all_grads:
                 torch.nn.utils.clip_grad_norm_(self.policy.parameters(), self.grad_clip_norm)
                 self.optimizer.step()
@@ -145,6 +160,8 @@ class IPL(BaseAgent):
                    'Loss/total': np.mean(total_loss_list),
                    'Loss/rew_corr': np.mean(corr_list),
                    'Loss/gamma': np.mean(gamma_list),
+                   'Loss/alpha': np.mean(alpha_loss_list),
+                   'alpha': np.mean(alpha_list),
                    }
         self.last_predicted_reward = predicted_reward.detach().cpu().numpy()
         self.last_reward = rew_batch.detach().cpu().numpy()

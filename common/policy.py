@@ -1,6 +1,7 @@
 import time
 
 import gymnasium
+import numpy as np
 
 from .misc_util import orthogonal_init
 from .model import GRU, GraphTransitionModel, MLPModel
@@ -27,11 +28,14 @@ class CategoricalPolicy(nn.Module):
         self.has_vq = has_vq
         self.continuous_actions = continuous_actions
         self.action_size = action_size
-        # small scale weight-initialization in policy enhances the stability        
+        # small scale weight-initialization in policy enhances the stability
         self.fc_policy = orthogonal_init(nn.Linear(self.embedder.output_dim, action_size), gain=0.01)
         self.fc_value = orthogonal_init(nn.Linear(self.embedder.output_dim, 1), gain=1.0)
         # sigmoid(4.6) = 0.99
         self.learned_gamma = nn.Parameter(torch.tensor(4.6,requires_grad=True))
+        # exp(-1.6) = 0.2
+        self.log_alpha = nn.Parameter(torch.tensor(-1.6, requires_grad=True))
+        self.target_entropy = 0.5 * np.log(action_size) if not continuous_actions else -action_size
 
         self.recurrent = recurrent
         if self.recurrent:
@@ -39,6 +43,9 @@ class CategoricalPolicy(nn.Module):
 
     def gamma(self):
         return self.learned_gamma.sigmoid()
+
+    def alpha(self):
+        return self.log_alpha.exp()
 
     def is_recurrent(self):
         return self.recurrent
