@@ -143,6 +143,7 @@ class IPL(BaseAgent):
                     loss -= predicted_reward.mean()
 
                 if self.adv_incentive:
+                    # TODO: fix for continuous actions!
                     loss -= dist_batch.logits.max(dim=-1)[0].mean()
 
                 # # (next_value_batch * torch.exp(dist_batch.log_prob(act_batch))).mean()
