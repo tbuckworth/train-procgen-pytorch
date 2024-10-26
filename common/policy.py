@@ -35,7 +35,7 @@ class CategoricalPolicy(nn.Module):
         self.learned_gamma = nn.Parameter(torch.tensor(4.6,requires_grad=True))
         # exp(-1.6) = 0.2
         self.log_alpha = nn.Parameter(torch.tensor(-1.6, requires_grad=True))
-        self.target_entropy = 0.5 * np.log(action_size) if not continuous_actions else -action_size
+        self.target_entropy = np.log(action_size) if not continuous_actions else -action_size
 
         self.recurrent = recurrent
         if self.recurrent:
