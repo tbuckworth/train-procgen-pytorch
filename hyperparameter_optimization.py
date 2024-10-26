@@ -834,7 +834,7 @@ def espo_cartpole():
 def ipl_cartpole():
     fixed = {
         "detect_nan": True,
-        "env_name": ['cartpole'],#"cartpole_swing","mountain_car","acrobot", "cartpole_continuous"],
+        "env_name": 'cartpole',#['cartpole',"cartpole_swing","mountain_car","acrobot", "cartpole_continuous"],
         "exp_name": 'IPL',
         "param_name": 'ipl_cartpole',
         "device": "gpu",
@@ -859,17 +859,17 @@ def ipl_cartpole():
         # "depth": 4,#[2, 6],
         # "gamma": 0.99,
         # "lmbda": 0.95,
-        # "epoch": 10,
+        # good cartpole one: (with 4 epochs)
+        "learning_rate": 0.000374,
+        "epoch": 4,
     }
     bounds = {
         # # "gamma": [0.9999, 0.8],
         # # "lmbda": [0.0, 0.99999],
-        "epoch": [4],
+        # "epoch": [4],
         # "learning_rate": [1e-11, 1e-6],
         "alpha_learning_rate":[1e-5, 1e-3],
         "target_entropy_coef": [0.01, 0.5],
-        # good cartpole one: (with 4 epochs)
-        "learning_rate": [0.000374],  # 1e-10],#1e-8, 5e-4],
         # # "n_envs": [64],
         # # "n_steps": [256],
         # "depth": [2, 6],
