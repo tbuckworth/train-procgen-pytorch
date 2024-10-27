@@ -2,6 +2,7 @@ import time
 
 import gymnasium
 import numpy as np
+from torch.backends.cudnn import deterministic
 
 from .misc_util import orthogonal_init
 from .model import GRU, GraphTransitionModel, MLPModel
@@ -74,6 +75,79 @@ class CategoricalPolicy(nn.Module):
             return diag_gaussian_dist(logits, act_scale=None, simple=True)
         log_probs = F.log_softmax(logits, dim=1)
         return Categorical(logits=log_probs)
+
+
+
+class ModelBasedPolicy(nn.Module):
+    def __init__(self,
+                 embedder,
+                 recurrent,
+                 action_size,
+                 has_vq=False,
+                 continuous_actions=False,
+                 # deterministic=True,
+                 ):
+        """
+        embedder: (torch.Tensor) model to extract the embedding for observation
+        action_size: number of the categorical actions
+        """
+        super(ModelBasedPolicy, self).__init__()
+        # self.deterministic = deterministic
+        self.embedder = embedder
+        self.has_vq = has_vq
+        self.continuous_actions = continuous_actions
+        self.action_size = action_size
+        # small scale weight-initialization in policy enhances the stability
+        self.fc_policy = orthogonal_init(nn.Linear(self.embedder.output_dim, action_size), gain=0.01)
+        self.fc_value = orthogonal_init(nn.Linear(self.embedder.output_dim, 1), gain=1.0)
+        # det_factor = 1 if self.deterministic else 2
+        self.transition = orthogonal_init(nn.Linear(self.embedder.output_dim+action_size, self.embedder.output_dim * 2), gain=1.0)
+        # sigmoid(4.6) = 0.99
+        self.learned_gamma = nn.Parameter(torch.tensor(4.6,requires_grad=True))
+        # exp(-1.6) = 0.2
+        self.log_alpha = nn.Parameter(torch.tensor(-1.6, requires_grad=True))
+        self.target_entropy = np.log(action_size) if not continuous_actions else -action_size
+
+        self.recurrent = recurrent
+        if self.recurrent:
+            self.gru = GRU(self.embedder.output_dim, self.embedder.output_dim)
+
+    def gamma(self):
+        return self.learned_gamma.sigmoid()
+
+    def alpha(self):
+        return self.log_alpha.exp()
+
+    def is_recurrent(self):
+        return self.recurrent
+
+    def next_state(self, h, a):
+        a_ones = torch.nn.functional.one_hot(a).float()
+        x = torch.stack((h, a_ones))
+        y = self.transition(x)
+        # if self.deterministic:
+        #     return y
+        return diag_gaussian_dist(y, act_scale=None, simple=True)
+        #TODO: sample a certain number of times? or just return p?
+        # return p.sample()
+
+    def forward(self, x):
+        hidden = self.embedder(x)
+        p, v = self.hidden_to_output(hidden)
+        return p, v, hidden
+
+    def hidden_to_output(self, hidden):
+        logits = self.fc_policy(hidden)
+        p = self.distribution(logits)
+        v = self.fc_value(hidden).reshape(-1)
+        return p, v
+
+    def distribution(self, logits):
+        if self.continuous_actions:
+            return diag_gaussian_dist(logits, act_scale=None, simple=True)
+        log_probs = F.log_softmax(logits, dim=1)
+        return Categorical(logits=log_probs)
+
 
 
 class GraphPolicy(nn.Module):
@@ -163,6 +237,7 @@ def diag_gaussian_dist(logits, act_scale, simple=True, no_var=False):
     if simple:
         mean_actions = logits[..., 0]
         logvar = logits[..., -1]
+        # TODO: clamp logvar?
         action_std = torch.ones_like(mean_actions) * logvar.exp()
     else:
         mean_actions = torch.tanh(logits[..., 0])
