@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import wandb
+from torch import nn
 
 from .base_agent import BaseAgent
 from common.misc_util import adjust_lr, cross_batch_entropy, adjust_lr_grok
@@ -59,6 +60,7 @@ class IPL_ICM(BaseAgent):
         self.gamma = gamma
         self.lmbda = lmbda
         self.learning_rate = learning_rate
+        self.nll_loss = nn.GaussianNLLLoss()
 
         params = [param for name, param in self.policy.named_parameters() if name != "log_alpha"]
 
@@ -103,7 +105,7 @@ class IPL_ICM(BaseAgent):
     def optimize(self):
         # Loss and info:
         mutual_info_list, entropy_list, total_loss_list, corr_list, gamma_list, alpha_list, alpha_loss_list = [], [], [], [], [], [], []
-        pred_rew_list = []
+        pred_rew_list, novelty_loss_list = [], []
         batch_size = self.n_steps * self.n_envs // self.n_minibatch
         if batch_size < self.mini_batch_size:
             self.mini_batch_size = batch_size
@@ -133,7 +135,9 @@ class IPL_ICM(BaseAgent):
                 # intrinsic reward
                 nx_dist = self.policy.next_state(h_batch, act_batch)
                 # TODO: figure out NLL loss
-                (nx_dist.loc - h_batch)**2/nx_dist.scale + torch.log(nx_dist.scale)
+                novelty_loss = self.nll_loss(nx_dist.loc, h_batch, nx_dist.scale)
+                novelty_loss.backward()
+                # (nx_dist.loc - h_batch)**2/nx_dist.scale + torch.log(nx_dist.scale)
 
                 if self.learned_gamma:
                     gamma = self.policy.gamma()
@@ -157,7 +161,9 @@ class IPL_ICM(BaseAgent):
                 ))
                 predicted_reward = alpha * log_prob_act + value_batch - gamma * next_value_batch
 
-                loss = torch.nn.functional.mse_loss(predicted_reward, rew_batch)
+                target_reward = (rew_batch - self.beta * novelty_loss).detach()
+
+                loss = torch.nn.functional.mse_loss(predicted_reward, target_reward)
 
                 if self.reward_incentive:
                     loss -= predicted_reward.mean()
@@ -207,6 +213,8 @@ class IPL_ICM(BaseAgent):
                 gamma_list.append(gamma.item() if self.learned_gamma else gamma)
                 alpha_list.append(alpha)
                 pred_rew_list.append(predicted_reward.mean().item())
+                novelty_loss_list.append(novelty_loss.item())
+
             if self.accumulate_all_grads:
                 torch.nn.utils.clip_grad_norm_(self.policy.parameters(), self.grad_clip_norm)
                 self.optimizer.step()
@@ -221,9 +229,13 @@ class IPL_ICM(BaseAgent):
                    'Loss/alpha': np.mean(alpha_loss_list),
                    'alpha': np.mean(alpha_list),
                    'Loss/pred_reward': np.mean(pred_rew_list),
+                   'Loss/novelty_loss': np.mean(novelty_loss_list)
                    }
         self.last_predicted_reward = predicted_reward.detach().cpu().numpy()
         self.last_reward = rew_batch.detach().cpu().numpy()
+        self.last_target_reward = target_reward.cpu().numpy()
+        # TODO: is this right?
+        self.lost_obs = torch.split(obs_batch.detach().cpu().numpy(),1, dim=-1)
         return summary
 
     def train(self, num_timesteps):
@@ -284,7 +296,7 @@ class IPL_ICM(BaseAgent):
                            self.logger.logdir + '/model_' + str(self.t) + '.pth')
                 checkpoint_cnt += 1
         if self.logger.use_wandb:
-            data = [[x, y] for (x, y) in zip(self.last_reward, self.last_predicted_reward)]
+            data = [list(x) for x in zip(self.last_reward, self.last_predicted_reward, self.last_target_reward, *self.lost_obs)]
             table = wandb.Table(data=data, columns=["Reward", "Predicted Reward"])
             wandb.log({"predicted reward": wandb.plot.scatter(table, "Reward", "Predicted Reward",
                                                              title="Predicted Reward vs Reward")})
