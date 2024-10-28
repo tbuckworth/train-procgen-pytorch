@@ -10,6 +10,7 @@ import gym
 import gymnasium
 import numpy as np
 import pandas as pd
+from mpmath import hyper
 
 import wandb
 import yaml
@@ -19,8 +20,9 @@ from matplotlib import pyplot as plt
 from common.model import NatureModel, ImpalaModel, MHAModel, ImpalaVQModel, ImpalaVQMHAModel, ImpalaFSQModel, ribMHA, \
     ImpalaFSQMHAModel, RibFSQMHAModel, MLPModel, TransformoBot, GraphTransitionModel, ImpalaCNN, \
     GraphValueModel, GraphActorCritic, GraphActorCriticEQL
-from common.policy import CategoricalPolicy, TransitionPolicy, PixelTransPolicy, GraphTransitionPolicy, \
+from common.policy import TransitionPolicy, PixelTransPolicy, GraphTransitionPolicy, \
     DoubleTransitionPolicy, GraphPolicy
+from common.policy import CategoricalPolicy as policy_cons
 from moviepy.editor import ImageSequenceClip
 
 from common.storage import Storage, BasicStorage, IPLStorage
@@ -213,6 +215,7 @@ def initialize_model(device, env, hyperparameters, in_channels=None):
     observation_space = env.observation_space
     observation_shape = observation_space.shape
     architecture = hyperparameters.get('architecture', 'impala')
+    cust_policy = hyperparameters.get('cust_policy', None)
     if in_channels is None:
         in_channels = observation_shape[0]
     action_space = env.action_space
@@ -288,6 +291,7 @@ def initialize_model(device, env, hyperparameters, in_channels=None):
         mid_weight = hyperparameters.get("mid_weight", 64)
         latent_size = hyperparameters.get("latent_size", 256)
         model = MLPModel(in_channels, depth, mid_weight, latent_size)
+
     elif architecture == 'transformobot':
         n_layers = hyperparameters.get("n_layers", 2)
         # n_heads = hyperparameters.get("n_heads", 1)
@@ -406,17 +410,19 @@ def initialize_model(device, env, hyperparameters, in_channels=None):
         return graph, observation_shape, policy
     else:
         raise NotImplementedError(f"Architecture:{architecture} not found in helper.py")
+    if cust_policy == "ICM":
+        from common.policy import ICMPolicy as policy_cons
     # Discrete action space
     recurrent = hyperparameters.get('recurrent', False)
     if isinstance(action_space, gym.spaces.Discrete):
         action_size = action_space.n
-        policy = CategoricalPolicy(model, recurrent, action_size, has_vq)
+        policy = policy_cons(model, recurrent, action_size, has_vq)
     elif isinstance(action_space, gymnasium.spaces.Discrete):
         action_size = action_space.n
-        policy = CategoricalPolicy(model, recurrent, action_size, has_vq)
+        policy = policy_cons(model, recurrent, action_size, has_vq)
     elif isinstance(action_space, gymnasium.spaces.Box) or isinstance(action_space, gym.spaces.Box):
         action_size = action_space.shape[-1]
-        policy = CategoricalPolicy(model, recurrent, action_size*2, has_vq, continuous_actions=True)
+        policy = policy_cons(model, recurrent, action_size*2, has_vq, continuous_actions=True)
     else:
         raise NotImplementedError
     policy.to(device)

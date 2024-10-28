@@ -40,9 +40,11 @@ class IPL_ICM(BaseAgent):
                  accumulate_all_grads=False,
                  alpha_learning_rate=2.5e-4,
                  target_entropy_coef=0.5,
+                 beta=1,
                  **kwargs):
         super(IPL_ICM, self).__init__(env, policy, logger, storage, device,
                                   n_checkpoints, env_valid, storage_valid)
+        self.beta = beta
         self.target_entropy = self.policy.target_entropy * target_entropy_coef
         self.adv_incentive = adv_incentive
         self.reward_incentive = reward_incentive
@@ -60,7 +62,7 @@ class IPL_ICM(BaseAgent):
         self.gamma = gamma
         self.lmbda = lmbda
         self.learning_rate = learning_rate
-        self.nll_loss = nn.GaussianNLLLoss()
+        self.nll_loss = nn.GaussianNLLLoss(reduction='none')
 
         params = [param for name, param in self.policy.named_parameters() if name != "log_alpha"]
 
@@ -127,6 +129,7 @@ class IPL_ICM(BaseAgent):
                 acts_imagined = dist_batch.sample() # sample a lot!
                 nx_dist_imagined = self.policy.next_state(h_batch, acts_imagined)
                 pred_h_next_imagined = nx_dist_imagined.sample() # sample a lot!
+                # torch.stack([nx_dist_imagined.sample() for _ in range(5)]).shape
                 _, next_value_batch_imagined = self.policy.hidden_to_output(pred_h_next_imagined)
 
                 # real next value
@@ -135,7 +138,8 @@ class IPL_ICM(BaseAgent):
                 # intrinsic reward
                 nx_dist = self.policy.next_state(h_batch, act_batch)
                 # TODO: figure out NLL loss
-                novelty_loss = self.nll_loss(nx_dist.loc, h_batch, nx_dist.scale)
+                novelty_loss_all = self.nll_loss(nx_dist.loc, h_batch, nx_dist.scale)
+                novelty_loss = novelty_loss_all.mean()
                 novelty_loss.backward()
                 # (nx_dist.loc - h_batch)**2/nx_dist.scale + torch.log(nx_dist.scale)
 
@@ -154,14 +158,14 @@ class IPL_ICM(BaseAgent):
                     alpha = 1
 
                 #TODO: check this is correct
-                next_value_batch = torch.concat((next_value_batch_imagined, next_value_batch_real), dim=0)
-                log_prob_act = torch.concat((
+                next_value_batch = torch.stack((next_value_batch_imagined, next_value_batch_real))
+                log_prob_act = torch.stack((
                     dist_batch.log_prob(acts_imagined).detach(),
                     dist_batch.log_prob(act_batch).detach(),
                 ))
                 predicted_reward = alpha * log_prob_act + value_batch - gamma * next_value_batch
 
-                target_reward = (rew_batch - self.beta * novelty_loss).detach()
+                target_reward = (rew_batch - self.beta * novelty_loss_all.mean(-1)).detach()
 
                 loss = torch.nn.functional.mse_loss(predicted_reward, target_reward)
 

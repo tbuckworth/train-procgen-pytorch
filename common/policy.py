@@ -78,7 +78,7 @@ class CategoricalPolicy(nn.Module):
 
 
 
-class ModelBasedPolicy(nn.Module):
+class ICMPolicy(nn.Module):
     def __init__(self,
                  embedder,
                  recurrent,
@@ -91,7 +91,7 @@ class ModelBasedPolicy(nn.Module):
         embedder: (torch.Tensor) model to extract the embedding for observation
         action_size: number of the categorical actions
         """
-        super(ModelBasedPolicy, self).__init__()
+        super(ICMPolicy, self).__init__()
         # self.deterministic = deterministic
         self.embedder = embedder
         self.has_vq = has_vq
@@ -122,14 +122,14 @@ class ModelBasedPolicy(nn.Module):
         return self.recurrent
 
     def next_state(self, h, a):
-        a_ones = torch.nn.functional.one_hot(a).float()
-        x = torch.stack((h, a_ones))
-        y = self.transition(x)
-        # if self.deterministic:
-        #     return y
+        a_ones = torch.nn.functional.one_hot(a.to(torch.int64)).float()
+        x = torch.concat((h, a_ones),dim=-1)
+        #
+
+        y = self.transition(x).reshape(h.shape[0], self.embedder.output_dim, -1)
+
         return diag_gaussian_dist(y, act_scale=None, simple=True)
-        #TODO: sample a certain number of times? or just return p?
-        # return p.sample()
+
 
     def forward(self, x):
         hidden = self.embedder(x)
