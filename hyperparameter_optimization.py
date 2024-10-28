@@ -908,17 +908,18 @@ def ipl_icm_cartpole():
         # "gamma": 0.99,
         # "lmbda": 0.95,
         # good cartpole one: (with 4 epochs)
-        # "learning_rate": 0.000374,
-        # "epoch": 4,
-        "alpha": [1, 0, 0.01, 0.1, 0.25, 0.5],
+        "learning_rate": 0.000374,
+        "epoch": 4,
+        # "alpha": [1, 0, 0.01, 0.1, 0.25, 0.5],
         "n_imagined_actions": 0,
+        "zv_loss_coef": 1,
     }
     bounds = {
         # "alpha": [0.01, 0.5],
         # # "gamma": [0.9999, 0.8],
         # # "lmbda": [0.0, 0.99999],
-        "epoch": [1, 4],
-        "learning_rate": [1e-11, 1e-6],
+        # "epoch": [1, 4],
+        # "learning_rate": [1e-11, 1e-6],
         # "alpha_learning_rate":[1e-5, 1e-3],
         # "target_entropy_coef": [0.01, 0.5],
         # # "n_envs": [64],

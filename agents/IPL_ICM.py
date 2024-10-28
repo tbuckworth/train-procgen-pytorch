@@ -120,7 +120,7 @@ class IPL_ICM(BaseAgent):
     def optimize(self):
         # Loss and info:
         mutual_info_list, entropy_list, total_loss_list, corr_list, gamma_list, alpha_list, alpha_loss_list = [], [], [], [], [], [], []
-        pred_rew_list, novelty_loss_list, loss_list = [], [], []
+        pred_rew_list, novelty_loss_list, loss_list, zv_loss_list = [], [], [], []
         batch_size = self.n_steps * self.n_envs // self.n_minibatch
         if batch_size < self.mini_batch_size:
             self.mini_batch_size = batch_size
@@ -173,7 +173,6 @@ class IPL_ICM(BaseAgent):
                     zv_loss = (zero_value**2).mean()
                 else:
                     zv_loss = 0
-
 
                 if self.learned_gamma:
                     gamma = self.policy.gamma()
@@ -256,6 +255,7 @@ class IPL_ICM(BaseAgent):
                 pred_rew_list.append(predicted_reward.mean().item())
                 novelty_loss_list.append(novelty_loss.item())
                 loss_list.append(loss.item())
+                zv_loss_list.append(zv_loss.item())
 
             if self.accumulate_all_grads:
                 torch.nn.utils.clip_grad_norm_(self.policy.parameters(), self.grad_clip_norm)
@@ -272,7 +272,8 @@ class IPL_ICM(BaseAgent):
                    'alpha': np.mean(alpha_list),
                    'Loss/pred_reward': np.mean(pred_rew_list),
                    'Loss/novelty_loss': np.mean(novelty_loss_list),
-                   'Loss/reward_loss': np.mean(loss_list)
+                   'Loss/reward_loss': np.mean(loss_list),
+                   'Loss/zero_val_loss': np.mean(zv_loss_list),
                    }
         self.last_predicted_reward = predicted_reward.detach().cpu().numpy()
         self.last_reward = rew_batch.detach().cpu().numpy()
