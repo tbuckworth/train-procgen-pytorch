@@ -116,9 +116,6 @@ class IPL_ICM(BaseAgent):
         return act.detach().cpu().numpy(), log_prob_act.detach().cpu().numpy(), value.detach().cpu().numpy(), hidden_state.detach().cpu().numpy(), obs.grad.data.detach().cpu().numpy()
 
     def optimize(self):
-        #TODO: switch this off!
-        torch.autograd.set_detect_anomaly(True)
-
         # Loss and info:
         mutual_info_list, entropy_list, total_loss_list, corr_list, gamma_list, alpha_list, alpha_loss_list = [], [], [], [], [], [], []
         pred_rew_list, novelty_loss_list, loss_list = [], [], []
@@ -189,7 +186,6 @@ class IPL_ICM(BaseAgent):
                 else:
                     alpha = 1
 
-                # TODO: check this is correct
                 next_value_batch = torch.concat((
                     next_value_batch_real.unsqueeze(0),
                     next_value_batch_imagined,
@@ -274,7 +270,6 @@ class IPL_ICM(BaseAgent):
         self.last_predicted_reward = predicted_reward.detach().cpu().numpy()
         self.last_reward = rew_batch.detach().cpu().numpy()
         self.last_target_reward = target_reward.cpu().numpy()
-        # TODO: is this right?
         if self.upload_obs:
             self.last_obs = [x.cpu().numpy().squeeze() for x in torch.split(obs_batch.detach(), 1, dim=-1)]
         return summary
