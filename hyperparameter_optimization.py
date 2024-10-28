@@ -204,6 +204,7 @@ def optimize_hyperparams(bounds,
     hparams.update(fh)
     hparams.update(string_select)
 
+    hparams = {k: int(v) if isinstance(v,np.int64) else v for k,v in hparams.items()}
     try:
         run_next(hparams)
     except Exception as e:
@@ -839,17 +840,17 @@ def ipl_cartpole():
         "param_name": 'ipl_cartpole',
         "device": "gpu",
         "num_timesteps": int(4e6),
-        "seed": 6033,
-        "wandb_tags": ["incentive_test"],
+        "seed": [6033, 42],
+        "wandb_tags": ["alpha_test"],
         "use_wandb": True,
         "mirror_env": False,
         "use_valid_env": False,
         "anneal_temp": False,
         "use_greedy_env": True,
         "learned_gamma": True,
-        "learned_temp": [True, False],
-        "reward_incentive": [True, False],
-        "adv_incentive": [True, False],
+        "learned_temp": False,#[True, False],
+        "reward_incentive": False,#[True, False],
+        "adv_incentive": False,#[True, False],
         # "alpha_learning_rate": 2e-4,
         # "n_envs": 6,
         # "learning_rate": 1e-4,
@@ -862,14 +863,15 @@ def ipl_cartpole():
         # good cartpole one: (with 4 epochs)
         "learning_rate": 0.000374,
         "epoch": 4,
+        "alpha": [0, 0.01, 0.1, 0.25, 0.5],
     }
     bounds = {
         # # "gamma": [0.9999, 0.8],
         # # "lmbda": [0.0, 0.99999],
         # "epoch": [4],
         # "learning_rate": [1e-11, 1e-6],
-        "alpha_learning_rate":[1e-5, 1e-3],
-        "target_entropy_coef": [0.01, 0.5],
+        # "alpha_learning_rate":[1e-5, 1e-3],
+        # "target_entropy_coef": [0.01, 0.5],
         # # "n_envs": [64],
         # # "n_steps": [256],
         # "depth": [2, 6],
@@ -971,8 +973,8 @@ def ipl_coinrun():
 if __name__ == "__main__":
     # import faulthandler
     # faulthandler.enable()
-    ipl_icm_cartpole()
-    # ipl_cartpole()
+    # ipl_icm_cartpole()
+    ipl_cartpole()
     # espl_x_squared()
     # cartpole_graph_ppo()
     # graph_ppo_sr_ft_continuous()

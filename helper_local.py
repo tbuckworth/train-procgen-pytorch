@@ -10,21 +10,17 @@ import gym
 import gymnasium
 import numpy as np
 import pandas as pd
-from mbrl.third_party.pytorch_sac import Agent
-from mpmath import hyper
 
 import wandb
 import yaml
 import platform
 from matplotlib import pyplot as plt
 
-from agents.IPL_ICM import IPL_ICM
 from common.model import NatureModel, ImpalaModel, MHAModel, ImpalaVQModel, ImpalaVQMHAModel, ImpalaFSQModel, ribMHA, \
     ImpalaFSQMHAModel, RibFSQMHAModel, MLPModel, TransformoBot, GraphTransitionModel, ImpalaCNN, \
     GraphValueModel, GraphActorCritic, GraphActorCriticEQL
 from common.policy import TransitionPolicy, PixelTransPolicy, GraphTransitionPolicy, \
     DoubleTransitionPolicy, GraphPolicy
-from common.policy import CategoricalPolicy as policy_cons
 from moviepy.editor import ImageSequenceClip
 
 from common.storage import Storage, BasicStorage, IPLStorage
@@ -414,6 +410,8 @@ def initialize_model(device, env, hyperparameters, in_channels=None):
         raise NotImplementedError(f"Architecture:{architecture} not found in helper.py")
     if cust_policy == "ICM":
         from common.policy import ICMPolicy as policy_cons
+    else:
+        from common.policy import CategoricalPolicy as policy_cons
     # Discrete action space
     recurrent = hyperparameters.get('recurrent', False)
     if isinstance(action_space, gym.spaces.Discrete):
