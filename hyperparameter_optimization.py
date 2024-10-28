@@ -888,7 +888,7 @@ def ipl_icm_cartpole():
         "device": "gpu",
         "num_timesteps": int(4e6),
         "seed": [6033, 0, 42, 100, 17],
-        "wandb_tags": ["icm0"],
+        "wandb_tags": ["icm1"],
         "use_wandb": True,
         "mirror_env": False,
         "use_valid_env": False,
@@ -973,8 +973,8 @@ def ipl_coinrun():
 if __name__ == "__main__":
     # import faulthandler
     # faulthandler.enable()
-    # ipl_icm_cartpole()
-    ipl_cartpole()
+    ipl_icm_cartpole()
+    # ipl_cartpole()
     # espl_x_squared()
     # cartpole_graph_ppo()
     # graph_ppo_sr_ft_continuous()

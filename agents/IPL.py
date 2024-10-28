@@ -39,9 +39,11 @@ class IPL(BaseAgent):
                  accumulate_all_grads=False,
                  alpha_learning_rate=2.5e-4,
                  target_entropy_coef=0.5,
+                 alpha=1,
                  **kwargs):
         super(IPL, self).__init__(env, policy, logger, storage, device,
                                   n_checkpoints, env_valid, storage_valid)
+        self.alpha = alpha
         self.target_entropy = self.policy.target_entropy * target_entropy_coef
         self.adv_incentive = adv_incentive
         self.reward_incentive = reward_incentive
@@ -135,7 +137,7 @@ class IPL(BaseAgent):
                     self.alpha_optimizer.zero_grad()
                     alpha_loss_list.append(alpha_loss.item())
                 else:
-                    alpha = 1
+                    alpha = self.alpha
 
                 predicted_reward = alpha * dist_batch.log_prob(act_batch) + value_batch - gamma * next_value_batch
 

@@ -100,8 +100,12 @@ class ICMPolicy(nn.Module):
         self.fc_policy = orthogonal_init(nn.Linear(self.embedder.output_dim, action_size), gain=0.01)
         self.fc_value = orthogonal_init(nn.Linear(self.embedder.output_dim, 1), gain=1.0)
         # det_factor = 1 if self.deterministic else 2
-        self.transition = orthogonal_init(
-            nn.Linear(self.embedder.output_dim + action_size, self.embedder.output_dim * 2), gain=1.0)
+        self.transition = MLPModel(in_channels=self.embedder.output_dim + action_size,
+                                   depth=4,
+                                   mid_weight=64,
+                                   latent_size=self.embedder.output_dim * 2)
+        # self.transition = orthogonal_init(
+        #     nn.Linear(self.embedder.output_dim + action_size, self.embedder.output_dim * 2), gain=1.0)
         # sigmoid(4.6) = 0.99
         self.learned_gamma = nn.Parameter(torch.tensor(4.6, requires_grad=True))
         # exp(-1.6) = 0.2
