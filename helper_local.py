@@ -10,6 +10,7 @@ import gym
 import gymnasium
 import numpy as np
 import pandas as pd
+from mbrl.third_party.pytorch_sac import Agent
 from mpmath import hyper
 
 import wandb
@@ -17,6 +18,7 @@ import yaml
 import platform
 from matplotlib import pyplot as plt
 
+from agents.IPL_ICM import IPL_ICM
 from common.model import NatureModel, ImpalaModel, MHAModel, ImpalaVQModel, ImpalaVQMHAModel, ImpalaFSQModel, ribMHA, \
     ImpalaFSQMHAModel, RibFSQMHAModel, MLPModel, TransformoBot, GraphTransitionModel, ImpalaCNN, \
     GraphValueModel, GraphActorCritic, GraphActorCriticEQL
@@ -1018,6 +1020,8 @@ def get_agent_constructor(algo):
         from agents.espo import ESPO as AGENT
     elif algo == 'IPL':
         from agents.IPL import IPL as AGENT
+    elif algo == 'IPL_ICM':
+        from agents.IPL_ICM import IPL_ICM as AGENT
     else:
         raise NotImplementedError
     return AGENT

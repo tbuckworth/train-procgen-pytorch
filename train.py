@@ -171,12 +171,13 @@ def train_ppo(args):
     model_based = algo in ['ppo-model', 'graph-agent']
     double_graph = algo in ['double-graph-agent']
     ppo_pure = algo in ['ppo-pure', 'espo']
-    IPL = algo in ["IPL"]
+    IPL = algo in ["IPL", "IPL_ICM"]
 
     print('INTIALIZING MODEL...')
     model, observation_shape, policy = initialize_model(device, env, hyperparameters)
     logger = Logger(n_envs, logdir, use_wandb=args.use_wandb, has_vq=policy.has_vq,
-                    transition_model=model_based, double_graph=double_graph, ppo_pure=ppo_pure, IPL=IPL,
+                    algo=algo,
+                    # transition_model=model_based, double_graph=double_graph, ppo_pure=ppo_pure, IPL=IPL,
                     greedy=args.use_greedy_env)
     logger.max_steps = max_steps
     #############

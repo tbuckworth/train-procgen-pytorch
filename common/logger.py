@@ -12,8 +12,10 @@ except ImportError:
 
 class Logger(object):
 
-    def __init__(self, n_envs, logdir, use_wandb=False, has_vq=False, transition_model=False, double_graph=False,
-                 ppo_pure=False, IPL=False, greedy=False):
+    def __init__(self, n_envs, logdir, use_wandb=False, has_vq=False,
+                 algo="ppo",
+                 # transition_model=False, double_graph=False, ppo_pure=False, IPL=False,
+                 greedy=False):
         self.true_mean_reward = None
         self.true_mean_reward_v = None
         self.true_mean_reward_g = None
@@ -53,17 +55,21 @@ class Logger(object):
         time_metrics = ["timesteps", "wall_time", "num_episodes"]  # only collected once
         loss_metrics = ["loss_pi", "loss_v", "loss_entropy", "loss_x_entropy", "atn_entropy", "atn_entropy2",
                         "loss_sparsity", "loss_feature_sparsity", "loss_total"]
-        if transition_model:
+        if algo in ['ppo-model', 'graph-agent']:
             loss_metrics = ["loss_v", "loss_transition", "loss_entropy", "loss_x_entropy",
                             "loss_reward", "loss_continuation", "loss_total"]
-        if double_graph:
+        if algo in ['double-graph-agent']:
             loss_metrics = ["loss_v", "loss_transition", "loss_entropy", "loss_x_entropy", "loss_total"]
         if has_vq:
             loss_metrics = ["loss_pi", "loss_v", "loss_entropy", "loss_x_entropy", "loss_commit", "loss_total"]
-        if ppo_pure:
+        if algo in ['ppo-pure', 'espo']:
             loss_metrics = ["loss_pi", "loss_v", "loss_entropy", "loss_x_entropy", "loss_total"]
-        if IPL:
-            loss_metrics = ["entropy", "mutual_info", "loss_total", "rew_corr", "gamma", "loss_alpha", "alpha", "pred_reward", "loss_reward"]
+        if algo in ["IPL"]:
+            loss_metrics = ["entropy", "mutual_info", "loss_total", "rew_corr", "gamma", "loss_alpha", "alpha",
+                            "pred_reward"]
+        if algo == "IPL_ICM":
+            loss_metrics = ["entropy", "mutual_info", "loss_total", "rew_corr", "gamma", "loss_alpha", "alpha",
+                            "pred_reward", "loss_reward"]
 
         # Make sure this is consistent with _get_episode_statistics:
         episode_metrics = ["max_episode_rewards", "mean_episode_rewards", "median_episode_rewards",
