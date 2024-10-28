@@ -895,6 +895,7 @@ ipl_icm_cartpole:
     mid_weight: 256
     cust_policy: ICM
     beta: 1
+    upload_obs: True
 
 
 cartpole:

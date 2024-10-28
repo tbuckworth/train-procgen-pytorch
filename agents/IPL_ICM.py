@@ -45,12 +45,16 @@ class IPL_ICM(BaseAgent):
                  beta=1,
                  novelty_loss_coef=1,
                  zv_loss_coef=0,
+                 upload_obs=False,
                  **kwargs):
         super(IPL_ICM, self).__init__(env, policy, logger, storage, device,
                                       n_checkpoints, env_valid, storage_valid)
+        self.upload_obs = upload_obs
+        self.last_obs = []
+        self.n_transition_guesses = 3
+        self.n_imagined_actions = 2
         self.novelty_loss_coef = novelty_loss_coef
         self.zv_loss_coef = zv_loss_coef
-        self.n_imagined_actions = 2
         self.beta = beta
         self.target_entropy = self.policy.target_entropy * target_entropy_coef
         self.adv_incentive = adv_incentive
@@ -141,9 +145,13 @@ class IPL_ICM(BaseAgent):
                 h_batch_imagined = h_batch.tile(self.n_imagined_actions, 1, 1)
                 # TODO: remove duplicate sampled actions
                 nx_dist_imagined = self.policy.next_state(h_batch_imagined, acts_imagined)
-                pred_h_next_imagined = nx_dist_imagined.sample()  # sample a lot!
-                # pred_h_next_imagined = torch.stack([nx_dist_imagined.sample() for _ in range(self.n_transition_guesses)])
+                # pred_h_next_imagined = nx_dist_imagined.sample()  # sample a lot!
+                pred_h_next_imagined = torch.concat([nx_dist_imagined.sample() for _ in range(self.n_transition_guesses)])
                 _, next_value_batch_imagined = self.policy.hidden_to_output(pred_h_next_imagined)
+
+                # necessary to repeat actions to align with next state samples:
+                act_tile_shape = (self.n_transition_guesses, *[1 for _ in acts_imagined.shape[1:]])
+                acts_imagined = acts_imagined.tile(act_tile_shape)
 
                 # real next value
                 _, next_value_batch_real, next_h_batch = self.policy(nobs_batch)
@@ -183,12 +191,12 @@ class IPL_ICM(BaseAgent):
 
                 # TODO: check this is correct
                 next_value_batch = torch.concat((
+                    next_value_batch_real.unsqueeze(0),
                     next_value_batch_imagined,
-                    next_value_batch_real.unsqueeze(0)
                 ), dim=0)
                 log_prob_act = torch.concat((
-                    dist_batch.log_prob(acts_imagined),
                     dist_batch.log_prob(act_batch).unsqueeze(0),
+                    dist_batch.log_prob(acts_imagined),
                 ), dim=0)
 
                 predicted_reward = alpha * log_prob_act + value_batch - gamma * next_value_batch
@@ -223,12 +231,10 @@ class IPL_ICM(BaseAgent):
                 # plt.show()
 
                 # -1 should be the non-imaginary component
-                corr = torch.corrcoef(torch.stack((predicted_reward[-1], rew_batch)))[0, 1]
+                corr = torch.corrcoef(torch.stack((predicted_reward[0], rew_batch)))[0, 1]
 
                 mutual_info, entropy, = cross_batch_entropy(dist_batch)
 
-                if loss.isnan():
-                    print("nan loss")
                 total_loss = loss + self.novelty_loss_coef * novelty_loss + self.zv_loss_coef * zv_loss
                 total_loss.backward()
                 # Let model handle the large batch-size with small gpu-memory
@@ -269,7 +275,8 @@ class IPL_ICM(BaseAgent):
         self.last_reward = rew_batch.detach().cpu().numpy()
         self.last_target_reward = target_reward.cpu().numpy()
         # TODO: is this right?
-        self.last_obs = torch.split(obs_batch.detach().cpu().numpy(), 1, dim=-1)
+        if self.upload_obs:
+            self.last_obs = [x.cpu().numpy().squeeze() for x in torch.split(obs_batch.detach(), 1, dim=-1)]
         return summary
 
     def train(self, num_timesteps):
@@ -330,15 +337,16 @@ class IPL_ICM(BaseAgent):
                            self.logger.logdir + '/model_' + str(self.t) + '.pth')
                 checkpoint_cnt += 1
         if self.logger.use_wandb:
-            # TODO: use conditional for adding observations
             data = [list(x) for x in
                     zip(self.last_reward, self.last_predicted_reward, self.last_target_reward, *self.last_obs)]
-            table = wandb.Table(data=data, columns=[
+            col_names = [
                 "Reward",
                 "Predicted Reward",
                 "Target Reward",
-                *self.env.get_ob_names()
-            ])
+            ]
+            if self.upload_obs:
+                col_names += self.env.get_ob_names()
+            table = wandb.Table(data=data, columns=col_names)
             wandb.log({"predicted reward": wandb.plot.scatter(table, "Reward", "Predicted Reward",
                                                               title="Predicted Reward vs Reward")})
         self.env.close()
