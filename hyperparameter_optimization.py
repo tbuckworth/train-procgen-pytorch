@@ -885,7 +885,7 @@ def ipl_icm_cartpole():
         "param_name": 'ipl_icm_cartpole',
         "device": "gpu",
         "num_timesteps": int(4e6),
-        "seed": 6033,
+        "seed": [6033, 0, 42, 100, 17],
         "wandb_tags": ["icm0"],
         "use_wandb": True,
         "mirror_env": False,
@@ -908,8 +908,10 @@ def ipl_icm_cartpole():
         # good cartpole one: (with 4 epochs)
         "learning_rate": 0.000374,
         "epoch": 4,
+        "alpha": [0, 0.01, 0.1, 0.25, 0.5],
     }
     bounds = {
+        # "alpha": [0.01, 0.5],
         # # "gamma": [0.9999, 0.8],
         # # "lmbda": [0.0, 0.99999],
         # "epoch": [4],

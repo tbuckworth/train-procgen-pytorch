@@ -46,9 +46,11 @@ class IPL_ICM(BaseAgent):
                  novelty_loss_coef=1,
                  zv_loss_coef=0,
                  upload_obs=False,
+                 alpha=1,
                  **kwargs):
         super(IPL_ICM, self).__init__(env, policy, logger, storage, device,
                                       n_checkpoints, env_valid, storage_valid)
+        self.alpha = alpha
         self.upload_obs = upload_obs
         self.last_obs = []
         self.n_transition_guesses = 3
@@ -184,7 +186,7 @@ class IPL_ICM(BaseAgent):
                     self.alpha_optimizer.zero_grad()
                     alpha_loss_list.append(alpha_loss.item())
                 else:
-                    alpha = 1
+                    alpha = self.alpha
 
                 next_value_batch = torch.concat((
                     next_value_batch_real.unsqueeze(0),
