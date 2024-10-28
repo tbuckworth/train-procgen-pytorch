@@ -43,9 +43,13 @@ class IPL_ICM(BaseAgent):
                  alpha_learning_rate=2.5e-4,
                  target_entropy_coef=0.5,
                  beta=1,
+                 novelty_loss_coef=1,
+                 zv_loss_coef=0,
                  **kwargs):
         super(IPL_ICM, self).__init__(env, policy, logger, storage, device,
                                       n_checkpoints, env_valid, storage_valid)
+        self.novelty_loss_coef = novelty_loss_coef
+        self.zv_loss_coef = zv_loss_coef
         self.n_imagined_actions = 2
         self.beta = beta
         self.target_entropy = self.policy.target_entropy * target_entropy_coef
@@ -108,6 +112,9 @@ class IPL_ICM(BaseAgent):
         return act.detach().cpu().numpy(), log_prob_act.detach().cpu().numpy(), value.detach().cpu().numpy(), hidden_state.detach().cpu().numpy(), obs.grad.data.detach().cpu().numpy()
 
     def optimize(self):
+        #TODO: switch this off!
+        torch.autograd.set_detect_anomaly(True)
+
         # Loss and info:
         mutual_info_list, entropy_list, total_loss_list, corr_list, gamma_list, alpha_list, alpha_loss_list = [], [], [], [], [], [], []
         pred_rew_list, novelty_loss_list, loss_list = [], [], []
@@ -139,13 +146,26 @@ class IPL_ICM(BaseAgent):
                 _, next_value_batch_imagined = self.policy.hidden_to_output(pred_h_next_imagined)
 
                 # real next value
-                _, next_value_batch_real, _ = self.policy(nobs_batch)
+                _, next_value_batch_real, next_h_batch = self.policy(nobs_batch)
+                next_value_batch_real[done_batch.bool()] = 0
+                # must clone, otherwise modified in place error on backwards pass later.
+                next_h_batch_clone = next_h_batch.detach().clone()
+                next_h_batch_clone[done_batch.bool()] = 0
 
                 # intrinsic reward
                 nx_dist = self.policy.next_state(h_batch, act_batch)
-
-                novelty_loss_all = self.nll_loss(nx_dist.loc, h_batch, nx_dist.scale)
+                # need to filter out dones!
+                novelty_loss_all = self.nll_loss(nx_dist.loc, next_h_batch_clone, nx_dist.scale)
                 novelty_loss = novelty_loss_all.mean()
+
+                # we want value to be zero when hidden is zero, because this is guessing termination
+                if done_batch.sum()>0:
+                    _, zero_value = self.policy.hidden_to_output(next_h_batch_clone[done_batch.bool()])
+                    zero_value.unsqueeze(0)
+                    zv_loss = (zero_value**2).mean()
+                else:
+                    zv_loss = 0
+
 
                 if self.learned_gamma:
                     gamma = self.policy.gamma()
@@ -209,7 +229,7 @@ class IPL_ICM(BaseAgent):
 
                 if loss.isnan():
                     print("nan loss")
-                total_loss = loss + novelty_loss
+                total_loss = loss + self.novelty_loss_coef * novelty_loss + self.zv_loss_coef * zv_loss
                 total_loss.backward()
                 # Let model handle the large batch-size with small gpu-memory
                 if not self.accumulate_all_grads and grad_accumulation_cnt % grad_accumulation_steps == 0:
