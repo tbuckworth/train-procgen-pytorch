@@ -44,6 +44,7 @@ class IPL_ICM(BaseAgent):
                  **kwargs):
         super(IPL_ICM, self).__init__(env, policy, logger, storage, device,
                                   n_checkpoints, env_valid, storage_valid)
+        self.n_imagined_actions = 2
         self.beta = beta
         self.target_entropy = self.policy.target_entropy * target_entropy_coef
         self.adv_incentive = adv_incentive
@@ -126,10 +127,13 @@ class IPL_ICM(BaseAgent):
                 dist_batch, value_batch, h_batch = self.policy(obs_batch)
 
                 # Imagined next states
-                acts_imagined = dist_batch.sample() # sample a lot!
-                nx_dist_imagined = self.policy.next_state(h_batch, acts_imagined)
+                # acts_imagined = dist_batch.sample() # sample a lot!
+                acts_imagined = torch.stack([dist_batch.sample() for _ in range(self.n_imagined_actions)])
+                h_batch_imagined = h_batch.tile(self.n_imagined_actions, 1, 1)
+                # TODO: remove duplicate sampled actions
+                nx_dist_imagined = self.policy.next_state(h_batch_imagined, acts_imagined)
                 pred_h_next_imagined = nx_dist_imagined.sample() # sample a lot!
-                # torch.stack([nx_dist_imagined.sample() for _ in range(5)]).shape
+                # pred_h_next_imagined = torch.stack([nx_dist_imagined.sample() for _ in range(self.n_transition_guesses)])
                 _, next_value_batch_imagined = self.policy.hidden_to_output(pred_h_next_imagined)
 
                 # real next value
@@ -137,11 +141,10 @@ class IPL_ICM(BaseAgent):
 
                 # intrinsic reward
                 nx_dist = self.policy.next_state(h_batch, act_batch)
-                # TODO: figure out NLL loss
+
                 novelty_loss_all = self.nll_loss(nx_dist.loc, h_batch, nx_dist.scale)
                 novelty_loss = novelty_loss_all.mean()
                 novelty_loss.backward()
-                # (nx_dist.loc - h_batch)**2/nx_dist.scale + torch.log(nx_dist.scale)
 
                 if self.learned_gamma:
                     gamma = self.policy.gamma()
@@ -158,11 +161,14 @@ class IPL_ICM(BaseAgent):
                     alpha = 1
 
                 #TODO: check this is correct
-                next_value_batch = torch.stack((next_value_batch_imagined, next_value_batch_real))
-                log_prob_act = torch.stack((
-                    dist_batch.log_prob(acts_imagined).detach(),
-                    dist_batch.log_prob(act_batch).detach(),
-                ))
+                next_value_batch = torch.concat((
+                    next_value_batch_imagined,
+                    next_value_batch_real.unsqueeze(0)
+                ),dim=0)
+                log_prob_act = torch.concat((
+                    dist_batch.log_prob(acts_imagined),
+                    dist_batch.log_prob(act_batch).unsqueeze(0),
+                ), dim=0)
                 predicted_reward = alpha * log_prob_act + value_batch - gamma * next_value_batch
 
                 target_reward = (rew_batch - self.beta * novelty_loss_all.mean(-1)).detach()
@@ -194,8 +200,8 @@ class IPL_ICM(BaseAgent):
                 # plt.hist(dist_batch.log_prob(act_batch).detach().cpu().numpy())
                 # plt.show()
 
-
-                corr = torch.corrcoef(torch.stack((predicted_reward, rew_batch)))[0,1]
+                # -1 should be the non-imaginary component
+                corr = torch.corrcoef(torch.stack((predicted_reward[-1], rew_batch)))[0,1]
 
                 mutual_info, entropy, = cross_batch_entropy(dist_batch)
 
@@ -314,8 +320,8 @@ class IPL_ICM(BaseAgent):
         for _ in range(self.n_steps):
             act, value = self.predict(obs, greedy)
             next_obs, rew, done, info = env.step(act)
-            storage.store(obs, act, rew, done, info, value)
+            storage.store(obs, act, rew, done, info, value.squeeze())
             obs = next_obs
         _, last_val = self.predict(obs, greedy)
-        storage.store_last(obs, last_val)
+        storage.store_last(obs, last_val.squeeze())
         return obs

@@ -33,7 +33,7 @@ class CategoricalPolicy(nn.Module):
         self.fc_policy = orthogonal_init(nn.Linear(self.embedder.output_dim, action_size), gain=0.01)
         self.fc_value = orthogonal_init(nn.Linear(self.embedder.output_dim, 1), gain=1.0)
         # sigmoid(4.6) = 0.99
-        self.learned_gamma = nn.Parameter(torch.tensor(4.6,requires_grad=True))
+        self.learned_gamma = nn.Parameter(torch.tensor(4.6, requires_grad=True))
         # exp(-1.6) = 0.2
         self.log_alpha = nn.Parameter(torch.tensor(-1.6, requires_grad=True))
         self.target_entropy = np.log(action_size) if not continuous_actions else -action_size
@@ -77,7 +77,6 @@ class CategoricalPolicy(nn.Module):
         return Categorical(logits=log_probs)
 
 
-
 class ICMPolicy(nn.Module):
     def __init__(self,
                  embedder,
@@ -101,9 +100,10 @@ class ICMPolicy(nn.Module):
         self.fc_policy = orthogonal_init(nn.Linear(self.embedder.output_dim, action_size), gain=0.01)
         self.fc_value = orthogonal_init(nn.Linear(self.embedder.output_dim, 1), gain=1.0)
         # det_factor = 1 if self.deterministic else 2
-        self.transition = orthogonal_init(nn.Linear(self.embedder.output_dim+action_size, self.embedder.output_dim * 2), gain=1.0)
+        self.transition = orthogonal_init(
+            nn.Linear(self.embedder.output_dim + action_size, self.embedder.output_dim * 2), gain=1.0)
         # sigmoid(4.6) = 0.99
-        self.learned_gamma = nn.Parameter(torch.tensor(4.6,requires_grad=True))
+        self.learned_gamma = nn.Parameter(torch.tensor(4.6, requires_grad=True))
         # exp(-1.6) = 0.2
         self.log_alpha = nn.Parameter(torch.tensor(-1.6, requires_grad=True))
         self.target_entropy = np.log(action_size) if not continuous_actions else -action_size
@@ -123,13 +123,11 @@ class ICMPolicy(nn.Module):
 
     def next_state(self, h, a):
         a_ones = torch.nn.functional.one_hot(a.to(torch.int64)).float()
-        x = torch.concat((h, a_ones),dim=-1)
-        #
+        x = torch.concat((h, a_ones), dim=-1)
 
-        y = self.transition(x).reshape(h.shape[0], self.embedder.output_dim, -1)
-
-        return diag_gaussian_dist(y, act_scale=None, simple=True)
-
+        y = self.transition(x)
+        y_reshaped = y.view(*y.shape[:-1], self.embedder.output_dim, 2)
+        return diag_gaussian_dist(y_reshaped, act_scale=None, simple=True)
 
     def forward(self, x):
         hidden = self.embedder(x)
@@ -139,7 +137,7 @@ class ICMPolicy(nn.Module):
     def hidden_to_output(self, hidden):
         logits = self.fc_policy(hidden)
         p = self.distribution(logits)
-        v = self.fc_value(hidden).reshape(-1)
+        v = self.fc_value(hidden).squeeze()
         return p, v
 
     def distribution(self, logits):
@@ -147,7 +145,6 @@ class ICMPolicy(nn.Module):
             return diag_gaussian_dist(logits, act_scale=None, simple=True)
         log_probs = F.log_softmax(logits, dim=1)
         return Categorical(logits=log_probs)
-
 
 
 class GraphPolicy(nn.Module):
@@ -170,7 +167,6 @@ class GraphPolicy(nn.Module):
         self.simple_scaling = simple_scaling
         self.no_var = False
 
-
     def set_no_var(self, no_var=True):
         self.no_var = no_var
         self.graph.set_no_var(no_var)
@@ -191,7 +187,6 @@ class GraphPolicy(nn.Module):
         except Exception as e:
             print(f"\nTrying to set_temp_target_ratio on non-espl model type:{type(self.graph)}\n")
             raise e
-
 
     def forward(self, x, hx=None, masks=None):
         if self.embedder is not None:
