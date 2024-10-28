@@ -877,6 +877,52 @@ def ipl_cartpole():
     }
     run_forever(bounds, fixed, run_next_hyperparameters)
 
+def ipl_icm_cartpole():
+    fixed = {
+        "detect_nan": True,
+        "env_name": 'cartpole',#['cartpole',"cartpole_swing","mountain_car","acrobot", "cartpole_continuous"],
+        "exp_name": 'IPL_ICM',
+        "param_name": 'ipl_icm_cartpole',
+        "device": "gpu",
+        "num_timesteps": int(4e6),
+        "seed": 6033,
+        "wandb_tags": ["icm0"],
+        "use_wandb": True,
+        "mirror_env": False,
+        "use_valid_env": False,
+        "anneal_temp": False,
+        "use_greedy_env": True,
+        "learned_gamma": True,
+        "learned_temp": False,
+        "reward_incentive": False,
+        "adv_incentive": False,
+        # "alpha_learning_rate": 2e-4,
+        # "n_envs": 6,
+        # "learning_rate": 1e-4,
+        # "n_steps": 4096,
+        # "n_minibatch": 128,
+        # "output_dim": 24,#[24, 64],
+        # "depth": 4,#[2, 6],
+        # "gamma": 0.99,
+        # "lmbda": 0.95,
+        # good cartpole one: (with 4 epochs)
+        "learning_rate": 0.000374,
+        "epoch": 4,
+    }
+    bounds = {
+        # # "gamma": [0.9999, 0.8],
+        # # "lmbda": [0.0, 0.99999],
+        # "epoch": [4],
+        # "learning_rate": [1e-11, 1e-6],
+        # "alpha_learning_rate":[1e-5, 1e-3],
+        # "target_entropy_coef": [0.01, 0.5],
+        # # "n_envs": [64],
+        # # "n_steps": [256],
+        # "depth": [2, 6],
+        # "mid_weight": [16, 256],
+    }
+    run_forever(bounds, fixed, run_next_hyperparameters)
+
 
 def ipl_coinrun():
     fixed = {
@@ -923,7 +969,8 @@ def ipl_coinrun():
 if __name__ == "__main__":
     # import faulthandler
     # faulthandler.enable()
-    ipl_cartpole()
+    ipl_icm_cartpole()
+    # ipl_cartpole()
     # espl_x_squared()
     # cartpole_graph_ppo()
     # graph_ppo_sr_ft_continuous()
