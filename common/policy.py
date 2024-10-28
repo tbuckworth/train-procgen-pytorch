@@ -237,7 +237,8 @@ def diag_gaussian_dist(logits, act_scale, simple=True, no_var=False):
         mean_actions = logits[..., 0]
         logvar = logits[..., -1]
         # TODO: clamp logvar?
-        action_std = torch.ones_like(mean_actions) * logvar.exp()
+        # action_std = torch.ones_like(mean_actions) * logvar.exp()
+        action_std = torch.sqrt(logvar.exp())
     else:
         mean_actions = torch.tanh(logits[..., 0])
         if act_scale is not None:

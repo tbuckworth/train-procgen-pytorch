@@ -138,19 +138,20 @@ class IPL_ICM(BaseAgent):
 
                 dist_batch, value_batch, h_batch = self.policy(obs_batch)
 
-                # Imagined next states
-                # acts_imagined = dist_batch.sample() # sample a lot!
-                acts_imagined = torch.stack([dist_batch.sample() for _ in range(self.n_imagined_actions)])
-                h_batch_imagined = h_batch.tile(self.n_imagined_actions, 1, 1)
-                # TODO: remove duplicate sampled actions
-                nx_dist_imagined = self.policy.next_state(h_batch_imagined, acts_imagined)
-                # pred_h_next_imagined = nx_dist_imagined.sample()  # sample a lot!
-                pred_h_next_imagined = torch.concat([nx_dist_imagined.sample() for _ in range(self.n_transition_guesses)])
-                _, next_value_batch_imagined = self.policy.hidden_to_output(pred_h_next_imagined)
+                if self.n_imagined_actions > 0:
+                    # Imagined next states
+                    # acts_imagined = dist_batch.sample() # sample a lot!
+                    acts_imagined = torch.stack([dist_batch.sample() for _ in range(self.n_imagined_actions)])
+                    h_batch_imagined = h_batch.tile(self.n_imagined_actions, 1, 1)
+                    # TODO: remove duplicate sampled actions
+                    nx_dist_imagined = self.policy.next_state(h_batch_imagined, acts_imagined)
+                    # pred_h_next_imagined = nx_dist_imagined.sample()  # sample a lot!
+                    pred_h_next_imagined = torch.concat([nx_dist_imagined.sample() for _ in range(self.n_transition_guesses)])
+                    _, next_value_batch_imagined = self.policy.hidden_to_output(pred_h_next_imagined)
 
-                # necessary to repeat actions to align with next state samples:
-                act_tile_shape = (self.n_transition_guesses, *[1 for _ in acts_imagined.shape[1:]])
-                acts_imagined = acts_imagined.tile(act_tile_shape)
+                    # necessary to repeat actions to align with next state samples:
+                    act_tile_shape = (self.n_transition_guesses, *[1 for _ in acts_imagined.shape[1:]])
+                    acts_imagined = acts_imagined.tile(act_tile_shape)
 
                 # real next value
                 _, next_value_batch_real, next_h_batch = self.policy(nobs_batch)
@@ -162,7 +163,7 @@ class IPL_ICM(BaseAgent):
                 # intrinsic reward
                 nx_dist = self.policy.next_state(h_batch, act_batch)
                 # need to filter out dones!
-                novelty_loss_all = self.nll_loss(nx_dist.loc, next_h_batch_clone, nx_dist.scale)
+                novelty_loss_all = self.nll_loss(nx_dist.loc, next_h_batch_clone, nx_dist.scale**2)
                 novelty_loss = novelty_loss_all.mean()
 
                 # we want value to be zero when hidden is zero, because this is guessing termination
@@ -188,18 +189,22 @@ class IPL_ICM(BaseAgent):
                 else:
                     alpha = self.alpha
 
-                next_value_batch = torch.concat((
-                    next_value_batch_real.unsqueeze(0),
-                    next_value_batch_imagined,
-                ), dim=0)
-                log_prob_act = torch.concat((
-                    dist_batch.log_prob(act_batch).unsqueeze(0),
-                    dist_batch.log_prob(acts_imagined),
-                ), dim=0)
+                if self.n_imagined_actions > 0:
+                    next_value_batch = torch.concat((
+                        next_value_batch_real.unsqueeze(0),
+                        next_value_batch_imagined,
+                    ), dim=0)
+                    log_prob_act = torch.concat((
+                        dist_batch.log_prob(act_batch).unsqueeze(0),
+                        dist_batch.log_prob(acts_imagined),
+                    ), dim=0)
+                else:
+                    next_value_batch = next_value_batch_real
+                    log_prob_act = dist_batch.log_prob(act_batch)
 
                 predicted_reward = alpha * log_prob_act + value_batch - gamma * next_value_batch
 
-                target_reward = (rew_batch - self.beta * novelty_loss_all.mean(-1).detach())
+                target_reward = (rew_batch + self.beta * novelty_loss_all.mean(-1).detach())
 
                 loss = torch.nn.functional.mse_loss(predicted_reward, target_reward)
 
