@@ -886,7 +886,7 @@ def ipl_icm_cartpole():
         "exp_name": 'IPL_ICM',
         "param_name": 'ipl_icm_cartpole',
         "device": "gpu",
-        "num_timesteps": int(4e6),
+        "num_timesteps": int(4e7),
         "seed": [6033, 0, 42, 100, 17],
         "wandb_tags": ["icm3"],
         "use_wandb": True,
@@ -912,7 +912,9 @@ def ipl_icm_cartpole():
         "epoch": 4,
         # "alpha": [1, 0, 0.01, 0.1, 0.25, 0.5],
         "n_imagined_actions": 0,
-        "zv_loss_coef": 1,
+        "zv_loss_coef": 0,
+        "novelty_loss_coef": 1,
+        "beta": 0,
     }
     bounds = {
         # "alpha": [0.01, 0.5],

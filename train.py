@@ -86,6 +86,9 @@ def train_ppo(args):
         "target_entropy_coef",
         "alpha",
         "n_imagined_actions",
+        "beta",
+        "zv_loss_coef",
+        "novelty_loss_coef",
     ]:  # TODO: should this just be all the keys, rather than specify them? why not?
         if var_name in args.__dict__.keys() and args.__dict__[var_name] is not None:
             hyperparameters[var_name] = args.__dict__[var_name]

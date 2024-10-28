@@ -160,7 +160,7 @@ class IPL_ICM(BaseAgent):
                 next_h_batch_clone = next_h_batch.detach().clone()
                 next_h_batch_clone[done_batch.bool()] = 0
 
-                # intrinsic reward
+                # intrinsic reward TODO: maybe we don't want it to update h_batch?
                 nx_dist = self.policy.next_state(h_batch, act_batch)
                 # need to filter out dones!
                 novelty_loss_all = self.nll_loss(nx_dist.loc, next_h_batch_clone, nx_dist.scale**2)
