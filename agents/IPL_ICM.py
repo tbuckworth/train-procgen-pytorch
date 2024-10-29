@@ -48,6 +48,8 @@ class IPL_ICM(BaseAgent):
                  upload_obs=False,
                  alpha=1,
                  separate_icm=False,
+                 n_imagined_actions=0,
+                 n_transition_guesses=2,
                  **kwargs):
         super(IPL_ICM, self).__init__(env, policy, logger, storage, device,
                                       n_checkpoints, env_valid, storage_valid)
@@ -55,8 +57,8 @@ class IPL_ICM(BaseAgent):
         self.alpha = alpha
         self.upload_obs = upload_obs
         self.last_obs = []
-        self.n_transition_guesses = 3
-        self.n_imagined_actions = 2
+        self.n_transition_guesses = n_transition_guesses
+        self.n_imagined_actions = n_imagined_actions
         self.novelty_loss_coef = novelty_loss_coef
         self.zv_loss_coef = zv_loss_coef
         self.beta = beta
@@ -240,7 +242,10 @@ class IPL_ICM(BaseAgent):
                 # plt.show()
 
                 # -1 should be the non-imaginary component
-                corr = torch.corrcoef(torch.stack((predicted_reward[0], rew_batch)))[0, 1]
+                pr = predicted_reward
+                if self.n_imagined_actions>0:
+                    pr = predicted_reward[0]
+                corr = torch.corrcoef(torch.stack((pr, rew_batch)))[0, 1]
 
                 mutual_info, entropy, = cross_batch_entropy(dist_batch)
 

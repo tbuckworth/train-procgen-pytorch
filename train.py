@@ -86,6 +86,7 @@ def train_ppo(args):
         "target_entropy_coef",
         "alpha",
         "n_imagined_actions",
+        "n_transition_guesses",
         "beta",
         "zv_loss_coef",
         "novelty_loss_coef",

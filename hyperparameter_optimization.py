@@ -983,8 +983,8 @@ def ipl_coinrun():
 if __name__ == "__main__":
     # import faulthandler
     # faulthandler.enable()
-    # ipl_icm_cartpole()
-    ipl_cartpole()
+    ipl_icm_cartpole()
+    # ipl_cartpole()
     # espl_x_squared()
     # cartpole_graph_ppo()
     # graph_ppo_sr_ft_continuous()
