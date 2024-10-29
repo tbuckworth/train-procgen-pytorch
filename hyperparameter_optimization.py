@@ -198,6 +198,9 @@ def optimize_hyperparams(bounds,
         print(f"Error from wandb:\n{e}\nPicking hparams randomly.")
         X, y = None, None
 
+    if X is not None and np.prod(X.shape)==0:
+        X, y = None, None
+
     hparams = select_next_hyperparameters(X, y, bounds, greater_is_better)
 
     fh = fixed.copy()
@@ -841,7 +844,7 @@ def ipl_cartpole():
         "device": "gpu",
         "num_timesteps": int(4e6),
         "seed": [6033, 42],
-        "wandb_tags": ["alpha_test"],
+        "wandb_tags": ["ent_coef_test"],
         "use_wandb": True,
         "mirror_env": False,
         "use_valid_env": False,
@@ -863,6 +866,7 @@ def ipl_cartpole():
         # good cartpole one: (with 4 epochs)
         "learning_rate": 0.000374,
         "epoch": 4,
+        "entropy_coef": 1,
         # "alpha": [0, 0.01, 0.1, 0.25, 0.5],
     }
     bounds = {
@@ -913,8 +917,9 @@ def ipl_icm_cartpole():
         # "alpha": [1, 0, 0.01, 0.1, 0.25, 0.5],
         "n_imagined_actions": 0,
         "zv_loss_coef": 0,
-        "novelty_loss_coef": 1,
+        "novelty_loss_coef": 0,
         "beta": 0,
+        "separate_icm": True
     }
     bounds = {
         # "alpha": [0.01, 0.5],
@@ -962,6 +967,7 @@ def ipl_coinrun():
         # "epoch": 10,
     }
     bounds = {
+        "alpha": [0.1, 0.01, 0.2],
         # # "gamma": [0.9999, 0.8],
         # # "lmbda": [0.0, 0.99999],
         # "epoch": [4],
@@ -978,7 +984,7 @@ if __name__ == "__main__":
     # import faulthandler
     # faulthandler.enable()
     # ipl_icm_cartpole()
-    ipl_coinrun()
+    ipl_cartpole()
     # espl_x_squared()
     # cartpole_graph_ppo()
     # graph_ppo_sr_ft_continuous()

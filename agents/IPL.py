@@ -40,9 +40,11 @@ class IPL(BaseAgent):
                  alpha_learning_rate=2.5e-4,
                  target_entropy_coef=0.5,
                  alpha=1,
+                 entropy_coef=0,
                  **kwargs):
         super(IPL, self).__init__(env, policy, logger, storage, device,
                                   n_checkpoints, env_valid, storage_valid)
+        self.entropy_coef = entropy_coef
         self.alpha = alpha
         self.target_entropy = self.policy.target_entropy * target_entropy_coef
         self.adv_incentive = adv_incentive
@@ -173,6 +175,8 @@ class IPL(BaseAgent):
                 corr = torch.corrcoef(torch.stack((predicted_reward, rew_batch)))[0,1]
 
                 mutual_info, entropy, = cross_batch_entropy(dist_batch)
+
+                loss += self.entropy_coef * entropy
 
                 if loss.isnan():
                     print("nan loss")

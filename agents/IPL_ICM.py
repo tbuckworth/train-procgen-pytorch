@@ -47,9 +47,11 @@ class IPL_ICM(BaseAgent):
                  zv_loss_coef=0,
                  upload_obs=False,
                  alpha=1,
+                 separate_icm=False,
                  **kwargs):
         super(IPL_ICM, self).__init__(env, policy, logger, storage, device,
                                       n_checkpoints, env_valid, storage_valid)
+        self.separate_icm = separate_icm
         self.alpha = alpha
         self.upload_obs = upload_obs
         self.last_obs = []
@@ -156,23 +158,25 @@ class IPL_ICM(BaseAgent):
                 # real next value
                 _, next_value_batch_real, next_h_batch = self.policy(nobs_batch)
                 next_value_batch_real[done_batch.bool()] = rew_batch[done_batch.bool()]
-                # must clone, otherwise modified in place error on backwards pass later.
-                next_h_batch_clone = next_h_batch.detach().clone()
-                next_h_batch_clone[done_batch.bool()] = 0
 
-                # intrinsic reward TODO: maybe we don't want it to update h_batch?
-                nx_dist = self.policy.next_state(h_batch, act_batch)
-                # need to filter out dones!
-                novelty_loss_all = self.nll_loss(nx_dist.loc, next_h_batch_clone, nx_dist.scale**2)
-                novelty_loss = novelty_loss_all.mean()
+                if self.separate_icm:
+                    # must clone, otherwise modified in place error on backwards pass later.
+                    next_h_batch_clone = next_h_batch.detach().clone()
+                    next_h_batch_clone[done_batch.bool()] = 0
+                    # intrinsic reward TODO: maybe we don't want it to update h_batch?
+                    nx_dist = self.policy.next_state(h_batch, act_batch)
+                    # need to filter out dones!
+                    novelty_loss_all = self.nll_loss(nx_dist.loc, next_h_batch_clone, nx_dist.scale**2)
+                    novelty_loss = novelty_loss_all.mean()
 
-                # we want value to be zero when hidden is zero, because this is guessing termination
-                if done_batch.sum()>0:
-                    _, zero_value = self.policy.hidden_to_output(next_h_batch_clone[done_batch.bool()])
-                    zero_value.unsqueeze(0)
-                    zv_loss = (zero_value**2).mean()
-                else:
-                    zv_loss = 0
+                    # we want value to be zero when hidden is zero, because this is guessing termination
+                    if done_batch.sum()>0:
+                        _, term_value = self.policy.hidden_to_output(next_h_batch_clone[done_batch.bool()])
+                        term_value.unsqueeze(0)
+                        # actually we need it to equal the terminal reward
+                        tv_loss = ((term_value-rew_batch[done_batch.bool()])**2).mean()
+                    else:
+                        tv_loss = 0
 
                 if self.learned_gamma:
                     gamma = self.policy.gamma()
@@ -203,7 +207,10 @@ class IPL_ICM(BaseAgent):
 
                 predicted_reward = alpha * log_prob_act + value_batch - gamma * next_value_batch
 
-                target_reward = (rew_batch + self.beta * novelty_loss_all.mean(-1).detach())
+                if self.separate_icm:
+                    target_reward = rew_batch
+                else:
+                    target_reward = (rew_batch + self.beta * novelty_loss_all.mean(-1).detach())
 
                 loss = torch.nn.functional.mse_loss(predicted_reward, target_reward)
 
@@ -237,7 +244,10 @@ class IPL_ICM(BaseAgent):
 
                 mutual_info, entropy, = cross_batch_entropy(dist_batch)
 
-                total_loss = loss + self.novelty_loss_coef * novelty_loss + self.zv_loss_coef * zv_loss
+                if self.separate_icm:
+                    total_loss = loss
+                else:
+                    total_loss = loss + self.novelty_loss_coef * novelty_loss + self.zv_loss_coef * tv_loss
                 total_loss.backward()
                 # Let model handle the large batch-size with small gpu-memory
                 if not self.accumulate_all_grads and grad_accumulation_cnt % grad_accumulation_steps == 0:
@@ -255,7 +265,7 @@ class IPL_ICM(BaseAgent):
                 pred_rew_list.append(predicted_reward.mean().item())
                 novelty_loss_list.append(novelty_loss.item())
                 loss_list.append(loss.item())
-                zv_loss_list.append(zv_loss.item())
+                zv_loss_list.append(tv_loss.item())
 
             if self.accumulate_all_grads:
                 torch.nn.utils.clip_grad_norm_(self.policy.parameters(), self.grad_clip_norm)
