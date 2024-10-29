@@ -137,140 +137,142 @@ class IPL_ICM(BaseAgent):
             recurrent = self.policy.is_recurrent()
             generator = self.storage.fetch_train_generator(mini_batch_size=self.mini_batch_size,
                                                            recurrent=recurrent)
-            for sample in generator:
-                obs_batch, nobs_batch, act_batch, done_batch, _, rew_batch = sample
+            with torch.autograd.detect_anomaly():
+                for sample in generator:
+                    obs_batch, nobs_batch, act_batch, done_batch, _, rew_batch = sample
 
-                dist_batch, value_batch, h_batch = self.policy(obs_batch)
+                    dist_batch, value_batch, h_batch = self.policy(obs_batch)
 
-                if self.n_imagined_actions > 0:
-                    # Imagined next states
-                    # acts_imagined = dist_batch.sample() # sample a lot!
-                    acts_imagined = torch.stack([dist_batch.sample() for _ in range(self.n_imagined_actions)])
-                    h_batch_imagined = h_batch.tile(self.n_imagined_actions, 1, 1)
-                    # TODO: remove duplicate sampled actions
-                    nx_dist_imagined = self.policy.next_state(h_batch_imagined, acts_imagined)
-                    # pred_h_next_imagined = nx_dist_imagined.sample()  # sample a lot!
-                    pred_h_next_imagined = torch.concat([nx_dist_imagined.sample() for _ in range(self.n_transition_guesses)])
-                    _, next_value_batch_imagined = self.policy.hidden_to_output(pred_h_next_imagined)
+                    if self.n_imagined_actions > 0:
+                        # Imagined next states
+                        # acts_imagined = dist_batch.sample() # sample a lot!
+                        acts_imagined = torch.stack([dist_batch.sample() for _ in range(self.n_imagined_actions)])
+                        h_batch_imagined = h_batch.tile(self.n_imagined_actions, 1, 1)
+                        # TODO: remove duplicate sampled actions
+                        nx_dist_imagined = self.policy.next_state(h_batch_imagined, acts_imagined)
+                        # pred_h_next_imagined = nx_dist_imagined.sample()  # sample a lot!
+                        pred_h_next_imagined = torch.concat([nx_dist_imagined.sample() for _ in range(self.n_transition_guesses)])
+                        _, next_value_batch_imagined = self.policy.hidden_to_output(pred_h_next_imagined)
 
-                    # necessary to repeat actions to align with next state samples:
-                    act_tile_shape = (self.n_transition_guesses, *[1 for _ in acts_imagined.shape[1:]])
-                    acts_imagined = acts_imagined.tile(act_tile_shape)
+                        # necessary to repeat actions to align with next state samples:
+                        act_tile_shape = (self.n_transition_guesses, *[1 for _ in acts_imagined.shape[1:]])
+                        acts_imagined = acts_imagined.tile(act_tile_shape)
 
-                # real next value
-                _, next_value_batch_real, next_h_batch = self.policy(nobs_batch)
-                next_value_batch_real[done_batch.bool()] = rew_batch[done_batch.bool()]
+                    # real next value
+                    _, next_value_batch_real, next_h_batch = self.policy(nobs_batch)
+                    next_value_batch_real[done_batch.bool()] = rew_batch[done_batch.bool()]
 
-                if not self.separate_icm:
-                    # must clone, otherwise modified in place error on backwards pass later.
-                    next_h_batch_clone = next_h_batch.detach().clone()
-                    next_h_batch_clone[done_batch.bool()] = 0
-                    # intrinsic reward TODO: maybe we don't want it to update h_batch?
-                    nx_dist = self.policy.next_state(h_batch, act_batch)
-                    # need to filter out dones!
-                    novelty_loss_all = self.nll_loss(nx_dist.loc, next_h_batch_clone, nx_dist.scale**2)
-                    novelty_loss = novelty_loss_all.mean()
+                    tv_loss = 0.
+                    if not self.separate_icm:
+                        # must clone, otherwise modified in place error on backwards pass later.
+                        next_h_batch_clone = next_h_batch.detach().clone()
+                        next_h_batch_clone[done_batch.bool()] = 0
+                        # intrinsic reward TODO: maybe we don't want it to update h_batch?
+                        nx_dist = self.policy.next_state(h_batch, act_batch)
+                        # need to filter out dones!
+                        novelty_loss_all = self.nll_loss(nx_dist.loc, next_h_batch_clone, nx_dist.scale**2)
+                        novelty_loss = novelty_loss_all.mean()
 
-                    # we want value to be zero when hidden is zero, because this is guessing termination
-                    if done_batch.sum()>0:
-                        _, term_value = self.policy.hidden_to_output(next_h_batch_clone[done_batch.bool()])
-                        term_value.unsqueeze(0)
-                        # actually we need it to equal the terminal reward
-                        tv_loss = ((term_value-rew_batch[done_batch.bool()])**2).mean()
+                        # we want value to be zero when hidden is zero, because this is guessing termination
+                        if done_batch.sum()>0:
+                            _, term_value = self.policy.hidden_to_output(next_h_batch_clone[done_batch.bool()])
+                            term_value.unsqueeze(0)
+                            # actually we need it to equal the terminal reward
+                            tv_loss = ((term_value-rew_batch[done_batch.bool()])**2).mean()
+
+                    if self.learned_gamma:
+                        gamma = self.policy.gamma()
+                    if self.learned_temp:
+                        log_prob_act = dist_batch.log_prob(act_batch).detach()
+                        alpha = self.policy.alpha().detach().item()
+                        # log_prob_act.requires_grad = False
+                        alpha_loss = - self.policy.log_alpha * (log_prob_act + self.target_entropy).mean()
+                        alpha_loss.backward()
+                        self.alpha_optimizer.step()
+                        self.alpha_optimizer.zero_grad()
+                        alpha_loss_list.append(alpha_loss.item())
                     else:
-                        tv_loss = 0
+                        alpha = self.alpha
 
-                if self.learned_gamma:
-                    gamma = self.policy.gamma()
-                if self.learned_temp:
-                    log_prob_act = dist_batch.log_prob(act_batch).detach()
-                    alpha = self.policy.alpha().detach().item()
-                    # log_prob_act.requires_grad = False
-                    alpha_loss = - self.policy.log_alpha * (log_prob_act + self.target_entropy).mean()
-                    alpha_loss.backward()
-                    self.alpha_optimizer.step()
-                    self.alpha_optimizer.zero_grad()
-                    alpha_loss_list.append(alpha_loss.item())
-                else:
-                    alpha = self.alpha
+                    if self.n_imagined_actions > 0:
+                        next_value_batch = torch.concat((
+                            next_value_batch_real.unsqueeze(0),
+                            next_value_batch_imagined,
+                        ), dim=0)
+                        log_prob_act = torch.concat((
+                            dist_batch.log_prob(act_batch).unsqueeze(0),
+                            dist_batch.log_prob(acts_imagined),
+                        ), dim=0)
+                    else:
+                        next_value_batch = next_value_batch_real
+                        log_prob_act = dist_batch.log_prob(act_batch)
 
-                if self.n_imagined_actions > 0:
-                    next_value_batch = torch.concat((
-                        next_value_batch_real.unsqueeze(0),
-                        next_value_batch_imagined,
-                    ), dim=0)
-                    log_prob_act = torch.concat((
-                        dist_batch.log_prob(act_batch).unsqueeze(0),
-                        dist_batch.log_prob(acts_imagined),
-                    ), dim=0)
-                else:
-                    next_value_batch = next_value_batch_real
-                    log_prob_act = dist_batch.log_prob(act_batch)
+                    predicted_reward = alpha * log_prob_act + value_batch - gamma * next_value_batch
 
-                predicted_reward = alpha * log_prob_act + value_batch - gamma * next_value_batch
+                    if self.separate_icm:
+                        target_reward = rew_batch
+                    else:
+                        target_reward = (rew_batch + self.beta * novelty_loss_all.mean(-1).detach())
 
-                if self.separate_icm:
-                    target_reward = rew_batch
-                else:
-                    target_reward = (rew_batch + self.beta * novelty_loss_all.mean(-1).detach())
+                    loss = torch.nn.functional.mse_loss(predicted_reward, target_reward)
 
-                loss = torch.nn.functional.mse_loss(predicted_reward, target_reward)
+                    if self.reward_incentive:
+                        loss -= predicted_reward.mean()
 
-                if self.reward_incentive:
-                    loss -= predicted_reward.mean()
+                    if self.adv_incentive:
+                        # TODO: fix for continuous actions!
+                        loss -= dist_batch.logits.max(dim=-1)[0].mean()
 
-                if self.adv_incentive:
-                    # TODO: fix for continuous actions!
-                    loss -= dist_batch.logits.max(dim=-1)[0].mean()
+                    # # (next_value_batch * torch.exp(dist_batch.log_prob(act_batch))).mean()
+                    # # (next_value_batch * (1-torch.exp(dist_batch.log_prob(act_batch)))).mean()
+                    # #
+                    # #
+                    # plt.scatter(
+                    #     x=predicted_reward.detach().cpu().numpy(),
+                    #     y=value_batch.detach().cpu().numpy(),
+                    # )
+                    #             # x=torch.exp(dist_batch.log_prob(act_batch)).detach().cpu().numpy(),)
+                    # plt.xlabel("pred rew")
+                    # plt.ylabel("value")
+                    # plt.show()
+                    # #
+                    # # torch.corrcoef(torch.stack((predicted_reward[done_batch.bool()], value_batch[done_batch.bool()])))
+                    # #
+                    # plt.hist(dist_batch.log_prob(act_batch).detach().cpu().numpy())
+                    # plt.show()
 
-                # # (next_value_batch * torch.exp(dist_batch.log_prob(act_batch))).mean()
-                # # (next_value_batch * (1-torch.exp(dist_batch.log_prob(act_batch)))).mean()
-                # #
-                # #
-                # plt.scatter(
-                #     x=predicted_reward.detach().cpu().numpy(),
-                #     y=value_batch.detach().cpu().numpy(),
-                # )
-                #             # x=torch.exp(dist_batch.log_prob(act_batch)).detach().cpu().numpy(),)
-                # plt.xlabel("pred rew")
-                # plt.ylabel("value")
-                # plt.show()
-                # #
-                # # torch.corrcoef(torch.stack((predicted_reward[done_batch.bool()], value_batch[done_batch.bool()])))
-                # #
-                # plt.hist(dist_batch.log_prob(act_batch).detach().cpu().numpy())
-                # plt.show()
+                    # -1 should be the non-imaginary component
+                    pr = predicted_reward
+                    if self.n_imagined_actions>0:
+                        pr = predicted_reward[0]
+                    corr = torch.corrcoef(torch.stack((pr, rew_batch)))[0, 1]
 
-                # -1 should be the non-imaginary component
-                pr = predicted_reward
-                if self.n_imagined_actions>0:
-                    pr = predicted_reward[0]
-                corr = torch.corrcoef(torch.stack((pr, rew_batch)))[0, 1]
+                    mutual_info, entropy, = cross_batch_entropy(dist_batch)
 
-                mutual_info, entropy, = cross_batch_entropy(dist_batch)
+                    if self.separate_icm:
+                        total_loss = loss
+                    else:
+                        total_loss = loss + self.novelty_loss_coef * novelty_loss + self.zv_loss_coef * tv_loss
+                    if total_loss.isnan():
+                        print("breakpoint")
+                    total_loss.backward()
+                    # Let model handle the large batch-size with small gpu-memory
+                    if not self.accumulate_all_grads and grad_accumulation_cnt % grad_accumulation_steps == 0:
+                        torch.nn.utils.clip_grad_norm_(self.policy.parameters(), self.grad_clip_norm)
+                        self.optimizer.step()
+                        self.optimizer.zero_grad()
 
-                if self.separate_icm:
-                    total_loss = loss
-                else:
-                    total_loss = loss + self.novelty_loss_coef * novelty_loss + self.zv_loss_coef * tv_loss
-                total_loss.backward()
-                # Let model handle the large batch-size with small gpu-memory
-                if not self.accumulate_all_grads and grad_accumulation_cnt % grad_accumulation_steps == 0:
-                    torch.nn.utils.clip_grad_norm_(self.policy.parameters(), self.grad_clip_norm)
-                    self.optimizer.step()
-                    self.optimizer.zero_grad()
-
-                grad_accumulation_cnt += 1
-                entropy_list.append(entropy.item())
-                mutual_info_list.append(mutual_info.item())
-                total_loss_list.append(total_loss.item())
-                corr_list.append(corr.item())
-                gamma_list.append(gamma.item() if self.learned_gamma else gamma)
-                alpha_list.append(alpha)
-                pred_rew_list.append(predicted_reward.mean().item())
-                novelty_loss_list.append(novelty_loss.item())
-                loss_list.append(loss.item())
-                zv_loss_list.append(tv_loss.item())
+                    grad_accumulation_cnt += 1
+                    entropy_list.append(entropy.item())
+                    mutual_info_list.append(mutual_info.item())
+                    total_loss_list.append(total_loss.item())
+                    corr_list.append(corr.item())
+                    gamma_list.append(gamma.item() if self.learned_gamma else gamma)
+                    alpha_list.append(alpha)
+                    pred_rew_list.append(predicted_reward.mean().item())
+                    novelty_loss_list.append(novelty_loss.item())
+                    loss_list.append(loss.item())
+                    zv_loss_list.append(tv_loss if isinstance(tv_loss, float) else tv_loss.item())
 
             if self.accumulate_all_grads:
                 torch.nn.utils.clip_grad_norm_(self.policy.parameters(), self.grad_clip_norm)
