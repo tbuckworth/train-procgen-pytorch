@@ -886,13 +886,13 @@ def ipl_cartpole():
 def ipl_icm_cartpole():
     fixed = {
         "detect_nan": True,
-        "env_name": 'cartpole',#['cartpole',"cartpole_swing","mountain_car","acrobot", "cartpole_continuous"],
+        "env_name": ['cartpole',"cartpole_swing","mountain_car","acrobot", "cartpole_continuous"],
         "exp_name": 'IPL_ICM',
         "param_name": 'ipl_icm_cartpole',
         "device": "gpu",
-        "num_timesteps": int(4e7),
-        "seed": [6033, 0, 42, 100, 17],
-        "wandb_tags": ["icm3"],
+        "num_timesteps": int(4e6),
+        "seed": [6033, 0],
+        "wandb_tags": ["icm4"],
         "use_wandb": True,
         "mirror_env": False,
         "use_valid_env": False,
@@ -916,12 +916,15 @@ def ipl_icm_cartpole():
         "epoch": 4,
         # "alpha": [1, 0, 0.01, 0.1, 0.25, 0.5],
         "n_imagined_actions": 0,
-        "zv_loss_coef": 0,
-        "novelty_loss_coef": 0,
-        "beta": 0,
-        "separate_icm": True
+        # "zv_loss_coef": 0,
+        # "novelty_loss_coef": 0,
+        "beta": 0.1,
+        "separate_icm": False
     }
     bounds = {
+        "zv_loss_coef": [0., 1.],
+        "novelty_loss_coef": [0., 1.],
+        "beta": [0.1],
         # "alpha": [0.01, 0.5],
         # # "gamma": [0.9999, 0.8],
         # # "lmbda": [0.0, 0.99999],
