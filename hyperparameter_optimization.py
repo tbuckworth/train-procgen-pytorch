@@ -863,7 +863,7 @@ def ipl_cartpole():
         # good cartpole one: (with 4 epochs)
         "learning_rate": 0.000374,
         "epoch": 4,
-        "alpha": [0, 0.01, 0.1, 0.25, 0.5],
+        # "alpha": [0, 0.01, 0.1, 0.25, 0.5],
     }
     bounds = {
         # # "gamma": [0.9999, 0.8],
@@ -947,10 +947,10 @@ def ipl_coinrun():
         "use_valid_env": False,
         "anneal_temp": False,
         "use_greedy_env": True,
-        "learned_gamma": False,
-        # "start_level": 431,
-        # "num_levels": 1,
-        "accumulate_all_grads": True,
+        "learned_gamma": True,
+        "start_level": 431,
+        "num_levels": 1,
+        "accumulate_all_grads": False,
         # "n_envs": 6,
         # "learning_rate": 1e-4,
         # "n_steps": 4096,
@@ -977,8 +977,8 @@ def ipl_coinrun():
 if __name__ == "__main__":
     # import faulthandler
     # faulthandler.enable()
-    ipl_icm_cartpole()
-    # ipl_cartpole()
+    # ipl_icm_cartpole()
+    ipl_coinrun()
     # espl_x_squared()
     # cartpole_graph_ppo()
     # graph_ppo_sr_ft_continuous()

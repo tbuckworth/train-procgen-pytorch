@@ -123,7 +123,8 @@ class IPL(BaseAgent):
 
                 dist_batch, value_batch, _ = self.policy(obs_batch, None, None)
                 _, next_value_batch, _ = self.policy(nobs_batch, None, None)
-                next_value_batch[done_batch.bool()] = 0
+                # i changed this from zero! 29/Oct/24
+                next_value_batch[done_batch.bool()] = rew_batch[done_batch.bool()]
 
                 if self.learned_gamma:
                     gamma = self.policy.gamma()

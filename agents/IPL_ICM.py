@@ -155,7 +155,7 @@ class IPL_ICM(BaseAgent):
 
                 # real next value
                 _, next_value_batch_real, next_h_batch = self.policy(nobs_batch)
-                next_value_batch_real[done_batch.bool()] = 0
+                next_value_batch_real[done_batch.bool()] = rew_batch[done_batch.bool()]
                 # must clone, otherwise modified in place error on backwards pass later.
                 next_h_batch_clone = next_h_batch.detach().clone()
                 next_h_batch_clone[done_batch.bool()] = 0
