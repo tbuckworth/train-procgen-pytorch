@@ -1015,7 +1015,8 @@ def ppo():
 if __name__ == "__main__":
     # import faulthandler
     # faulthandler.enable()
-    ipl_icm_cartpole()
+    ppo()
+    # ipl_icm_cartpole()
     # ipl_cartpole()
     # espl_x_squared()
     # cartpole_graph_ppo()
