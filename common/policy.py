@@ -19,6 +19,7 @@ class CategoricalPolicy(nn.Module):
                  action_size,
                  has_vq=False,
                  continuous_actions=False,
+                 sum_logits_is_v=False
                  ):
         """
         embedder: (torch.Tensor) model to extract the embedding for observation
@@ -29,6 +30,7 @@ class CategoricalPolicy(nn.Module):
         self.has_vq = has_vq
         self.continuous_actions = continuous_actions
         self.action_size = action_size
+        self.sum_logits_is_v = sum_logits_is_v
         # small scale weight-initialization in policy enhances the stability
         self.fc_policy = orthogonal_init(nn.Linear(self.embedder.output_dim, action_size), gain=0.01)
         self.fc_value = orthogonal_init(nn.Linear(self.embedder.output_dim, 1), gain=1.0)
@@ -67,7 +69,10 @@ class CategoricalPolicy(nn.Module):
     def hidden_to_output(self, hidden):
         logits = self.fc_policy(hidden)
         p = self.distribution(logits)
-        v = self.fc_value(hidden).reshape(-1)
+        if self.sum_logits_is_v:
+            v = logits.sum(-1)
+        else:
+            v = self.fc_value(hidden).reshape(-1)
         return p, v
 
     def distribution(self, logits):

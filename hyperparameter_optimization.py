@@ -982,6 +982,35 @@ def ipl_coinrun():
     }
     run_forever(bounds, fixed, run_next_hyperparameters)
 
+def ppo():
+    fixed = {
+        "detect_nan": False,
+        "env_name": 'cartpole',
+        "exp_name": 'Cartpole',
+        "param_name": 'mlpmodel',
+        "device": "gpu",
+        "num_timesteps": int(1e6),
+        "seed": [6033, 0, 42, 50, 81],
+        "wandb_tags": ["ppo_v_equiv"],
+        "use_wandb": True,
+        "mirror_env": False,
+        "use_valid_env": True,
+        "anneal_temp": False,
+        "sum_logits_is_v": [True, False],
+    }
+    bounds = {
+        # "alpha": [0.1, 0.01, 0.2],
+        # # "gamma": [0.9999, 0.8],
+        # # "lmbda": [0.0, 0.99999],
+        # "epoch": [4],
+        # "learning_rate": [0.000374],#1e-10],#1e-8, 5e-4],
+        # # "n_envs": [64],
+        # # "n_steps": [256],
+        # "depth": [2, 6],
+        # "mid_weight": [16, 256],
+    }
+    run_forever(bounds, fixed, run_next_hyperparameters)
+
 
 if __name__ == "__main__":
     # import faulthandler
