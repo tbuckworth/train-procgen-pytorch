@@ -414,15 +414,16 @@ def initialize_model(device, env, hyperparameters, in_channels=None):
         from common.policy import CategoricalPolicy as policy_cons
     # Discrete action space
     recurrent = hyperparameters.get('recurrent', False)
+    sum_logits_is_v = hyperparameters.get('sum_logits_is_v', False)
     if isinstance(action_space, gym.spaces.Discrete):
         action_size = action_space.n
-        policy = policy_cons(model, recurrent, action_size, has_vq)
+        policy = policy_cons(model, recurrent, action_size, has_vq, sum_logits_is_v=sum_logits_is_v)
     elif isinstance(action_space, gymnasium.spaces.Discrete):
         action_size = action_space.n
-        policy = policy_cons(model, recurrent, action_size, has_vq)
+        policy = policy_cons(model, recurrent, action_size, has_vq, sum_logits_is_v=sum_logits_is_v)
     elif isinstance(action_space, gymnasium.spaces.Box) or isinstance(action_space, gym.spaces.Box):
         action_size = action_space.shape[-1]
-        policy = policy_cons(model, recurrent, action_size*2, has_vq, continuous_actions=True)
+        policy = policy_cons(model, recurrent, action_size*2, has_vq, continuous_actions=True, sum_logits_is_v=sum_logits_is_v)
     else:
         raise NotImplementedError
     policy.to(device)
