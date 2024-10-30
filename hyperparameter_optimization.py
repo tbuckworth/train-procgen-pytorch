@@ -997,6 +997,7 @@ def ppo():
         "use_valid_env": True,
         "anneal_temp": False,
         "sum_logits_is_v": [True, False],
+        "use_greedy_env": False,
     }
     bounds = {
         # "alpha": [0.1, 0.01, 0.2],
