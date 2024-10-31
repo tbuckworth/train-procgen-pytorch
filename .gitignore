@@ -91,3 +91,4 @@ out/
 scripts/
 venv*/
 wandb/
+BACKUP_DELETE*

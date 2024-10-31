@@ -844,7 +844,7 @@ def ipl_cartpole():
         "device": "gpu",
         "num_timesteps": int(4e6),
         "seed": [6033, 42],
-        "wandb_tags": ["ent_coef_test"],
+        "wandb_tags": ["entropy_modifier"],
         "use_wandb": True,
         "mirror_env": False,
         "use_valid_env": False,
@@ -866,7 +866,8 @@ def ipl_cartpole():
         # good cartpole one: (with 4 epochs)
         "learning_rate": 0.000374,
         "epoch": 4,
-        "entropy_coef": 1,
+        "entropy_modified": True,
+        # "entropy_coef": 1,
         # "alpha": [0, 0.01, 0.1, 0.25, 0.5],
     }
     bounds = {
@@ -890,7 +891,7 @@ def ipl_icm_cartpole():
         "exp_name": 'IPL_ICM',
         "param_name": 'ipl_icm_cartpole',
         "device": "gpu",
-        "num_timesteps": int(4e6),
+        "num_timesteps": int(3e6),
         "seed": [6033, 0],
         "wandb_tags": ["icm4"],
         "use_wandb": True,
@@ -916,15 +917,16 @@ def ipl_icm_cartpole():
         "epoch": 4,
         # "alpha": [1, 0, 0.01, 0.1, 0.25, 0.5],
         "n_imagined_actions": 0,
-        # "zv_loss_coef": 0,
-        # "novelty_loss_coef": 0,
-        "beta": 0.1,
-        "separate_icm": False
+        "zv_loss_coef": 0,
+        "novelty_loss_coef": 0,
+        # "beta": 0.1,
+        "beta": 0,
+        "separate_icm": True,
     }
     bounds = {
-        "zv_loss_coef": [0., 1.],
-        "novelty_loss_coef": [0., 1.],
-        "beta": [0.1],
+        # "zv_loss_coef": [0., 1.],
+        # "novelty_loss_coef": [0., 1.],
+        # "beta": [0.1],
         # "alpha": [0.01, 0.5],
         # # "gamma": [0.9999, 0.8],
         # # "lmbda": [0.0, 0.99999],
@@ -963,6 +965,7 @@ def ipl_coinrun():
         # "learning_rate": 1e-4,
         # "n_steps": 4096,
         "n_minibatch": 16,
+        "entropy_modified": True,
         # "output_dim": 24,#[24, 64],
         # "depth": 4,#[2, 6],
         # "gamma": 0.99,
@@ -970,11 +973,11 @@ def ipl_coinrun():
         # "epoch": 10,
     }
     bounds = {
-        "alpha": [0.1, 0.01, 0.2],
+        # "alpha": [0.1, 0.01, 0.2],
         # # "gamma": [0.9999, 0.8],
         # # "lmbda": [0.0, 0.99999],
-        # "epoch": [4],
-        # "learning_rate": [0.000374],#1e-10],#1e-8, 5e-4],
+        "epoch": [4],
+        "learning_rate": [0.000374],#1e-10],#1e-8, 5e-4],
         # # "n_envs": [64],
         # # "n_steps": [256],
         # "depth": [2, 6],
@@ -1018,8 +1021,8 @@ def ppo():
 if __name__ == "__main__":
     # import faulthandler
     # faulthandler.enable()
-    ppo()
-    # ipl_icm_cartpole()
+    # ppo()
+    ipl_coinrun()
     # ipl_cartpole()
     # espl_x_squared()
     # cartpole_graph_ppo()

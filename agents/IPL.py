@@ -41,9 +41,11 @@ class IPL(BaseAgent):
                  target_entropy_coef=0.5,
                  alpha=1,
                  entropy_coef=0,
+                 entropy_modified=False,
                  **kwargs):
         super(IPL, self).__init__(env, policy, logger, storage, device,
                                   n_checkpoints, env_valid, storage_valid)
+        self.entropy_modified = entropy_modified
         self.entropy_coef = entropy_coef
         self.alpha = alpha
         self.target_entropy = self.policy.target_entropy * target_entropy_coef
@@ -142,7 +144,14 @@ class IPL(BaseAgent):
                 else:
                     alpha = self.alpha
 
-                predicted_reward = alpha * dist_batch.log_prob(act_batch) + value_batch - gamma * next_value_batch
+                log_prob_act = dist_batch.log_prob(act_batch)
+
+                if self.entropy_modified:
+                    modifier = alpha * (1 - log_prob_act.exp())
+                else:
+                    modifier = alpha
+
+                predicted_reward = modifier * log_prob_act + value_batch - gamma * next_value_batch
 
                 loss = torch.nn.functional.mse_loss(predicted_reward, rew_batch)
 
