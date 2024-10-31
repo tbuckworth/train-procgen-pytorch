@@ -86,3 +86,8 @@ slurm*
 logs/
 experiments/results
 videos
+data/
+out/
+scripts/
+venv*/
+wandb/
