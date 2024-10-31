@@ -489,5 +489,31 @@ def custom_wandb_x_squared_set():
                                                                           title="ood_mode_0 prediction vs x")})
     wandb.finish()
 
+def coin_test(trials = 1000000):
+    prob_of_h = 2/3
+    prize = 200
+    cost_of_guess = -5
+    prof_list = []
+    for guesses in range(20):
+        is_heads = np.random.sample((trials, guesses))<prob_of_h
+        pick_h = is_heads.mean(-1)>0.5
+        if guesses == 0:
+            pick_h = np.random.sample(trials)>0.5
+        flt = is_heads.mean(-1)==0.5
+        pick_h[flt] = np.random.sample((flt.sum()))>0.5
+        profits = (pick_h * prize) + (cost_of_guess*guesses)
+        total_prof = profits.mean()
+        gain = total_prof - prof_list[-1] if len(prof_list)>0 else total_prof
+        print(f"Guesses:{guesses}\tMean Profit:{total_prof:.2f}\tgain:{gain:.2f}\tstd:{profits.std():.2f}\tsharpe:{total_prof/profits.std():.2f}")
+        prof_list.append(total_prof)
+    plt.plot(prof_list)
+    plt.savefig("coin_tosses.png")
+
+
+        
+
 if __name__ == "__main__":
-    custom_wandb_x_squared_set()
+    # coin_test(100000)
+    coin_test(1000000)
+    
+    print("done")
