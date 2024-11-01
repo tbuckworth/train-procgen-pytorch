@@ -302,6 +302,11 @@ class CartPoleTestModel(unittest.TestCase):
         print("done")
         # summary(model, self.obs.shape)
 
+    def test_goal_seeker_policy(self):
+        hyperparameters = get_hyperparams("goal-seeker")
+        model, obs_shape, policy = initialize_model(self.device, self.env, hyperparameters)
+        policy.plan(self.obs)
+
 
 if __name__ == '__main__':
     unittest.main()

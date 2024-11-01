@@ -20,7 +20,7 @@ from common.model import NatureModel, ImpalaModel, MHAModel, ImpalaVQModel, Impa
     ImpalaFSQMHAModel, RibFSQMHAModel, MLPModel, TransformoBot, GraphTransitionModel, ImpalaCNN, \
     GraphValueModel, GraphActorCritic, GraphActorCriticEQL
 from common.policy import TransitionPolicy, PixelTransPolicy, GraphTransitionPolicy, \
-    DoubleTransitionPolicy, GraphPolicy
+    DoubleTransitionPolicy, GraphPolicy, GoalSeekerPolicy
 from moviepy.editor import ImageSequenceClip
 
 from common.storage import Storage, BasicStorage, IPLStorage
@@ -376,9 +376,23 @@ def initialize_model(device, env, hyperparameters, in_channels=None):
             action_size = action_space.n
         graph = GraphActorCritic(in_channels, depth, mid_weight, latent_size,
                                  action_size, device, continuous_actions=cont_act)
-        policy = GraphPolicy(graph, continuous_actions=cont_act, act_space=action_space, device=device, simple_scaling=simple_scaling)
+        policy = GraphPolicy(graph, continuous_actions=cont_act, act_space=action_space, device=device,
+                             simple_scaling=simple_scaling)
         policy.to(device)
         return graph, observation_shape, policy
+    elif architecture == 'goal-seeker':
+        cont_act = hyperparameters.get("continuous", False)
+        if cont_act:
+            action_size = action_space.shape[-1]
+        else:
+            action_size = action_space.n
+
+        latent_size = hyperparameters.get("latent_size", 1)
+        model = MLPModel(in_channels, action_size, latent_size, device)
+
+        policy = GoalSeekerPolicy(model, action_size)
+        policy.to(device)
+        return model, observation_shape, policy
     elif architecture == 'eql-graph':
         depth = hyperparameters.get("depth", 4)
         mid_weight = hyperparameters.get("mid_weight", 256)
@@ -394,7 +408,7 @@ def initialize_model(device, env, hyperparameters, in_channels=None):
             target_temp=hyperparameters["target_temp"],
             warmup_epoch=hyperparameters["warmup_epoch"],
             # hard_epoch=0,#TODO: sort this out
-            hard_epoch=0,#hyperparameters["epochs"] * hyperparameters["hard_ratio"],
+            hard_epoch=0,  # hyperparameters["epochs"] * hyperparameters["hard_ratio"],
             sample_num=hyperparameters["sample_num"],
             hard_gum=hyperparameters["hard_gum"],
         )
@@ -402,8 +416,10 @@ def initialize_model(device, env, hyperparameters, in_channels=None):
             action_size = action_space.shape[-1]
         else:
             action_size = action_space.n
-        graph = GraphActorCriticEQL(in_channels, eql_args, depth, mid_weight, latent_size, action_size, device, continuous_actions=cont_act)
-        policy = GraphPolicy(graph, continuous_actions=cont_act, act_space=action_space, device=device, simple_scaling=simple_scaling)
+        graph = GraphActorCriticEQL(in_channels, eql_args, depth, mid_weight, latent_size, action_size, device,
+                                    continuous_actions=cont_act)
+        policy = GraphPolicy(graph, continuous_actions=cont_act, act_space=action_space, device=device,
+                             simple_scaling=simple_scaling)
         policy.to(device)
         return graph, observation_shape, policy
     else:
@@ -423,7 +439,8 @@ def initialize_model(device, env, hyperparameters, in_channels=None):
         policy = policy_cons(model, recurrent, action_size, has_vq, logsumexp_logits_is_v=logsumexp_logits_is_v)
     elif isinstance(action_space, gymnasium.spaces.Box) or isinstance(action_space, gym.spaces.Box):
         action_size = action_space.shape[-1]
-        policy = policy_cons(model, recurrent, action_size*2, has_vq, continuous_actions=True, logsumexp_logits_is_v=logsumexp_logits_is_v)
+        policy = policy_cons(model, recurrent, action_size * 2, has_vq, continuous_actions=True,
+                             logsumexp_logits_is_v=logsumexp_logits_is_v)
     else:
         raise NotImplementedError
     policy.to(device)
@@ -513,9 +530,10 @@ def last_folder(dir, n=1):
     sl_files = dict(sorted(sl_files.items(), key=lambda item: item[1]))
     return list(sl_files.keys())[-n]
 
+
 def get_model_with_largest_checkpoint(folder):
     files = [os.path.join(folder, x) for x in os.listdir(folder)]
-    search = lambda x: re.search(r"model_(\d*).pth",x)
+    search = lambda x: re.search(r"model_(\d*).pth", x)
     last_checkpoint = max([int(search(x).group(1)) for x in files if search(x)])
     return [x for x in files if re.search(f"model_{last_checkpoint}.pth", x)][0]
 
@@ -1095,7 +1113,8 @@ def add_pets_args(parser):
     return parser
 
 
-def initialize_storage(args, device, double_graph, hidden_state_dim, model_based, n_envs, n_steps, observation_shape, continuous_actions=False, act_shape=None, IPL=False):
+def initialize_storage(args, device, double_graph, hidden_state_dim, model_based, n_envs, n_steps, observation_shape,
+                       continuous_actions=False, act_shape=None, IPL=False):
     storage = Storage(observation_shape, hidden_state_dim, n_steps, n_envs, device, continuous_actions, act_shape)
     storage_valid = Storage(observation_shape, hidden_state_dim, n_steps, n_envs,
                             device, continuous_actions, act_shape) if args.use_valid_env else None
@@ -1107,9 +1126,9 @@ def initialize_storage(args, device, double_graph, hidden_state_dim, model_based
     if IPL:
         storage = IPLStorage(observation_shape, n_steps, n_envs, device)
         storage_valid = IPLStorage(observation_shape, n_steps, n_envs,
-                                     device) if args.use_valid_env else None
+                                   device) if args.use_valid_env else None
         storage_greedy = IPLStorage(observation_shape, n_steps, n_envs,
-                                     device) if args.use_greedy_env else None
+                                    device) if args.use_greedy_env else None
     return storage, storage_valid, storage_greedy
 
 

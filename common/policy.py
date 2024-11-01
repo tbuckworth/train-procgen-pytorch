@@ -711,8 +711,8 @@ class GoalSeekerPolicy(nn.Module):
     def __init__(self,
                  embedder,
                  action_size,
-                 model_constructor,
-                 predict_continuous=False,
+                 model_constructor = lambda x, y: orthogonal_init(nn.Linear(x, y), gain=0.01),
+                 predict_continuous=True,
                  ):
         super(GoalSeekerPolicy, self).__init__()
         self.embedder = embedder
@@ -732,6 +732,7 @@ class GoalSeekerPolicy(nn.Module):
         self.goal_model = model_constructor(self.h_size, self.h_size * scale_out)
         self.critic = model_constructor(self.h_size, 1 * scale_out)
         self.actor = model_constructor(self.h_size * (1+scale_out), action_size * scale_out)
+        self.reverse_actor = model_constructor(self.h_size, action_size * scale_out)
 
     def distribution(self, logits):
         if self.predict_continuous:
@@ -767,9 +768,12 @@ class GoalSeekerPolicy(nn.Module):
         out = self.reward_model(hidden)
         return self.distribution(out)
 
-    def predict_action_towards_state(self, hidden, target_hidden):
-        hth = torch.stack((hidden, target_hidden))
-        out = self.actor(hth)
+    def predict_action_from_hidden(self, hidden):
+        out = self.actor(hidden)
+        return self.distribution(out)
+
+    def predict_reverse_action_from_hidden(self, hidden):
+        out = self.reverse_actor(hidden)
         return self.distribution(out)
 
     def predict_action(self, state, next_state):
@@ -796,36 +800,40 @@ class GoalSeekerPolicy(nn.Module):
         # Bhattacharyya bound
         hidden = self.embedder(state)
         goal_hidden = self.goal_model(hidden)
-        goal_dist = self.predict_goal_hidden(hidden)
 
         base = hidden
-        goal = goal_hidden
+        goal = goal_hidden.loc
         base_actions = []
         goal_actions = []
 
-        p = self.predict_action_towards_state(base, goal_hidden)
+        n_samples = 3
 
+        for _ in range(self.rollouts):
+            p = self.predict_action_from_hidden(base)
+            a = self.sample_n(p, n_samples)
+            next_hidden = self.predict_next_hidden(base, a)
 
-        log_probs = []
-        for _ in range(self.n_rollouts):
-            p_same = goal_dist.log_prob(base)
-            p = self.predict_action_towards_state(base, goal_hidden)
-            a = p.sample()
-            base = self.predict_next_hidden(base, a)
-            actions.append(a)
-            last_p = p_same
+            rp = self.predict_reverse_action_from_hidden(goal)
+            ra = self.sample_n(rp, n_samples)
+            pen_hidden = self.predict_prev_hidden(goal, ra)
 
+            # Bhattacharyya bound
+            dist = self.bhattacharyya_bound(next_hidden, pen_hidden)
 
+            # sample instead of argmin?
+            idx_base, idx_goal = dist.argmin()
+            base = next_hidden[idx_base].loc
+            base_actions.append(a[idx_goal])
 
+            goal = pen_hidden[idx_goal].loc
+            goal_actions.append(ra[idx_goal])
 
+    def sample_n(self, dist, n_samples):
+        return torch.stack([dist.sample() for _ in range(n_samples)])
 
-        value = self.critic(hidden)
-        goal_val = self.critic(goal_dist.loc)
+    def bhattacharyya_bound(self, d1, d2):
 
-        p.sample()
-
-
-
+        print(d1)
 
 
 

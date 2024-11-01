@@ -856,6 +856,9 @@ mountain_car:
     latent_size: 64
     mid_weight: 256
 
+goal-seeker:
+    latent_size: 64
+
 ipl_cartpole:
     algo: IPL
     n_envs: 256
