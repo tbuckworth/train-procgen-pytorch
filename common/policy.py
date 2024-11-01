@@ -706,3 +706,146 @@ class PureTransitionPolicy(nn.Module):
         k = len(s1.shape)
         shp = [self.action_size] + [1 for _ in range(k - 1)]
         return s1.unsqueeze(1).tile(shp)
+
+class GoalSeekerPolicy(nn.Module):
+    def __init__(self,
+                 embedder,
+                 action_size,
+                 model_constructor,
+                 predict_continuous=False,
+                 ):
+        super(GoalSeekerPolicy, self).__init__()
+        self.embedder = embedder
+        self.action_size = action_size
+        self.h_size = self.embedder.output_dim
+        self.predict_continuous = predict_continuous
+        scale_out = 1
+        if self.predict_continuous:
+            scale_out = 2
+
+        self.action_model = model_constructor(self.h_size * 2, action_size * scale_out)
+        self.forward_model = model_constructor(self.h_size + action_size, self.h_size * scale_out)
+        self.backward_model = model_constructor(self.h_size + action_size, self.h_size * scale_out)
+
+        self.reward_model = model_constructor(self.h_size, 1 * scale_out)
+
+        self.goal_model = model_constructor(self.h_size, self.h_size * scale_out)
+        self.critic = model_constructor(self.h_size, 1 * scale_out)
+        self.actor = model_constructor(self.h_size * (1+scale_out), action_size * scale_out)
+
+    def distribution(self, logits):
+        if self.predict_continuous:
+            mean = logits[..., 0]
+            logvar = logits[..., -1]
+            # TODO: clamp logvar?
+            std = torch.sqrt(logvar.exp())
+            min_real = torch.finfo(std.dtype).tiny
+            std = torch.clamp(std, min=min_real ** 0.5)
+            return Normal(mean, std)
+        raise NotImplementedError("predict_continuous is False")
+
+    def predict_action_hidden(self, hidden, next_hidden):
+        hnh = torch.stack((hidden, next_hidden))
+        out = self.action_model(hnh)
+        return self.distribution(out)
+
+    def predict_next_hidden(self, hidden, action):
+        ha = torch.stack((hidden, action))
+        out = self.forward_model(ha)
+        return self.distribution(out)
+
+    def predict_prev_hidden(self, next_hidden, action):
+        nha = torch.stack((next_hidden, action))
+        out = self.backward_model(nha)
+        return self.distribution(out)
+
+    def predict_goal_hidden(self, hidden):
+        out = self.goal_model(hidden)
+        return self.distribution(out)
+
+    def predict_reward(self, hidden):
+        out = self.reward_model(hidden)
+        return self.distribution(out)
+
+    def predict_action_towards_state(self, hidden, target_hidden):
+        hth = torch.stack((hidden, target_hidden))
+        out = self.actor(hth)
+        return self.distribution(out)
+
+    def predict_action(self, state, next_state):
+        return self.predict_action_hidden(self.embedder(state), self.embedder(next_state))
+
+    def predict_next(self, state, action):
+        return self.predict_next_hidden(self.embedder(state), action)
+
+    def predict_prev(self, next_state, action):
+        return self.predict_prev_hidden(self.embedder(next_state), action)
+
+    def predict_goal(self, state):
+        return self.predict_goal_hidden(self.embedder(state))
+
+    def forward(self, state):
+        hidden = self.embedder(state)
+        goal_hidden = self.goal_model(hidden)
+        p = self.predict_action_towards_state(hidden, goal_hidden)
+        v = self.critic(hidden)
+        return p, v
+
+
+    def plan(self, state):
+        # Bhattacharyya bound
+        hidden = self.embedder(state)
+        goal_hidden = self.goal_model(hidden)
+        goal_dist = self.predict_goal_hidden(hidden)
+
+        base = hidden
+        goal = goal_hidden
+        base_actions = []
+        goal_actions = []
+
+        p = self.predict_action_towards_state(base, goal_hidden)
+
+
+        log_probs = []
+        for _ in range(self.n_rollouts):
+            p_same = goal_dist.log_prob(base)
+            p = self.predict_action_towards_state(base, goal_hidden)
+            a = p.sample()
+            base = self.predict_next_hidden(base, a)
+            actions.append(a)
+            last_p = p_same
+
+
+
+
+
+        value = self.critic(hidden)
+        goal_val = self.critic(goal_dist.loc)
+
+        p.sample()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
