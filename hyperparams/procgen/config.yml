@@ -857,6 +857,7 @@ mountain_car:
     mid_weight: 256
 
 goal-seeker:
+    architecture: goal-seeker
     latent_size: 64
 
 ipl_cartpole:
