@@ -1,5 +1,7 @@
+import re
 import time
 
+import einops
 import gymnasium
 import numpy as np
 from torch.backends.cudnn import deterministic
@@ -10,6 +12,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions import Categorical, Normal
+import sympy as sy
 
 
 class CategoricalPolicy(nn.Module):
@@ -707,56 +710,88 @@ class PureTransitionPolicy(nn.Module):
         shp = [self.action_size] + [1 for _ in range(k - 1)]
         return s1.unsqueeze(1).tile(shp)
 
+
 class GoalSeekerPolicy(nn.Module):
     def __init__(self,
                  embedder,
                  action_size,
-                 model_constructor = lambda x, y: orthogonal_init(nn.Linear(x, y), gain=0.01),
+                 model_constructor=lambda x, y: orthogonal_init(nn.Linear(x, y), gain=0.01),
                  predict_continuous=True,
+                 n_action_samples=5,
+                 continuous_actions=False,
                  ):
         super(GoalSeekerPolicy, self).__init__()
         self.embedder = embedder
         self.action_size = action_size
         self.h_size = self.embedder.output_dim
+        self.n_action_samples = n_action_samples
         self.predict_continuous = predict_continuous
+        self.continuous_actions = continuous_actions
         scale_out = 1
         if self.predict_continuous:
             scale_out = 2
+        action_scale = 1
+        if self.continuous_actions:
+            action_scale = 2
 
-        self.action_model = model_constructor(self.h_size * 2, action_size * scale_out)
+        self.action_model = model_constructor(self.h_size * 2, action_size * action_scale)
         self.forward_model = model_constructor(self.h_size + action_size, self.h_size * scale_out)
-        self.backward_model = model_constructor(self.h_size + action_size, self.h_size * scale_out)
+        # self.backward_model = model_constructor(self.h_size + action_size, self.h_size * scale_out)
 
-        self.reward_model = model_constructor(self.h_size, 1 * scale_out)
+        # self.reward_model = model_constructor(self.h_size, 1 * scale_out)
 
         self.goal_model = model_constructor(self.h_size, self.h_size * scale_out)
-        self.critic = model_constructor(self.h_size, 1 * scale_out)
-        self.actor = model_constructor(self.h_size * (1+scale_out), action_size * scale_out)
-        self.reverse_actor = model_constructor(self.h_size, action_size * scale_out)
+        self.critic = model_constructor(self.h_size, 1)
+        self.actor = model_constructor(self.h_size, action_size * action_scale)
+        self.traj_model = model_constructor(self.h_size * 2, 1)
+        # self.reverse_actor = model_constructor(self.h_size, action_size * scale_out)
 
-    def distribution(self, logits):
-        if self.predict_continuous:
-            mean = logits[..., 0]
-            logvar = logits[..., -1]
+    def distribution(self, logits, categorical=False):
+        if not categorical:
+            n = logits.shape[-1]//2
+            assert n*2 == logits.shape[-1], "last logits dim must be even"
+            mean = logits[..., :n]
+            logvar = logits[..., n:]
             # TODO: clamp logvar?
             std = torch.sqrt(logvar.exp())
             min_real = torch.finfo(std.dtype).tiny
             std = torch.clamp(std, min=min_real ** 0.5)
             return Normal(mean, std)
-        raise NotImplementedError("predict_continuous is False")
+        logits = F.log_softmax(logits, dim=-1)
+        return Categorical(logits=logits)
+
+    def traj_distance(self, hidden, goal_hidden):
+        goal_hidden_expanded = self.expand_for_concat(smaller=goal_hidden, larger=hidden, n_diff_dims=0)
+        hgh = torch.concat((hidden, goal_hidden_expanded), dim=-1)
+        return self.traj_model(hgh)
 
     def predict_action_hidden(self, hidden, next_hidden):
-        hnh = torch.stack((hidden, next_hidden))
+        hnh = torch.concat((hidden, next_hidden), dim=-1)
         out = self.action_model(hnh)
         return self.distribution(out)
 
     def predict_next_hidden(self, hidden, action):
-        ha = torch.stack((hidden, action))
+        a_hot = action
+        if not self.continuous_actions:
+            a_hot = torch.nn.functional.one_hot(action).float()
+        h = self.expand_for_concat(hidden, a_hot, 1)
+        ha = torch.concat((h, a_hot), dim=-1)
         out = self.forward_model(ha)
         return self.distribution(out)
 
+    def expand_for_concat(self, smaller, larger, n_diff_dims = 1):
+        shp_diff = len(larger.shape) - len(smaller.shape)
+        if shp_diff > 0:
+            a_batches = larger.shape[shp_diff:-n_diff_dims]
+            h_batches = smaller.shape[:-n_diff_dims]
+            assert a_batches == h_batches, f"batch sizes must be the same: {a_batches}, {h_batches}"
+            shp = [1 for _ in larger.shape]
+            shp[:shp_diff] = larger.shape[:shp_diff]
+            return smaller.unsqueeze(0).tile(shp)
+        return smaller
+
     def predict_prev_hidden(self, next_hidden, action):
-        nha = torch.stack((next_hidden, action))
+        nha = torch.concat((next_hidden, action), dim=-1)
         out = self.backward_model(nha)
         return self.distribution(out)
 
@@ -790,13 +825,35 @@ class GoalSeekerPolicy(nn.Module):
 
     def forward(self, state):
         hidden = self.embedder(state)
-        goal_hidden = self.goal_model(hidden)
-        p = self.predict_action_towards_state(hidden, goal_hidden)
+        p = self.actor_dist(hidden)
         v = self.critic(hidden)
         return p, v
 
-
     def plan(self, state):
+        hidden = self.embedder(state)
+        goal_dist = self.predict_goal_hidden(hidden)
+        # distance_goal = self.traj_distance(hidden, goal_dist.loc)
+
+        p = self.actor_dist(hidden)
+        acts = self.sample_n(p, self.n_action_samples)
+        next_hid_dist = self.predict_next_hidden(hidden, acts)
+        # TODO: take into account variance?
+        distance = self.traj_distance(next_hid_dist.loc, goal_dist.loc)
+
+        best = distance.argmin(dim=0).squeeze().detach().cpu().numpy().tolist()
+        idx = torch.stack((best,torch.arange(len(best)))).T
+        idx = [(i,b) for i, b in enumerate(best)]
+        acts[idx]
+
+        selected_action = acts.flatten()[distance.argmin(dim=0)]
+        # train actor to select based on distance
+        return selected_action
+
+    def actor_dist(self, hidden):
+        a_out = self.actor(hidden)
+        return self.distribution(a_out, categorical=not self.continuous_actions)
+
+    def plan_bhatt(self, state):
         # Bhattacharyya bound
         hidden = self.embedder(state)
         goal_hidden = self.goal_model(hidden)
@@ -836,24 +893,53 @@ class GoalSeekerPolicy(nn.Module):
         print(d1)
 
 
+def solve(value_dict, eq_pattern):
+    equation = sy.Eq(*sy.S(f"{eq_pattern}, ti")).subs(value_dict)
+    solution = sy.solve(equation, manual=True)
+    return solution
 
 
+def auto_concat(inputs, pattern):
+    assert isinstance(inputs, (list, tuple)), "inputs must be a list or tuple"
+    n = len(inputs)
+    in_pat, out_pat = pattern.split("->")
+    shapes = in_pat.split(",")
+    assert len(shapes) == n, "pattern must have a shape for each input"
+
+    input_shapes = [list(b.shape) for b in inputs]
+    input_dims = [[d for d in s.split(' ') if d != ''] for s in shapes]
+
+    vals = {}
+    for s, d in zip(input_shapes, input_dims):
+        assert len(s) == len(d), "incorrect dimensions in pattern, ensure pattern matches inputs shapes"
+        for k, v in zip(d, s):
+            assert not (k in vals.keys() and vals[k] != v), f"multiple definitions for {k}: {vals[k]} and {v}"
+            vals[k] = v
+
+    out_dims = [a for a in out_pat.split(' ') if a != '']
+    out_shape = []
+    for d in out_dims:
+        if d in vals.keys():
+            v = vals[d]
+        else:
+            v = solve(vals, d)[0]
+        out_shape.append(v)
+
+    concat_dim = np.argwhere([bool(re.search("\+",d)) for d in out_dims]).squeeze().item()
+
+    concat_eq = out_dims[concat_dim]
+
+    # ndims = max([len(id) for id in input_dims])
+    ndims = len(out_dims)
+    filled_dims = [id + ['' for _ in range(ndims - len(id))] for id in input_dims]
+    fd = np.array(filled_dims)
 
 
+    for i, tens in enumerate(inputs):
+        shp = []
+        for d in input_dims[i]:
+            np.array(input_dims).flatten().count()
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    shapes
 

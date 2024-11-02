@@ -386,9 +386,12 @@ def initialize_model(device, env, hyperparameters, in_channels=None):
             action_size = action_space.shape[-1]
         else:
             action_size = action_space.n
+        depth = hyperparameters.get("depth", 4)
 
-        latent_size = hyperparameters.get("latent_size", 1)
-        model = MLPModel(in_channels, action_size, latent_size, device)
+        mid_weight = hyperparameters.get("mid_weight", 64)
+        latent_size = hyperparameters.get("latent_size", 64)
+
+        model = MLPModel(in_channels, depth, mid_weight, latent_size)
 
         policy = GoalSeekerPolicy(model, action_size)
         policy.to(device)
