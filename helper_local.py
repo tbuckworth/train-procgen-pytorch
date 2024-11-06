@@ -380,7 +380,7 @@ def initialize_model(device, env, hyperparameters, in_channels=None):
                              simple_scaling=simple_scaling)
         policy.to(device)
         return graph, observation_shape, policy
-    elif architecture == 'goal-seeker':
+    elif architecture == 'goal-seeker-mlp':
         cont_act = hyperparameters.get("continuous", False)
         if cont_act:
             action_size = action_space.shape[-1]

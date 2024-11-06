@@ -181,6 +181,7 @@ def train_ppo(args):
     double_graph = algo in ['double-graph-agent']
     ppo_pure = algo in ['ppo-pure', 'espo']
     IPL = algo in ["IPL", "IPL_ICM"]
+    goal_seeker = algo in ["goal-seeker"]
 
     print('INTIALIZING MODEL...')
     model, observation_shape, policy = initialize_model(device, env, hyperparameters)
@@ -202,7 +203,7 @@ def train_ppo(args):
     storage, storage_valid, storage_greedy = initialize_storage(args, device, double_graph, hidden_state_dim,
                                                                 model_based, n_envs, n_steps,
                                                                 observation_shape, continuous_actions, act_shape,
-                                                                IPL=IPL)
+                                                                IPL=IPL, goal_seeker=goal_seeker)
 
     if args.use_greedy_env is not None:
         hyperparameters.update(

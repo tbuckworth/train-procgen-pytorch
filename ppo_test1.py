@@ -8,6 +8,7 @@ from agents.IPL import IPL
 from agents.IPL_ICM import IPL_ICM
 from agents.double_graph_agent import DoubleGraphAgent
 from agents.espo import ESPO
+from agents.goal_seeker import GoalSeeker
 from agents.graph_agent import GraphAgent
 from agents.ppo import PPO
 from agents.ppo_model import PPOModel
@@ -16,7 +17,7 @@ from agents.ppp_model import PPPModel
 from common.env.env_constructor import get_env_constructor
 from common.env.procgen_wrappers import create_env
 from common.logger import Logger
-from common.storage import Storage, BasicStorage, IPLStorage
+from common.storage import Storage, BasicStorage, IPLStorage, GoalSeekerStorage
 from discrete_env.mountain_car_pre_vec import MountainCarVecEnv
 from helper_local import initialize_model, get_hyperparams, initialize_storage
 
@@ -333,7 +334,7 @@ class TestIPL(unittest.TestCase):
         hyperparameters["n_envs"] = n_envs
         # hyperparameters["anneal_temp"] = False
         model, obs_shape, policy = initialize_model(cls.device, cls.env, hyperparameters)
-        logger = Logger(n_envs, logdir, use_wandb=False, has_vq=False, IPL=True)
+        logger = Logger(n_envs, logdir, use_wandb=False, has_vq=False, algo=hyperparameters["algo"])
         logger.max_steps = 1000
 
         storage = IPLStorage(cls.obs_shape, cls.n_steps, n_envs, cls.device)
@@ -375,6 +376,44 @@ class TestIPL_ICM(unittest.TestCase):
         storage = IPLStorage(cls.obs_shape, cls.n_steps, n_envs, cls.device)
 
         cls.agent = IPL_ICM(cls.env, policy, logger, storage, cls.device,
+                    1, **hyperparameters)
+
+    def test_ipl_icm(self):
+        self.agent.train(int(1e5))
+
+class TestGoalSeeker(unittest.TestCase):
+    device = None
+    obs_shape = None
+    env = None
+
+    @classmethod
+    def setUpClass(cls):
+        n_envs = 2
+        cls.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        env_con = get_env_constructor("cartpole")
+        hyperparameters = {"n_envs": n_envs}
+        cls.env = env_con(None, hyperparameters)
+        cls.in_channels = cls.env.observation_space.shape[0]
+        cls.obs = torch.FloatTensor(cls.env.reset())
+        cls.obs_shape = cls.env.observation_space.shape
+
+        logdir = "logs/test/test"
+        if not os.path.isdir(logdir):
+            os.mkdir(logdir)
+        cls.logdir = logdir
+        hyperparameters = get_hyperparams("goal_seeker")
+        cls.n_steps = hyperparameters.get("n_steps", 256)
+        hyperparameters["n_envs"] = n_envs
+        # hyperparameters["anneal_temp"] = False
+        model, obs_shape, policy = initialize_model(cls.device, cls.env, hyperparameters)
+        logger = Logger(n_envs, logdir, use_wandb=False, has_vq=False, algo=hyperparameters["algo"])
+        logger.max_steps = 1000
+
+        storage = GoalSeekerStorage(cls.obs_shape, cls.n_steps, n_envs,
+                                    cls.device, continuous_actions=False,
+                                    act_shape=policy.act_shape)
+
+        cls.agent = GoalSeeker(cls.env, policy, logger, storage, cls.device,
                     1, **hyperparameters)
 
     def test_ipl_icm(self):
