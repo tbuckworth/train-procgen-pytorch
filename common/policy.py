@@ -718,9 +718,14 @@ class GoalSeekerPolicy(nn.Module):
                  model_constructor=lambda x, y: orthogonal_init(nn.Linear(x, y), gain=0.01),
                  predict_continuous=True,
                  n_action_samples=5,
+                 temp=1.,
                  continuous_actions=False,
+                 greedy_distance_minimization=False,
                  ):
         super(GoalSeekerPolicy, self).__init__()
+
+        self.temp = temp
+        self.greedy_distance_minimization = greedy_distance_minimization
         self.embedder = embedder
         self.action_size = action_size
         self.h_size = self.embedder.output_dim
@@ -829,10 +834,15 @@ class GoalSeekerPolicy(nn.Module):
         v = self.critic(hidden)
         return p, v
 
+    def reduce_temp(self, target_temp=0.0001, decay_rate=0.001):
+        self.temp += (target_temp-self.temp)*decay_rate
+
     def plan(self, state, goal_override=None):
         hidden = self.embedder(state)
-        goal_dist = self.predict_goal_hidden(hidden)
-        # distance_goal = self.traj_distance(hidden, goal_dist.loc)
+        if goal_override is None:
+            goal_dist = self.predict_goal_hidden(hidden)
+        else:
+            goal_dist = goal_override
 
         p = self.actor_dist(hidden)
         acts = self.sample_n(p, self.n_action_samples)
@@ -840,10 +850,15 @@ class GoalSeekerPolicy(nn.Module):
         # TODO: take into account variance?
         distance = self.traj_distance(next_hid_dist.loc, goal_dist.loc)
 
-        best = distance.argmin(dim=0).squeeze().detach().cpu().numpy().tolist()
-        selected_action = acts[tuple(best), tuple(i for i in range(len(best)))]
+        if self.greedy_distance_minimization:
+            best_acts = distance.argmin(dim=0).squeeze()
+        else:
+            # or sample proportional to distance - add a temp in?
+            distance_distr = self.distribution(distance.squeeze().T * self.temp,categorical=True)
+            best_acts = distance_distr.sample()
 
-        acts[best.argmin(dim=0),[i for i in range()]]
+        idx = tuple(i for i in range(len(best_acts)))
+        selected_action = acts[best_acts, idx]
 
         # train actor to select based on distance
         return selected_action

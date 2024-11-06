@@ -306,6 +306,7 @@ class CartPoleTestModel(unittest.TestCase):
         hyperparameters = get_hyperparams("goal-seeker")
         model, obs_shape, policy = initialize_model(self.device, self.env, hyperparameters)
         policy.plan(self.obs)
+        policy.forward(self.obs)
 
 
 if __name__ == '__main__':
