@@ -723,7 +723,7 @@ class GoalSeekerPolicy(nn.Module):
                  greedy_distance_minimization=False,
                  ):
         super(GoalSeekerPolicy, self).__init__()
-
+        self.has_vq = False
         self.temp = temp
         self.greedy_distance_minimization = greedy_distance_minimization
         self.embedder = embedder
