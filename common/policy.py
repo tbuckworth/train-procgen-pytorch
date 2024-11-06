@@ -829,7 +829,7 @@ class GoalSeekerPolicy(nn.Module):
         v = self.critic(hidden)
         return p, v
 
-    def plan(self, state):
+    def plan(self, state, goal_override=None):
         hidden = self.embedder(state)
         goal_dist = self.predict_goal_hidden(hidden)
         # distance_goal = self.traj_distance(hidden, goal_dist.loc)
@@ -841,11 +841,10 @@ class GoalSeekerPolicy(nn.Module):
         distance = self.traj_distance(next_hid_dist.loc, goal_dist.loc)
 
         best = distance.argmin(dim=0).squeeze().detach().cpu().numpy().tolist()
-        idx = torch.stack((best,torch.arange(len(best)))).T
-        idx = [(i,b) for i, b in enumerate(best)]
-        acts[idx]
+        selected_action = acts[tuple(best), tuple(i for i in range(len(best)))]
 
-        selected_action = acts.flatten()[distance.argmin(dim=0)]
+        acts[best.argmin(dim=0),[i for i in range()]]
+
         # train actor to select based on distance
         return selected_action
 

@@ -16,7 +16,7 @@ from helper_local import free_gpu, get_config, sigmoid, wandb_login
 from cartpole.cartpole_pre_vec import CartPoleVecEnv
 import gymnasium
 from discrete_env.acrobot_pre_vec import rk4 as rk4_pre_vec
-
+import itertools
 
 # from discrete_env.acrobot import rk4 as rk4_gymnasium
 
@@ -509,11 +509,18 @@ def coin_test(trials = 1000000):
     plt.plot(prof_list)
     plt.savefig("coin_tosses.png")
 
+def coin_flipper():
+    prob_of_h = 2/3
+    max_tosses = 10
 
+    # np.zeros((2**max_tosses, max_tosses))
+    btab = itertools.product([True,False], repeat=10)
+
+    print(btab)
         
 
 if __name__ == "__main__":
-    # coin_test(100000)
-    coin_test(1000000)
+    coin_flipper()
+    # coin_test(1000000)
     
     print("done")
