@@ -125,7 +125,7 @@ class GoalSeeker(BaseAgent):
             for sample in generator:
                 (obs_batch, nobs_batch, act_batch, done_batch, \
                  old_log_prob_act_batch, old_value_batch,
-                 return_batch, adv_batch, highest_value_batch,
+                 return_batch, adv_batch, goal_obs_batch,
                  goal_distance_batch
                  ) = sample
 
@@ -144,7 +144,7 @@ class GoalSeeker(BaseAgent):
 
                 # Goal prediction
                 goal_hidden = self.policy.predict_goal(obs_batch)
-                goal_h_gold = self.policy.embedder(highest_value_batch)
+                goal_h_gold = self.policy.embedder(goal_obs_batch)
                 goal_loss = self.nll_loss(goal_hidden, goal_h_gold)
 
                 # Trajectory prediction

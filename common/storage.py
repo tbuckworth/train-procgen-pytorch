@@ -436,9 +436,9 @@ class GoalSeekerStorage():
                                mini_batch_size,
                                drop_last=True)
 
-        # highest_value
+        # goal_obs
         # goal_distance
-        highest_value = torch.zeros((self.num_steps, self.num_envs))
+        goal_obs = torch.zeros((self.num_steps, self.num_envs))
         goal_distance = torch.zeros((self.num_steps, self.num_envs))
 
         done_batch = torch.concat((self.done_batch, torch.tensor([[False for _ in range(self.num_envs)]])))
@@ -447,8 +447,9 @@ class GoalSeekerStorage():
                 in_range = done_batch[row + 1:, e].cumsum(0) == 0
                 if in_range.any():
                     future_vals = self.value_batch[row + 1:, e][in_range]
-                    highest_value[row, e] = future_vals.max()
-                    goal_distance[row, e] = future_vals.argmax()
+                    goal_position = future_vals.argmax()
+                    goal_obs[row, e] = self.obs_batch[row+goal_position, e]
+                    goal_distance[row, e] = goal_position
 
         for indices in sampler:
             obs_batch = torch.FloatTensor(self.obs_batch[:-1]).reshape(-1, *self.obs_shape)[indices].to(self.device)
@@ -464,12 +465,12 @@ class GoalSeekerStorage():
             value_batch = torch.FloatTensor(self.value_batch[:-1]).reshape(-1)[indices].to(self.device)
             return_batch = torch.FloatTensor(self.return_batch).reshape(-1)[indices].to(self.device)
             adv_batch = torch.FloatTensor(self.adv_batch).reshape(-1)[indices].to(self.device)
-            highest_value_batch = highest_value.reshape(-1)[indices].to(self.device)
+            goal_obs_batch = goal_obs.reshape(-1)[indices].to(self.device)
             goal_distance_batch = goal_distance.reshape(-1)[indices].to(self.device)
-            # highest_value
+            # goal_obs
             #` goal_distance
             yield (obs_batch, nobs_batch, act_batch, done_batch, log_prob_act_batch,
-                   value_batch, return_batch, adv_batch, highest_value_batch, goal_distance_batch)
+                   value_batch, return_batch, adv_batch, goal_obs_batch, goal_distance_batch)
 
     def fetch_log_data(self):
         if 'env_reward' in self.info_batch[0][0]:

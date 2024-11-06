@@ -188,17 +188,17 @@ def optimize_hyperparams(bounds,
                          run_next=run_next_hyperparameters,
                          opt_metric="summary.mean_episode_rewards",
                          greater_is_better=True):
-    strings = {k:v for k, v in fixed.items() if isinstance(v, list) and k != "wandb_tags"}
+    strings = {k: v for k, v in fixed.items() if isinstance(v, list) and k != "wandb_tags"}
     string_select = {k: np.random.choice(v) for k, v in strings.items()}
     if "env_name" in string_select.keys():
-        project = get_project(string_select["env_name"],fixed["exp_name"])
+        project = get_project(string_select["env_name"], fixed["exp_name"])
     try:
         X, y = get_wandb_performance(bounds.keys(), project, id_tag, opt_metric)
     except ValueError as e:
         print(f"Error from wandb:\n{e}\nPicking hparams randomly.")
         X, y = None, None
 
-    if X is not None and np.prod(X.shape)==0:
+    if X is not None and np.prod(X.shape) == 0:
         X, y = None, None
 
     hparams = select_next_hyperparameters(X, y, bounds, greater_is_better)
@@ -207,7 +207,7 @@ def optimize_hyperparams(bounds,
     hparams.update(fh)
     hparams.update(string_select)
 
-    hparams = {k: int(v) if isinstance(v,np.int64) else v for k,v in hparams.items()}
+    hparams = {k: int(v) if isinstance(v, np.int64) else v for k, v in hparams.items()}
     try:
         run_next(hparams)
     except Exception as e:
@@ -838,7 +838,7 @@ def espo_cartpole():
 def ipl_cartpole():
     fixed = {
         "detect_nan": True,
-        "env_name": 'cartpole',#['cartpole',"cartpole_swing","mountain_car","acrobot", "cartpole_continuous"],
+        "env_name": 'cartpole',  # ['cartpole',"cartpole_swing","mountain_car","acrobot", "cartpole_continuous"],
         "exp_name": 'IPL',
         "param_name": 'ipl_cartpole',
         "device": "gpu",
@@ -851,9 +851,9 @@ def ipl_cartpole():
         "anneal_temp": False,
         "use_greedy_env": True,
         "learned_gamma": True,
-        "learned_temp": False,#[True, False],
-        "reward_incentive": False,#[True, False],
-        "adv_incentive": False,#[True, False],
+        "learned_temp": False,  # [True, False],
+        "reward_incentive": False,  # [True, False],
+        "adv_incentive": False,  # [True, False],
         # "alpha_learning_rate": 2e-4,
         # "n_envs": 6,
         # "learning_rate": 1e-4,
@@ -884,10 +884,11 @@ def ipl_cartpole():
     }
     run_forever(bounds, fixed, run_next_hyperparameters)
 
+
 def ipl_icm_cartpole():
     fixed = {
         "detect_nan": True,
-        "env_name": ['cartpole',"cartpole_swing","mountain_car","acrobot", "cartpole_continuous"],
+        "env_name": ['cartpole', "cartpole_swing", "mountain_car", "acrobot", "cartpole_continuous"],
         "exp_name": 'IPL_ICM',
         "param_name": 'ipl_icm_cartpole',
         "device": "gpu",
@@ -977,13 +978,14 @@ def ipl_coinrun():
         # # "gamma": [0.9999, 0.8],
         # # "lmbda": [0.0, 0.99999],
         "epoch": [4],
-        "learning_rate": [0.000374],#1e-10],#1e-8, 5e-4],
+        "learning_rate": [0.000374],  # 1e-10],#1e-8, 5e-4],
         # # "n_envs": [64],
         # # "n_steps": [256],
         # "depth": [2, 6],
         # "mid_weight": [16, 256],
     }
     run_forever(bounds, fixed, run_next_hyperparameters)
+
 
 def ppo():
     fixed = {
@@ -1018,11 +1020,48 @@ def ppo():
     run_forever(bounds, fixed, run_next_hyperparameters)
 
 
+def goal_seeker():
+    fixed = {
+        "detect_nan": False,
+        "env_name": 'cartpole',
+        "exp_name": 'Cartpole',
+        "param_name": 'goal-seeker-mlp',
+        "device": "gpu",
+        "num_timesteps": int(1e7),
+        "seed": [6033, 0, 42, 50, 81],
+        "wandb_tags": ["gs1"],
+        "use_wandb": True,
+        "mirror_env": False,
+        "use_valid_env": False,
+        "use_greedy_env": False,
+
+        "use_planning_to_act": [True, False],
+    }
+    bounds = {
+        "entropy_coef": [0, 0.02],
+        "goal_loss_coef": [0.8, 1.2],
+        "distance_loss_coef": [0.1, 1.],
+        "forward_loss_coef": [0.8, 1.2],
+        "action_loss_coef": [0.8, 1.2],
+        # "alpha": [0.1, 0.01, 0.2],
+        # # "gamma": [0.9999, 0.8],
+        # # "lmbda": [0.0, 0.99999],
+        # "epoch": [4],
+        # "learning_rate": [0.000374],#1e-10],#1e-8, 5e-4],
+        # # "n_envs": [64],
+        # # "n_steps": [256],
+        # "depth": [2, 6],
+        # "mid_weight": [16, 256],
+    }
+    run_forever(bounds, fixed, run_next_hyperparameters)
+
+
 if __name__ == "__main__":
     # import faulthandler
     # faulthandler.enable()
     # ppo()
-    ipl_coinrun()
+    goal_seeker()
+    # ipl_coinrun()
     # ipl_cartpole()
     # espl_x_squared()
     # cartpole_graph_ppo()

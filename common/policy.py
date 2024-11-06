@@ -779,7 +779,7 @@ class GoalSeekerPolicy(nn.Module):
     def predict_next_hidden(self, hidden, action):
         a_hot = action
         if not self.continuous_actions:
-            a_hot = torch.nn.functional.one_hot(action).float()
+            a_hot = torch.nn.functional.one_hot(action.to(torch.int64)).float()
         h = self.expand_for_concat(hidden, a_hot, 1)
         ha = torch.concat((h, a_hot), dim=-1)
         out = self.forward_model(ha)
