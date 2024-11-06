@@ -438,7 +438,7 @@ class GoalSeekerStorage():
 
         # goal_obs
         # goal_distance
-        goal_obs = torch.zeros((self.num_steps, self.num_envs))
+        goal_obs = torch.zeros_like(self.obs_batch)
         goal_distance = torch.zeros((self.num_steps, self.num_envs))
 
         done_batch = torch.concat((self.done_batch, torch.tensor([[False for _ in range(self.num_envs)]])))
@@ -465,7 +465,7 @@ class GoalSeekerStorage():
             value_batch = torch.FloatTensor(self.value_batch[:-1]).reshape(-1)[indices].to(self.device)
             return_batch = torch.FloatTensor(self.return_batch).reshape(-1)[indices].to(self.device)
             adv_batch = torch.FloatTensor(self.adv_batch).reshape(-1)[indices].to(self.device)
-            goal_obs_batch = goal_obs.reshape(-1)[indices].to(self.device)
+            goal_obs_batch = goal_obs[:-1].reshape(-1, *self.obs_shape)[indices].to(self.device)
             goal_distance_batch = goal_distance.reshape(-1)[indices].to(self.device)
             # goal_obs
             #` goal_distance
