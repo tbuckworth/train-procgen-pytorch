@@ -72,7 +72,7 @@ class GoalSeeker(BaseAgent):
         else:
             self.adjust_lr = adjust_lr
 
-    def predict(self, obs, hidden_state, done):
+    def predict(self, obs):
         with torch.no_grad():
             obs = torch.FloatTensor(obs).to(device=self.device)
             dist, value = self.policy(obs)
@@ -231,13 +231,12 @@ class GoalSeeker(BaseAgent):
             # Run Policy
             self.policy.eval()
             for _ in range(self.n_steps):
-                act, log_prob_act, value, next_hidden_state = self.predict(obs, hidden_state, done)
+                act, log_prob_act, value = self.predict(obs)
                 next_obs, rew, done, info = self.env.step(act)
                 self.storage.store(obs, hidden_state, act, rew, done, info, log_prob_act, value)
                 obs = next_obs
-                hidden_state = next_hidden_state
             value_batch = self.storage.value_batch[:self.n_steps]
-            _, _, last_val, hidden_state = self.predict(obs, hidden_state, done)
+            _, _, last_val = self.predict(obs)
             self.storage.store_last(obs, hidden_state, last_val)
             # Compute advantage estimates
             self.storage.compute_estimates(self.gamma, self.lmbda, self.use_gae, self.normalize_adv)
@@ -245,14 +244,13 @@ class GoalSeeker(BaseAgent):
             # valid
             if self.env_valid is not None:
                 for _ in range(self.n_steps):
-                    act_v, log_prob_act_v, value_v, next_hidden_state_v = self.predict(obs_v, hidden_state_v, done_v)
+                    act_v, log_prob_act_v, value_v = self.predict(obs_v)
                     next_obs_v, rew_v, done_v, info_v = self.env_valid.step(act_v)
                     self.storage_valid.store(obs_v, hidden_state_v, act_v,
                                              rew_v, done_v, info_v,
                                              log_prob_act_v, value_v)
                     obs_v = next_obs_v
-                    hidden_state_v = next_hidden_state_v
-                _, _, last_val_v, hidden_state_v = self.predict(obs_v, hidden_state_v, done_v)
+                _, _, last_val_v = self.predict(obs_v, hidden_state_v, done_v)
                 self.storage_valid.store_last(obs_v, hidden_state_v, last_val_v)
                 self.storage_valid.compute_estimates(self.gamma, self.lmbda, self.use_gae, self.normalize_adv)
 
@@ -261,7 +259,7 @@ class GoalSeeker(BaseAgent):
             # Log the training-procedure
             self.t += self.n_steps * self.n_envs
             rew_batch, done_batch, true_average_reward = self.storage.fetch_log_data()
-            print(f"Mean Reward:{np.mean(rew_batch[done_batch > 0]):.2f}")
+            # print(f"Mean Reward:{np.mean(rew_batch[done_batch > 0]):.2f}")
             if self.storage_valid is not None:
                 rew_batch_v, done_batch_v, true_average_reward_v = self.storage_valid.fetch_log_data()
             else:

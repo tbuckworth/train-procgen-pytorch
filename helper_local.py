@@ -23,7 +23,7 @@ from common.policy import TransitionPolicy, PixelTransPolicy, GraphTransitionPol
     DoubleTransitionPolicy, GraphPolicy, GoalSeekerPolicy
 from moviepy.editor import ImageSequenceClip
 
-from common.storage import Storage, BasicStorage, IPLStorage
+from common.storage import Storage, BasicStorage, IPLStorage, GoalSeekerStorage
 
 GLOBAL_DIR = "/vol/bitbucket/tfb115/train-procgen-pytorch/"
 OS_IS = "Linux"
@@ -1117,21 +1117,19 @@ def add_pets_args(parser):
 
 
 def initialize_storage(args, device, double_graph, hidden_state_dim, model_based, n_envs, n_steps, observation_shape,
-                       continuous_actions=False, act_shape=None, IPL=False):
-    storage = Storage(observation_shape, hidden_state_dim, n_steps, n_envs, device, continuous_actions, act_shape)
-    storage_valid = Storage(observation_shape, hidden_state_dim, n_steps, n_envs,
-                            device, continuous_actions, act_shape) if args.use_valid_env else None
-    storage_greedy = None
+                       continuous_actions=False, act_shape=None, IPL=False, goal_seeker=False):
+    create_storage = lambda : Storage(observation_shape, hidden_state_dim, n_steps, n_envs, device, continuous_actions, act_shape)
+
     if model_based or double_graph:
-        storage = BasicStorage(observation_shape, n_steps, n_envs, device)
-        storage_valid = BasicStorage(observation_shape, n_steps, n_envs,
-                                     device) if args.use_valid_env else None
+        create_storage = lambda : BasicStorage(observation_shape, n_steps, n_envs, device)
     if IPL:
-        storage = IPLStorage(observation_shape, n_steps, n_envs, device)
-        storage_valid = IPLStorage(observation_shape, n_steps, n_envs,
-                                   device) if args.use_valid_env else None
-        storage_greedy = IPLStorage(observation_shape, n_steps, n_envs,
-                                    device) if args.use_greedy_env else None
+        create_storage = lambda :  IPLStorage(observation_shape, n_steps, n_envs, device)
+    if goal_seeker:
+        create_storage = lambda : GoalSeekerStorage(observation_shape, n_steps, n_envs, device, continuous_actions, act_shape)
+
+    storage = create_storage()
+    storage_valid = create_storage() if args.use_valid_env else None
+    storage_greedy = create_storage() if args.use_greedy_env else None
     return storage, storage_valid, storage_greedy
 
 
