@@ -1040,6 +1040,9 @@ def get_agent_constructor(algo):
         from agents.IPL import IPL as AGENT
     elif algo == 'IPL_ICM':
         from agents.IPL_ICM import IPL_ICM as AGENT
+    elif algo == 'goal-seeker':
+        from agents.goal_seeker import GoalSeeker as AGENT
+
     else:
         raise NotImplementedError
     return AGENT

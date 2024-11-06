@@ -71,7 +71,7 @@ class Logger(object):
             loss_metrics = ["entropy", "mutual_info", "loss_total", "rew_corr", "gamma", "loss_alpha", "alpha",
                             "pred_reward", "loss_novelty", "loss_reward", "loss_zero_value"]
 
-        if algo == "goal_seeker":
+        if algo == "goal-seeker":
             loss_metrics = ["loss_pi", "loss_v", "loss_entropy", "loss_x_entropy", "loss_total",
                             "loss_action", "loss_forward", "loss_goal", "loss_distance"]
 
