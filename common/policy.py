@@ -748,6 +748,7 @@ class GoalSeekerPolicy(nn.Module):
         self.goal_model = model_constructor(self.h_size, self.h_size * scale_out)
         self.critic = model_constructor(self.h_size, 1)
         self.actor = model_constructor(self.h_size, action_size * action_scale)
+        #TODO: should traj_model output be abs(output)?
         self.traj_model = model_constructor(self.h_size * 2, 1)
         # self.reverse_actor = model_constructor(self.h_size, action_size * scale_out)
 
@@ -765,7 +766,7 @@ class GoalSeekerPolicy(nn.Module):
         logits = F.log_softmax(logits, dim=-1)
         return Categorical(logits=logits)
 
-    def traj_distance(self, hidden, goal_hidden):
+    def traj_distance_hidden(self, hidden, goal_hidden):
         goal_hidden_expanded = self.expand_for_concat(smaller=goal_hidden, larger=hidden, n_diff_dims=0)
         hgh = torch.concat((hidden, goal_hidden_expanded), dim=-1)
         return self.traj_model(hgh)
@@ -804,6 +805,10 @@ class GoalSeekerPolicy(nn.Module):
         out = self.goal_model(hidden)
         return self.distribution(out)
 
+    def predict_goal(self, state):
+        h = self.embedder(state)
+        return self.predict_goal_hidden(h)
+
     def predict_reward(self, hidden):
         out = self.reward_model(hidden)
         return self.distribution(out)
@@ -819,6 +824,9 @@ class GoalSeekerPolicy(nn.Module):
     def predict_action(self, state, next_state):
         return self.predict_action_hidden(self.embedder(state), self.embedder(next_state))
 
+    def traj_distance(self, state, end_state):
+        return self.traj_distance_hidden(self.embedder(state), self.embedder(end_state))
+
     def predict_next(self, state, action):
         return self.predict_next_hidden(self.embedder(state), action)
 
@@ -832,7 +840,7 @@ class GoalSeekerPolicy(nn.Module):
         hidden = self.embedder(state)
         p = self.actor_dist(hidden)
         v = self.critic(hidden)
-        return p, v
+        return p, v, hidden
 
     def reduce_temp(self, target_temp=0.0001, decay_rate=0.001):
         self.temp += (target_temp-self.temp)*decay_rate
@@ -848,13 +856,17 @@ class GoalSeekerPolicy(nn.Module):
         acts = self.sample_n(p, self.n_action_samples)
         next_hid_dist = self.predict_next_hidden(hidden, acts)
         # TODO: take into account variance?
-        distance = self.traj_distance(next_hid_dist.loc, goal_dist.loc)
+        distance = self.traj_distance_hidden(next_hid_dist.loc, goal_dist.loc)
 
         if self.greedy_distance_minimization:
+            #maybe just remove this
             best_acts = distance.argmin(dim=0).squeeze()
         else:
-            # or sample proportional to distance - add a temp in?
-            distance_distr = self.distribution(distance.squeeze().T * self.temp,categorical=True)
+            # sample proportional to inverse distance - is zeros a problem?
+            inv_dist = 1 / (distance.squeeze().T * self.temp)
+            if inv_dist.isinf().any():
+                print("sort this out")
+            distance_distr = self.distribution(inv_dist, categorical=True)
             best_acts = distance_distr.sample()
 
         idx = tuple(i for i in range(len(best_acts)))
