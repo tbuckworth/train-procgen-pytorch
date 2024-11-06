@@ -3,9 +3,11 @@ from torch.utils.data.sampler import BatchSampler, SubsetRandomSampler
 import numpy as np
 from collections import deque
 
+
 class Storage():
 
-    def __init__(self, obs_shape, hidden_state_size, num_steps, num_envs, device, continuous_actions=False, act_shape=None):
+    def __init__(self, obs_shape, hidden_state_size, num_steps, num_envs, device, continuous_actions=False,
+                 act_shape=None):
         self.continuous_actions = continuous_actions
         self.performance_track = {}
         self.obs_shape = obs_shape
@@ -17,8 +19,8 @@ class Storage():
         self.reset()
 
     def reset(self):
-        self.obs_batch = torch.zeros(self.num_steps+1, self.num_envs, *self.obs_shape)
-        self.hidden_states_batch = torch.zeros(self.num_steps+1, self.num_envs, self.hidden_state_size)
+        self.obs_batch = torch.zeros(self.num_steps + 1, self.num_envs, *self.obs_shape)
+        self.hidden_states_batch = torch.zeros(self.num_steps + 1, self.num_envs, self.hidden_state_size)
         # TODO: if cont, then act_batch shape takes action_shape into consideration
         if self.continuous_actions:
             self.act_batch = torch.zeros(self.num_steps, self.num_envs, self.act_shape).squeeze()
@@ -28,7 +30,7 @@ class Storage():
             self.log_prob_act_batch = torch.zeros(self.num_steps, self.num_envs)
         self.rew_batch = torch.zeros(self.num_steps, self.num_envs)
         self.done_batch = torch.zeros(self.num_steps, self.num_envs)
-        self.value_batch = torch.zeros(self.num_steps+1, self.num_envs)
+        self.value_batch = torch.zeros(self.num_steps + 1, self.num_envs)
         self.return_batch = torch.zeros(self.num_steps, self.num_envs)
         self.adv_batch = torch.zeros(self.num_steps, self.num_envs)
         self.info_batch = deque(maxlen=self.num_steps)
@@ -59,7 +61,7 @@ class Storage():
                 rew = rew_batch[i]
                 done = self.done_batch[i]
                 value = self.value_batch[i]
-                next_value = self.value_batch[i+1]
+                next_value = self.value_batch[i + 1]
 
                 delta = (rew + gamma * next_value * (1 - done)) - value
                 self.adv_batch[i] = A = gamma * lmbda * A * (1 - done) + delta
@@ -76,7 +78,6 @@ class Storage():
         if normalize_adv:
             self.adv_batch = (self.adv_batch - torch.mean(self.adv_batch)) / (torch.std(self.adv_batch) + 1e-8)
 
-
     def fetch_train_generator(self, mini_batch_size=None, recurrent=False):
         batch_size = self.num_steps * self.num_envs
         if mini_batch_size is None:
@@ -88,10 +89,13 @@ class Storage():
                                    drop_last=True)
             for indices in sampler:
                 obs_batch = torch.FloatTensor(self.obs_batch[:-1]).reshape(-1, *self.obs_shape)[indices].to(self.device)
-                hidden_state_batch = torch.FloatTensor(self.hidden_states_batch[:-1]).reshape(-1, self.hidden_state_size).to(self.device)
+                hidden_state_batch = torch.FloatTensor(self.hidden_states_batch[:-1]).reshape(-1,
+                                                                                              self.hidden_state_size).to(
+                    self.device)
                 if self.continuous_actions:
                     act_batch = torch.FloatTensor(self.act_batch).reshape(-1, self.act_shape)[indices].to(self.device)
-                    log_prob_act_batch = torch.FloatTensor(self.log_prob_act_batch).reshape(-1, self.act_shape)[indices].to(self.device)
+                    log_prob_act_batch = torch.FloatTensor(self.log_prob_act_batch).reshape(-1, self.act_shape)[
+                        indices].to(self.device)
                 else:
                     act_batch = torch.FloatTensor(self.act_batch).reshape(-1, )[indices].to(self.device)
                     log_prob_act_batch = torch.FloatTensor(self.log_prob_act_batch).reshape(-1)[indices].to(self.device)
@@ -106,10 +110,12 @@ class Storage():
             num_envs_per_batch = self.num_envs // num_mini_batch_per_epoch
             perm = torch.randperm(self.num_envs)
             for start_ind in range(0, self.num_envs, num_envs_per_batch):
-                idxes = perm[start_ind:start_ind+num_envs_per_batch]
+                idxes = perm[start_ind:start_ind + num_envs_per_batch]
                 obs_batch = torch.FloatTensor(self.obs_batch[:-1, idxes]).reshape(-1, *self.obs_shape).to(self.device)
                 # [0:1] instead of [0] to keep two-dimensional array
-                hidden_state_batch = torch.FloatTensor(self.hidden_states_batch[0:1, idxes]).reshape(-1, self.hidden_state_size).to(self.device)
+                hidden_state_batch = torch.FloatTensor(self.hidden_states_batch[0:1, idxes]).reshape(-1,
+                                                                                                     self.hidden_state_size).to(
+                    self.device)
                 act_batch = torch.FloatTensor(self.act_batch[:, idxes]).reshape(-1).to(self.device)
                 done_batch = torch.FloatTensor(self.done_batch[:, idxes]).reshape(-1).to(self.device)
                 log_prob_act_batch = torch.FloatTensor(self.log_prob_act_batch[:, idxes]).reshape(-1).to(self.device)
@@ -146,13 +152,11 @@ class Storage():
                         self.performance_track[seed] = deque(maxlen=10)
                     self.performance_track[seed].append(rew)
         else:
-            #TODO: Implement for BoxWorld?
+            # TODO: Implement for BoxWorld?
             true_average_reward = np.nan
         all_rewards = list(self.performance_track.values())
         true_average_reward = np.mean([rew for rew_list in all_rewards for rew in rew_list])
         return rew_batch, done_batch, true_average_reward
-
-
 
 
 class BasicStorage():
@@ -166,11 +170,11 @@ class BasicStorage():
         self.reset()
 
     def reset(self):
-        self.obs_batch = torch.zeros(self.num_steps+1, self.num_envs, *self.obs_shape)
+        self.obs_batch = torch.zeros(self.num_steps + 1, self.num_envs, *self.obs_shape)
         self.act_batch = torch.zeros(self.num_steps, self.num_envs)
         self.rew_batch = torch.zeros(self.num_steps, self.num_envs)
         self.done_batch = torch.zeros(self.num_steps, self.num_envs)
-        self.value_batch = torch.zeros(self.num_steps+1, self.num_envs)
+        self.value_batch = torch.zeros(self.num_steps + 1, self.num_envs)
         self.return_batch = torch.zeros(self.num_steps, self.num_envs)
         self.adv_batch = torch.zeros(self.num_steps, self.num_envs)
         self.info_batch = deque(maxlen=self.num_steps)
@@ -198,7 +202,7 @@ class BasicStorage():
                 rew = rew_batch[i]
                 done = self.done_batch[i]
                 value = self.value_batch[i]
-                next_value = self.value_batch[i+1]
+                next_value = self.value_batch[i + 1]
 
                 delta = (rew + gamma * next_value * (1 - done)) - value
                 self.adv_batch[i] = A = gamma * lmbda * A * (1 - done) + delta
@@ -214,7 +218,6 @@ class BasicStorage():
         self.return_batch = self.adv_batch + self.value_batch[:-1]
         if normalize_adv:
             self.adv_batch = (self.adv_batch - torch.mean(self.adv_batch)) / (torch.std(self.adv_batch) + 1e-8)
-
 
     def fetch_train_generator(self, mini_batch_size=None, recurrent=False):
         batch_size = self.num_steps * self.num_envs
@@ -263,13 +266,11 @@ class BasicStorage():
                         self.performance_track[seed] = deque(maxlen=10)
                     self.performance_track[seed].append(rew)
         else:
-            #TODO: Implement for BoxWorld?
+            # TODO: Implement for BoxWorld?
             true_average_reward = np.nan
         all_rewards = list(self.performance_track.values())
         true_average_reward = np.mean([rew for rew_list in all_rewards for rew in rew_list])
         return rew_batch, done_batch, true_average_reward
-
-
 
 
 class IPLStorage():
@@ -283,11 +284,11 @@ class IPLStorage():
         self.reset()
 
     def reset(self):
-        self.obs_batch = torch.zeros(self.num_steps+1, self.num_envs, *self.obs_shape)
+        self.obs_batch = torch.zeros(self.num_steps + 1, self.num_envs, *self.obs_shape)
         self.act_batch = torch.zeros(self.num_steps, self.num_envs)
         self.rew_batch = torch.zeros(self.num_steps, self.num_envs)
         self.done_batch = torch.zeros(self.num_steps, self.num_envs)
-        self.value_batch = torch.zeros(self.num_steps+1, self.num_envs)
+        self.value_batch = torch.zeros(self.num_steps + 1, self.num_envs)
         self.info_batch = deque(maxlen=self.num_steps)
         self.step = 0
 
@@ -322,7 +323,6 @@ class IPLStorage():
             rew_batch = torch.FloatTensor(self.rew_batch).reshape(-1)[indices].to(self.device)
             yield obs_batch, nobs_batch, act_batch, done_batch, value_batch, rew_batch
 
-
     def fetch_log_data(self):
         if 'env_reward' in self.info_batch[0][0]:
             rew_batch = []
@@ -351,7 +351,7 @@ class IPLStorage():
                         self.performance_track[seed] = deque(maxlen=10)
                     self.performance_track[seed].append(rew)
         else:
-            #TODO: Implement for BoxWorld?
+            # TODO: Implement for BoxWorld?
             true_average_reward = np.nan
         all_rewards = list(self.performance_track.values())
         true_average_reward = np.mean([rew for rew_list in all_rewards for rew in rew_list])
@@ -371,7 +371,7 @@ class GoalSeekerStorage():
         self.reset()
 
     def reset(self):
-        self.obs_batch = torch.zeros(self.num_steps+1, self.num_envs, *self.obs_shape)
+        self.obs_batch = torch.zeros(self.num_steps + 1, self.num_envs, *self.obs_shape)
         # TODO: if cont, then act_batch shape takes action_shape into consideration
         if self.continuous_actions:
             self.act_batch = torch.zeros(self.num_steps, self.num_envs, self.act_shape).squeeze()
@@ -381,7 +381,7 @@ class GoalSeekerStorage():
             self.log_prob_act_batch = torch.zeros(self.num_steps, self.num_envs)
         self.rew_batch = torch.zeros(self.num_steps, self.num_envs)
         self.done_batch = torch.zeros(self.num_steps, self.num_envs)
-        self.value_batch = torch.zeros(self.num_steps+1, self.num_envs)
+        self.value_batch = torch.zeros(self.num_steps + 1, self.num_envs)
         self.return_batch = torch.zeros(self.num_steps, self.num_envs)
         self.adv_batch = torch.zeros(self.num_steps, self.num_envs)
         self.info_batch = deque(maxlen=self.num_steps)
@@ -410,7 +410,7 @@ class GoalSeekerStorage():
                 rew = rew_batch[i]
                 done = self.done_batch[i]
                 value = self.value_batch[i]
-                next_value = self.value_batch[i+1]
+                next_value = self.value_batch[i + 1]
 
                 delta = (rew + gamma * next_value * (1 - done)) - value
                 self.adv_batch[i] = A = gamma * lmbda * A * (1 - done) + delta
@@ -427,7 +427,6 @@ class GoalSeekerStorage():
         if normalize_adv:
             self.adv_batch = (self.adv_batch - torch.mean(self.adv_batch)) / (torch.std(self.adv_batch) + 1e-8)
 
-
     def fetch_train_generator(self, mini_batch_size=None, recurrent=False):
         batch_size = self.num_steps * self.num_envs
         if mini_batch_size is None:
@@ -437,16 +436,27 @@ class GoalSeekerStorage():
                                mini_batch_size,
                                drop_last=True)
 
-        # highest_value_batch
+        # highest_value
         # goal_distance
+        highest_value = torch.zeros((self.num_steps, self.num_envs))
+        goal_distance = torch.zeros((self.num_steps, self.num_envs))
 
+        done_batch = torch.concat((self.done_batch, torch.tensor([[False for _ in range(self.num_envs)]])))
+        for e in range(self.num_envs):
+            for row in range(self.num_steps):
+                in_range = done_batch[row + 1:, e].cumsum(0) == 0
+                if in_range.any():
+                    future_vals = self.value_batch[row + 1:, e][in_range]
+                    highest_value[row, e] = future_vals.max()
+                    goal_distance[row, e] = future_vals.argmax()
 
         for indices in sampler:
             obs_batch = torch.FloatTensor(self.obs_batch[:-1]).reshape(-1, *self.obs_shape)[indices].to(self.device)
             nobs_batch = torch.FloatTensor(self.obs_batch[1:]).reshape(-1, *self.obs_shape)[indices].to(self.device)
             if self.continuous_actions:
                 act_batch = torch.FloatTensor(self.act_batch).reshape(-1, self.act_shape)[indices].to(self.device)
-                log_prob_act_batch = torch.FloatTensor(self.log_prob_act_batch).reshape(-1, self.act_shape)[indices].to(self.device)
+                log_prob_act_batch = torch.FloatTensor(self.log_prob_act_batch).reshape(-1, self.act_shape)[indices].to(
+                    self.device)
             else:
                 act_batch = torch.FloatTensor(self.act_batch).reshape(-1, )[indices].to(self.device)
                 log_prob_act_batch = torch.FloatTensor(self.log_prob_act_batch).reshape(-1)[indices].to(self.device)
@@ -454,9 +464,12 @@ class GoalSeekerStorage():
             value_batch = torch.FloatTensor(self.value_batch[:-1]).reshape(-1)[indices].to(self.device)
             return_batch = torch.FloatTensor(self.return_batch).reshape(-1)[indices].to(self.device)
             adv_batch = torch.FloatTensor(self.adv_batch).reshape(-1)[indices].to(self.device)
-            # highest_value_batch
-            # goal_distance
-            yield obs_batch, nobs_batch, act_batch, done_batch, log_prob_act_batch, value_batch, return_batch, adv_batch
+            highest_value_batch = highest_value.reshape(-1)[indices].to(self.device)
+            goal_distance_batch = goal_distance.reshape(-1)[indices].to(self.device)
+            # highest_value
+            #` goal_distance
+            yield (obs_batch, nobs_batch, act_batch, done_batch, log_prob_act_batch,
+                   value_batch, return_batch, adv_batch, highest_value_batch, goal_distance_batch)
 
     def fetch_log_data(self):
         if 'env_reward' in self.info_batch[0][0]:
@@ -486,7 +499,7 @@ class GoalSeekerStorage():
                         self.performance_track[seed] = deque(maxlen=10)
                     self.performance_track[seed].append(rew)
         else:
-            #TODO: Implement for BoxWorld?
+            # TODO: Implement for BoxWorld?
             true_average_reward = np.nan
         all_rewards = list(self.performance_track.values())
         true_average_reward = np.mean([rew for rew_list in all_rewards for rew in rew_list])

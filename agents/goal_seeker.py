@@ -37,17 +37,22 @@ class GoalSeeker(BaseAgent):
                  use_gae=True,
                  entropy_scaling=None,
                  increasing_lr=False,
-                 sparsity_coef=0.,
-                 fs_coef=0.,
+                 goal_loss_coef=1.,
+                 distance_loss_coef=1.,
+                 forward_loss_coef=1.,
+                 action_loss_coef=1.,
+                 use_planning_to_act=True,
                  **kwargs):
         super(GoalSeeker, self).__init__(env, policy, logger, storage, device,
                                          n_checkpoints, env_valid, storage_valid)
-
-        self.fs_coef = fs_coef
+        self.use_planning_to_act = use_planning_to_act
+        self.goal_loss_coef = goal_loss_coef
+        self.distance_loss_coef = distance_loss_coef
+        self.forward_loss_coef = forward_loss_coef
+        self.action_loss_coef = action_loss_coef
         self.total_timesteps = 0
         self.entropy_scaling = entropy_scaling
         self.entropy_multiplier = 1.
-        self.s_loss_coef = sparsity_coef
         self.min_rew = -1.
         self.max_rew = 11.
         self.n_steps = n_steps
@@ -75,31 +80,30 @@ class GoalSeeker(BaseAgent):
     def predict(self, obs):
         with torch.no_grad():
             obs = torch.FloatTensor(obs).to(device=self.device)
-            dist, value = self.policy(obs)
-            act = dist.sample()
+            dist, value, _ = self.policy(obs)
+            if self.use_planning_to_act:
+                act = self.policy.plan(obs)
+            else:
+                act = dist.sample()
             log_prob_act = dist.log_prob(act)
 
         return act.cpu().numpy(), log_prob_act.cpu().numpy(), value.cpu().numpy()
 
-    def predict_w_value_saliency(self, obs, hidden_state, done):
+    def predict_w_value_saliency(self, obs):
         obs = torch.FloatTensor(obs).to(device=self.device)
         obs.requires_grad_()
         obs.retain_grad()
-        hidden_state = torch.FloatTensor(hidden_state).to(device=self.device)
-        mask = torch.FloatTensor(1 - done).to(device=self.device)
-        dist, value = self.policy(obs)
+        dist, value, _ = self.policy(obs)
         value.backward(retain_graph=True)
         act = dist.sample()
         log_prob_act = dist.log_prob(act)
 
-        return act.detach().cpu().numpy(), log_prob_act.detach().cpu().numpy(), value.detach().cpu().numpy(), hidden_state.detach().cpu().numpy(), obs.grad.data.detach().cpu().numpy()
+        return act.detach().cpu().numpy(), log_prob_act.detach().cpu().numpy(), value.detach().cpu().numpy(), obs.grad.data.detach().cpu().numpy()
 
     def nll_loss(self, dist, target):
         return nn.GaussianNLLLoss()(dist.loc, target, dist.scale ** 2)
 
     def optimize(self):
-        mean_rew = np.mean(self.logger.episode_reward_buffer)
-
         # Original PPO losses:
         pi_loss_list, value_loss_list, entropy_loss_list, total_loss_list = [], [], [], []
         # Extra losses/metrics:
@@ -115,14 +119,14 @@ class GoalSeeker(BaseAgent):
 
         self.policy.train()
         for e in range(self.epoch):
-            recurrent = self.policy.is_recurrent()
+            recurrent = False
             generator = self.storage.fetch_train_generator(mini_batch_size=self.mini_batch_size,
                                                            recurrent=recurrent)
             for sample in generator:
                 (obs_batch, nobs_batch, act_batch, done_batch, \
                  old_log_prob_act_batch, old_value_batch,
                  return_batch, adv_batch, highest_value_batch,
-                 goal_distance
+                 goal_distance_batch
                  ) = sample
 
                 dist_batch, value_batch, h_batch = self.policy(obs_batch)
@@ -145,7 +149,7 @@ class GoalSeeker(BaseAgent):
 
                 # Trajectory prediction
                 distance = self.policy.traj_distance_hidden(h_batch, goal_h_gold)
-                distance_loss = nn.MSELoss()(distance, goal_distance)
+                distance_loss = nn.MSELoss()(distance, goal_distance_batch)
 
                 # TODO: or we do goal-seeking policy update
 
@@ -219,7 +223,6 @@ class GoalSeeker(BaseAgent):
         checkpoints = [(i + 1) * save_every for i in range(self.num_checkpoints)]
         checkpoints.sort()
         obs = self.env.reset()
-        hidden_state = np.zeros((self.n_envs, self.storage.hidden_state_size))
         done = np.zeros(self.n_envs)
 
         if self.env_valid is not None:
@@ -233,11 +236,11 @@ class GoalSeeker(BaseAgent):
             for _ in range(self.n_steps):
                 act, log_prob_act, value = self.predict(obs)
                 next_obs, rew, done, info = self.env.step(act)
-                self.storage.store(obs, hidden_state, act, rew, done, info, log_prob_act, value)
+                self.storage.store(obs, act, rew, done, info, log_prob_act, value)
                 obs = next_obs
             value_batch = self.storage.value_batch[:self.n_steps]
             _, _, last_val = self.predict(obs)
-            self.storage.store_last(obs, hidden_state, last_val)
+            self.storage.store_last(obs, last_val)
             # Compute advantage estimates
             self.storage.compute_estimates(self.gamma, self.lmbda, self.use_gae, self.normalize_adv)
 
@@ -246,12 +249,12 @@ class GoalSeeker(BaseAgent):
                 for _ in range(self.n_steps):
                     act_v, log_prob_act_v, value_v = self.predict(obs_v)
                     next_obs_v, rew_v, done_v, info_v = self.env_valid.step(act_v)
-                    self.storage_valid.store(obs_v, hidden_state_v, act_v,
+                    self.storage_valid.store(obs_v, act_v,
                                              rew_v, done_v, info_v,
                                              log_prob_act_v, value_v)
                     obs_v = next_obs_v
-                _, _, last_val_v = self.predict(obs_v, hidden_state_v, done_v)
-                self.storage_valid.store_last(obs_v, hidden_state_v, last_val_v)
+                _, _, last_val_v = self.predict(obs_v)
+                self.storage_valid.store_last(obs_v, last_val_v)
                 self.storage_valid.compute_estimates(self.gamma, self.lmbda, self.use_gae, self.normalize_adv)
 
             # Optimize policy & valueq

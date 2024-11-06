@@ -839,7 +839,7 @@ class GoalSeekerPolicy(nn.Module):
     def forward(self, state):
         hidden = self.embedder(state)
         p = self.actor_dist(hidden)
-        v = self.critic(hidden)
+        v = self.critic(hidden).squeeze()
         return p, v, hidden
 
     def reduce_temp(self, target_temp=0.0001, decay_rate=0.001):

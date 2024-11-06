@@ -217,6 +217,14 @@ def initialize_model(device, env, hyperparameters, in_channels=None):
     if in_channels is None:
         in_channels = observation_shape[0]
     action_space = env.action_space
+    if isinstance(action_space, gym.spaces.Discrete):
+        action_size = action_space.n
+    elif isinstance(action_space, gymnasium.spaces.Discrete):
+        action_size = action_space.n
+    elif isinstance(action_space, gymnasium.spaces.Box) or isinstance(action_space, gym.spaces.Box):
+        action_size = action_space.shape[-1] * 2
+    else:
+        raise NotImplementedError
     has_vq = False
     # Model architecture
     if architecture == 'nature':
@@ -434,18 +442,8 @@ def initialize_model(device, env, hyperparameters, in_channels=None):
     # Discrete action space
     recurrent = hyperparameters.get('recurrent', False)
     logsumexp_logits_is_v = hyperparameters.get('logsumexp_logits_is_v', False)
-    if isinstance(action_space, gym.spaces.Discrete):
-        action_size = action_space.n
-        policy = policy_cons(model, recurrent, action_size, has_vq, logsumexp_logits_is_v=logsumexp_logits_is_v)
-    elif isinstance(action_space, gymnasium.spaces.Discrete):
-        action_size = action_space.n
-        policy = policy_cons(model, recurrent, action_size, has_vq, logsumexp_logits_is_v=logsumexp_logits_is_v)
-    elif isinstance(action_space, gymnasium.spaces.Box) or isinstance(action_space, gym.spaces.Box):
-        action_size = action_space.shape[-1]
-        policy = policy_cons(model, recurrent, action_size * 2, has_vq, continuous_actions=True,
-                             logsumexp_logits_is_v=logsumexp_logits_is_v)
-    else:
-        raise NotImplementedError
+
+    policy = policy_cons(model, recurrent, action_size, has_vq, logsumexp_logits_is_v=logsumexp_logits_is_v)
     policy.to(device)
     policy.device = device
     return model, observation_shape, policy

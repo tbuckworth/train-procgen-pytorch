@@ -401,7 +401,7 @@ class TestGoalSeeker(unittest.TestCase):
         if not os.path.isdir(logdir):
             os.mkdir(logdir)
         cls.logdir = logdir
-        hyperparameters = get_hyperparams("goal_seeker")
+        hyperparameters = get_hyperparams("goal-seeker-mlp")
         cls.n_steps = hyperparameters.get("n_steps", 256)
         hyperparameters["n_envs"] = n_envs
         # hyperparameters["anneal_temp"] = False
@@ -411,7 +411,7 @@ class TestGoalSeeker(unittest.TestCase):
 
         storage = GoalSeekerStorage(cls.obs_shape, cls.n_steps, n_envs,
                                     cls.device, continuous_actions=False,
-                                    act_shape=policy.act_shape)
+                                    act_shape=policy.action_size)
 
         cls.agent = GoalSeeker(cls.env, policy, logger, storage, cls.device,
                     1, **hyperparameters)
