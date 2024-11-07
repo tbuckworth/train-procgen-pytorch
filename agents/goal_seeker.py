@@ -138,7 +138,8 @@ class GoalSeeker(BaseAgent):
                 if self.policy.continuous_actions:
                     action_loss = self.nll_loss(act_hat, act_batch[flt])
                 else:
-                    action_loss = nn.CrossEntropyLoss()(act_hat.probs, act_batch[flt])
+                    a_hot = torch.nn.functional.one_hot(act_batch[flt].to(torch.int64), self.policy.action_size).to(self.device)
+                    action_loss = nn.CrossEntropyLoss()(act_hat.probs, a_hot.float())
 
                 # Forward prediction
                 next_hidden = self.policy.predict_next(obs_batch[flt], act_batch[flt])
