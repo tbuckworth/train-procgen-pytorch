@@ -748,14 +748,14 @@ class GoalSeekerPolicy(nn.Module):
         self.goal_model = model_constructor(self.h_size, self.h_size * scale_out)
         self.critic = model_constructor(self.h_size, 1)
         self.actor = model_constructor(self.h_size, action_size * action_scale)
-        #TODO: should traj_model output be abs(output)?
+        # TODO: should traj_model output be abs(output)?
         self.traj_model = model_constructor(self.h_size * 2, 1)
         # self.reverse_actor = model_constructor(self.h_size, action_size * scale_out)
 
     def distribution(self, logits, categorical=False):
         if not categorical:
-            n = logits.shape[-1]//2
-            assert n*2 == logits.shape[-1], "last logits dim must be even"
+            n = logits.shape[-1] // 2
+            assert n * 2 == logits.shape[-1], "last logits dim must be even"
             mean = logits[..., :n]
             logvar = logits[..., n:]
             # TODO: clamp logvar?
@@ -774,7 +774,7 @@ class GoalSeekerPolicy(nn.Module):
     def predict_action_hidden(self, hidden, next_hidden):
         hnh = torch.concat((hidden, next_hidden), dim=-1)
         out = self.action_model(hnh)
-        return self.distribution(out)
+        return self.distribution(out, categorical=not self.continuous_actions)
 
     def predict_next_hidden(self, hidden, action):
         a_hot = action
@@ -788,7 +788,7 @@ class GoalSeekerPolicy(nn.Module):
             raise e
         return self.distribution(out)
 
-    def expand_for_concat(self, smaller, larger, n_diff_dims = 1):
+    def expand_for_concat(self, smaller, larger, n_diff_dims=1):
         shp_diff = len(larger.shape) - len(smaller.shape)
         if shp_diff > 0:
             a_batches = larger.shape[shp_diff:-n_diff_dims]
@@ -846,7 +846,7 @@ class GoalSeekerPolicy(nn.Module):
         return p, v, hidden
 
     def reduce_temp(self, target_temp=0.0001, decay_rate=0.001):
-        self.temp += (target_temp-self.temp)*decay_rate
+        self.temp += (target_temp - self.temp) * decay_rate
 
     def plan(self, state, goal_override=None):
         hidden = self.embedder(state)
@@ -862,7 +862,7 @@ class GoalSeekerPolicy(nn.Module):
         distance = self.traj_distance_hidden(next_hid_dist.loc, goal_dist.loc)
 
         if self.greedy_distance_minimization:
-            #maybe just remove this
+            # maybe just remove this
             best_acts = distance.argmin(dim=0).squeeze()
         else:
             # sample proportional to inverse distance - is zeros a problem?
@@ -954,7 +954,7 @@ def auto_concat(inputs, pattern):
             v = solve(vals, d)[0]
         out_shape.append(v)
 
-    concat_dim = np.argwhere([bool(re.search("\+",d)) for d in out_dims]).squeeze().item()
+    concat_dim = np.argwhere([bool(re.search("\+", d)) for d in out_dims]).squeeze().item()
 
     concat_eq = out_dims[concat_dim]
 
@@ -963,12 +963,9 @@ def auto_concat(inputs, pattern):
     filled_dims = [id + ['' for _ in range(ndims - len(id))] for id in input_dims]
     fd = np.array(filled_dims)
 
-
     for i, tens in enumerate(inputs):
         shp = []
         for d in input_dims[i]:
             np.array(input_dims).flatten().count()
 
-
     shapes
-

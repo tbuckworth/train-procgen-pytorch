@@ -135,7 +135,10 @@ class GoalSeeker(BaseAgent):
                 # TODO: is flt right here - get next_obs instead?
                 flt = done_batch == 0
                 act_hat = self.policy.predict_action(obs_batch[flt], nobs_batch[flt])
-                action_loss = self.nll_loss(act_hat, act_batch[flt])
+                if self.policy.continuous_actions:
+                    action_loss = self.nll_loss(act_hat, act_batch[flt])
+                else:
+                    action_loss = nn.CrossEntropyLoss()(act_hat.probs, act_batch[flt])
 
                 # Forward prediction
                 next_hidden = self.policy.predict_next(obs_batch[flt], act_batch[flt])
