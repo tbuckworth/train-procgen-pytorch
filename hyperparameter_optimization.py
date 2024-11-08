@@ -996,12 +996,12 @@ def ppo():
         "device": "gpu",
         "num_timesteps": int(1e7),
         "seed": [6033, 0, 42, 50, 81],
-        "wandb_tags": ["ppo_v_equiv5"],
+        "wandb_tags": ["deep narrow"],
         "use_wandb": True,
         "mirror_env": False,
         "use_valid_env": True,
         "anneal_temp": False,
-        "wandb_group": "logsum_exp_independent",
+        # "wandb_group": "logsum_exp_independent",
         "logsumexp_logits_is_v": [False],
         "use_greedy_env": False,
         "entropy_coef": [0, 0.02],
@@ -1014,8 +1014,8 @@ def ppo():
         # "learning_rate": [0.000374],#1e-10],#1e-8, 5e-4],
         # # "n_envs": [64],
         # # "n_steps": [256],
-        # "depth": [2, 6],
-        # "mid_weight": [16, 256],
+        "depth": [10, 30],
+        "mid_weight": [2, 8],
     }
     run_forever(bounds, fixed, run_next_hyperparameters)
 
@@ -1059,8 +1059,12 @@ def goal_seeker():
 if __name__ == "__main__":
     # import faulthandler
     # faulthandler.enable()
+<<<<<<< HEAD
     # ppo()
     goal_seeker()
+=======
+    ppo()
+>>>>>>> 2f279a0 (testing deep narrow)
     # ipl_coinrun()
     # ipl_cartpole()
     # espl_x_squared()
