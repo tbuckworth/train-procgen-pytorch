@@ -1059,12 +1059,9 @@ def goal_seeker():
 if __name__ == "__main__":
     # import faulthandler
     # faulthandler.enable()
-<<<<<<< HEAD
     # ppo()
-    goal_seeker()
-=======
+    # goal_seeker()
     ppo()
->>>>>>> 2f279a0 (testing deep narrow)
     # ipl_coinrun()
     # ipl_cartpole()
     # espl_x_squared()
