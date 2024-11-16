@@ -8,7 +8,6 @@ import sklearn.gaussian_process as gp
 
 from scipy.stats import norm
 from scipy.optimize import minimize
-from matplotlib import pyplot as plt
 
 def expected_improvement(x, gaussian_process, evaluated_loss, greater_is_better=False, n_params=1):
     """ expected_improvement
