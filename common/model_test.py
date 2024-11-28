@@ -290,7 +290,7 @@ class CartPoleTestModel(unittest.TestCase):
         new_policy.device = policy.device
         new_policy.forward(self.obs)
 
-    def test_double_graph_policy(self):
+    def test_graph_policy(self):
         hyperparameters = get_hyperparams("graph-cartpole")
         model, obs_shape, policy = initialize_model(self.device, self.env, hyperparameters)
         policy.forward(self.obs)
