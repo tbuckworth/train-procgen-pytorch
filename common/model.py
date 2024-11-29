@@ -1397,13 +1397,14 @@ class GraphValueModel(nn.Module):
 
 
 class NBatchPySRTorchMult(nn.Module):
-    def __init__(self, models, cat_dim=-1, device="cuda"):
+    def __init__(self, models, equations, cat_dim=-1, device="cuda"):
         super(NBatchPySRTorchMult, self).__init__()
         assert isinstance(models, list)
         self.device = device
         self.cat_dim = cat_dim
         self.elite = None
         self.no_nan = True
+        self.equations = equations
         self.models = [NBatchPySRTorch(model, device) for model in models]
         self.flt = torch.BoolTensor([False for _ in self.models]).to(device=device)
         self.indices = torch.arange(0, len(self.models)).to(device=self.device)

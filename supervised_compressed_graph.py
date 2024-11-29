@@ -43,17 +43,19 @@ def main(args):
     with torch.no_grad():
         m_in, m_out = model.forward_for_imitation(x)
     sr_x = flatten_batches_to_numpy(m_in)
-    sr_y = flatten_batches_to_numpy(m_out)
+    sr_y = flatten_batches_to_numpy(m_out).squeeze()
     msg_model, _ = find_model(sr_x, sr_y, symbdir, save_file, weights, args)
     # msg_torch = NBatchPySRTorch(msg_model.pytorch(), device)
     msg_torch = all_pysr_pytorch(msg_model, device)
     # Fine tune sr bit:
     model.messenger = msg_torch
     symb_train_loss = train_and_save(model, x, y, epochs, lr, logdir + "/symb_model.pth", min_batch_loss)
-    symb_test_loss = (y_test-model(x_test)).pow(2).mean()
+    symb_test_loss = min_batch_loss(model(x_test), y_test)
 
     print(f"Neural Train Loss: {neural_train_loss:.4f}\tTest Loss: {neural_test_loss:.4f}")
     print(f"Symbol Train Loss: {symb_train_loss:.4f}\tTest Loss: {symb_test_loss:.4f}")
+
+    print("done")
 
 def min_batch_loss(y_hat, y):
     y = y.unsqueeze(0)
@@ -73,7 +75,7 @@ def train_and_save(model, x, y, epochs, lr, logdir, loss_fn):
         optimizer.zero_grad()
         if epoch % 10 == 0:
             print(f"loss: {loss.item():.4f}")
-    torch.save(model, logdir)
+    # torch.save(model, logdir)
     return loss.item()
 
 
@@ -89,4 +91,10 @@ if __name__ == "__main__":
     parser = add_symbreg_args(parser)
     args = parser.parse_args()
 
+    args.verbosity = 1
+    args.iterations = 1
+    args.populations = 10
+    args.procs = 8
+    args.n_cycles_per_iteration = 4000
+    args.denoise = False
     main(args)

@@ -768,9 +768,9 @@ def add_symbreg_args(parser):
     parser.add_argument('--n_envs', type=int, default=int(8),
                         help='Number of parallel environments to use to generate data and test models')
     parser.add_argument('--rounds', type=int, default=int(10), help='Number of episodes to test models for')
-    parser.add_argument('--binary_operators', type=str, nargs='+', default=["+", "-", "greater"],
+    parser.add_argument('--binary_operators', type=str, nargs='+', default=["+", "-", "*", "greater"],
                         help="Binary operators to use in search")
-    parser.add_argument('--unary_operators', type=str, nargs='+', default=[], help="Unary operators to use in search")
+    parser.add_argument('--unary_operators', type=str, nargs='+', default=["square","exp","relu"], help="Unary operators to use in search")
     parser.add_argument('--wandb_tags', type=str, nargs='+', default=[], help="Tags for Weights & Biases")
     parser.add_argument('--wandb_name', type=str, default=None, help='Experiment Name for Weights & Biases')
     parser.add_argument('--wandb_group', type=str, default=None)

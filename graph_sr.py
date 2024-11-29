@@ -743,12 +743,15 @@ def load_all_pysr(msgdir, device):
 def all_pysr_pytorch(msg_model, device):
     idx = [i for i in range(len(msg_model.equations_))]
     in_model = msg_model.pytorch(idx)
+    equations = msg_model.equations.equation[idx]
     # TODO: sort this out:
     if isinstance(in_model, list):
         in_model = msg_model.equations[0].torch_format
+        #TODO: not sure about this:
+        equations = [msg_model.equations[0].equation]
         # models = [NBatchPySRTorchMult(m.torch_format.tolist(), cat_dim=0, device=device) for m in msg_model.equations]
         # return NBatchPySRTorchMult(models, cat_dim=-1, device=device)
-    return NBatchPySRTorchMult(in_model.tolist(), cat_dim=0, device=device)
+    return NBatchPySRTorchMult(in_model.tolist(), equations, cat_dim=0, device=device)
 
 
 def pysr_from_file(
