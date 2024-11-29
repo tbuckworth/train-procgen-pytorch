@@ -10,9 +10,9 @@ from mbrl import models
 
 from common.env.env_constructor import get_pets_env_constructor
 from common.model import NBatchPySRTorch, NBatchPySRTorchMult
-from double_graph_sr import create_symb_dir_if_exists, find_model
+from double_graph_sr import find_model
 from graph_sr import get_pysr_dir
-from helper_local import get_latest_file_matching, get_config, DictToArgs, add_symbreg_args
+from helper_local import get_latest_file_matching, get_config, DictToArgs, add_symbreg_args, create_symb_dir_if_exists
 from pets.pets import generate_pets_cfg_dict, load_pets_agent
 from symbreg.agents import PetsSymbolicAgent
 import mbrl.env.reward_fns as reward_fns

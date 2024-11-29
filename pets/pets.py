@@ -78,7 +78,7 @@ def run_pets(args):
     if args.detect_nan:
         torch.autograd.set_detect_anomaly(True)
 
-    logdir = create_logdir(args, "pets", args.env_name, "")
+    logdir = create_logdir(args.seed, "pets", args.env_name, "")
     np.save(os.path.join(logdir, "config.npy"), vars(args))
     print(f'Logging to {logdir}')
 

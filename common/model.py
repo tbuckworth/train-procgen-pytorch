@@ -1455,6 +1455,7 @@ class NBatchPySRTorch(nn.Module):
         self.model = model
         self.repeat = False
         self.device = device
+        self.to(device)
         try:
             with torch.no_grad():
                 out = self.model._node(None)
@@ -1474,3 +1475,53 @@ class NBatchPySRTorch(nn.Module):
             return self.fwd(X)
         h = self.fwd(X)
         return h.repeat(X.shape[:-1]).to(device=self.device)
+
+
+class CompressedGraph(GraphModel):
+    def __init__(self, in_channels, action_size, compressed_size, depth, mid_weight, device, continuous_actions=False):
+        super(CompressedGraph, self).__init__()
+
+        self.input_size = in_channels
+        self.depth = depth
+        self.mid_weight = mid_weight
+        # self.output_dim = latent_size
+        self.action_size = action_size
+        self.device = device
+        self.continuous = continuous_actions
+        self.no_var = False
+        self.obs_dim = -3
+
+        self.embedder = nn.Linear(in_channels, compressed_size)
+        self.messenger = MLPModel(4, depth, mid_weight, 1)
+        self.final_layer = nn.Linear(compressed_size, action_size)
+
+        self.apply(xavier_uniform_init)
+        self.to(device)
+
+    def set_no_var(self, no_var):
+        if no_var and not self.no_var:
+            self.obs_dim += 1
+        self.no_var = no_var
+
+    def forward(self, obs):
+        f = self.embedder(obs)
+        n, x = self.prep_input(f)
+        msg = self.sum_all_messages(n, x)
+        return self.final_layer(msg)
+
+    def forward_for_imitation(self, obs):
+        f = self.embedder(obs)
+        n, x = self.prep_input(f)
+        m_in = self.vectorize_for_message_pass(n, x)
+        m_out = self.messenger(m_in)
+        return m_in, m_out
+
+    def forward_fine_tune(self, obs):
+        m_in, m_out = self.forward_for_imitation(obs)
+        # TODO: these dims will only be correct for cartpole:
+        sum_dim = -2
+        if self.no_var:
+            sum_dim = -1 #?
+        msg = torch.sum(m_out, dim=sum_dim).squeeze()
+        logits = self.final_layer(msg)
+        return logits, m_out.squeeze()

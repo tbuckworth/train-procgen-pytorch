@@ -127,7 +127,7 @@ def predict_in_batches(policy, obs, hidden_state, done, batch_size=32*8):
 
 def distill(args, logdir_trained):
 
-    logdir = create_logdir(args, 'distill', "coinrun", "distill")
+    logdir = create_logdir(args.seed, 'distill', "coinrun", "distill")
 
     hyperparameters = get_hyperparams('hard-500-impalavqmha')
     batch_size = args.batch_size

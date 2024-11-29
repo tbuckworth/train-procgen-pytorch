@@ -85,7 +85,7 @@ def train_vqvae(args):
     checkpoints.sort()
     n_batch = len(train_data) // batch_size
 
-    logdir = create_logdir(args, 'vqvae', 'coinrun', f'vqvae')
+    logdir = create_logdir(args.seed, 'vqvae', 'coinrun', f'vqvae')
     log = pd.DataFrame(columns=["Epoch", "Loss", "Valid_Loss"])
 
     if args.use_wandb:

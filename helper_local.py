@@ -471,9 +471,9 @@ def create_name_from_dict(prefix, suffix, specifications, exclusions=None):
     return f"{prefix}{outstr}.{suffix}"
 
 
-def create_logdir(args, folder, project, subfolder):
+def create_logdir(seed, folder, project, subfolder):
     logdir = os.path.join('logs', folder, project, subfolder)
-    run_name = time.strftime("%Y-%m-%d__%H-%M-%S") + f'__seed_{args.seed}'
+    run_name = time.strftime("%Y-%m-%d__%H-%M-%S") + f'__seed_{seed}'
     logdir = os.path.join(logdir, run_name)
     if not (os.path.exists(logdir)):
         os.makedirs(logdir)
@@ -1161,3 +1161,14 @@ def add_espl_args(parser):
     parser.add_argument('--warmup_epoch', default=0, type=int)
 
     return parser
+
+
+def create_symb_dir_if_exists(logdir, dir_name="symbreg"):
+    save_file = "symb_reg.csv"
+    symbdir = os.path.join(logdir, dir_name)
+    if not os.path.exists(symbdir):
+        os.mkdir(symbdir)
+    symbdir = os.path.join(symbdir, time.strftime("%Y-%m-%d__%H-%M-%S"))
+    if not os.path.exists(symbdir):
+        os.mkdir(symbdir)
+    return symbdir, save_file

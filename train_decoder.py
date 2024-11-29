@@ -101,7 +101,7 @@ def train_decoder(args, trained_model_folder):
     checkpoints.sort()
     n_batch = len(train_data) // batch_size
 
-    logdir = create_logdir(args, 'decode', 'coinrun', f'decode_{latent_layer}')
+    logdir = create_logdir(args.seed, 'decode', 'coinrun', f'decode_{latent_layer}')
     log = pd.DataFrame(columns=["Epoch", "Loss", "Valid_Loss"])
 
     if args.use_wandb:

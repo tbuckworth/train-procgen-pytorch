@@ -21,8 +21,8 @@ from pysr import PySRRegressor
 # import torch
 from common.env.procgen_wrappers import create_env
 from helper_local import get_config, get_path, balanced_reward, \
-    floats_to_dp, dict_to_html_table, wandb_login, add_symbreg_args,\
-    sigmoid, get_saved_hyperparams, n_params
+    floats_to_dp, dict_to_html_table, wandb_login, add_symbreg_args, \
+    sigmoid, get_saved_hyperparams, n_params, create_symb_dir_if_exists
 
 from matplotlib import pyplot as plt
 
@@ -190,17 +190,6 @@ def get_coinrun_test_env(logdir, n_envs):
         mirror_some = True
     env = create_env(env_args, False, normalize_rew, mirror_some)
     return env
-
-
-def create_symb_dir_if_exists(logdir, dir_name="symbreg"):
-    save_file = "symb_reg.csv"
-    symbdir = os.path.join(logdir, dir_name)
-    if not os.path.exists(symbdir):
-        os.mkdir(symbdir)
-    symbdir = os.path.join(symbdir, time.strftime("%Y-%m-%d__%H-%M-%S"))
-    if not os.path.exists(symbdir):
-        os.mkdir(symbdir)
-    return symbdir, save_file
 
 
 def send_full_report(df, logdir, symbdir, model, args, dfs):

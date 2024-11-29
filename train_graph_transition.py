@@ -77,7 +77,7 @@ if __name__ == "__main__":
     checkpoints = [50, 100] + [(i + 1) * save_every for i in range(args.num_checkpoints)] + [args.epochs - 1]
     checkpoints.sort()
 
-    logdir = create_logdir(args, 'train-transition', 'cartpole', f'graph-transition')
+    logdir = create_logdir(args.seed, 'train-transition', 'cartpole', f'graph-transition')
     log = pd.DataFrame(columns=["Epoch", "Loss", "Mean_Episode_Reward", "Timesteps"])
 
     if args.use_wandb:
