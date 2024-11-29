@@ -1,6 +1,7 @@
 import argparse
 
 import torch
+from matplotlib import pyplot as plt
 from torch import nn
 
 from common.model import CompressedGraph, NBatchPySRTorch
@@ -55,11 +56,13 @@ def main(args):
     print(f"Neural Train Loss: {neural_train_loss:.4f}\tTest Loss: {neural_test_loss:.4f}")
     print(f"Symbol Train Loss: {symb_train_loss:.4f}\tTest Loss: {symb_test_loss:.4f}")
 
+
     print("done")
 
 def min_batch_loss(y_hat, y):
     y = y.unsqueeze(0)
-    loss = ((y_hat-y)**2).mean(dim=0).min()
+    losses = ((y_hat-y)**2).mean(dim=tuple(range(1,y.ndim)))
+    loss = losses.min()
     return loss
 
 
@@ -92,8 +95,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     args.verbosity = 1
-    args.iterations = 1
-    args.populations = 10
+    args.iterations = 5
+    args.populations = 25
     args.procs = 8
     args.n_cycles_per_iteration = 4000
     args.denoise = False
