@@ -1180,7 +1180,7 @@ class GraphActorCriticEQL(GraphModel):
         m = self.append_index(msg)
         logits = self.run_actor(m, n)
         if self.continuous:
-            #TODO: why not make the logvar a function of the logit as well as observation?
+            # TODO: why not make the logvar a function of the logit as well as observation?
             logvar = self.logvar_net(obs).squeeze()
             shp = np.array(list(logits.shape))
             shp[-len(logvar.shape):] = 1
@@ -1232,7 +1232,7 @@ class GraphActorCriticEQL(GraphModel):
         )
 
     def get_loss(self):
-        loss_dict = {f"messenger/{k}":v for k,v in self.loss_dict(self.messenger).items()}
+        loss_dict = {f"messenger/{k}": v for k, v in self.loss_dict(self.messenger).items()}
         loss_dict.update({f"actor/{k}": v for k, v in self.loss_dict(self.actor).items()})
 
         # loss_dict = {
@@ -1491,10 +1491,12 @@ class CompressedGraph(GraphModel):
         self.continuous = continuous_actions
         self.no_var = False
         self.obs_dim = -3
+        self.m = compressed_size
 
         self.embedder = nn.Linear(in_channels, compressed_size)
         self.messenger = MLPModel(4, depth, mid_weight, 1)
         self.final_layer = nn.Linear(compressed_size, action_size)
+        self.symb_models = []
 
         self.apply(xavier_uniform_init)
         self.to(device)
@@ -1511,18 +1513,28 @@ class CompressedGraph(GraphModel):
         return self.final_layer(msg)
 
     def forward_for_imitation(self, obs):
+        m_in = self.aggregate_m_in(obs)
+        m_out = self.messenger(m_in)
+        return m_in, m_out
+
+    def aggregate_m_in(self, obs):
         f = self.embedder(obs)
         n, x = self.prep_input(f)
         m_in = self.vectorize_for_message_pass(n, x)
-        m_out = self.messenger(m_in)
-        return m_in, m_out
+        return m_in
+
+    def forward_fine_tune2(self, obs):
+        m_in = self.aggregate_m_in(obs)
+        # TODO: maybe just make this it's own model with it's own forward pass
+        m_out_list = [model(m_in[..., i // self.m, int(i / self.m), (0, 2)]) for i, model in enumerate(self.symb_models)]
+        # m_out = reshape(m_out_list)
 
     def forward_fine_tune(self, obs):
         m_in, m_out = self.forward_for_imitation(obs)
         # TODO: these dims will only be correct for cartpole:
         sum_dim = -2
         if self.no_var:
-            sum_dim = -1 #?
+            sum_dim = -1  # ?
         msg = torch.sum(m_out, dim=sum_dim).squeeze()
         logits = self.final_layer(msg)
         return logits, m_out.squeeze()

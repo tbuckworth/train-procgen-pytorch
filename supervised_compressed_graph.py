@@ -9,12 +9,12 @@ from double_graph_sr import find_model
 from graph_sr import all_pysr_pytorch
 from helper_local import create_logdir, create_symb_dir_if_exists, add_symbreg_args
 from symbreg.agents import flatten_batches_to_numpy
-
+from multiprocessing import Pool
 
 
 
 def pool_idea():
-    from multiprocessing import Pool
+
     from pysr import PySRRegressor
 
     def symbolic_regression_on_dataset(data):
@@ -84,8 +84,19 @@ def main(args):
         m_in, m_out = model.forward_for_imitation(x)
 
     datasets = [
-        {X, Y, symbdir, save_file, weights, args} for i in
+        dict(X=m_in[:,i//m, int(i/m),(0,2)],
+             Y=m_out[:,i//m, int(i/m)],
+             symbdir=symbdir,
+             save_file=save_file,
+             weights=weights,
+             args=args) for i in range(m**2)
     ]
+
+    with Pool(len(datasets)) as pool:
+        models = pool.map(sr_fit, datasets)
+
+    model.symb_models = models
+
 
 
     sr_x = flatten_batches_to_numpy(m_in)
