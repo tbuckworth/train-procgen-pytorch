@@ -10,6 +10,9 @@ from graph_sr import all_pysr_pytorch
 from helper_local import create_logdir, create_symb_dir_if_exists, add_symbreg_args
 from symbreg.agents import flatten_batches_to_numpy
 
+
+
+
 def pool_idea():
     from multiprocessing import Pool
     from pysr import PySRRegressor
@@ -38,6 +41,10 @@ def pool_idea():
     # Access models for each dataset
     for i, model in enumerate(models):
         print(f"Dataset {i + 1} symbolic expression: {model}")
+
+def sr_fit(data):
+    # X, Y, symbdir, save_file, weights, args
+    msg_model, _ = find_model(**data)
 
 
 def main(args):
@@ -75,6 +82,12 @@ def main(args):
     weights = None
     with torch.no_grad():
         m_in, m_out = model.forward_for_imitation(x)
+
+    datasets = [
+        {X, Y, symbdir, save_file, weights, args} for i in
+    ]
+
+
     sr_x = flatten_batches_to_numpy(m_in)
     sr_y = flatten_batches_to_numpy(m_out).squeeze()
     msg_model, _ = find_model(sr_x, sr_y, symbdir, save_file, weights, args)
