@@ -10,6 +10,35 @@ from graph_sr import all_pysr_pytorch
 from helper_local import create_logdir, create_symb_dir_if_exists, add_symbreg_args
 from symbreg.agents import flatten_batches_to_numpy
 
+def pool_idea():
+    from multiprocessing import Pool
+    from pysr import PySRRegressor
+
+    def symbolic_regression_on_dataset(data):
+        X, y = data["X"], data["y"]
+        model = PySRRegressor(
+            niterations=100,
+            binary_operators=["+", "-", "*", "/"],
+            unary_operators=["sin", "cos", "exp", "log"],
+            verbosity=0,
+        )
+        model.fit(X, y)
+        return model
+
+    # Example: List of datasets
+    datasets = [
+        {"X": X1, "y": y1},
+        {"X": X2, "y": y2},
+        {"X": X3, "y": y3},
+    ]
+
+    with Pool(len(datasets)) as pool:
+        models = pool.map(symbolic_regression_on_dataset, datasets)
+
+    # Access models for each dataset
+    for i, model in enumerate(models):
+        print(f"Dataset {i + 1} symbolic expression: {model}")
+
 
 def main(args):
     device = "cuda" if torch.cuda.is_available() else "cpu"
