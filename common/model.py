@@ -1482,6 +1482,7 @@ class SymbolicMessenger(nn.Module):
         super(SymbolicMessenger, self).__init__()
         assert isinstance(models, list)
         self.symb_models = [NBatchPySRTorch(model) for model in models]
+        self.m = m
 
     def forward(self, m_in):
         m_out_list = [model(m_in[..., i // self.m, int(i / self.m), (0, 2)]) for i, model in enumerate(self.symb_models)]

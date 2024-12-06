@@ -4,11 +4,9 @@ import torch
 from matplotlib import pyplot as plt
 from torch import nn
 
-from common.model import CompressedGraph, NBatchPySRTorch
+from common.model import CompressedGraph
 from double_graph_sr import find_model
-from graph_sr import all_pysr_pytorch
 from helper_local import create_logdir, create_symb_dir_if_exists, add_symbreg_args
-from symbreg.agents import flatten_batches_to_numpy
 from multiprocessing import Pool
 
 
@@ -45,6 +43,7 @@ def pool_idea():
 def sr_fit(data):
     # X, Y, symbdir, save_file, weights, args
     msg_model, _ = find_model(**data)
+    return msg_model
 
 
 def main(args):
@@ -92,8 +91,10 @@ def main(args):
              args=args) for i in range(m**2)
     ]
 
-    with Pool(len(datasets)) as pool:
-        models = pool.map(sr_fit, datasets)
+    # with Pool(len(datasets)) as pool:
+    #     models = pool.map(sr_fit, datasets)
+
+    models = [sr_fit(data) for data in datasets]
 
     model.assign_symb_models(models)
     symb_loss = nn.MSELoss()
@@ -196,8 +197,8 @@ if __name__ == "__main__":
 
     args.verbosity = 1
     args.iterations = 1
-    args.populations = 5
-    args.procs = 2
+    args.populations = 25
+    args.procs = 8
     args.n_cycles_per_iteration = 4000
     args.denoise = False
     main(args)
