@@ -1477,6 +1477,18 @@ class NBatchPySRTorch(nn.Module):
         h = self.fwd(X)
         return h.repeat(X.shape[:-1]).to(device=self.device)
 
+class SymbolicMessenger(nn.Module):
+    def __init__(self, models, m):
+        super(SymbolicMessenger, self).__init__()
+        assert isinstance(models, list)
+        self.symb_models = [NBatchPySRTorch(model) for model in models]
+
+    def forward(self, m_in):
+        m_out_list = [model(m_in[..., i // self.m, int(i / self.m), (0, 2)]) for i, model in enumerate(self.symb_models)]
+        # TODO: reshape output
+        m_out = m_out_list
+        return m_out
+
 
 class CompressedGraph(GraphModel):
     def __init__(self, in_channels, action_size, compressed_size, depth, mid_weight, device, continuous_actions=False):
@@ -1496,10 +1508,14 @@ class CompressedGraph(GraphModel):
         self.embedder = nn.Linear(in_channels, compressed_size)
         self.messenger = MLPModel(4, depth, mid_weight, 1)
         self.final_layer = nn.Linear(compressed_size, action_size)
-        self.symb_models = []
+        self.neural_messenger = None
 
         self.apply(xavier_uniform_init)
         self.to(device)
+
+    def assign_symb_models(self, models):
+        self.neural_messenger = self.messenger
+        self.messenger = SymbolicMessenger(models, self.m)
 
     def set_no_var(self, no_var):
         if no_var and not self.no_var:
@@ -1523,11 +1539,6 @@ class CompressedGraph(GraphModel):
         m_in = self.vectorize_for_message_pass(n, x)
         return m_in
 
-    def forward_fine_tune2(self, obs):
-        m_in = self.aggregate_m_in(obs)
-        # TODO: maybe just make this it's own model with it's own forward pass
-        m_out_list = [model(m_in[..., i // self.m, int(i / self.m), (0, 2)]) for i, model in enumerate(self.symb_models)]
-        # m_out = reshape(m_out_list)
 
     def forward_fine_tune(self, obs):
         m_in, m_out = self.forward_for_imitation(obs)

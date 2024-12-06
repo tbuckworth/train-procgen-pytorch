@@ -51,7 +51,7 @@ def main(args):
     device = "cuda" if torch.cuda.is_available() else "cpu"
     n = 10
     k = 2
-    m = 5
+    m = 2
     b = int(1000 / (m ** 2))
     lr = 1e-3
     epochs = 1000
@@ -95,22 +95,22 @@ def main(args):
     with Pool(len(datasets)) as pool:
         models = pool.map(sr_fit, datasets)
 
-    model.symb_models = models
+    model.assign_symb_models(models)
+    symb_loss = nn.MSELoss()
 
+    # if old_school_method:
+        # sr_x = flatten_batches_to_numpy(m_in)
+        # sr_y = flatten_batches_to_numpy(m_out).squeeze()
+        # msg_model, _ = find_model(sr_x, sr_y, symbdir, save_file, weights, args)
+        # if ensemble:
+        #     msg_torch = all_pysr_pytorch(msg_model, device)
+        #     symb_loss = min_batch_loss
+        # else:
+        #     msg_torch = NBatchPySRTorch(msg_model.pytorch(), device)
+        #     symb_loss = nn.MSELoss()
 
-
-    sr_x = flatten_batches_to_numpy(m_in)
-    sr_y = flatten_batches_to_numpy(m_out).squeeze()
-    msg_model, _ = find_model(sr_x, sr_y, symbdir, save_file, weights, args)
-    if ensemble:
-        msg_torch = all_pysr_pytorch(msg_model, device)
-        symb_loss = min_batch_loss
-    else:
-        msg_torch = NBatchPySRTorch(msg_model.pytorch(), device)
-        symb_loss = nn.MSELoss()
-
-    # Fine tune sr bit:
-    model.messenger = msg_torch
+        # Fine tune sr bit:
+        # model.messenger = msg_torch
     symb_train_loss = train_and_save(model, x, y, epochs, lr, logdir + "/symb_model.pth", symb_loss)
     y_hat_symb = model(x)
     y_test_hat_symb = model(x_test)
@@ -195,9 +195,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     args.verbosity = 1
-    args.iterations = 5
-    args.populations = 25
-    args.procs = 8
+    args.iterations = 1
+    args.populations = 5
+    args.procs = 2
     args.n_cycles_per_iteration = 4000
     args.denoise = False
     main(args)
