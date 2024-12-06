@@ -84,8 +84,8 @@ def main(args):
         m_in, m_out = model.forward_for_imitation(x)
 
     datasets = [
-        dict(X=m_in[:,i//m, int(i/m),(0,2)],
-             Y=m_out[:,i//m, int(i/m)],
+        dict(X=m_in[:,i//m, int(i/m),(0,2)].detach().cpu().numpy(),
+             Y=m_out[:,i//m, int(i/m)].detach().cpu().numpy(),
              symbdir=symbdir,
              save_file=save_file,
              weights=weights,

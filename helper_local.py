@@ -86,7 +86,8 @@ def save_gif(frames, filename="test.gif", fps=20):
 
 
 def get_path(folder, file):
-    return os.path.join(GLOBAL_DIR, folder, file)
+    return os.path.join(folder, file)
+    # return os.path.join(GLOBAL_DIR, folder, file)
 
 
 def print_values_actions(action_names, pi, value, i="", rewards=None):
