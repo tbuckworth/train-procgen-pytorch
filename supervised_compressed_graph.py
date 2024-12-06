@@ -50,10 +50,10 @@ def main(args):
     device = "cuda" if torch.cuda.is_available() else "cpu"
     n = 10
     k = 2
-    m = 2
-    b = int(1000 / (m ** 2))
+    m = 3
+    b = int(args.epochs / (m ** 2))
     lr = 1e-3
-    epochs = 1000
+    epochs = args.epochs
     seed = 42
     ensemble = False
     folder = "test"
@@ -112,6 +112,19 @@ def main(args):
 
         # Fine tune sr bit:
         # model.messenger = msg_torch
+
+
+
+    y_hat_symb = model(x)
+    symb_train_loss = symb_loss(y_hat_symb, y)
+    y_test_hat_symb = model(x_test)
+    symb_test_loss = symb_loss(y_test_hat_symb, y_test)
+
+    print(f"Neural Train Loss: {neural_train_loss:.4f}\tTest Loss: {neural_test_loss:.4f}")
+    print(f"Symbol Train Loss: {symb_train_loss:.4f}\tTest Loss: {symb_test_loss:.4f}")
+
+    plot_results(y, y_hat_neural, y_hat_symb, y_test, y_test_hat_neural, y_test_hat_symb, "Pre Finetune")
+
     symb_train_loss = train_and_save(model, x, y, epochs, lr, logdir + "/symb_model.pth", symb_loss)
     y_hat_symb = model(x)
     y_test_hat_symb = model(x_test)
@@ -120,15 +133,19 @@ def main(args):
     print(f"Neural Train Loss: {neural_train_loss:.4f}\tTest Loss: {neural_test_loss:.4f}")
     print(f"Symbol Train Loss: {symb_train_loss:.4f}\tTest Loss: {symb_test_loss:.4f}")
 
-    if ensemble:
-        elite_idx = min_batch_loss(y_hat_symb, y, True)
-        np_y_train_hat_symb = y_hat_symb[elite_idx].detach().cpu().numpy().reshape(-1)
-        np_y_test_hat_symb = y_test_hat_symb[elite_idx].detach().cpu().numpy().reshape(-1)
-    else:
-        np_y_train_hat_symb = y_hat_symb.detach().cpu().numpy().reshape(-1)
-        np_y_test_hat_symb = y_test_hat_symb.detach().cpu().numpy().reshape(-1)
+    plot_results(y, y_hat_neural, y_hat_symb, y_test, y_test_hat_neural, y_test_hat_symb, "Post Finetune")
+
+    print("done")
 
 
+def plot_results(y, y_hat_neural, y_hat_symb, y_test, y_test_hat_neural, y_test_hat_symb, title):
+    # if ensemble:
+    #     elite_idx = min_batch_loss(y_hat_symb, y, True)
+    #     np_y_train_hat_symb = y_hat_symb[elite_idx].detach().cpu().numpy().reshape(-1)
+    #     np_y_test_hat_symb = y_test_hat_symb[elite_idx].detach().cpu().numpy().reshape(-1)
+    # else:
+    np_y_train_hat_symb = y_hat_symb.detach().cpu().numpy().reshape(-1)
+    np_y_test_hat_symb = y_test_hat_symb.detach().cpu().numpy().reshape(-1)
     gold = [y.cpu().numpy().reshape(-1), y_test.cpu().numpy().reshape(-1)]
     pred = [
         [y_hat_neural.detach().cpu().numpy().reshape(-1),
@@ -137,7 +154,6 @@ def main(args):
          np_y_test_hat_symb],
     ]
     titles = [["Neural Train", "Symbolic Train"], ["Neural Test", "Symbolic Test"]]
-
     fig, axes = plt.subplots(2, 2, figsize=(10, 10))
     for row in range(2):
         for col in range(2):
@@ -151,11 +167,9 @@ def main(args):
                 y=pred[row][col],
             )
             axes[row][col].set_title(titles[row][col])
+    fig.suptitle(title)
     plt.tight_layout()
-    # plt.title()
     plt.show()
-
-    print("done")
 
 
 def min_batch_loss(y_hat, y, return_idx=False):
