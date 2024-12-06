@@ -1486,8 +1486,9 @@ class SymbolicMessenger(nn.Module):
 
     def forward(self, m_in):
         m_out_list = [model(m_in[..., i // self.m, int(i / self.m), (0, 2)]) for i, model in enumerate(self.symb_models)]
-        # TODO: reshape output
-        m_out = m_out_list
+        m_out = torch.zeros((*m_in.shape[:-1],1)).to(device=m_in.device)
+        for i, out in enumerate(m_out_list):
+            m_out[..., i//self.m, int(i/self.m),0] = out
         return m_out
 
 

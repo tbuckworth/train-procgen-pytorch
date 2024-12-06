@@ -43,7 +43,7 @@ def pool_idea():
 def sr_fit(data):
     # X, Y, symbdir, save_file, weights, args
     msg_model, _ = find_model(**data)
-    return msg_model
+    return msg_model.pytorch()
 
 
 def main(args):
