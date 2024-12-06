@@ -209,8 +209,9 @@ if __name__ == "__main__":
     parser = add_symbreg_args(parser)
     args = parser.parse_args()
 
+    args.epochs = 5000
     args.verbosity = 1
-    args.iterations = 1
+    args.iterations = 5
     args.populations = 25
     args.procs = 8
     args.n_cycles_per_iteration = 4000
