@@ -19,8 +19,8 @@ tuple_functions = {
 
 }
 binary_functions = {
-    "*": _reduce(torch.mul),
-    "+": _reduce(torch.add),
+    "*": torch.mul,
+    "+": torch.add,
     "/": torch.div,
     "max": torch.max,
     "min": torch.min,
@@ -84,13 +84,15 @@ def main(args):
     x_test = x * 2
     y_test = generate_y(x_test, (b, k)).to(device)
 
-    all_funcs = tuple_functions.copy()
-    all_funcs.update(
-        {k: lambda x: v(x[0]) for k, v in unary_functions.items()}
-    )
-    all_funcs.update(
-        {k: lambda x: v(x[0],x[1]) for k, v in binary_functions.items()}
-    )
+    # all_funcs = tuple_functions.copy()
+    all_funcs = binary_functions.copy()
+    # all_funcs.update(unary_functions)
+    # all_funcs.update(
+    #     {k: lambda x: v(x[0]) for k, v in unary_functions.items()}
+    # )
+    # all_funcs.update(
+    #     {k: lambda x: v(x[0],x[1]) for k, v in binary_functions.items()}
+    # )
     model = ExpandedGraph(in_channels=n,
                           action_size=k,
                           expanded_size=m,

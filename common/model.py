@@ -1,5 +1,6 @@
 import math
 from abc import ABC
+from typing import List, Callable
 
 import einops
 import numpy as np
@@ -1477,6 +1478,7 @@ class NBatchPySRTorch(nn.Module):
         h = self.fwd(X)
         return h.repeat(X.shape[:-1]).to(device=self.device)
 
+
 class SymbolicMessenger(nn.Module):
     def __init__(self, models, m):
         super(SymbolicMessenger, self).__init__()
@@ -1485,30 +1487,41 @@ class SymbolicMessenger(nn.Module):
         self.m = m
 
     def forward(self, m_in):
-        m_out_list = [model(m_in[..., i // self.m, int(i / self.m), (0, 2)]) for i, model in enumerate(self.symb_models)]
-        m_out = torch.zeros((*m_in.shape[:-1],1)).to(device=m_in.device)
+        m_out_list = [model(m_in[..., i // self.m, int(i / self.m), (0, 2)]) for i, model in
+                      enumerate(self.symb_models)]
+        m_out = torch.zeros((*m_in.shape[:-1], 1)).to(device=m_in.device)
         for i, out in enumerate(m_out_list):
-            m_out[..., i//self.m, int(i/self.m),0] = out
+            m_out[..., i // self.m, int(i / self.m), 0] = out
         return m_out
 
+class BinaryFunc(nn.Module):
+    def __init__(self, func):
+        super(BinaryFunc, self).__init__()
+        self.func = func
+
+    def forward(self, x):
+        return self.func(x)
+
 class BinaryMessenger(nn.Module):
+    # _VariableFunctionsClass
+    # funcs: List[torch.nn.Module]
     def __init__(self, binary_funcs, m):
         super(BinaryMessenger, self).__init__()
         assert isinstance(binary_funcs, dict)
         self.binary_funcs = binary_funcs
-        self.f_idx = [np.random.randint(len(self.binary_funcs)) for _ in range(m**2)]
+        self.f_idx = [np.random.randint(len(self.binary_funcs)) for _ in range(m ** 2)]
         self.func_names = [list(self.binary_funcs.keys())[i] for i in self.f_idx]
-        self.funcs = [self.binary_funcs[f] for f in self.func_names]
+        self.funcs = torch.nn.ModuleList([BinaryFunc(self.binary_funcs[f]) for f in self.func_names])
         self.m = m
 
     def forward(self, m_in):
-        # TODO:
-        #  use torch.jit.fork and torch.jit.wait, with decorator: torch.jit.script
-        m_out_list = [model(m_in[..., i // self.m, int(i / self.m), (0, 2)].split(dim=-1,split_size=1)) for i, model in enumerate(self.funcs)]
-        m_out = torch.zeros((*m_in.shape[:-1],1)).to(device=m_in.device)
+        task_list = [torch.jit.fork(model, (m_in[..., i // self.m], m_in[..., i % self.m])) for i, model in enumerate(self.funcs)]
+        m_out_list = [torch.jit.wait(task) for task in task_list]
+        m_out = torch.zeros((*m_in.shape[:-1], 1)).to(device=m_in.device)
         for i, out in enumerate(m_out_list):
-            m_out[..., i//self.m, int(i/self.m),:] = out * 1.
+            m_out[..., i // self.m, int(i / self.m), :] = out * 1.
         return m_out
+
 
 class CompressedGraph(GraphModel):
     def __init__(self, in_channels, action_size, compressed_size, depth, mid_weight, device, continuous_actions=False):
@@ -1559,7 +1572,6 @@ class CompressedGraph(GraphModel):
         m_in = self.vectorize_for_message_pass(n, x)
         return m_in
 
-
     def forward_fine_tune(self, obs):
         m_in, m_out = self.forward_for_imitation(obs)
         # TODO: these dims will only be correct for cartpole:
@@ -1587,7 +1599,7 @@ class ExpandedGraph(GraphModel):
         self.m = expanded_size
 
         self.embedder = nn.Linear(in_channels, self.m)
-        self.messenger = BinaryMessenger(binary_funcs, self.m)
+        self.messenger = torch.jit.script(BinaryMessenger(binary_funcs, self.m))
         self.final_layer = nn.Linear(self.m, action_size)
 
         self.apply(xavier_uniform_init)
@@ -1600,11 +1612,9 @@ class ExpandedGraph(GraphModel):
 
     def forward(self, obs):
         f = self.embedder(obs)
-        n, x = self.prep_input(f)
-        msg = self.sum_messages(n, x)
+        msg = self.sum_messages(f)
         return self.final_layer(msg)
 
-    def sum_messages(self, n, x):
-        msg_in = self.vectorize_for_message_pass(n, x)
-        messages = self.messenger(msg_in)
+    def sum_messages(self, f):
+        messages = self.messenger(f)
         return torch.sum(messages, dim=-2).squeeze()
