@@ -23,7 +23,7 @@ from common.policy import TransitionPolicy, PixelTransPolicy, GraphTransitionPol
     DoubleTransitionPolicy, GraphPolicy, GoalSeekerPolicy
 from moviepy.editor import ImageSequenceClip
 
-from common.storage import Storage, BasicStorage, IPLStorage, GoalSeekerStorage
+from common.storage import Storage, BasicStorage, IPLStorage, GoalSeekerStorage, SAEStorage
 
 GLOBAL_DIR = "/vol/bitbucket/tfb115/train-procgen-pytorch/"
 OS_IS = "Linux"
@@ -771,7 +771,8 @@ def add_symbreg_args(parser):
     parser.add_argument('--rounds', type=int, default=int(10), help='Number of episodes to test models for')
     parser.add_argument('--binary_operators', type=str, nargs='+', default=["+", "-", "*", "greater"],
                         help="Binary operators to use in search")
-    parser.add_argument('--unary_operators', type=str, nargs='+', default=["square","exp","relu"], help="Unary operators to use in search")
+    parser.add_argument('--unary_operators', type=str, nargs='+', default=["square", "exp", "relu"],
+                        help="Unary operators to use in search")
     parser.add_argument('--wandb_tags', type=str, nargs='+', default=[], help="Tags for Weights & Biases")
     parser.add_argument('--wandb_name', type=str, default=None, help='Experiment Name for Weights & Biases')
     parser.add_argument('--wandb_group', type=str, default=None)
@@ -1120,16 +1121,20 @@ def add_pets_args(parser):
 
 
 def initialize_storage(args, device, double_graph, hidden_state_dim, model_based, n_envs, n_steps, observation_shape,
-                       continuous_actions=False, act_shape=None, IPL=False, goal_seeker=False):
-    create_storage = lambda : Storage(observation_shape, hidden_state_dim, n_steps, n_envs, device, continuous_actions, act_shape)
+                       continuous_actions=False, act_shape=None, IPL=False, goal_seeker=False, algo=None):
+    create_storage = lambda: Storage(observation_shape, hidden_state_dim, n_steps, n_envs, device, continuous_actions,
+                                     act_shape)
 
     if model_based or double_graph:
-        create_storage = lambda : BasicStorage(observation_shape, n_steps, n_envs, device)
+        create_storage = lambda: BasicStorage(observation_shape, n_steps, n_envs, device)
     if IPL:
-        create_storage = lambda :  IPLStorage(observation_shape, n_steps, n_envs, device)
+        create_storage = lambda: IPLStorage(observation_shape, n_steps, n_envs, device)
     if goal_seeker:
-        create_storage = lambda : GoalSeekerStorage(observation_shape, n_steps, n_envs, device, continuous_actions, act_shape)
-
+        create_storage = lambda: GoalSeekerStorage(observation_shape, n_steps, n_envs, device, continuous_actions,
+                                                   act_shape)
+    if algo == "sae":
+        create_storage = lambda: SAEStorage(observation_shape, hidden_state_dim, n_steps, n_envs, device,
+                                            continuous_actions, act_shape)
     storage = create_storage()
     storage_valid = create_storage() if args.use_valid_env else None
     storage_greedy = create_storage() if args.use_greedy_env else None

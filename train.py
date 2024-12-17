@@ -203,6 +203,9 @@ def train_ppo(args):
     print('INITIALIZING STORAGE...')
     hidden_state_dim = model.output_dim
     act_shape = None
+    if algo == "sae":
+        hidden_state_dim = hyperparameters["sae_dim"]
+        act_shape = env.action_space.n
     try:
         act_shape = policy.act_shape
     except AttributeError as e:
@@ -210,7 +213,7 @@ def train_ppo(args):
     storage, storage_valid, storage_greedy = initialize_storage(args, device, double_graph, hidden_state_dim,
                                                                 model_based, n_envs, n_steps,
                                                                 observation_shape, continuous_actions, act_shape,
-                                                                IPL=IPL, goal_seeker=goal_seeker)
+                                                                IPL=IPL, goal_seeker=goal_seeker, algo=algo)
 
     if args.use_greedy_env is not None:
         hyperparameters.update(

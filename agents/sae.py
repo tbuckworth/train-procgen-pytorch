@@ -271,4 +271,4 @@ class SAE(BaseAgent):
             storage.store(obs, hidden, act, rew, done, info, logits, value)
             obs = next_obs
         act, hidden, logits, value = self.get_hidden_and_acts(obs, policy)
-        storage.store_last(obs, hidden, logits, value)
+        storage.store_last(obs, hidden, value)
