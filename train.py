@@ -1,6 +1,6 @@
 from click.termui import hidden_prompt_func
 
-from common.logger import Logger
+from common.logger import Logger, SimpleLogger
 from common import set_global_seeds, set_global_log_levels
 
 import os, time, argparse
@@ -192,10 +192,13 @@ def train_ppo(args):
 
     print('INTIALIZING MODEL...')
     model, observation_shape, policy = initialize_model(device, env, hyperparameters)
-    logger = Logger(n_envs, logdir, use_wandb=args.use_wandb, has_vq=policy.has_vq,
+    logger_cons = Logger
+    if algo == "sae":
+        logger_cons = SimpleLogger
+    logger = logger_cons(n_envs, logdir, use_wandb=args.use_wandb, has_vq=policy.has_vq,
                     algo=algo,
-                    # transition_model=model_based, double_graph=double_graph, ppo_pure=ppo_pure, IPL=IPL,
                     greedy=args.use_greedy_env)
+
     logger.max_steps = max_steps
     #############
     ## STORAGE ##

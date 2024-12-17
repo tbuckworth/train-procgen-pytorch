@@ -212,3 +212,25 @@ class Logger(object):
             episode_statistics['[Greedy] Rewards/balanced_mean'] = self.true_mean_reward_g
 
         return episode_statistics
+
+
+class SimpleLogger(Logger):
+    def __init__(self, *args, **kwargs):
+        super().__init__(self, *args, **kwargs)
+
+    def dump(self, summary={}, lr=0.):
+        wall_time = time.time() - self.start_time
+        episode_statistics = self._get_episode_statistics()  # 14
+
+        episode_statistics.update(summary)
+        episode_statistics.update({
+            "timesteps": self.timesteps,
+            "wall_time": wall_time,
+            "num_episodes": self.num_episodes,
+            "learning_rate": lr,
+        })
+
+        if self.use_wandb:
+            wandb.log(episode_statistics)
+
+        _ = {print(f"{k}:{v}" for k, v in episode_statistics.items())}
