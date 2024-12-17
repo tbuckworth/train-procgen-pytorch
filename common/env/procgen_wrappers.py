@@ -511,6 +511,15 @@ def create_env(env_args, render, normalize_rew=True, mirror_some=False, decoding
         venv = ActionWrapper(venv)
     return venv
 
+def create_procgen_env_maybe_render(args, hyperparameters, is_valid=False):
+    render = False
+    try:
+        render = args.render
+    except Exception:
+        pass
+    if render:
+        return create_rendered_env(args, hyperparameters, is_valid)
+    return create_procgen_env(args, hyperparameters, is_valid)
 
 def create_procgen_env(args, hyperparameters, is_valid=False):
     if args is None:

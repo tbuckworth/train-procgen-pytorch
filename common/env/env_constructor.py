@@ -2,7 +2,7 @@ import re
 
 from boxworld.create_box_world import create_bw_env
 from common.env.mujoco_wrappers import create_mujoco
-from common.env.procgen_wrappers import create_procgen_env
+from common.env.procgen_wrappers import create_procgen_env, create_procgen_env_maybe_render
 from discrete_env.acrobot_pre_vec import create_acrobot
 from discrete_env.cartpole_pre_vec import create_cartpole, create_cartpole_continuous
 from discrete_env.cartpole_swing_pre_vec import create_cartpole_swing
@@ -11,7 +11,7 @@ from discrete_env.pre_vec_wrappers import DeVecEnvWrapper, PetsWrapper
 
 
 def get_env_constructor(env_name):
-    create_venv = create_procgen_env
+    create_venv = create_procgen_env_maybe_render
     if env_name == "boxworld":
         create_venv = create_bw_env
     elif env_name == "cartpole":

@@ -731,12 +731,12 @@ def load_hparams_for_model(param_name, logdir, n_envs):
     return hyperparameters, last_model
 
 
-def latest_model_path(logdir):
+def latest_model_path(logdir, prefix="model"):
     logdir = os.path.join(GLOBAL_DIR, logdir)
     files = os.listdir(logdir)
-    pattern = r"model_(\d*)\.pth"
+    pattern = rf"{prefix}_(\d*)\.pth"
     checkpoints = [int(re.search(pattern, x).group(1)) for x in files if re.search(pattern, x)]
-    last_model = os.path.join(logdir, f"model_{max(checkpoints)}.pth")
+    last_model = os.path.join(logdir, f"{prefix}_{max(checkpoints)}.pth")
     return last_model
 
 

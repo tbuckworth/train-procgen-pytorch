@@ -267,7 +267,7 @@ def train_ppo(args):
     print('START TRAINING...')
     agent.train(num_timesteps)
     wandb.finish()
-    return logdir
+    return agent
 
 
 def create_logdir_train(model_file, env_name, exp_name, seed):

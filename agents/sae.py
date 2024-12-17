@@ -218,9 +218,9 @@ class SAE(BaseAgent):
     def train(self, num_timesteps):
         self.train_model(self.sae, self.optimizer, self.optimize_sae, num_timesteps, "sae")
         self.train_model(self.linear_model, self.l_optimizer, self.optimize_linear_model, num_timesteps+num_timesteps, "linear")
-        self.env.close()
-        if self.env_valid is not None:
-            self.env_valid.close()
+        # self.env.close()
+        # if self.env_valid is not None:
+        #     self.env_valid.close()
 
     def train_model(self, model, optimizer, optimize_func, num_timesteps, model_type):
         save_every = num_timesteps // self.num_checkpoints

@@ -220,7 +220,7 @@ class SimpleLogger(Logger):
 
     def dump(self, summary={}, lr=0.):
         wall_time = time.time() - self.start_time
-        episode_statistics = self._get_episode_statistics()  # 14
+        episode_statistics = self._get_episode_statistics()
 
         episode_statistics.update(summary)
         episode_statistics.update({

@@ -130,7 +130,7 @@ def run_next_hyperparameters(hparams):
     parser_dict = vars(parser.parse_args())
     parser_dict.update(hparams)
     args = DictToArgs(parser_dict)
-    train_ppo(args)
+    return train_ppo(args)
 
     # from train import train_ppo
     # parser_dict = add_training_args_dict()
