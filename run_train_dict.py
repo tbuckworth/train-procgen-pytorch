@@ -5,10 +5,11 @@ from hyperparameter_optimization import run_next_hyperparameters
 if __name__ == '__main__':
     hparams = {
         "model_file": "logs/train/coinrun/coinrun/2024-10-05__17-20-34__seed_6033/model_200015872.pth",
-        "num_timesteps": int(1e7),
+        "num_timesteps": int(1e3),
         "num_levels": 100000,
         "distribution_mode": "hard",
         "seed": 6033,
+        "epoch": 1,
         "env_name": "coinrun",
         "exp_name": "sae",
         "param_name": "sae",

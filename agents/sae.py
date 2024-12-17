@@ -246,9 +246,9 @@ class SAE(BaseAgent):
             summary = optimize_func()
             # Log the training-procedure
             self.t += self.n_steps * self.n_envs
-            rew_batch, done_batch = self.storage.fetch_log_data()
+            rew_batch, done_batch, true_average_reward = self.storage.fetch_log_data()
             if self.storage_valid is not None:
-                rew_batch_v, done_batch_v = self.storage_valid.fetch_log_data()
+                rew_batch_v, done_batch_v, true_average_reward_v = self.storage_valid.fetch_log_data()
             else:
                 rew_batch_v = done_batch_v = None
             self.logger.feed(rew_batch, done_batch, rew_batch_v, done_batch_v)
