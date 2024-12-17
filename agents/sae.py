@@ -55,7 +55,7 @@ class SAE(BaseAgent):
         # self.gamma = gamma
         # self.lmbda = lmbda
         self.learning_rate = learning_rate
-        self.sae = SparseAutoencoder(input_dim=self.policy.embedder.output_dim,
+        self.sae = SparseAutoencoder(input_dim=self.policy.embedder.encoded_dim,
                                      hidden_dim=self.sae_dim,
                                      rho=self.rho).to(device)
         self.linear_model = LinearSAEProbe(self.sae_dim, self.policy.action_size).to(device)
