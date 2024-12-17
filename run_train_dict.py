@@ -5,10 +5,10 @@ from hyperparameter_optimization import run_next_hyperparameters
 if __name__ == '__main__':
     hparams = {
         "model_file": "logs/train/coinrun/coinrun/2024-10-05__17-20-34__seed_6033/model_200015872.pth",
-        # "num_levels": 100000,
+        "num_levels": 100000,
         "architecture": "sae",
-        # "distribution_mode": "hard",
-        "seed": 1080,
+        "distribution_mode": "hard",
+        "seed": 6033,
         "env_name": "coinrun",
         "exp_name": "sae",
         "param_name": "sae",
@@ -16,7 +16,7 @@ if __name__ == '__main__':
         "use_wandb": True,
         "mini_batch_size": 2048,
         "n_envs": 256,
-        "sae_dim": 1024,
+        "sae_dim": 4096,
         "rho": 0.05,
         "sparse_coef": 1e-3,
     }
