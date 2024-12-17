@@ -37,11 +37,13 @@ class SAE(BaseAgent):
                  sae_dim=1024,
                  rho=0.05,
                  sparse_coef=1e-3,
+                 close_envs=True,
                  **kwargs):
 
         super(SAE, self).__init__(env, policy, logger, storage, device,
                                   n_checkpoints, env_valid, storage_valid)
 
+        self.close_envs = close_envs
         self.sparse_coef = sparse_coef
         self.rho = rho
         self.sae_dim = sae_dim
@@ -218,9 +220,10 @@ class SAE(BaseAgent):
     def train(self, num_timesteps):
         self.train_model(self.sae, self.optimizer, self.optimize_sae, num_timesteps, "sae")
         self.train_model(self.linear_model, self.l_optimizer, self.optimize_linear_model, num_timesteps+num_timesteps, "linear")
-        # self.env.close()
-        # if self.env_valid is not None:
-        #     self.env_valid.close()
+        if self.close_envs:
+            self.env.close()
+            if self.env_valid is not None:
+                self.env_valid.close()
 
     def train_model(self, model, optimizer, optimize_func, num_timesteps, model_type):
         save_every = num_timesteps // self.num_checkpoints
@@ -274,3 +277,10 @@ class SAE(BaseAgent):
             obs = next_obs
         act, hidden, logits, value = self.get_hidden_and_acts(obs, policy)
         storage.store_last(obs, hidden, value)
+
+    def explore(self, env, steps, policy=None):
+        obs = env.reset()
+        for _ in range(steps):
+            act, hidden, logits, value = self.get_hidden_and_acts(obs, policy)
+            next_obs, rew, done, info = env.step(act)
+            obs = next_obs

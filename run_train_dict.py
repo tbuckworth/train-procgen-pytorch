@@ -20,7 +20,7 @@ if __name__ == '__main__':
         "n_envs": 256,
         "sae_dim": 4096,
         "rho": 0.05,
-        "sparse_coef": 1e-3,
+        "sparse_coef": 0.5,
         "reduce_duplicate_actions": False,
     }
     run_next_hyperparameters(hparams)

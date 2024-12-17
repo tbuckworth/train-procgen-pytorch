@@ -118,6 +118,8 @@ sae:
     architecture: impala
     recurrent: False
     sae_dim: 1024
+    close_envs: True
+    anneal_lr: False
 
 hard-500-impala:
     algo: ppo
