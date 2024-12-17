@@ -127,7 +127,7 @@ def hyperparam_optimization(algo, model_fn, env_fn, n_trials=10, n_timesteps=500
         return cost
 
     try:
-        study.optimize(objective, n_trials=n_trials, n_jobs=n_jobs)
+        study.optimize_sae(objective, n_trials=n_trials, n_jobs=n_jobs)
     except KeyboardInterrupt:
         pass
 

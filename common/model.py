@@ -1618,3 +1618,49 @@ class ExpandedGraph(GraphModel):
     def sum_messages(self, f):
         messages = self.messenger(f)
         return torch.sum(messages, dim=-2).squeeze()
+
+class SparseAutoencoder(nn.Module):
+    def __init__(self, input_dim, hidden_dim, rho):
+        super(SparseAutoencoder, self).__init__()
+        self.rho = rho
+        # Encoder
+        self.encoder = nn.Sequential(
+            nn.Linear(input_dim, hidden_dim),
+            nn.ReLU(inplace=True)
+        )
+        # Decoder
+        self.decoder = nn.Sequential(
+            nn.Linear(hidden_dim, input_dim),
+            # For an autoencoder, often no activation at the output
+            # or something like sigmoid if inputs are normalized between [0,1].
+        )
+        self.apply(xavier_uniform_init)
+
+    def forward(self, x):
+        hidden = self.encoder(x)
+        reconstructed = self.decoder(hidden)
+        return reconstructed, hidden
+
+    def kl_divergence(self, encoded):
+        # KL divergence for sparsity: sum over hidden units
+        # rho_hat: average activation of each hidden unit
+        # ensure numerical stability with a small epsilon
+        rho_hat = encoded.mean(dim=0) # 0 is batch dim
+        rho = self.rho
+        eps = 1e-10
+        return torch.sum(rho * torch.log((rho + eps) / (rho_hat + eps)) +
+                         (1 - rho) * torch.log((1 - rho + eps) / (1 - rho_hat + eps)))
+
+class LinearSAEProbe(nn.Module):
+    def __init__(self, hidden_dim, n_actions):
+        super(LinearSAEProbe, self).__init__()
+        self.hidden_dim = hidden_dim
+        self.n_actions = n_actions
+        self.fc_policy = nn.Linear(hidden_dim, n_actions)
+        self.fc_value = nn.Linear(hidden_dim, 1)
+        self.apply(xavier_uniform_init)
+
+    def forward(self, encoded):
+        logits = self.fc_policy(encoded).log_softmax(dim=-1)
+        value = self.fc_value(encoded)
+        return logits, value

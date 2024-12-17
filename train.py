@@ -99,6 +99,11 @@ def train_ppo(args):
         if var_name in args.__dict__.keys() and args.__dict__[var_name] is not None:
             hyperparameters[var_name] = args.__dict__[var_name]
 
+    # override any remaining hyperparmeters:
+    for var_name in list(hyperparameters.keys()):
+        if var_name in args.__dict__.keys() and args.__dict__[var_name] is not None:
+            hyperparameters[var_name] = args.__dict__[var_name]
+
     wandb_name = args.wandb_name
     if args.wandb_name is None:
         wandb_name = np.random.randint(1e5)
