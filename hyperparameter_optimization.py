@@ -12,7 +12,8 @@ import wandb
 from create_sh_files import add_training_args_dict, add_symbreg_args_dict
 
 from gp import bayesian_optimisation
-from helper_local import wandb_login, DictToArgs, get_project, add_symbreg_args, add_pets_args, add_espl_args
+from helper_local import wandb_login, DictToArgs, get_project, add_symbreg_args, add_pets_args, add_espl_args, \
+    add_training_args
 
 
 def get_wandb_performance(hparams, project="Cartpole", id_tag="sa_rew", opt_metric="summary.mean_episode_rewards",
@@ -124,10 +125,18 @@ def run_pets_hyperparameters(hparams):
 
 def run_next_hyperparameters(hparams):
     from train import train_ppo
-    parser_dict = add_training_args_dict()
+    parser = argparse.ArgumentParser()
+    parser = add_training_args(parser)
+    parser_dict = vars(parser.parse_args())
     parser_dict.update(hparams)
     args = DictToArgs(parser_dict)
     train_ppo(args)
+
+    # from train import train_ppo
+    # parser_dict = add_training_args_dict()
+    # parser_dict.update(hparams)
+    # args = DictToArgs(parser_dict)
+    # train_ppo(args)
 
 
 def run_hp_for_espl(hparams):

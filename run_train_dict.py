@@ -5,8 +5,8 @@ from hyperparameter_optimization import run_next_hyperparameters
 if __name__ == '__main__':
     hparams = {
         "model_file": "logs/train/coinrun/coinrun/2024-10-05__17-20-34__seed_6033/model_200015872.pth",
+        "num_timesteps": int(1e7),
         "num_levels": 100000,
-        "architecture": "sae",
         "distribution_mode": "hard",
         "seed": 6033,
         "env_name": "coinrun",
@@ -19,5 +19,6 @@ if __name__ == '__main__':
         "sae_dim": 4096,
         "rho": 0.05,
         "sparse_coef": 1e-3,
+        "reduce_duplicate_actions": False,
     }
     run_next_hyperparameters(hparams)

@@ -22,7 +22,8 @@ class CategoricalPolicy(nn.Module):
                  action_size,
                  has_vq=False,
                  continuous_actions=False,
-                 logsumexp_logits_is_v=False
+                 logsumexp_logits_is_v=False,
+                 extra_params=False,
                  ):
         """
         embedder: (torch.Tensor) model to extract the embedding for observation
@@ -37,10 +38,11 @@ class CategoricalPolicy(nn.Module):
         # small scale weight-initialization in policy enhances the stability
         self.fc_policy = orthogonal_init(nn.Linear(self.embedder.output_dim, action_size), gain=0.01)
         self.fc_value = orthogonal_init(nn.Linear(self.embedder.output_dim, 1), gain=1.0)
-        # sigmoid(4.6) = 0.99
-        self.learned_gamma = nn.Parameter(torch.tensor(4.6, requires_grad=True))
-        # exp(-1.6) = 0.2
-        self.log_alpha = nn.Parameter(torch.tensor(-1.6, requires_grad=True))
+        if extra_params:
+            # sigmoid(4.6) = 0.99
+            self.learned_gamma = nn.Parameter(torch.tensor(4.6, requires_grad=True))
+            # exp(-1.6) = 0.2
+            self.log_alpha = nn.Parameter(torch.tensor(-1.6, requires_grad=True))
         self.target_entropy = np.log(action_size) if not continuous_actions else -action_size
 
         self.recurrent = recurrent

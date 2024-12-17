@@ -55,10 +55,10 @@ class SAE(BaseAgent):
         # self.gamma = gamma
         # self.lmbda = lmbda
         self.learning_rate = learning_rate
-        self.sae = SparseAutoencoder(input_dim=self.policy.model.output_dim,
+        self.sae = SparseAutoencoder(input_dim=self.policy.embedder.output_dim,
                                      hidden_dim=self.sae_dim,
                                      rho=self.rho).to(device)
-        self.linear_model = LinearSAEProbe(self.sae_dim, self.policy.action_size)
+        self.linear_model = LinearSAEProbe(self.sae_dim, self.policy.action_size).to(device)
         self.optimizer = optim.Adam(self.sae.parameters(), lr=learning_rate, eps=1e-5)
         self.l_optimizer = optim.Adam(self.linear_model.parameters(), lr=learning_rate, eps=1e-5)
         self.grad_clip_norm = grad_clip_norm

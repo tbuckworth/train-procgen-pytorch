@@ -549,8 +549,8 @@ class SAEStorage(Storage):
 
     def collate_data(self, indices):
         obs_batch = self.reshape_data(self.obs_batch[:-1], self.obs_shape, indices)
-        hidden_batch = self.reshape_data(self.hidden_batch[:-1], self.hidden_state_size, indices)
-        logit_batch = self.reshape_data(self.logit_batch, self.act_shape, indices)
+        hidden_batch = self.reshape_data(self.hidden_batch[:-1], (self.hidden_state_size), indices)
+        logit_batch = self.reshape_data(self.logit_batch, (self.act_shape), indices)
         value_batch = self.reshape_data(self.value_batch[:-1], (), indices)
         act_batch = self.reshape_data(self.act_batch, (), indices)
         return obs_batch, hidden_batch, act_batch, logit_batch, value_batch

@@ -195,9 +195,8 @@ def train_ppo(args):
     logger_cons = Logger
     if algo == "sae":
         logger_cons = SimpleLogger
-    logger = logger_cons(n_envs, logdir, use_wandb=args.use_wandb, has_vq=policy.has_vq,
-                    algo=algo,
-                    greedy=args.use_greedy_env)
+    logger = logger_cons(n_envs, logdir, use_wandb=args.use_wandb, has_vq=policy.has_vq, algo=algo,
+                         greedy=args.use_greedy_env)
 
     logger.max_steps = max_steps
     #############
@@ -207,7 +206,7 @@ def train_ppo(args):
     hidden_state_dim = model.output_dim
     act_shape = None
     if algo == "sae":
-        hidden_state_dim = hyperparameters["sae_dim"]
+        hidden_state_dim = model.encoded_dim
         act_shape = env.action_space.n
     try:
         act_shape = policy.act_shape
@@ -259,8 +258,9 @@ def train_ppo(args):
         print("Loading agent from %s" % args.model_file)
         checkpoint = torch.load(args.model_file, map_location=device)
         agent.policy.load_state_dict(checkpoint["model_state_dict"])
-        # this will throw error for some agents:
-        agent.v_optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+        if algo != "sae":
+            # this will throw error for some agents:
+            agent.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
     ##############
     ## TRAINING ##
     ##############

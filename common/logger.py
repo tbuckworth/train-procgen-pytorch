@@ -215,8 +215,8 @@ class Logger(object):
 
 
 class SimpleLogger(Logger):
-    def __init__(self, *args, **kwargs):
-        super().__init__(self, *args, **kwargs)
+    def __init__(self, n_envs, logdir, use_wandb=False, has_vq=False, algo="ppo", greedy=False):
+        super().__init__(n_envs, logdir, use_wandb, has_vq, algo, greedy)
 
     def dump(self, summary={}, lr=0.):
         wall_time = time.time() - self.start_time
