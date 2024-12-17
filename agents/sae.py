@@ -217,7 +217,7 @@ class SAE(BaseAgent):
 
     def train(self, num_timesteps):
         self.train_model(self.sae, self.optimizer, self.optimize_sae, num_timesteps, "sae")
-        self.train_model(self.linear_model, self.l_optimizer, self.optimize_linear_model, num_timesteps, "linear")
+        self.train_model(self.linear_model, self.l_optimizer, self.optimize_linear_model, num_timesteps+num_timesteps, "linear")
         self.env.close()
         if self.env_valid is not None:
             self.env_valid.close()
@@ -250,17 +250,19 @@ class SAE(BaseAgent):
             if self.storage_valid is not None:
                 rew_batch_v, done_batch_v, true_average_reward_v = self.storage_valid.fetch_log_data()
             else:
-                rew_batch_v = done_batch_v = None
-            self.logger.feed(rew_batch, done_batch, rew_batch_v, done_batch_v)
-            self.logger.dump(summary)
+                rew_batch_v = done_batch_v = true_average_reward_v = None
             if self.anneal_lr:
-                self.optimizer = adjust_lr(self.optimizer, self.learning_rate, self.t, num_timesteps)
+                self.optimizer, lr = adjust_lr(self.optimizer, self.learning_rate, self.t, num_timesteps)
+            else:
+                lr = self.learning_rate
+            self.logger.feed(rew_batch, done_batch, true_average_reward, rew_batch_v, done_batch_v, true_average_reward_v)
+            self.logger.dump(summary, lr)
             # Save the model
             if self.t > ((checkpoint_cnt+1) * save_every):
                 print("Saving model.")
                 torch.save({'model_state_dict': model.state_dict(),
                             'optimizer_state_dict': optimizer.state_dict()},
-                             self.logger.logdir + f'/{model_type}_{self.t}.pth')
+                           self.logger.logdir + f'/{model_type}_{self.t}.pth')
                 checkpoint_cnt += 1
 
 

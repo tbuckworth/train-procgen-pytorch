@@ -233,4 +233,4 @@ class SimpleLogger(Logger):
         if self.use_wandb:
             wandb.log(episode_statistics)
 
-        _ = {print(f"{k}:{v}" for k, v in episode_statistics.items())}
+        _ = [print(f"{k}:\t\t{v:.3g}") for k, v in episode_statistics.items()]
