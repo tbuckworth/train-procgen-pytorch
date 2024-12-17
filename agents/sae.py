@@ -72,8 +72,9 @@ class SAE(BaseAgent):
     def get_hidden_and_acts(self, obs, policy=None):
         with torch.no_grad():
             obs = torch.FloatTensor(obs).to(self.device)
-            hidden = self.policy.embedder(obs)
-            p, v = self.policy.hidden_to_output(hidden)
+            hidden = self.policy.embedder.forward_to_pool(obs)
+            h = self.policy.embedder.forward_from_pool(hidden)
+            p, v = self.policy.hidden_to_output(h)
             act = p.sample().cpu().numpy()
             if policy is not None:
                 logits, v_hat = self.linear_model(self.sae(hidden)[1])
